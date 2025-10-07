@@ -20,7 +20,7 @@
 ### 1. Clone repository
 ```bash
 git clone <repository-url>
-cd identity-service
+cd lumina-books
 ```
 
 ### 2. Cấu hình database
@@ -49,7 +49,7 @@ mvn spring-boot:run
 
 # Hoặc build và chạy JAR
 mvn clean package
-java -jar target/identity-service-0.0.1-SNAPSHOT.jar
+java -jar target/lumina-books-0.0.1-SNAPSHOT.jar
 ```
 
 ## Tương thích JDK
@@ -132,11 +132,11 @@ MIT License
 
 
 ## Docker guideline
-`docker build -t <account>/identity-service:0.9.0 .`
-`docker build -t linhdev610/identity-service:0.9.0 .`
+`docker build -t <account>/lumina-books:0.9.0 .`
+`docker build -t linhdev610/lumina-books:0.9.0 .`
 ### Push docker image to Docker Hub
-`docker image push <account>/identity-service:0.9.0`
-`docker image push linhdev610/identity-service:0.9.0`
+`docker image push <account>/lumina-books:0.9.0`
+`docker image push linhdev610/lumina-books:0.9.0`
 
 ### Create network:
 `docker network create devteria-network`
@@ -145,4 +145,4 @@ MIT License
 ### Start MySQL in devteria-network
 `docker run --network devteria-network --name mysql -p 3306:3306 -e MYSQL_ROOT_PASSWORD=root -d mysql:8.0.43-debian`
 ### Run your application in devteria-network
-`docker run --name identity-service --network devteria-network -p 8080:8080 -e DBMS_CONNECTION=jdbc:mysql://mysql:3306/identity_service identity-service:0.9.0`
+`docker run --name lumina-books --network devteria-network -p 8080:8080 -e DBMS_CONNECTION=jdbc:mysql://mysql:3306/identity_service lumina-books:0.9.0`

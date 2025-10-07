@@ -14,7 +14,8 @@ import com.lumina_book.backend.entity.Otp;
 @Repository
 public interface OtpRepository extends JpaRepository<Otp, String> {
 
-    Optional<Otp> findByEmailAndCodeAndExpiresAtAfterAndIsUsedFalse(String email, String code, LocalDateTime now);
+    Optional<Otp> findByEmailAndCodeAndExpiresAtAfterAndIsUsedFalse(
+            String email, String code, LocalDateTime now);
 
     @Modifying
     @Transactional

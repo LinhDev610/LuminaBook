@@ -50,14 +50,20 @@ public class OtpService {
         return otpCode;
     }
 
-    @Transactional
-    public boolean verifyOtp(String email, String otpCode) {
-        otpRepository
-                .findByEmailAndCodeAndExpiresAtAfterAndIsUsedFalse(email, otpCode, LocalDateTime.now())
+    @Transactional(readOnly = true)
+    public boolean isValidOtp(String email, String otpCode) {
+        otpRepository.findByEmailAndCodeAndExpiresAtAfterAndIsUsedFalse(
+                        email, otpCode, LocalDateTime.now())
                 .orElseThrow(() -> new AppException(ErrorCode.INVALID_OTP));
-
-        otpRepository.markOtpAsUsed(email, otpCode);
         return true;
+    }
+
+    @Transactional
+    public void consumeOtp(String email, String otpCode) {
+        otpRepository.findByEmailAndCodeAndExpiresAtAfterAndIsUsedFalse(
+                        email, otpCode, LocalDateTime.now())
+                .orElseThrow(() -> new AppException(ErrorCode.INVALID_OTP));
+        otpRepository.markOtpAsUsed(email, otpCode);
     }
 
     private String generateOtpCode() {

@@ -28,7 +28,8 @@ public class SecurityConfig {
         "/auth/logout",
         "/auth/refresh",
         "/auth/send-otp",
-        "/auth/verify-otp"
+        "/auth/verify-otp",
+        "/auth/reset-password"
     };
 
     private final CustomJwtDecoder customJwtDecoder;

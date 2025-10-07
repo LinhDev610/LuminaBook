@@ -1,0 +1,58 @@
+* { box-sizing: border-box; }
+body { margin: 0; font-family: Arial, Helvetica, sans-serif; }
+.account-wrapper { background:#fff; color:#111; }
+.account-header { display:flex; align-items:center; padding:14px 24px; border-bottom:1px solid #dcdcdc; }
+.account-header .logo { font-weight:700; color:#1A3C5A; font-size:20px; margin-right:16px; }
+.account-header .search { flex:1; display:flex; gap:0; justify-content:center; }
+.account-header .search input { width:520px; height:34px; border:1px solid #000; background:#DDD; border-radius:8px 0 0 8px; padding:0 12px; }
+.account-header .search button { height:34px; padding:0 18px; background:#1A3C5A; color:#fff; border:none; border-radius:0 8px 8px 0; }
+.header-right { display:flex; align-items:center; gap:16px; }
+.header-user { display:flex; align-items:center; gap:8px; }
+.header-user .user-name { font-weight:600; }
+.header-user .user-avatar { width:28px; height:28px; border-radius:50%; background:#111; display:inline-block; }
+.header-icons .icon { width:22px; height:22px; border:2px solid #111; border-radius:50%; display:inline-block; margin-left:10px; }
+.account-nav { display:flex; align-items:center; gap:18px; background:#1A3C5A; color:#fff; padding:10px 20px; }
+.account-nav a { color:#fff; text-decoration:none; font-size:14px; opacity:.95; }
+.account-nav a.active { font-weight:600; }
+.nav-trigger { width:26px; height:18px; border:0; background:transparent; position:relative; }
+.nav-trigger::before, .nav-trigger::after { content:""; position:absolute; left:0; right:0; height:2px; background:#fff; }
+.nav-trigger::before { top:0; }
+.nav-trigger::after { bottom:0; }
+.account-content { display:flex; gap:18px; padding:18px 20px; }
+.account-side { width:260px; border:1px solid #ddd; border-radius:8px; padding:16px; }
+.side-profile { display:flex; align-items:center; gap:12px; padding-bottom:12px; border-bottom:1px solid #eee; }
+.side-avatar { width:68px; height:68px; border-radius:50%; background:#1A3C5A; }
+.side-name { font-weight:600; }
+.side-menu { list-style:none; padding:12px 0 0; margin:0; }
+.side-menu li { padding:10px 6px; border-radius:6px; cursor:pointer; }
+.side-menu li.active { background:#F3F4F6; font-weight:600; }
+.side-menu li.danger { color:#c1121f; }
+.account-main { flex:1; display:flex; flex-direction:column; gap:16px; }
+.panel { background:#fff; border:1px solid #ddd; border-radius:8px; padding:16px; }
+.panel h3 { margin:0 0 12px; display:flex; align-items:center; gap:8px; }
+.form-row { display:flex; gap:14px; margin-bottom:10px; }
+.form-group { flex:1; display:flex; flex-direction:column; gap:6px; }
+.form-group label { font-size:12px; color:#555; }
+.form-group input { height:34px; border:1px solid #ccc; border-radius:6px; padding:0 10px; }
+.form-actions { display:flex; justify-content:flex-end; }
+.primary { background:#1A3C5A; color:#fff; border:none; padding:8px 14px; border-radius:8px; }
+.orders h3 { margin-bottom:6px; }
+.order-tabs { display:flex; gap:10px; border-bottom:1px solid #eee; padding-bottom:8px; }
+.order-tabs button { background:transparent; border:none; padding:8px 10px; border-radius:8px; cursor:pointer; }
+.order-tabs .active { background:#F3F4F6; }
+.order-card { border:1px solid #eee; border-radius:8px; margin-top:12px; }
+.order-head { display:flex; align-items:center; justify-content:space-between; padding:10px 12px; border-bottom:1px solid #eee; }
+.order-id { font-weight:600; }
+.order-date { color:#666; font-size:12px; }
+.status { background:#f43f5e; color:#fff; border:none; padding:6px 10px; border-radius:10px; font-size:12px; }
+.order-body { display:flex; align-items:center; gap:12px; padding:12px; }
+.thumb { width:62px; height:62px; background:#ddd; border-radius:6px; }
+.meta { flex:1; }
+.title { font-size:13px; }
+.qty { color:#666; font-size:12px; }
+.price { font-weight:700; color:#d00000; }
+.link { background:#fff; border:1px solid #ddd; padding:6px 10px; border-radius:8px; }
+.account-footer { display:grid; grid-template-columns: 1fr 1fr 1fr; gap:20px; padding:24px 20px; border-top:1px solid #eee; }
+.account-footer h4 { margin:0 0 10px; }
+
+

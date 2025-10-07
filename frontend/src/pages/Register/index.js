@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import visibleIcon from "../../assets/styles/Icon/icons8-visible.png";
-import invisibleIcon from "../../assets/styles/Icon/icons8-invisible.png";
+import visibleIcon from "../../assets/Icon/icons8-visible.png";
+import invisibleIcon from "../../assets/Icon/icons8-invisible.png";
 import "../../assets/styles/Auth/Login.css";
 
 const API_BASE_URL = "http://localhost:8080/identity";

@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Auth.css';
-import { FaEye, FaEyeSlash } from 'react-icons/fa';
+import visibleIcon from "../../assets/styles/Icon/icons8-visible.png";
+import invisibleIcon from "../../assets/styles/Icon/icons8-invisible.png";
 
 const API_BASE_URL = 'http://localhost:8080/identity';
 
@@ -70,7 +71,9 @@ export default function LoginModal({ open = false, onClose }) {
                         <label>Password</label>
                         <div className="pw-wrap">
                             <input type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="********" required />
-                            <span className="pw-toggle" onClick={() => setShowPassword(!showPassword)}>{showPassword ? <FaEyeSlash /> : <FaEye />}</span>
+                            <button type="button" className="pw-toggle" onClick={() => setShowPassword(!showPassword)} aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'} style={{ background: 'transparent', border: 'none', padding: 0 }}>
+                                <img src={showPassword ? invisibleIcon : visibleIcon} alt={showPassword ? 'Ẩn' : 'Hiện'} style={{ width: 20, height: 20 }} />
+                            </button>
                         </div>
                     </div>
                     {error && <div className="error-text">{error}</div>}

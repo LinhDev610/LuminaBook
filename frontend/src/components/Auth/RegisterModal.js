@@ -4,7 +4,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Auth.css';
-import { FaEye, FaEyeSlash } from 'react-icons/fa';
+import visibleIcon from "../../assets/styles/Icon/icons8-visible.png";
+import invisibleIcon from "../../assets/styles/Icon/icons8-invisible.png";
 
 const API_BASE_URL = 'http://localhost:8080/identity';
 
@@ -120,14 +121,18 @@ export default function RegisterModal({ open = false, onClose }) {
                             <label>Mật khẩu</label>
                             <div className="pw-wrap">
                                 <input type={show1 ? 'text' : 'password'} value={password} onChange={(e) => { setPassword(e.target.value); setError(''); }} placeholder="********" />
-                                <span className="pw-toggle" onClick={() => setShow1(!show1)}>{show1 ? <FaEyeSlash /> : <FaEye />}</span>
+                                <button type="button" className="pw-toggle" onClick={() => setShow1(!show1)} aria-label={show1 ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'} style={{ background: 'transparent', border: 'none', padding: 0 }}>
+                                    <img src={show1 ? invisibleIcon : visibleIcon} alt={show1 ? 'Ẩn' : 'Hiện'} style={{ width: 20, height: 20 }} />
+                                </button>
                             </div>
                         </div>
                         <div className="form-group">
                             <label>Xác nhận mật khẩu</label>
                             <div className="pw-wrap">
                                 <input type={show2 ? 'text' : 'password'} value={confirm} onChange={(e) => { setConfirm(e.target.value); setError(''); }} placeholder="********" />
-                                <span className="pw-toggle" onClick={() => setShow2(!show2)}>{show2 ? <FaEyeSlash /> : <FaEye />}</span>
+                                <button type="button" className="pw-toggle" onClick={() => setShow2(!show2)} aria-label={show2 ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'} style={{ background: 'transparent', border: 'none', padding: 0 }}>
+                                    <img src={show2 ? invisibleIcon : visibleIcon} alt={show2 ? 'Ẩn' : 'Hiện'} style={{ width: 20, height: 20 }} />
+                                </button>
                             </div>
                         </div>
                         <div className="form-group">

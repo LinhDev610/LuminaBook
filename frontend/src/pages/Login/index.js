@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "../../assets/styles/Auth/Login.css";
-import { FaEye, FaEyeSlash } from "react-icons/fa";
+import visibleIcon from "../../assets/styles/Icon/icons8-visible.png";
+import invisibleIcon from "../../assets/styles/Icon/icons8-invisible.png";
 
 const API_BASE_URL = "http://localhost:8080/identity";
 
@@ -81,12 +82,15 @@ export default function Login() {
                                 onChange={(e) => setPassword(e.target.value)}
                                 required
                             />
-                            <span
+                            <button
+                                type="button"
                                 className="toggle-password"
                                 onClick={() => setShowPassword(!showPassword)}
+                                aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                                style={{ background: "transparent", border: "none", padding: 0 }}
                             >
-                                {showPassword ? <FaEye /> : <FaEyeSlash />}
-                            </span>
+                                <img src={showPassword ? invisibleIcon : visibleIcon} alt={showPassword ? "Ẩn" : "Hiện"} style={{ width: 20, height: 20 }} />
+                            </button>
                         </div>
                     </div>
 

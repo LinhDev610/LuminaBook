@@ -21,9 +21,9 @@ spring:
 #  Brevo Email Configuration
 brevo:
   api:
-    key: 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
+    key: ${BREVO_API_KEY}
   sender:
-    email: vu4002@gmail.com  # Email ?ã verify trong Brevo
+    email: ${BREVO_EMAIL} # Email ?ï¿½ verify trong Brevo
 
 #  Secret Key
 jwt:

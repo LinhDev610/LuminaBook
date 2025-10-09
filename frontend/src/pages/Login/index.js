@@ -1,5 +1,8 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import Header from "../../components/Layout/Header";
+import Footer from "../../components/Layout/Footer";
+import useLocalStorage from "../../hooks/useLocalStorage";
 import "../../assets/styles/Auth/Login.css";
 import visibleIcon from "../../assets/icons/icons8-visible.png";
 import invisibleIcon from "../../assets/icons/icons8-invisible.png";
@@ -11,6 +14,8 @@ export default function Login() {
     const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
     const navigate = useNavigate();
+    const [token, setToken] = useLocalStorage('token', null);
+    const [displayName, setDisplayName] = useLocalStorage('displayName', null);
 
     const [error, setError] = useState("");
     const [isLoading, setIsLoading] = useState(false);
@@ -31,16 +36,16 @@ export default function Login() {
             });
             const data = await resp.json().catch(() => ({}));
             if (resp.ok && data?.result?.token) {
-                localStorage.setItem("token", data.result.token);
+                setToken(data.result.token);
                 try {
                     const me = await fetch(`${API_BASE_URL}/users/my-info`, {
                         headers: { Authorization: `Bearer ${data.result.token}` },
                     });
                     const meData = await me.json().catch(() => ({}));
-                    const displayName = meData?.result?.firstName || meData?.result?.username || payload.username;
-                    localStorage.setItem("displayName", displayName);
+                    const displayNameValue = meData?.result?.firstName || meData?.result?.username || payload.username;
+                    setDisplayName(displayNameValue);
                 } catch (_) {
-                    localStorage.setItem("displayName", payload.username);
+                    setDisplayName(payload.username);
                 }
                 navigate("/");
             } else {
@@ -54,11 +59,13 @@ export default function Login() {
     };
 
     return (
-        <div className="login-container">
-            <div className="login-box">
+        <div>
+            <Header />
+            <div className="login-container">
+                <div className="login-box">
                 <h2>Đăng nhập</h2>
                 <p className="sub-text">
-                    Bạn chưa có tài khoản? <a href="/register">Đăng ký</a>
+                    Bạn chưa có tài khoản? <Link to="/register">Đăng ký</Link>
                 </p>
                 <form onSubmit={handleSubmit}>
                     <div className="form-group">
@@ -98,9 +105,9 @@ export default function Login() {
                         <label>
                             <input type="checkbox" /> Remember me
                         </label>
-                        <a href="/forgot-password" className="forgot-link">
+                        <Link to="/forgot-password" className="forgot-link">
                             Forgot Password ?
-                        </a>
+                        </Link>
                     </div>
 
                     {error && (
@@ -110,7 +117,9 @@ export default function Login() {
                         {isLoading ? "Đang đăng nhập..." : "Log In"}
                     </button>
                 </form>
+                </div>
             </div>
+            <Footer />
         </div>
     );
 }

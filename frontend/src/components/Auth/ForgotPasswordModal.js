@@ -33,7 +33,7 @@ export default function ForgotPasswordModal({ open = false, onClose }) {
         setConfirm('');
     }, [open]);
 
-    if (!open) return null;
+    // remove early return here to keep hooks order consistent
 
     const sendOtp = async (e) => {
         e.preventDefault();
@@ -59,11 +59,14 @@ export default function ForgotPasswordModal({ open = false, onClose }) {
         }
     };
 
-    useEffect(() => {
-        if (step !== 2) return;
-        const t = setInterval(() => setSeconds((s) => (s > 0 ? s - 1 : 0)), 1000);
-        return () => clearInterval(t);
-    }, [step]);
+useEffect(() => {
+    if (step !== 2) return;
+    if (seconds === 0) return;
+    const id = setTimeout(() => {
+        setSeconds((s) => (s > 0 ? s - 1 : 0));
+    }, 1000);
+    return () => clearTimeout(id);
+}, [step, seconds]);
 
     const onChangeDigit = (idx, val) => {
         if (!/^\d?$/.test(val)) return;
@@ -152,6 +155,7 @@ export default function ForgotPasswordModal({ open = false, onClose }) {
         }
     };
 
+    if (!open) return null;
     return (
         <div className="auth-modal" role="dialog" aria-modal="true">
             <div className="auth-card">

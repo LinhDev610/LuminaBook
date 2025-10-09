@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import useLocalStorage from '../../hooks/useLocalStorage';
 import './Auth.css';
 import visibleIcon from "../../assets/styles/Icon/icons8-visible.png";
 import invisibleIcon from "../../assets/styles/Icon/icons8-invisible.png";
@@ -8,6 +9,8 @@ const API_BASE_URL = 'http://localhost:8080/identity';
 
 export default function LoginModal({ open = false, onClose }) {
     const navigate = useNavigate();
+    const [token, setToken] = useLocalStorage('token', null);
+    const [displayName, setDisplayName] = useLocalStorage('displayName', null);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
@@ -29,16 +32,16 @@ export default function LoginModal({ open = false, onClose }) {
             });
             const data = await resp.json().catch(() => ({}));
             if (resp.ok && data?.result?.token) {
-                localStorage.setItem('token', data.result.token);
+                setToken(data.result.token);
                 try {
                     const me = await fetch(`${API_BASE_URL}/users/my-info`, {
                         headers: { Authorization: `Bearer ${data.result.token}` },
                     });
                     const meData = await me.json().catch(() => ({}));
-                    const displayName = meData?.result?.firstName || meData?.result?.username || payload.username;
-                    localStorage.setItem('displayName', displayName);
+                    const displayNameValue = meData?.result?.firstName || meData?.result?.username || payload.username;
+                    setDisplayName(displayNameValue);
                 } catch (_) {
-                    localStorage.setItem('displayName', payload.username);
+                    setDisplayName(payload.username);
                 }
                 onClose?.();
                 navigate(0);
@@ -60,7 +63,7 @@ export default function LoginModal({ open = false, onClose }) {
                     <h3 className="auth-title">Đăng nhập</h3>
                 </div>
                 <p className="auth-subtext">
-                    Bạn chưa có tài khoản? <a href="/register" onClick={onClose}>Đăng ký</a>
+                    Bạn chưa có tài khoản? <Link to="/register" onClick={onClose}>Đăng ký</Link>
                 </p>
                 <form className="auth-form" onSubmit={handleSubmit}>
                     <div className="form-group">
@@ -79,7 +82,7 @@ export default function LoginModal({ open = false, onClose }) {
                     {error && <div className="error-text">{error}</div>}
                     <div className="auth-row">
                         <label><input type="checkbox" /> Remember me</label>
-                        <a className="auth-link" href="/forgot-password" onClick={onClose}>Quên mật khẩu?</a>
+                        <Link className="auth-link" to="/forgot-password" onClick={onClose}>Quên mật khẩu?</Link>
                     </div>
                     <button className="auth-submit" type="submit" disabled={isLoading}>{isLoading ? 'Đang đăng nhập...' : 'Đăng nhập'}</button>
                 </form>

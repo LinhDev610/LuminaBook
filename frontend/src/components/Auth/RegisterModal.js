@@ -3,6 +3,7 @@
 
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import useLocalStorage from '../../hooks/useLocalStorage';
 import './Auth.css';
 import visibleIcon from "../../assets/styles/Icon/icons8-visible.png";
 import invisibleIcon from "../../assets/styles/Icon/icons8-invisible.png";
@@ -11,6 +12,8 @@ const API_BASE_URL = 'http://localhost:8080/identity';
 
 export default function RegisterModal({ open = false, onClose }) {
     const navigate = useNavigate();
+    const [token, setToken] = useLocalStorage('token', null);
+    const [displayName, setDisplayName] = useLocalStorage('displayName', null);
     const [step, setStep] = useState(1);
     const [email, setEmail] = useState('');
     const [username, setUsername] = useState('');
@@ -72,8 +75,8 @@ export default function RegisterModal({ open = false, onClose }) {
                     });
                     const loginData = await loginResp.json().catch(() => ({}));
                     if (loginResp.ok && loginData?.result?.token) {
-                        localStorage.setItem('token', loginData.result.token);
-                        localStorage.setItem('displayName', (username || '').trim() || (email || '').trim());
+                        setToken(loginData.result.token);
+                        setDisplayName((username || '').trim() || (email || '').trim());
                         onClose?.();
                         navigate(0);
                     } else {

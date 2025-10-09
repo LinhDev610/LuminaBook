@@ -1,5 +1,8 @@
 import React, { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import Header from "../../components/Layout/Header";
+import Footer from "../../components/Layout/Footer";
+import useLocalStorage from "../../hooks/useLocalStorage";
 import visibleIcon from "../../assets/icons/icons8-visible.png";
 import invisibleIcon from "../../assets/icons/icons8-invisible.png";
 import "../../assets/styles/Auth/Login.css";
@@ -10,6 +13,8 @@ export default function Register() {
     const navigate = useNavigate();
     const { state } = useLocation();
     const [step, setStep] = useState(state?.verified ? 2 : 1);
+    const [token, setToken] = useLocalStorage('token', null);
+    const [displayName, setDisplayName] = useLocalStorage('displayName', null);
 
     const [email, setEmail] = useState(state?.email || "");
     const [username, setUsername] = useState("");
@@ -73,8 +78,8 @@ export default function Register() {
                     });
                     const loginData = await loginResp.json().catch(() => ({}));
                     if (loginResp.ok && loginData?.result?.token) {
-                        localStorage.setItem("token", loginData.result.token);
-                        localStorage.setItem("displayName", (username || "").trim() || (email || "").trim());
+                        setToken(loginData.result.token);
+                        setDisplayName((username || "").trim() || (email || "").trim());
                         navigate("/");
                     } else {
                         navigate("/login");
@@ -94,8 +99,10 @@ export default function Register() {
     };
 
     return (
-        <div className="forgot-container">
-            <div className="forgot-box" style={{ height: "auto", paddingTop: 60, paddingBottom: 60, width: 560 }}>
+        <div>
+            <Header />
+            <div className="forgot-container">
+                <div className="forgot-box" style={{ height: "auto", paddingTop: 60, paddingBottom: 60, width: 560 }}>
                 <div className="forgot-header">
                     <button className="back-btn" onClick={() => navigate(-1)} aria-label="Quay lại">←</button>
                     <h2 className="forgot-title">Đăng ký</h2>
@@ -150,7 +157,9 @@ export default function Register() {
                         <button type="submit" className="login-btn">Đăng ký</button>
                     </form>
                 )}
+                </div>
             </div>
+            <Footer />
         </div>
     );
 }

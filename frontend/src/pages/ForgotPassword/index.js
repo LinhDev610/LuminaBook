@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import Header from "../../components/Layout/Header";
+import Footer from "../../components/Layout/Footer";
 import "../../assets/styles/Auth/ForgotPassword.css";
 
 const API_BASE_URL = "http://localhost:8080/identity";
@@ -38,8 +40,10 @@ export default function ForgotPassword() {
     };
 
     return (
-        <div className="forgot-container">
-            <div className="forgot-card">
+        <div>
+            <Header />
+            <div className="forgot-container">
+                <div className="forgot-card">
                 <div className="forgot-header">
                     <button className="back-btn" onClick={() => navigate(-1)} aria-label="Quay lại">←</button>
                     <h2 className="forgot-title">Khôi phục mật khẩu</h2>
@@ -70,7 +74,9 @@ export default function ForgotPassword() {
                         {isLoading ? "Đang gửi..." : "Gửi mã code"}
                     </button>
                 </form>
+                </div>
             </div>
+            <Footer />
         </div>
     );
 }

@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import Header from "../../components/Layout/Header";
+import Footer from "../../components/Layout/Footer";
 import visibleIcon from "../../assets/icons/icons8-visible.png";
 import invisibleIcon from "../../assets/icons/icons8-invisible.png";
 import "../../assets/styles/Auth/Login.css";
@@ -51,8 +53,10 @@ export default function ResetPassword() {
     };
 
     return (
-        <div className="forgot-container">
-            <div className="forgot-box" style={{ height: "auto", paddingTop: 60, paddingBottom: 60 }}>
+        <div>
+            <Header />
+            <div className="forgot-container">
+                <div className="forgot-box" style={{ height: "auto", paddingTop: 60, paddingBottom: 60 }}>
                 <div className="forgot-header">
                     <button className="back-btn" onClick={() => navigate(-1)} aria-label="Quay lại">←</button>
                     <h2 className="forgot-title">Đặt lại mật khẩu</h2>
@@ -79,7 +83,9 @@ export default function ResetPassword() {
                     {error && <div style={{ textAlign: "center", color: "#ff4d4f", marginBottom: 16 }}>{error}</div>}
                     <button type="submit" className="login-btn" disabled={isLoading}>{isLoading ? "Đang xử lý..." : "Xác nhận"}</button>
                 </form>
+                </div>
             </div>
+            <Footer />
         </div>
     );
 }

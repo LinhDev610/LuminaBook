@@ -1,0 +1,39 @@
+/* Footer Styles */
+.account-footer { 
+    display: grid; 
+    grid-template-columns: 1fr 1fr 1fr; 
+    gap: 20px; 
+    padding: 24px 20px; 
+    border-top: 1px solid #eee; 
+    background: #fff;
+    margin-top: auto; /* Đẩy footer xuống cuối */
+    flex-shrink: 0; /* Không cho footer co lại */
+}
+
+.account-footer h4 { 
+    margin: 0 0 10px; 
+    font-weight: 600;
+    color: #1A3C5A;
+}
+
+.footer-col {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.footer-col div {
+    color: #666;
+    font-size: 14px;
+}
+
+.footer-col a {
+    color: #666;
+    text-decoration: none;
+    font-size: 14px;
+    transition: color 0.2s;
+}
+
+.footer-col a:hover {
+    color: #1A3C5A;
+}

@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import Header from "../../components/Layout/Header";
+import Footer from "../../components/Layout/Footer";
 import "../../assets/styles/Auth/Login.css";
 
 const API_BASE_URL = "http://localhost:8080/identity";
@@ -90,8 +92,10 @@ export default function VerifyCode() {
     };
 
     return (
-        <div className="forgot-container">
-            <div className="forgot-box" style={{ height: "auto", paddingTop: 60, paddingBottom: 60 }}>
+        <div>
+            <Header />
+            <div className="forgot-container">
+                <div className="forgot-box" style={{ height: "auto", paddingTop: 60, paddingBottom: 60 }}>
                 <div className="forgot-header">
                     <button className="back-btn" onClick={() => navigate(-1)} aria-label="Quay lại">←</button>
                     <h2 className="forgot-title">Xác nhận mã code</h2>
@@ -142,7 +146,9 @@ export default function VerifyCode() {
                         </div>
                     )}
                 </form>
+                </div>
             </div>
+            <Footer />
         </div>
     );
 }

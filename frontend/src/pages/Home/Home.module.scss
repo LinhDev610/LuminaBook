@@ -1,0 +1,89 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
+
+body {
+    margin: 0;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+.home-wrapper {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.home-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.navbar {
+    display: flex;
+    background: #1a3c5a;
+    padding: 15px;
+}
+.navbar a {
+    color: white;
+    text-decoration: none;
+    margin-right: 20px;
+}
+
+.banner {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #eee;
+    padding: 30px;
+}
+.banner-text h1 {
+    color: #ff9900;
+    margin-bottom: 10px;
+}
+.banner-text button {
+    background: orange;
+    border: none;
+    padding: 10px 20px;
+    color: white;
+    cursor: pointer;
+    border-radius: 5px;
+}
+.banner-img img {
+    border-radius: 10px;
+}
+
+.promos {
+    display: flex;
+    justify-content: space-around;
+    padding: 20px;
+}
+.promo-card {
+    background: #f4f4f4;
+    padding: 40px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    flex: 1;
+    margin: 0 10px;
+    text-align: center;
+    font-weight: bold;
+}
+
+.hot {
+    background: #b91c1c;
+    color: white;
+    padding: 20px;
+}
+.hot h2 {
+    margin: 0 0 10px;
+}
+.hot-list {
+    display: flex;
+    gap: 15px;
+}
+.hot-item {
+    background: white;
+    color: black;
+    flex: 1;
+    padding: 20px;
+    border-radius: 8px;
+    text-align: center;
+}

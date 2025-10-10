@@ -1,6 +1,6 @@
-import React from "react";
-import Header from "../../components/Layout/Header";
-import Footer from "../../components/Layout/Footer";
+import React from 'react';
+import Header from '../../layouts/components/Header/Header';
+import Footer from '../../layouts/components/Footer/Footer';
 
 function Contact() {
     return (

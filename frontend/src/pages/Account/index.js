@@ -1,88 +1,129 @@
-import React from "react";
-import { Link, useNavigate } from "react-router-dom";
-import Header from "../../components/Layout/Header";
-import Footer from "../../components/Layout/Footer";
-import useLocalStorage from "../../hooks/useLocalStorage";
-import "../../assets/styles/Auth/AccountPage.css";
+import React from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import Header from '../../layouts/components/Header/Header';
+import Footer from '../../layouts/components/Footer/Footer';
+import useLocalStorage from '../../hooks/useLocalStorage';
 
-export default function Account() {
+import styles from './AccountPage.module.scss';
+import classNames from 'classnames/bind';
+
+const cx = classNames.bind(styles);
+
+function Account() {
     const navigate = useNavigate();
-    const [displayName, setDisplayName, removeDisplayName] = useLocalStorage('displayName', null);
-    const [email, setEmail, removeEmail] = useLocalStorage('email', "user123@gmail.com");
+    const [displayName, setDisplayName, removeDisplayName] = useLocalStorage(
+        'displayName',
+        null,
+    );
+    const [email, setEmail, removeEmail] = useLocalStorage(
+        'email',
+        'user123@gmail.com',
+    );
     const [token, setToken, removeToken] = useLocalStorage('token', null);
 
     const handleLogout = () => {
         removeToken();
         removeDisplayName();
         removeEmail();
-        navigate("/");
+        navigate('/');
     };
 
     return (
-        <div className="account-wrapper">
+        <div className={cx('account-wrapper')}>
             <Header />
-            <nav className="account-nav">
+            <nav className={cx('account-nav')}>
                 <button className="nav-trigger" />
-                <Link className="active" to="#">TẤT CẢ DANH MỤC</Link>
+                <Link className={cx('active')} to="#">
+                    TẤT CẢ DANH MỤC
+                </Link>
                 <Link to="#">KHUYẾN MÃI</Link>
                 <Link to="#">SÁCH MỚI</Link>
                 <Link to="#">HỖ TRỢ KHÁCH HÀNG</Link>
                 <Link to="#">LIÊN HỆ</Link>
             </nav>
-            <div className="account-content">
-                <aside className="account-side">
-                    <div className="side-profile">
-                        <div className="side-avatar" />
-                        <div className="side-name">{displayName || "User………12"}</div>
+            <div className={cx('account-content')}>
+                <aside className={cx('account-side')}>
+                    <div className={cx('side-profile')}>
+                        <div className={cx('side-avatar')} />
+                        <div className={cx('side-name')}>
+                            {displayName || 'User………12'}
+                        </div>
                     </div>
-                    <ul className="side-menu">
-                        <li className="menu-item active">
-                            <img className="mi" src={require('../../assets/icons/icon_user.png')} alt="user" />
+                    <ul className={cx('side-menu')}>
+                        <li className={cx('menu-item active')}>
+                            <img
+                                className={cx('mi')}
+                                src={require('../../assets/icons/icon_user.png')}
+                                alt="user"
+                            />
                             <span>Thông tin cá nhân</span>
                         </li>
-                        <li className="menu-item">
-                            <img className="mi" src={require('../../assets/icons/icon_clock.png')} alt="history" />
+                        <li className={cx('menu-item')}>
+                            <img
+                                className={cx('mi')}
+                                src={require('../../assets/icons/icon_clock.png')}
+                                alt="history"
+                            />
                             <span>Lịch sử mua hàng</span>
                         </li>
-                        <li className="menu-item">
-                            <img className="mi" src={require('../../assets/icons/icon_voucher.png')} alt="voucher" />
+                        <li className={cx('menu-item')}>
+                            <img
+                                className={cx('mi')}
+                                src={require('../../assets/icons/icon_voucher.png')}
+                                alt="voucher"
+                            />
                             <span>Voucher và khuyến mãi</span>
                         </li>
-                        <li className="menu-item">
-                            <img className="mi" src={require('../../assets/icons/icon_lock.png')} alt="lock" />
+                        <li className={cx('menu-item')}>
+                            <img
+                                className={cx('mi')}
+                                src={require('../../assets/icons/icon_lock.png')}
+                                alt="lock"
+                            />
                             <span>Đổi mật khẩu</span>
                         </li>
-                        <li className="menu-item" onClick={handleLogout}>
-                            <img className="mi" src={require('../../assets/icons/icon_logout.png')} alt="logout" />
+                        <li className={cx('menu-item')} onClick={handleLogout}>
+                            <img
+                                className={cx('mi')}
+                                src={require('../../assets/icons/icon_logout.png')}
+                                alt="logout"
+                            />
                             <span>Đăng xuất</span>
                         </li>
                     </ul>
                 </aside>
-                <main className="account-main">
-                    <section className="panel">
-                        <h3><span className="icon-user" /> Thông tin cá nhân</h3>
-                        <div className="form-row">
-                            <div className="form-group">
+                <main className={cx('account-main')}>
+                    <section className={cx('panel')}>
+                        <h3>
+                            <span className={cx('icon-user')} /> Thông tin cá
+                            nhân
+                        </h3>
+                        <div className={cx('form-row')}>
+                            <div className={cx('form-group')}>
                                 <label>Username</label>
-                                <input defaultValue={displayName || "User………12"} />
+                                <input
+                                    defaultValue={displayName || 'User………12'}
+                                />
                             </div>
-                            <div className="form-group">
+                            <div className={cx('form-group')}>
                                 <label>Gmail</label>
                                 <input defaultValue={email} />
                             </div>
                         </div>
-                        <div className="form-row">
-                            <div className="form-group">
+                        <div className={cx('form-row')}>
+                            <div className={cx('form-group')}>
                                 <label>Số điện thoại</label>
                                 <input defaultValue="0123456789" />
                             </div>
-                            <div className="form-group">
+                            <div className={cx('form-group')}>
                                 <label>Địa chỉ</label>
                                 <input defaultValue="123 Đường ABC, phường Thanh Xuân, Hà Nội" />
                             </div>
                         </div>
-                        <div className="form-actions">
-                            <button className="primary">Lưu thay đổi</button>
+                        <div className={cx('form-actions')}>
+                            <button className={cx('primary')}>
+                                Lưu thay đổi
+                            </button>
                         </div>
                     </section>
                 </main>
@@ -92,4 +133,4 @@ export default function Account() {
     );
 }
 
-
+export default Account;

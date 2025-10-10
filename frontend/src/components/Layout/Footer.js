@@ -1,17 +1,17 @@
 import { Link } from 'react-router-dom';
-import './Footer.css';
+import styles from './Footer.module.scss';
 
 export default function Footer() {
     return (
-        <footer className="account-footer">
-            <div className="footer-col">
+        <footer className={styles['account-footer']}>
+            <div className={styles['footer-col']}>
                 <h4>Thông tin liên hệ</h4>
                 <div>136 Xuân Thủy, phường Cầu Giấy, TP.Hà Nội</div>
                 <div>Hotline: 0123 456 789</div>
                 <div>Email: support@luminabook.com</div>
                 <div>Hỗ trợ 24/7</div>
             </div>
-            <div className="footer-col">
+            <div className={styles['footer-col']}>
                 <h4>Danh mục sách</h4>
                 <Link to="#">Sách giáo dục</Link>
                 <Link to="#">Sách văn học</Link>
@@ -19,7 +19,7 @@ export default function Footer() {
                 <Link to="#">Sách thiếu nhi</Link>
                 <Link to="#">Sách Quản lý - Kinh doanh</Link>
             </div>
-            <div className="footer-col">
+            <div className={styles['footer-col']}>
                 <h4>Hỗ trợ khách hàng</h4>
                 <Link to="#">Hướng dẫn mua hàng</Link>
                 <Link to="#">Chính sách thanh toán</Link>

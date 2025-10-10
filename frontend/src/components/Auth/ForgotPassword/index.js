@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "../../Layout/Header";
 import Footer from "../../Layout/Footer";
-import "../../assets/styles/Auth/ForgotPassword.css";
+import styles from "../ForgotPassword/ForgotPasswordModal.module.scss";
 
 const API_BASE_URL = "http://localhost:8080/identity";
 
@@ -42,27 +42,27 @@ export default function ForgotPassword() {
     return (
         <div>
             <Header />
-            <div className="forgot-container">
-                <div className="forgot-card">
-                <div className="forgot-header">
-                    <button className="back-btn" onClick={() => navigate(-1)} aria-label="Quay lại">←</button>
-                    <h2 className="forgot-title">Khôi phục mật khẩu</h2>
+            <div className={styles['forgot-container']}>
+                <div className={styles['forgot-card']}>
+                <div className={styles['forgot-header']}>
+                    <button className={styles['back-btn']} onClick={() => navigate(-1)} aria-label="Quay lại">←</button>
+                    <h2 className={styles['forgot-title']}>Khôi phục mật khẩu</h2>
                 </div>
 
-                <p className="forgot-description">Chúng tôi sẽ gửi cho bạn một mã code qua email để đặt lại mật khẩu.</p>
+                <p className={styles['forgot-description']}>Chúng tôi sẽ gửi cho bạn một mã code qua email để đặt lại mật khẩu.</p>
 
                 {error && (
-                    <div className="error-message">
+                    <div className={styles['error-message']}>
                         {error}
                     </div>
                 )}
 
-                <form onSubmit={handleSubmit} className="forgot-form">
-                    <div className="form-group">
-                        <label className="form-label">Email</label>
+                <form onSubmit={handleSubmit} className={styles['forgot-form']}>
+                    <div className={styles['form-group']}>
+                        <label className={styles['form-label']}>Email</label>
                         <input
                             type="email"
-                            className="form-input"
+                            className={styles['form-input']}
                             placeholder="example@example"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
@@ -70,7 +70,7 @@ export default function ForgotPassword() {
                         />
                     </div>
 
-                    <button type="submit" className="submit-btn" disabled={isLoading}>
+                    <button type="submit" className={styles['submit-btn']} disabled={isLoading}>
                         {isLoading ? "Đang gửi..." : "Gửi mã code"}
                     </button>
                 </form>

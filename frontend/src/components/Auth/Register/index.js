@@ -3,9 +3,9 @@ import { useLocation, useNavigate } from "react-router-dom";
 import Header from "../../Layout/Header";
 import Footer from "../../Layout/Footer";
 import useLocalStorage from "../../../hooks/useLocalStorage";
-import visibleIcon from "../../assets/icons/icons8-visible.png";
-import invisibleIcon from "../../assets/icons/icons8-invisible.png";
-import "../../assets/styles/Auth/Login.css";
+import visibleIcon from "../../../assets/icons/icon-visible.png";
+import invisibleIcon from "../../../assets/icons/icon-invisible.png";
+import styles from "../Login/LoginModal.module.scss";
 
 const API_BASE_URL = "http://localhost:8080/identity";
 
@@ -101,60 +101,60 @@ export default function Register() {
     return (
         <div>
             <Header />
-            <div className="forgot-container">
-                <div className="forgot-box" style={{ height: "auto", paddingTop: 60, paddingBottom: 60, width: 560 }}>
-                <div className="forgot-header">
-                    <button className="back-btn" onClick={() => navigate(-1)} aria-label="Quay lại">←</button>
-                    <h2 className="forgot-title">Đăng ký</h2>
+            <div className={styles['forgot-container']}>
+                <div className={styles['forgot-box']} style={{ height: "auto", paddingTop: 60, paddingBottom: 60, width: 560 }}>
+                <div className={styles['forgot-header']}>
+                    <button className={styles['back-btn']} onClick={() => navigate(-1)} aria-label="Quay lại">←</button>
+                    <h2 className={styles['forgot-title']}>Đăng ký</h2>
                 </div>
                 {step === 1 ? (
                     <form onSubmit={handleSendEmail}>
-                        <div className="form-group">
+                        <div className={styles['form-group']}>
                             <label>Địa chỉ Email</label>
                             <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="email@domain.com" />
                         </div>
-                        <p className="sub-text" style={{ marginTop: -6 }}>Mã xác nhận sẽ được gửi đến địa chỉ email của bạn.</p>
+                        <p className={styles['sub-text']} style={{ marginTop: -6 }}>Mã xác nhận sẽ được gửi đến địa chỉ email của bạn.</p>
                         {error && (
                             <div style={{ textAlign: "center", color: "#ff4d4f", marginBottom: 16, fontSize: 14 }}>
                                 {error}
                             </div>
                         )}
-                        <button type="submit" className="login-btn" style={{ background: "#fff", color: "#111", border: "1px solid #111", fontWeight: 600 }} disabled={isLoading}>
+                        <button type="submit" className={styles['login-btn']} style={{ background: "#fff", color: "#111", border: "1px solid #111", fontWeight: 600 }} disabled={isLoading}>
                             {isLoading ? "Đang gửi..." : "Gửi mã xác nhận"}
                         </button>
                     </form>
                 ) : (
                     <form onSubmit={handleSubmit}>
-                        <div className="form-group">
+                        <div className={styles['form-group']}>
                             <label>Tên đăng nhập</label>
                             <input value={username} onChange={(e) => setUsername(e.target.value)} placeholder="Tên đăng nhập" />
                         </div>
-                        <div className="form-group">
+                        <div className={styles['form-group']}>
                             <label>Mật khẩu</label>
-                            <div className="password-wrapper">
+                            <div className={styles['password-wrapper']}>
                                 <input type={show1 ? "text" : "password"} value={password} onChange={(e) => { setPassword(e.target.value); setError(""); }} placeholder="********" />
-                <button type="button" className="toggle-password" onClick={() => setShow1(!show1)} aria-label={show1 ? "Ẩn mật khẩu" : "Hiện mật khẩu"} style={{ background: "transparent", border: "none", padding: 0 }}>
+                <button type="button" className={styles['toggle-password']} onClick={() => setShow1(!show1)} aria-label={show1 ? "Ẩn mật khẩu" : "Hiện mật khẩu"} style={{ background: "transparent", border: "none", padding: 0 }}>
                   <img src={show1 ? invisibleIcon : visibleIcon} alt={show1 ? "Ẩn" : "Hiện"} style={{ width: 20, height: 20 }} />
                 </button>
                             </div>
                         </div>
-                        <div className="form-group">
+                        <div className={styles['form-group']}>
                             <label>Xác nhận mật khẩu</label>
-                            <div className="password-wrapper">
+                            <div className={styles['password-wrapper']}>
                                 <input type={show2 ? "text" : "password"} value={confirm} onChange={(e) => { setConfirm(e.target.value); setError(""); }} placeholder="********" />
-                <button type="button" className="toggle-password" onClick={() => setShow2(!show2)} aria-label={show2 ? "Ẩn mật khẩu" : "Hiện mật khẩu"} style={{ background: "transparent", border: "none", padding: 0 }}>
+                <button type="button" className={styles['toggle-password']} onClick={() => setShow2(!show2)} aria-label={show2 ? "Ẩn mật khẩu" : "Hiện mật khẩu"} style={{ background: "transparent", border: "none", padding: 0 }}>
                   <img src={show2 ? invisibleIcon : visibleIcon} alt={show2 ? "Ẩn" : "Hiện"} style={{ width: 20, height: 20 }} />
                 </button>
                             </div>
                         </div>
-                        <div className="form-group" style={{ marginTop: 8, marginBottom: 16 }}>
-                            <label className="agreement">
+                        <div className={styles['form-group']} style={{ marginTop: 8, marginBottom: 16 }}>
+                            <label className={styles['agreement']}>
                                 <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} />
                                 <span>Tôi đồng ý với các điều khoản và chính sách bảo mật</span>
                             </label>
                         </div>
                         {error && <div style={{ color: "#ff4d4f", textAlign: "center", marginBottom: 16 }}>{error}</div>}
-                        <button type="submit" className="login-btn">Đăng ký</button>
+                        <button type="submit" className={styles['login-btn']}>Đăng ký</button>
                     </form>
                 )}
                 </div>

@@ -3,9 +3,9 @@ import { Link, useNavigate } from "react-router-dom";
 import Header from "../../Layout/Header";
 import Footer from "../../Layout/Footer";
 import useLocalStorage from "../../../hooks/useLocalStorage";
-import "../../assets/styles/Auth/Login.css";
-import visibleIcon from "../../assets/icons/icons8-visible.png";
-import invisibleIcon from "../../assets/icons/icons8-invisible.png";
+import styles from "../Login/LoginModal.module.scss";
+import visibleIcon from "../../../assets/icons/icon-visible.png";
+import invisibleIcon from "../../../assets/icons/icon-invisible.png";
 
 const API_BASE_URL = "http://localhost:8080/identity";
 
@@ -61,14 +61,14 @@ export default function Login() {
     return (
         <div>
             <Header />
-            <div className="login-container">
-                <div className="login-box">
+            <div className={styles['login-container']}>
+                <div className={styles['login-box']}>
                 <h2>Đăng nhập</h2>
-                <p className="sub-text">
+                <p className={styles['sub-text']}>
                     Bạn chưa có tài khoản? <Link to="/register">Đăng ký</Link>
                 </p>
                 <form onSubmit={handleSubmit}>
-                    <div className="form-group">
+                    <div className={styles['form-group']}>
                         <label>Email</label>
                         <input
                             type="email"
@@ -79,9 +79,9 @@ export default function Login() {
                         />
                     </div>
 
-                    <div className="form-group">
+                    <div className={styles['form-group']}>
                         <label>Password</label>
-                        <div className="password-wrapper">
+                        <div className={styles['password-wrapper']}>
                             <input
                                 type={showPassword ? "text" : "password"}
                                 placeholder="Nhập mật khẩu"
@@ -91,7 +91,7 @@ export default function Login() {
                             />
                             <button
                                 type="button"
-                                className="toggle-password"
+                                className={styles['toggle-password']}
                                 onClick={() => setShowPassword(!showPassword)}
                                 aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
                                 style={{ background: "transparent", border: "none", padding: 0 }}
@@ -101,11 +101,11 @@ export default function Login() {
                         </div>
                     </div>
 
-                    <div className="extra-options">
+                    <div className={styles['extra-options']}>
                         <label>
                             <input type="checkbox" /> Remember me
                         </label>
-                        <Link to="/forgot-password" className="forgot-link">
+                        <Link to="/forgot-password" className={styles['forgot-link']}>
                             Forgot Password ?
                         </Link>
                     </div>
@@ -113,7 +113,7 @@ export default function Login() {
                     {error && (
                         <div style={{ color: "#ff4d4f", textAlign: "center", marginBottom: 12 }}>{error}</div>
                     )}
-                    <button type="submit" className="login-btn">
+                    <button type="submit" className={styles['login-btn']}>
                         {isLoading ? "Đang đăng nhập..." : "Log In"}
                     </button>
                 </form>

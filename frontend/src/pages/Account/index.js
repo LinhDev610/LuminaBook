@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import Header from "../../components/Layout/Header";
 import Footer from "../../components/Layout/Footer";
 import useLocalStorage from "../../hooks/useLocalStorage";
-import "../../assets/styles/Auth/AccountPage.css";
+import "./AccountPage.module.scss";
 
 export default function Account() {
     const navigate = useNavigate();

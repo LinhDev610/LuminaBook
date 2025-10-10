@@ -2,9 +2,9 @@ import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import Header from "../../Layout/Header";
 import Footer from "../../Layout/Footer";
-import visibleIcon from "../../assets/icons/icons8-visible.png";
-import invisibleIcon from "../../assets/icons/icons8-invisible.png";
-import "../../assets/styles/Auth/Login.css";
+import visibleIcon from "../../../assets/icons/icon-visible.png";
+import invisibleIcon from "../../../assets/icons/icon-invisible.png";
+import styles from "../Login/LoginModal.module.scss";
 
 const API_BASE_URL = "http://localhost:8080/identity";
 
@@ -55,33 +55,33 @@ export default function ResetPassword() {
     return (
         <div>
             <Header />
-            <div className="forgot-container">
-                <div className="forgot-box" style={{ height: "auto", paddingTop: 60, paddingBottom: 60 }}>
-                <div className="forgot-header">
-                    <button className="back-btn" onClick={() => navigate(-1)} aria-label="Quay lại">←</button>
-                    <h2 className="forgot-title">Đặt lại mật khẩu</h2>
+            <div className={styles['forgot-container']}>
+                <div className={styles['forgot-box']} style={{ height: "auto", paddingTop: 60, paddingBottom: 60 }}>
+                <div className={styles['forgot-header']}>
+                    <button className={styles['back-btn']} onClick={() => navigate(-1)} aria-label="Quay lại">←</button>
+                    <h2 className={styles['forgot-title']}>Đặt lại mật khẩu</h2>
                 </div>
                 <form onSubmit={handleSubmit}>
-                    <div className="form-group">
+                    <div className={styles['form-group']}>
                         <label>Mật khẩu</label>
-                        <div className="password-wrapper">
+                        <div className={styles['password-wrapper']}>
                             <input type={show1 ? "text" : "password"} value={password} onChange={(e) => { setPassword(e.target.value); setError(""); }} placeholder="********" />
-                            <button type="button" className="toggle-password" onClick={() => setShow1(!show1)} aria-label={show1 ? "Ẩn mật khẩu" : "Hiện mật khẩu"} style={{ background: "transparent", border: "none", padding: 0 }}>
+                            <button type="button" className={styles['toggle-password']} onClick={() => setShow1(!show1)} aria-label={show1 ? "Ẩn mật khẩu" : "Hiện mật khẩu"} style={{ background: "transparent", border: "none", padding: 0 }}>
                                 <img src={show1 ? invisibleIcon : visibleIcon} alt={show1 ? "Ẩn" : "Hiện"} style={{ width: 20, height: 20 }} />
                             </button>
                         </div>
                     </div>
-                    <div className="form-group">
+                    <div className={styles['form-group']}>
                         <label>Xác nhận mật khẩu</label>
-                        <div className="password-wrapper">
+                        <div className={styles['password-wrapper']}>
                             <input type={show2 ? "text" : "password"} value={confirm} onChange={(e) => { setConfirm(e.target.value); setError(""); }} placeholder="********" />
-                            <button type="button" className="toggle-password" onClick={() => setShow2(!show2)} aria-label={show2 ? "Ẩn mật khẩu" : "Hiện mật khẩu"} style={{ background: "transparent", border: "none", padding: 0 }}>
+                            <button type="button" className={styles['toggle-password']} onClick={() => setShow2(!show2)} aria-label={show2 ? "Ẩn mật khẩu" : "Hiện mật khẩu"} style={{ background: "transparent", border: "none", padding: 0 }}>
                                 <img src={show2 ? invisibleIcon : visibleIcon} alt={show2 ? "Ẩn" : "Hiện"} style={{ width: 20, height: 20 }} />
                             </button>
                         </div>
                     </div>
                     {error && <div style={{ textAlign: "center", color: "#ff4d4f", marginBottom: 16 }}>{error}</div>}
-                    <button type="submit" className="login-btn" disabled={isLoading}>{isLoading ? "Đang xử lý..." : "Xác nhận"}</button>
+                    <button type="submit" className={styles['login-btn']} disabled={isLoading}>{isLoading ? "Đang xử lý..." : "Xác nhận"}</button>
                 </form>
                 </div>
             </div>

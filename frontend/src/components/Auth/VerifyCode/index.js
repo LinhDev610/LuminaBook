@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import Header from "../../Layout/Header";
 import Footer from "../../Layout/Footer";
-import "../../assets/styles/Auth/Login.css";
+import styles from "../Login/LoginModal.module.scss";
 
 const API_BASE_URL = "http://localhost:8080/identity";
 
@@ -94,13 +94,13 @@ export default function VerifyCode() {
     return (
         <div>
             <Header />
-            <div className="forgot-container">
-                <div className="forgot-box" style={{ height: "auto", paddingTop: 60, paddingBottom: 60 }}>
-                <div className="forgot-header">
-                    <button className="back-btn" onClick={() => navigate(-1)} aria-label="Quay lại">←</button>
-                    <h2 className="forgot-title">Xác nhận mã code</h2>
+            <div className={styles['forgot-container']}>
+                <div className={styles['forgot-box']} style={{ height: "auto", paddingTop: 60, paddingBottom: 60 }}>
+                <div className={styles['forgot-header']}>
+                    <button className={styles['back-btn']} onClick={() => navigate(-1)} aria-label="Quay lại">←</button>
+                    <h2 className={styles['forgot-title']}>Xác nhận mã code</h2>
                 </div>
-                <p className="sub-text" style={{ marginBottom: 24 }}>
+                <p className={styles['sub-text']} style={{ marginBottom: 24 }}>
                     Vui lòng nhập mã xác nhận đã được gửi{email ? ` đến email của bạn (${email}).` : " đến email của bạn vào đây."}
                 </p>
                 <form onSubmit={handleSubmit}>
@@ -136,7 +136,7 @@ export default function VerifyCode() {
                             <button type="button" onClick={handleResend} style={{ background: "transparent", border: "none", color: "#111", fontWeight: 600, cursor: "pointer" }}>Gửi lại.</button>
                         </div>
                     )}
-                    <button type="submit" className="login-btn" disabled={isLoading}>
+                    <button type="submit" className={styles['login-btn']} disabled={isLoading}>
                         {isLoading ? "Đang xử lý..." : "Xác nhận"}
                     </button>
                     {seconds > 0 && (

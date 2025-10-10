@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useLocalStorage from '../../../hooks/useLocalStorage';
-import './Auth.css';
+import '../Auth.module.scss';
 import visibleIcon from '../../assets/styles/Icon/icons8-visible.png';
 import invisibleIcon from '../../assets/styles/Icon/icons8-invisible.png';
 

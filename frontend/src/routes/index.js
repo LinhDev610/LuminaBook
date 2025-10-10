@@ -1,10 +1,10 @@
 import Home from '../pages/Home';
 import Contact from '../pages/Contact';
-import Login from '../pages/Login';
-import Register from '../pages/Register';
-import ForgotPassword from '../pages/ForgotPassword';
-import VerifyCode from '../pages/VerifyCode';
-import ResetPassword from '../pages/ResetPassword';
+import Login from '../components/Auth/Login';
+import Register from '../components/Auth/Register';
+import ForgotPassword from '../components/Auth/ForgotPassword';
+import VerifyCode from '../components/Auth/VerifyCode';
+import ResetPassword from '../components/Auth/ResetPassword';
 import Account from '../pages/Account';
 
 // Public routes

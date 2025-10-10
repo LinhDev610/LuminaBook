@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import './Auth.css';
+import styles from './ForgotPasswordModal.module.scss';
 
 const API_BASE_URL = 'http://localhost:8080/identity';
 
@@ -157,25 +157,25 @@ useEffect(() => {
 
     if (!open) return null;
     return (
-        <div className="auth-modal" role="dialog" aria-modal="true">
-            <div className="auth-card">
-                <div className="auth-header">
-                    <button className="auth-close" onClick={onClose} aria-label="Đóng">×</button>
-                    <h3 className="auth-title">Khôi phục mật khẩu</h3>
+        <div className={styles['auth-modal']} role="dialog" aria-modal="true">
+            <div className={styles['auth-card']}>
+                <div className={styles['auth-header']}>
+                    <button className={styles['auth-close']} onClick={onClose} aria-label="Đóng">×</button>
+                    <h3 className={styles['auth-title']}>Khôi phục mật khẩu</h3>
                 </div>
                 {step === 1 && (
-                    <form className="auth-form" onSubmit={sendOtp}>
-                        <div className="form-group">
+                    <form className={styles['auth-form']} onSubmit={sendOtp}>
+                        <div className={styles['form-group']}>
                             <label>Email</label>
                             <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="example@example" required />
                         </div>
-                        {error && <div className="error-text">{error}</div>}
-                        <button className="auth-submit" type="submit" disabled={isLoading}>{isLoading ? 'Đang gửi...' : 'Gửi mã code'}</button>
+                        {error && <div className={styles['error-text']}>{error}</div>}
+                        <button className={styles['auth-submit']} type="submit" disabled={isLoading}>{isLoading ? 'Đang gửi...' : 'Gửi mã code'}</button>
                     </form>
                 )}
                 {step === 2 && (
-                    <form className="auth-form" onSubmit={verifyOtp}>
-                        <p className="auth-subtext">Nhập mã gồm 6 chữ số đã được gửi tới {email}</p>
+                    <form className={styles['auth-form']} onSubmit={verifyOtp}>
+                        <p className={styles['auth-subtext']}>Nhập mã gồm 6 chữ số đã được gửi tới {email}</p>
                         <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginBottom: 12 }}>
                             {values.map((v, i) => (
                                 <input
@@ -191,30 +191,30 @@ useEffect(() => {
                                 />
                             ))}
                         </div>
-                        {error && <div className="error-text">{error}</div>}
+                        {error && <div className={styles['error-text']}>{error}</div>}
                         {seconds === 0 ? (
                             <div style={{ textAlign: 'center', marginBottom: 10 }}>
                                 <span style={{ color: '#666', marginRight: 6 }}>Bạn không nhận được mã code</span>
                                 <button type="button" onClick={resend} style={{ background: 'transparent', border: 'none', color: '#111', fontWeight: 600, cursor: 'pointer' }}>Gửi lại</button>
                             </div>
                         ) : (
-                            <div className="auth-subtext">Gửi lại sau 00:{seconds.toString().padStart(2, '0')}</div>
+                            <div className={styles['auth-subtext']}>Gửi lại sau 00:{seconds.toString().padStart(2, '0')}</div>
                         )}
-                        <button className="auth-submit" type="submit" disabled={isLoading}>{isLoading ? 'Đang xử lý...' : 'Xác nhận'}</button>
+                        <button className={styles['auth-submit']} type="submit" disabled={isLoading}>{isLoading ? 'Đang xử lý...' : 'Xác nhận'}</button>
                     </form>
                 )}
                 {step === 3 && (
-                    <form className="auth-form" onSubmit={resetPassword}>
-                        <div className="form-group">
+                    <form className={styles['auth-form']} onSubmit={resetPassword}>
+                        <div className={styles['form-group']}>
                             <label>Mật khẩu mới</label>
                             <input type="password" value={password} onChange={(e) => { setPassword(e.target.value); setError(''); }} placeholder="********" />
                         </div>
-                        <div className="form-group">
+                        <div className={styles['form-group']}>
                             <label>Xác nhận mật khẩu</label>
                             <input type="password" value={confirm} onChange={(e) => { setConfirm(e.target.value); setError(''); }} placeholder="********" />
                         </div>
-                        {error && <div className="error-text">{error}</div>}
-                        <button className="auth-submit" type="submit" disabled={isLoading}>{isLoading ? 'Đang xử lý...' : 'Đổi mật khẩu'}</button>
+                        {error && <div className={styles['error-text']}>{error}</div>}
+                        <button className={styles['auth-submit']} type="submit" disabled={isLoading}>{isLoading ? 'Đang xử lý...' : 'Đổi mật khẩu'}</button>
                     </form>
                 )}
             </div>

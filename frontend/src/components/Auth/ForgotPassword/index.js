@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import Header from "../../components/Layout/Header";
-import Footer from "../../components/Layout/Footer";
+import Header from "../../Layout/Header";
+import Footer from "../../Layout/Footer";
 import "../../assets/styles/Auth/ForgotPassword.css";
 
 const API_BASE_URL = "http://localhost:8080/identity";

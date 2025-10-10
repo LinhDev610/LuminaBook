@@ -1,8 +1,8 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import Header from "../../components/Layout/Header";
-import Footer from "../../components/Layout/Footer";
-import useLocalStorage from "../../hooks/useLocalStorage";
+import Header from "../../Layout/Header";
+import Footer from "../../Layout/Footer";
+import useLocalStorage from "../../../hooks/useLocalStorage";
 import "../../assets/styles/Auth/Login.css";
 import visibleIcon from "../../assets/icons/icons8-visible.png";
 import invisibleIcon from "../../assets/icons/icons8-invisible.png";

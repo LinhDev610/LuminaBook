@@ -4,7 +4,7 @@
     justify-content: space-between;
     align-items: center;
     background: #fff;
-    padding: 20px 40px;
+    padding: 10px 40px;
     border-bottom: 1px solid #ddd;
 }
 
@@ -145,4 +145,59 @@
 
 .user-menu__item:hover {
     background: #f3f4f6;
+}
+
+/* Mobile responsive */
+@media (max-width: 700px) {
+    .header {
+        flex-direction: row;
+        padding: 10px 16px;
+        gap: 12px;
+    }
+
+    .logo {
+        order: 1;
+        flex: 0 0 auto;
+    }
+
+    .search {
+        display: none;
+    }
+
+    .actions {
+        order: 3;
+        flex: 0 0 auto;
+        gap: 8px;
+    }
+
+    .user-menu__name {
+        display: none;
+    }
+
+    .user-menu__trigger {
+        padding: 6px;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        justify-content: center;
+    }
+
+    .user-menu__avatar {
+        width: 28px;
+        height: 28px;
+    }
+
+    .login-link {
+        display: none;
+    }
+
+    .cart {
+        font-size: 24px;
+        padding: 8px;
+    }
+
+    .cart img {
+        width: 32px;
+        height: 32px;
+    }
 }

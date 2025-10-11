@@ -1,9 +1,8 @@
 const routes = {
     home: '/',
-    contact: '/contact',
-    account: '/account',
     cart: '/cart',
-    
+    contact: '/contact',
+    customerAccount: '/customer-account',
 };
 
 export default routes;

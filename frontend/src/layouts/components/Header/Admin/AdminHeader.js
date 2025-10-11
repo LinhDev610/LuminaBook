@@ -11,12 +11,14 @@ const cx = classNames.bind(styles);
 
 function AdminHeader() {
     const navigate = useNavigate();
+
+    const [menuOpen, setMenuOpen] = useState(false);
+    const [token, setToken, removeToken] = useLocalStorage('token', null);
     const [displayName, setDisplayName, removeDisplayName] = useLocalStorage(
         'displayName',
         null,
     );
-    const [token, setToken, removeToken] = useLocalStorage('token', null);
-    const [menuOpen, setMenuOpen] = useState(false);
+
     const toggleMenu = () => setMenuOpen((v) => !v);
     const handleLogout = () => {
         removeToken();

@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 
-export default function useLocalStorage(key, initialValue) {
+function useLocalStorage(key, initialValue) {
     // Lấy giá trị từ localStorage hoặc sử dụng initialValue
     const [storedValue, setStoredValue] = useState(() => {
         if (typeof window === 'undefined') {
@@ -24,7 +24,7 @@ export default function useLocalStorage(key, initialValue) {
             // Cho phép value là function để update state
             const valueToStore = value instanceof Function ? value(storedValue) : value;
             setStoredValue(valueToStore);
-            
+
             if (typeof window !== 'undefined') {
                 window.localStorage.setItem(key, JSON.stringify(valueToStore));
             }
@@ -47,3 +47,5 @@ export default function useLocalStorage(key, initialValue) {
 
     return [storedValue, setValue, removeValue];
 }
+
+export default useLocalStorage;

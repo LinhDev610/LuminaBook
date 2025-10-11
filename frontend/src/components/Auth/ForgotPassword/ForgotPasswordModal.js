@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../../contexts/AuthContext';
 import styles from './ForgotPasswordModal.module.scss';
 import Button from '../../Common/Button';
 
@@ -7,6 +8,7 @@ const API_BASE_URL = 'http://localhost:8080/identity';
 
 export default function ForgotPasswordModal({ open = false, onClose }) {
     const navigate = useNavigate();
+    const { switchToLogin } = useAuth();
     const [step, setStep] = useState(1); // 1: email, 2: verify, 3: reset
     const [email, setEmail] = useState('');
     const [error, setError] = useState('');
@@ -41,20 +43,63 @@ export default function ForgotPasswordModal({ open = false, onClose }) {
         setIsLoading(true);
         setError('');
         try {
-            const response = await fetch(`${API_BASE_URL}/auth/send-otp?email=${encodeURIComponent(email)}`, {
+            // Bước 1: Kiểm tra email có tồn tại không bằng cách thử đăng nhập với password giả
+            // Nếu email không tồn tại, API sẽ trả về lỗi "User not existed"
+            const checkUserResponse = await fetch(`${API_BASE_URL}/auth/token`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username: email,
+                    password: 'dummy-password-to-check-user-exists'
+                })
             });
-            const data = await response.json();
-            if (response.ok && data.code === 200) {
-                setStep(2);
-                setSeconds(60);
-                setTimeout(() => inputsRef.current[0]?.focus(), 0);
+            
+            const checkData = await checkUserResponse.json();
+            
+            // Nếu user không tồn tại (lỗi "User not existed"), báo lỗi
+            if (checkData.message && (
+                checkData.message.includes('User not existed') ||
+                checkData.message.includes('User not found') ||
+                checkData.message.includes('User không tồn tại')
+            )) {
+                setError('Email không tồn tại trong hệ thống. Vui lòng kiểm tra lại email.');
+                return;
+            }
+            
+            // Nếu user tồn tại (lỗi "Unauthenticated" - sai password), tiếp tục gửi OTP
+            if (checkData.message && checkData.message.includes('Unauthenticated')) {
+                // User tồn tại nhưng sai password, tiếp tục gửi OTP
+                const response = await fetch(`${API_BASE_URL}/auth/send-otp?email=${encodeURIComponent(email)}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                });
+                const data = await response.json();
+                
+                if (response.ok && data.code === 200) {
+                    setStep(2);
+                    setSeconds(60);
+                    setTimeout(() => inputsRef.current[0]?.focus(), 0);
+                } else {
+                    setError(data.message || 'Không thể gửi mã code. Vui lòng thử lại.');
+                }
             } else {
-                setError(data.message || 'Không thể gửi mã code. Vui lòng thử lại.');
+                // Trường hợp khác, thử gửi OTP trực tiếp
+                const response = await fetch(`${API_BASE_URL}/auth/send-otp?email=${encodeURIComponent(email)}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                });
+                const data = await response.json();
+                
+                if (response.ok && data.code === 200) {
+                    setStep(2);
+                    setSeconds(60);
+                    setTimeout(() => inputsRef.current[0]?.focus(), 0);
+                } else {
+                    setError(data.message || 'Không thể gửi mã code. Vui lòng thử lại.');
+                }
             }
         } catch (err) {
-            setError('Có lỗi xảy ra khi gửi mã code. Vui lòng thử lại.');
+            setError('Có lỗi xảy ra khi kiểm tra email. Vui lòng thử lại.');
         } finally {
             setIsLoading(false);
         }
@@ -121,7 +166,18 @@ useEffect(() => {
                 inputsRef.current[0]?.focus();
                 setSeconds(60);
             } else {
-                setError(data.message || 'Không thể gửi lại mã code. Vui lòng thử lại.');
+                // Xử lý các trường hợp lỗi cụ thể
+                const errorMessage = data.message || 'Không thể gửi lại mã code. Vui lòng thử lại.';
+                
+                // Kiểm tra nếu email không tồn tại
+                if (errorMessage.includes('User not found') || 
+                    errorMessage.includes('Email không tồn tại') ||
+                    errorMessage.includes('User not exist') ||
+                    errorMessage.includes('Email not found')) {
+                    setError('Email không tồn tại trong hệ thống. Vui lòng kiểm tra lại email.');
+                } else {
+                    setError(errorMessage);
+                }
             }
         } catch (err) {
             setError('Có lỗi xảy ra khi gửi lại mã code. Vui lòng thử lại.');
@@ -144,10 +200,28 @@ useEffect(() => {
             });
             const data = await resp.json();
             if (resp.ok && data?.code === 200) {
-                onClose?.();
-                navigate('/login');
+                // Đổi mật khẩu thành công, chuyển về form đăng nhập
+                setStep(1);
+                setEmail('');
+                setPassword('');
+                setConfirm('');
+                setValues(['', '', '', '', '', '']);
+                switchToLogin();
             } else {
-                setError(data?.message || 'Không thể đặt lại mật khẩu. Vui lòng thử lại.');
+                // Xử lý lỗi cụ thể
+                const errorMessage = data?.message || 'Không thể đặt lại mật khẩu. Vui lòng thử lại.';
+                
+                // Kiểm tra nếu user không tồn tại
+                if (errorMessage.includes('User not found') || 
+                    errorMessage.includes('User not existed') ||
+                    errorMessage.includes('User không tồn tại')) {
+                    setError('Email không tồn tại trong hệ thống. Vui lòng kiểm tra lại email và thử lại từ đầu.');
+                    // Reset về step 1 để user nhập lại email
+                    setStep(1);
+                    setEmail('');
+                } else {
+                    setError(errorMessage);
+                }
             }
         } catch (err) {
             setError('Có lỗi xảy ra. Vui lòng thử lại.');
@@ -157,68 +231,124 @@ useEffect(() => {
     };
 
     if (!open) return null;
+
     return (
-        <div className={styles['auth-modal']} role="dialog" aria-modal="true">
-            <div className={styles['auth-card']}>
-                <div className={styles['auth-header']}>
-                    <Button className={styles['auth-close']} text onClick={onClose} aria-label="Đóng">×</Button>
-                    <h3 className={styles['auth-title']}>Khôi phục mật khẩu</h3>
-                </div>
-                {step === 1 && (
-                    <form className={styles['auth-form']} onSubmit={sendOtp}>
-                        <div className={styles['form-group']}>
-                            <label>Email</label>
-                            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="example@example" required />
-                        </div>
-                        {error && <div className={styles['error-text']}>{error}</div>}
-                        <Button className={styles['auth-submit']} type="submit" disabled={isLoading}>{isLoading ? 'Đang gửi...' : 'Gửi mã code'}</Button>
-                    </form>
-                )}
-                {step === 2 && (
-                    <form className={styles['auth-form']} onSubmit={verifyOtp}>
-                        <p className={styles['auth-subtext']}>Nhập mã gồm 6 chữ số đã được gửi tới {email}</p>
-                        <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginBottom: 12 }}>
-                            {values.map((v, i) => (
-                                <input
-                                    key={i}
-                                    ref={(el) => (inputsRef.current[i] = el)}
-                                    type="text"
-                                    inputMode="numeric"
-                                    maxLength={1}
-                                    value={v}
-                                    onChange={(e) => onChangeDigit(i, e.target.value)}
-                                    onKeyDown={(e) => onKeyDownDigit(i, e)}
-                                    style={{ width: 44, height: 52, textAlign: 'center', fontSize: 18, borderRadius: 8, border: '1px solid #ddd' }}
-                                />
-                            ))}
-                        </div>
-                        {error && <div className={styles['error-text']}>{error}</div>}
-                        {seconds === 0 ? (
-                            <div style={{ textAlign: 'center', marginBottom: 10 }}>
-                                <span style={{ color: '#666', marginRight: 6 }}>Bạn không nhận được mã code</span>
-                                <Button text onClick={resend} className="" style={{ color: '#111', fontWeight: 600, cursor: 'pointer' }}>Gửi lại</Button>
-                            </div>
-                        ) : (
-                            <div className={styles['auth-subtext']}>Gửi lại sau 00:{seconds.toString().padStart(2, '0')}</div>
-                        )}
-                        <Button className={styles['auth-submit']} type="submit" disabled={isLoading}>{isLoading ? 'Đang xử lý...' : 'Xác nhận'}</Button>
-                    </form>
-                )}
-                {step === 3 && (
-                    <form className={styles['auth-form']} onSubmit={resetPassword}>
-                        <div className={styles['form-group']}>
-                            <label>Mật khẩu mới</label>
-                            <input type="password" value={password} onChange={(e) => { setPassword(e.target.value); setError(''); }} placeholder="********" />
-                        </div>
-                        <div className={styles['form-group']}>
-                            <label>Xác nhận mật khẩu</label>
-                            <input type="password" value={confirm} onChange={(e) => { setConfirm(e.target.value); setError(''); }} placeholder="********" />
-                        </div>
-                        {error && <div className={styles['error-text']}>{error}</div>}
-                        <Button className={styles['auth-submit']} type="submit" disabled={isLoading}>{isLoading ? 'Đang xử lý...' : 'Đổi mật khẩu'}</Button>
-                    </form>
-                )}
+        <div>
+            <div className="auth-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                <h3 style={{ margin: 0, fontSize: '24px', fontWeight: 'bold' }}>Khôi phục mật khẩu</h3>
+                <Button
+                    onClick={onClose}
+                    aria-label="Đóng"
+                    style={{ background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer' }}
+                >
+                    ×
+                </Button>
             </div>
+            <p style={{ textAlign: 'center', marginBottom: '20px', color: '#666' }}>
+                Nhớ mật khẩu?{' '}
+                <button 
+                    onClick={switchToLogin}
+                    style={{ background: 'none', border: 'none', color: '#0077ff', cursor: 'pointer', textDecoration: 'underline' }}
+                >
+                    Đăng nhập
+                </button>
+            </p>
+            {step === 1 && (
+                <form onSubmit={sendOtp}>
+                    <div style={{ marginBottom: '15px' }}>
+                        <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Email</label>
+                        <input
+                            type="email"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            placeholder="example@example"
+                            style={{ width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '5px' }}
+                            required
+                        />
+                    </div>
+                    {error && <div style={{ color: 'red', textAlign: 'center', marginBottom: '10px' }}>{error}</div>}
+                    <Button
+                        type="submit"
+                        style={{ width: '100%', padding: '12px', background: '#2E2E2E', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}
+                        disabled={isLoading}
+                    >
+                        {isLoading ? 'Đang gửi...' : 'Gửi mã code'}
+                    </Button>
+                </form>
+            )}
+            {step === 2 && (
+                <form onSubmit={verifyOtp}>
+                    <p style={{ textAlign: 'center', marginBottom: '20px', color: '#666' }}>Nhập mã gồm 6 chữ số đã được gửi tới {email}</p>
+                    <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginBottom: '20px' }}>
+                        {values.map((v, i) => (
+                            <input
+                                key={i}
+                                ref={(el) => (inputsRef.current[i] = el)}
+                                type="text"
+                                inputMode="numeric"
+                                maxLength={1}
+                                value={v}
+                                onChange={(e) => onChangeDigit(i, e.target.value)}
+                                onKeyDown={(e) => onKeyDownDigit(i, e)}
+                                style={{ width: '44px', height: '52px', textAlign: 'center', fontSize: '18px', borderRadius: '8px', border: '1px solid #ddd' }}
+                            />
+                        ))}
+                    </div>
+                    {error && <div style={{ color: 'red', textAlign: 'center', marginBottom: '10px' }}>{error}</div>}
+                    {seconds === 0 ? (
+                        <div style={{ textAlign: 'center', marginBottom: '10px' }}>
+                            <span style={{ color: '#666', marginRight: '6px' }}>Bạn không nhận được mã code</span>
+                            <Button
+                                onClick={resend}
+                                style={{ background: 'none', border: 'none', color: '#111', fontWeight: '600', cursor: 'pointer' }}
+                            >
+                                Gửi lại
+                            </Button>
+                        </div>
+                    ) : (
+                        <div style={{ textAlign: 'center', marginBottom: '10px', color: '#666' }}>Gửi lại sau 00:{seconds.toString().padStart(2, '0')}</div>
+                    )}
+                    <Button
+                        type="submit"
+                        style={{ width: '100%', padding: '12px', background: '#2E2E2E', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}
+                        disabled={isLoading}
+                    >
+                        {isLoading ? 'Đang xử lý...' : 'Xác nhận'}
+                    </Button>
+                </form>
+            )}
+            {step === 3 && (
+                <form onSubmit={resetPassword}>
+                    <div style={{ marginBottom: '15px' }}>
+                        <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Mật khẩu mới</label>
+                        <input
+                            type="password"
+                            value={password}
+                            onChange={(e) => { setPassword(e.target.value); setError(''); }}
+                            placeholder="********"
+                            style={{ width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '5px' }}
+                        />
+                    </div>
+                    <div style={{ marginBottom: '15px' }}>
+                        <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Xác nhận mật khẩu</label>
+                        <input
+                            type="password"
+                            value={confirm}
+                            onChange={(e) => { setConfirm(e.target.value); setError(''); }}
+                            placeholder="********"
+                            style={{ width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '5px' }}
+                        />
+                    </div>
+                    {error && <div style={{ color: 'red', textAlign: 'center', marginBottom: '10px' }}>{error}</div>}
+                    <Button
+                        type="submit"
+                        style={{ width: '100%', padding: '12px', background: '#2E2E2E', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}
+                        disabled={isLoading}
+                    >
+                        {isLoading ? 'Đang xử lý...' : 'Đổi mật khẩu'}
+                    </Button>
+                </form>
+            )}
         </div>
     );
 }

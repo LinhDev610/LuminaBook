@@ -1,140 +1,167 @@
-# 📚 WEBSITE BÁN SÁCH - CẤU TRÚC FOLDER
+# 📚 LUMINA BOOK - WEBSITE BÁN SÁCH
 
-## 🎯 Mục đích
-Cấu trúc folder cơ bản cho website bán sách, phù hợp team 2-3 dev, dễ hiểu và mở rộng.
+## 🎯 Giới thiệu
 
-## 📂 Cấu trúc folder
+LuminaBook là website bán sách trực tuyến được xây dựng bằng React với CSS Modules và classnames/bind pattern. Dự án sử dụng layout system linh hoạt và component-based architecture.
 
-```
-src/
-├── components/           # Component tái sử dụng
-│   ├── Auth/            # Xác thực (Login, Register, Forgot)
-│   ├── Layout/          # Layout (Header, Footer)
-│   ├── Product/         # Sản phẩm (Card, List, Detail)
-│   └── Common/          # Component chung (Button, Input, Modal)
-├── pages/               # Các trang chính
-│   ├── Home/            # Trang chủ
-│   ├── Products/        # Danh sách sản phẩm
-│   ├── ProductDetail/   # Chi tiết sản phẩm
-│   ├── Cart/            # Giỏ hàng
-│   ├── Checkout/        # Thanh toán
-│   ├── Profile/         # Tài khoản
-│   └── Contact/         # Liên hệ
-├── contexts/            # State management
-│   ├── AuthContext.js   # Quản lý đăng nhập
-│   └── CartContext.js   # Quản lý giỏ hàng
-├── services/            # API và logic
-│   ├── api.js           # API calls
-│   ├── constants.js    # Hằng số
-│   └── utils.js         # Hàm tiện ích
-├── hooks/               # Custom hooks
-│   ├── useLocalStorage.js
-│   └── useDebounce.js
-├── assets/              # Tài nguyên
-│   ├── images/          # Hình ảnh
-│   ├── icons/           # Icon
-│   └── styles/          # CSS global
-├── routes/              # Định tuyến
-│   └── index.js
-├── App.js
-└── index.js
+## 🚀 Tính năng chính
+
+-   ✅ **Trang chủ**: Hero banner, sản phẩm nổi bật, promotions
+-   ✅ **Layout System**: DefaultLayout, CustomLayout, Fragment
+-   ✅ **Authentication**: Login, Register, Forgot Password
+-   ✅ **Product Management**: Card, List, Detail
+-   ✅ **Shopping Cart**: Thêm/sửa/xóa sản phẩm
+-   ✅ **User Account**: Profile, Order History
+-   ✅ **Responsive Design**: Mobile-first approach
+
+## 🛠️ Công nghệ sử dụng
+
+-   **Frontend**: React 19.2.0
+-   **Routing**: React Router DOM 7.9.3
+-   **Styling**: CSS Modules + SCSS
+-   **State Management**: React Context API
+-   **Build Tool**: Create React App
+-   **Package Manager**: Yarn
+
+## 📦 Dependencies chính
+
+```json
+{
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-router-dom": "^7.9.3",
+    "classnames": "^2.1.1",
+    "sass": "^1.93.2"
+}
 ```
 
-## 🚀 Cách sử dụng
+## 🚀 Quick Start
 
-### **1. Tạo component mới**
-```bash
-# Tạo folder
-mkdir src/components/NewComponent
-
-# Tạo files
-touch src/components/NewComponent/NewComponent.js
-touch src/components/NewComponent/NewComponent.css
-touch src/components/NewComponent/index.js
-```
-
-### **2. Tạo page mới**
-```bash
-# Tạo folder
-mkdir src/pages/NewPage
-
-# Tạo files
-touch src/pages/NewPage/index.js
-touch src/pages/NewPage/NewPage.css
-```
-
-### **3. Thêm route**
-```jsx
-// Trong src/routes/index.js
-import NewPage from '../pages/NewPage';
-
-const publicRoutes = [
-    { path: '/new-page', component: NewPage },
-];
-```
-
-## 📝 Quy tắc đặt tên
-
-### **Files và Folders**
-- **Components**: PascalCase (ProductCard.js)
-- **Pages**: PascalCase (HomePage.js)
-- **Hooks**: camelCase (useLocalStorage.js)
-- **Services**: camelCase (apiService.js)
-
-### **CSS Classes**
-- **BEM**: `.product-card`, `.product-card__title`
-
-## 🔄 Luồng dữ liệu
-
-### **1. User tương tác**
-```
-User → Component → Context → API → Server
-```
-
-### **2. Dữ liệu từ server**
-```
-Server → API → Context → Component → UI
-```
-
-## 🎯 Lợi ích
-
-- ✅ **Dễ hiểu**: Phân chia rõ ràng theo chức năng
-- ✅ **Dễ mở rộng**: Thêm component/page mới dễ dàng
-- ✅ **Dễ bảo trì**: Code được tổ chức logic
-- ✅ **Phù hợp team nhỏ**: 2-3 dev có thể làm việc song song
-- ✅ **Scalable**: Có thể mở rộng khi dự án lớn hơn
-
-## 📚 Tài liệu tham khảo
-
-- [React Documentation](https://reactjs.org/docs)
-- [React Router](https://reactrouter.com/)
-- [Context API](https://reactjs.org/docs/context.html)
-- [CSS Grid](https://css-tricks.com/snippets/css/complete-guide-grid/)
-- [Flexbox](https://css-tricks.com/snippets/css/a-guide-to-flexbox/)
-
-## 🛠️ Development
+### **1. Cài đặt dependencies**
 
 ```bash
-# Install dependencies
+# Sử dụng yarn (khuyến nghị)
+yarn install
+
+# Hoặc sử dụng npm
 npm install
+```
 
-# Start development server
+### **2. Chạy development server**
+
+```bash
+# Sử dụng yarn
+yarn start
+
+# Hoặc sử dụng npm
 npm start
+```
 
-# Build for production
+### **3. Build production**
+
+```bash
+# Sử dụng yarn
+yarn build
+
+# Hoặc sử dụng npm
 npm run build
 ```
 
-## 📋 TODO List
+## 📁 Cấu trúc dự án
 
-- [ ] Implement Auth components (Login, Register, Forgot)
-- [ ] Implement Layout components (Header, Footer)
-- [ ] Implement Product components (Card, List, Detail)
-- [ ] Implement Pages (Home, Products, Cart, Checkout, Profile)
-- [ ] Implement Contexts (Auth, Cart)
-- [ ] Implement Services (API, Utils)
-- [ ] Implement Custom Hooks
-- [ ] Add Routing
-- [ ] Add Styling
-- [ ] Add Testing
-- [ ] Add Documentation
+```
+src/
+├── layouts/              # Layout system
+│   ├── components/      # Header, Footer, Search
+│   ├── DefaultLayout/   # Layout mặc định
+│   └── CustomLayout/    # Layout tùy chỉnh
+├── pages/               # Các trang chính
+├── components/          # Component tái sử dụng
+├── contexts/            # State management
+├── services/            # API và logic
+├── hooks/               # Custom hooks
+├── assets/              # Tài nguyên
+└── routes/              # Định tuyến
+```
+
+## 🎨 CSS Modules + classnames/bind
+
+```javascript
+// Import
+import classNames from 'classnames/bind';
+import styles from './Component.module.scss';
+
+// Bind styles
+const cx = classNames.bind(styles);
+
+// Sử dụng
+<div className={cx('wrapper', 'active')}>
+    <h1 className={cx('title')}>Title</h1>
+</div>;
+```
+
+## 🛠️ Development Commands
+
+```bash
+# Development
+yarn start          # Chạy dev server (port 3000)
+yarn build          # Build production
+yarn test           # Chạy tests
+yarn eject          # Eject CRA (không khuyến nghị)
+
+# Code Quality
+yarn lint           # ESLint
+yarn format         # Prettier
+```
+
+## 📋 Project Status
+
+### ✅ Completed
+
+-   [x] Project setup với React + CSS Modules
+-   [x] Layout system (DefaultLayout, CustomLayout)
+-   [x] Header component với navigation
+-   [x] Footer component
+-   [x] Home page với hero banner
+-   [x] Routing system
+-   [x] CSS Modules + classnames/bind
+-   [x] Responsive design
+
+### 🚧 In Progress
+
+-   [ ] Authentication system
+-   [ ] Product management
+-   [ ] Shopping cart
+-   [ ] User account
+
+### 📝 TODO
+
+-   [ ] API integration
+-   [ ] State management (Context)
+-   [ ] Testing setup
+-   [ ] Performance optimization
+-   [ ] SEO optimization
+
+## 🤝 Contributing
+
+1. Fork repository
+2. Tạo feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to branch (`git push origin feature/AmazingFeature`)
+5. Tạo Pull Request
+
+## 📚 Documentation
+
+-   **Chi tiết cấu trúc**: Xem [FOLDER_STRUCTURE.md](./FOLDER_STRUCTURE.md)
+-   **API Documentation**: Xem [API.md](./API.md) (sắp có)
+-   **Component Guide**: Xem [COMPONENTS.md](./COMPONENTS.md) (sắp có)
+
+## 📞 Support
+
+-   **Issues**: [GitHub Issues](https://github.com/your-repo/issues)
+-   **Discussions**: [GitHub Discussions](https://github.com/your-repo/discussions)
+-   **Email**: support@luminabook.com
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

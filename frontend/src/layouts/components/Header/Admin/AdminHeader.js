@@ -1,0 +1,85 @@
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import classNames from 'classnames/bind';
+
+import logoIcon from '../../../../assets/icons/logo_luminabook.png';
+import useLocalStorage from '../../../../hooks/useLocalStorage';
+
+import styles from './AdminHeader.module.scss';
+
+const cx = classNames.bind(styles);
+
+function AdminHeader() {
+    const navigate = useNavigate();
+
+    const [menuOpen, setMenuOpen] = useState(false);
+    const [token, setToken, removeToken] = useLocalStorage('token', null);
+    const [displayName, setDisplayName, removeDisplayName] = useLocalStorage(
+        'displayName',
+        null,
+    );
+
+    const toggleMenu = () => setMenuOpen((v) => !v);
+    const handleLogout = () => {
+        removeToken();
+        removeDisplayName();
+        setMenuOpen(false);
+        navigate(0);
+    };
+
+    return (
+        <header className={cx('header')}>
+            <div className={cx('logo')}>
+                <Link to="/">
+                    <img src={logoIcon} alt="LuminaBook" className={cx('logo-image')} />
+                </Link>
+            </div>
+            <div className={cx('actions')}>
+                {displayName ? (
+                    <div className={cx('user-menu')}>
+                        <button
+                            className={cx('user-menu__trigger')}
+                            onClick={toggleMenu}
+                            aria-haspopup="menu"
+                            aria-expanded={menuOpen}
+                        >
+                            <span className={cx('user-menu__name')}>{displayName}</span>
+                            <span className={cx('user-menu__avatar')}></span>
+                        </button>
+                        {menuOpen && (
+                            <div className={cx('user-menu__dropdown')} role="menu">
+                                <Link
+                                    to="/account"
+                                    className={cx('user-menu__item')}
+                                    role="menuitem"
+                                    onClick={() => setMenuOpen(false)}
+                                >
+                                    Trang cá nhân
+                                </Link>
+                                <button
+                                    className={cx('user-menu__item')}
+                                    role="menuitem"
+                                    onClick={handleLogout}
+                                >
+                                    Đăng xuất
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                ) : (
+                    <Link to="/login" className={cx('login-link')}>
+                        <i className={cx('fi fi-ss-user')}></i> Đăng nhập
+                    </Link>
+                )}
+                <span className={cx('cart')}>
+                    <img
+                        src="https://cdn0.iconfinder.com/data/icons/mobile-basic-vol-1/32/Tote_Bag-1024.png"
+                        alt="Cart"
+                    />
+                </span>
+            </div>
+        </header>
+    );
+}
+
+export default AdminHeader;

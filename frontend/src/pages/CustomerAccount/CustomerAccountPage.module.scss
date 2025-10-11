@@ -1,0 +1,259 @@
+/* =========================
+   ACCOUNT WRAPPER
+========================= */
+.account-wrapper {
+    background: #fff;
+    color: #111;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* =========================
+   CONTENT AREA
+========================= */
+.account-content {
+    display: flex;
+    gap: 18px;
+    padding: 18px 20px;
+    flex: 1;
+    min-height: 0; /* Cho phép scroll */
+}
+
+/* =========================
+   SIDEBAR
+========================= */
+.account-side {
+    width: 260px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 16px;
+}
+
+/* Profile section in sidebar */
+.side-profile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 16px 0 12px;
+    border-bottom: 1px solid #eee;
+}
+
+.side-avatar {
+    width: 68px;
+    height: 68px;
+    border-radius: 50%;
+    background: #1a3c5a;
+}
+
+.side-name {
+    font-weight: 600;
+}
+
+/* Menu */
+.side-menu {
+    list-style: none;
+    padding: 12px 0 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.menu-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 8px;
+    border-radius: 8px;
+    cursor: pointer;
+    color: #111;
+}
+
+.menu-item .mi {
+    width: 18px;
+    height: 18px;
+    display: inline-block;
+}
+
+.menu-item.active {
+    background: #edeeef;
+    box-shadow: inset 0 0 0 1px #d6d7d9;
+}
+
+.menu-item.danger {
+    color: #c1121f;
+}
+
+/* =========================
+   MAIN CONTENT
+========================= */
+.account-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    overflow-y: auto;
+    max-height: calc(100vh - 200px); /* Giới hạn chiều cao */
+}
+
+/* Panels */
+.panel {
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 16px;
+}
+
+.panel h3 {
+    margin: 0 0 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 18px;
+}
+
+.panel h3 .icon-user {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 2px solid #111;
+    display: inline-block;
+}
+
+/* =========================
+   FORMS
+========================= */
+.form-row {
+    display: flex;
+    gap: 22px;
+    margin-bottom: 16px;
+}
+
+.form-group {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.form-group label {
+    font-size: 13px;
+    color: #111;
+}
+
+.form-group input {
+    height: 36px;
+    border: 1px solid #dcdcdc;
+    border-radius: 8px;
+    padding: 0 12px;
+    background: #f3f4f6;
+    color: #111;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.primary {
+    background: #1a3c5a;
+    color: #fff;
+    border: none;
+    padding: 8px 18px;
+    border-radius: 8px;
+    height: 34px;
+    font-weight: 600;
+}
+
+/* =========================
+   ORDERS
+========================= */
+.orders h3 {
+    margin-bottom: 6px;
+}
+
+.order-tabs {
+    display: flex;
+    gap: 10px;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 8px;
+}
+
+.order-tabs button {
+    background: transparent;
+    border: none;
+    padding: 8px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.order-tabs .active {
+    background: #f3f4f6;
+}
+
+.order-card {
+    border: 1px solid #eee;
+    border-radius: 8px;
+    margin-top: 12px;
+}
+
+.order-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px;
+    border-bottom: 1px solid #eee;
+}
+
+.order-id {
+    font-weight: 600;
+}
+
+.order-date {
+    color: #666;
+    font-size: 12px;
+}
+
+.status {
+    background: #f43f5e;
+    color: #fff;
+    border: none;
+    padding: 6px 10px;
+    border-radius: 10px;
+    font-size: 12px;
+}
+
+.order-body {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+}
+
+.thumb {
+    width: 62px;
+    height: 62px;
+    background: #ddd;
+    border-radius: 6px;
+}
+
+.meta {
+    flex: 1;
+}
+
+.title {
+    font-size: 13px;
+}
+
+.qty {
+    color: #666;
+    font-size: 12px;
+}
+
+.price {
+    font-weight: 700;
+    color: #d00000;
+}
+

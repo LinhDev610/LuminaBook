@@ -3,6 +3,7 @@ import React from 'react';
 import logoIcon from '../../assets/icons/logo_luminabook.png';
 import useLocalStorage from '../../hooks/useLocalStorage';
 import styles from './Header.module.scss';
+import Button from '../Common/Button';
 
 export default function Header() {
     const navigate = useNavigate();
@@ -26,19 +27,19 @@ export default function Header() {
             </div>
             <div className={styles.search}>
                 <input type="text" placeholder="Tìm kiếm theo tên tác phẩm,…" />
-                <button>Tim</button>
+                <Button text>Tim</Button>
             </div>
             <div className={styles.actions}>
                 {displayName ? (
                     <div className={styles['user-menu']}>
-                        <button className={styles['user-menu__trigger']} onClick={toggleMenu} aria-haspopup="menu" aria-expanded={menuOpen}>
+                        <Button className={styles['user-menu__trigger']} onClick={toggleMenu} aria-haspopup="menu" aria-expanded={menuOpen}>
                             <span className={styles['user-menu__name']}>{displayName}</span>
                             <span className={styles['user-menu__avatar']}></span>
-                        </button>
+                        </Button>
                         {menuOpen && (
                             <div className={styles['user-menu__dropdown']} role="menu">
                                 <Link to="/account" className={styles['user-menu__item']} role="menuitem" onClick={() => setMenuOpen(false)}>Trang cá nhân</Link>
-                                <button className={styles['user-menu__item']} role="menuitem" onClick={handleLogout}>Đăng xuất</button>
+                        <Button className={styles['user-menu__item']} role="menuitem" onClick={handleLogout}>Đăng xuất</Button>
                             </div>
                         )}
                     </div>

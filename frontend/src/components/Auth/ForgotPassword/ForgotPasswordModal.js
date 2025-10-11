@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styles from './ForgotPasswordModal.module.scss';
+import Button from '../../Common/Button';
 
 const API_BASE_URL = 'http://localhost:8080/identity';
 
@@ -160,7 +161,7 @@ useEffect(() => {
         <div className={styles['auth-modal']} role="dialog" aria-modal="true">
             <div className={styles['auth-card']}>
                 <div className={styles['auth-header']}>
-                    <button className={styles['auth-close']} onClick={onClose} aria-label="Đóng">×</button>
+                    <Button className={styles['auth-close']} text onClick={onClose} aria-label="Đóng">×</Button>
                     <h3 className={styles['auth-title']}>Khôi phục mật khẩu</h3>
                 </div>
                 {step === 1 && (
@@ -170,7 +171,7 @@ useEffect(() => {
                             <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="example@example" required />
                         </div>
                         {error && <div className={styles['error-text']}>{error}</div>}
-                        <button className={styles['auth-submit']} type="submit" disabled={isLoading}>{isLoading ? 'Đang gửi...' : 'Gửi mã code'}</button>
+                        <Button className={styles['auth-submit']} type="submit" disabled={isLoading}>{isLoading ? 'Đang gửi...' : 'Gửi mã code'}</Button>
                     </form>
                 )}
                 {step === 2 && (
@@ -195,12 +196,12 @@ useEffect(() => {
                         {seconds === 0 ? (
                             <div style={{ textAlign: 'center', marginBottom: 10 }}>
                                 <span style={{ color: '#666', marginRight: 6 }}>Bạn không nhận được mã code</span>
-                                <button type="button" onClick={resend} style={{ background: 'transparent', border: 'none', color: '#111', fontWeight: 600, cursor: 'pointer' }}>Gửi lại</button>
+                                <Button text onClick={resend} className="" style={{ color: '#111', fontWeight: 600, cursor: 'pointer' }}>Gửi lại</Button>
                             </div>
                         ) : (
                             <div className={styles['auth-subtext']}>Gửi lại sau 00:{seconds.toString().padStart(2, '0')}</div>
                         )}
-                        <button className={styles['auth-submit']} type="submit" disabled={isLoading}>{isLoading ? 'Đang xử lý...' : 'Xác nhận'}</button>
+                        <Button className={styles['auth-submit']} type="submit" disabled={isLoading}>{isLoading ? 'Đang xử lý...' : 'Xác nhận'}</Button>
                     </form>
                 )}
                 {step === 3 && (
@@ -214,7 +215,7 @@ useEffect(() => {
                             <input type="password" value={confirm} onChange={(e) => { setConfirm(e.target.value); setError(''); }} placeholder="********" />
                         </div>
                         {error && <div className={styles['error-text']}>{error}</div>}
-                        <button className={styles['auth-submit']} type="submit" disabled={isLoading}>{isLoading ? 'Đang xử lý...' : 'Đổi mật khẩu'}</button>
+                        <Button className={styles['auth-submit']} type="submit" disabled={isLoading}>{isLoading ? 'Đang xử lý...' : 'Đổi mật khẩu'}</Button>
                     </form>
                 )}
             </div>

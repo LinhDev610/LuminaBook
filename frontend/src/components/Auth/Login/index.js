@@ -6,6 +6,7 @@ import useLocalStorage from "../../../hooks/useLocalStorage";
 import styles from "../Login/LoginModal.module.scss";
 import visibleIcon from "../../../assets/icons/icon-visible.png";
 import invisibleIcon from "../../../assets/icons/icon-invisible.png";
+import Button from "../../Common/Button";
 
 const API_BASE_URL = "http://localhost:8080/identity";
 
@@ -89,7 +90,7 @@ export default function Login() {
                                 onChange={(e) => setPassword(e.target.value)}
                                 required
                             />
-                            <button
+                            <Button
                                 type="button"
                                 className={styles['toggle-password']}
                                 onClick={() => setShowPassword(!showPassword)}
@@ -97,7 +98,7 @@ export default function Login() {
                                 style={{ background: "transparent", border: "none", padding: 0 }}
                             >
                                 <img src={showPassword ? invisibleIcon : visibleIcon} alt={showPassword ? "Ẩn" : "Hiện"} style={{ width: 20, height: 20 }} />
-                            </button>
+                            </Button>
                         </div>
                     </div>
 
@@ -113,9 +114,9 @@ export default function Login() {
                     {error && (
                         <div style={{ color: "#ff4d4f", textAlign: "center", marginBottom: 12 }}>{error}</div>
                     )}
-                    <button type="submit" className={styles['login-btn']}>
+                    <Button type="submit" className={styles['login-btn']}>
                         {isLoading ? "Đang đăng nhập..." : "Log In"}
-                    </button>
+                    </Button>
                 </form>
                 </div>
             </div>

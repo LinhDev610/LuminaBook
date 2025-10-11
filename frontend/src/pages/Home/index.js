@@ -4,6 +4,7 @@ import Header from "../../components/Layout/Header";
 import Footer from "../../components/Layout/Footer";
 import useLocalStorage from "../../hooks/useLocalStorage";
 import styles from './Home.module.scss';
+import Button from "../../components/Common/Button";
 
 function Home() {
     const navigate = useNavigate();
@@ -33,7 +34,7 @@ function Home() {
                     <div className={styles['banner-text']}>
                         <h1>Sài Gòn bao thương</h1>
                         <p>Một góc ký ức về tình người trong đại dịch COVID-19</p>
-                        <button>Mua ngay</button>
+                        <Button>Mua ngay</Button>
                     </div>
                     <div className={styles['banner-img']}>
                         <img src="https://via.placeholder.com/250x350" alt="Sách nổi bật" />

@@ -4,6 +4,7 @@ import useLocalStorage from '../../../hooks/useLocalStorage';
 import '../Auth.module.scss';
 import visibleIcon from '../../assets/styles/Icon/icons8-visible.png';
 import invisibleIcon from '../../assets/styles/Icon/icons8-invisible.png';
+import Button from '../../Common/Button';
 
 const API_BASE_URL = 'http://localhost:8080/identity';
 
@@ -64,13 +65,14 @@ export default function LoginModal({ open = false, onClose }) {
         <div className="auth-modal" role="dialog" aria-modal="true">
             <div className="auth-card">
                 <div className="auth-header">
-                    <button
+                    <Button
                         className="auth-close"
                         onClick={onClose}
                         aria-label="Đóng"
+                        type="button"
                     >
                         ×
-                    </button>
+                    </Button>
                     <h3 className="auth-title">Đăng nhập</h3>
                 </div>
                 <p className="auth-subtext">
@@ -100,7 +102,7 @@ export default function LoginModal({ open = false, onClose }) {
                                 placeholder="********"
                                 required
                             />
-                            <button
+                            <Button
                                 type="button"
                                 className="pw-toggle"
                                 onClick={() => setShowPassword(!showPassword)}
@@ -124,13 +126,13 @@ export default function LoginModal({ open = false, onClose }) {
                                     alt={showPassword ? 'Ẩn' : 'Hiện'}
                                     style={{ width: 20, height: 20 }}
                                 />
-                            </button>
+                            </Button>
                         </div>
                     </div>
                     {error && <div className="error-text">{error}</div>}
                     <div className="auth-row">
                         <label>
-                            <input type="checkbox" /> Remember me
+                            <input type="checkbox" /> Nhớ tài khoản
                         </label>
                         <Link
                             className="auth-link"
@@ -140,13 +142,14 @@ export default function LoginModal({ open = false, onClose }) {
                             Quên mật khẩu?
                         </Link>
                     </div>
-                    <button
+                    <Button
                         className="auth-submit"
+                        primary
                         type="submit"
                         disabled={isLoading}
                     >
                         {isLoading ? 'Đang đăng nhập...' : 'Đăng nhập'}
-                    </button>
+                    </Button>
                 </form>
             </div>
         </div>

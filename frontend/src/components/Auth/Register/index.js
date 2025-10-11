@@ -6,6 +6,7 @@ import useLocalStorage from "../../../hooks/useLocalStorage";
 import visibleIcon from "../../../assets/icons/icon-visible.png";
 import invisibleIcon from "../../../assets/icons/icon-invisible.png";
 import styles from "../Login/LoginModal.module.scss";
+import Button from "../../Common/Button";
 
 const API_BASE_URL = "http://localhost:8080/identity";
 
@@ -104,7 +105,7 @@ export default function Register() {
             <div className={styles['forgot-container']}>
                 <div className={styles['forgot-box']} style={{ height: "auto", paddingTop: 60, paddingBottom: 60, width: 560 }}>
                 <div className={styles['forgot-header']}>
-                    <button className={styles['back-btn']} onClick={() => navigate(-1)} aria-label="Quay lại">←</button>
+                    <Button className={styles['back-btn']} text onClick={() => navigate(-1)} aria-label="Quay lại">←</Button>
                     <h2 className={styles['forgot-title']}>Đăng ký</h2>
                 </div>
                 {step === 1 ? (
@@ -119,9 +120,9 @@ export default function Register() {
                                 {error}
                             </div>
                         )}
-                        <button type="submit" className={styles['login-btn']} style={{ background: "#fff", color: "#111", border: "1px solid #111", fontWeight: 600 }} disabled={isLoading}>
+                        <Button type="submit" className={styles['login-btn']} style={{ background: "#fff", color: "#111", border: "1px solid #111", fontWeight: 600 }} disabled={isLoading}>
                             {isLoading ? "Đang gửi..." : "Gửi mã xác nhận"}
-                        </button>
+                        </Button>
                     </form>
                 ) : (
                     <form onSubmit={handleSubmit}>
@@ -133,18 +134,18 @@ export default function Register() {
                             <label>Mật khẩu</label>
                             <div className={styles['password-wrapper']}>
                                 <input type={show1 ? "text" : "password"} value={password} onChange={(e) => { setPassword(e.target.value); setError(""); }} placeholder="********" />
-                <button type="button" className={styles['toggle-password']} onClick={() => setShow1(!show1)} aria-label={show1 ? "Ẩn mật khẩu" : "Hiện mật khẩu"} style={{ background: "transparent", border: "none", padding: 0 }}>
+                <Button className={styles['toggle-password']} text onClick={() => setShow1(!show1)} aria-label={show1 ? "Ẩn mật khẩu" : "Hiện mật khẩu"} style={{ padding: 0 }}>
                   <img src={show1 ? invisibleIcon : visibleIcon} alt={show1 ? "Ẩn" : "Hiện"} style={{ width: 20, height: 20 }} />
-                </button>
+                </Button>
                             </div>
                         </div>
                         <div className={styles['form-group']}>
                             <label>Xác nhận mật khẩu</label>
                             <div className={styles['password-wrapper']}>
                                 <input type={show2 ? "text" : "password"} value={confirm} onChange={(e) => { setConfirm(e.target.value); setError(""); }} placeholder="********" />
-                <button type="button" className={styles['toggle-password']} onClick={() => setShow2(!show2)} aria-label={show2 ? "Ẩn mật khẩu" : "Hiện mật khẩu"} style={{ background: "transparent", border: "none", padding: 0 }}>
+                <Button className={styles['toggle-password']} text onClick={() => setShow2(!show2)} aria-label={show2 ? "Ẩn mật khẩu" : "Hiện mật khẩu"} style={{ padding: 0 }}>
                   <img src={show2 ? invisibleIcon : visibleIcon} alt={show2 ? "Ẩn" : "Hiện"} style={{ width: 20, height: 20 }} />
-                </button>
+                </Button>
                             </div>
                         </div>
                         <div className={styles['form-group']} style={{ marginTop: 8, marginBottom: 16 }}>
@@ -154,7 +155,7 @@ export default function Register() {
                             </label>
                         </div>
                         {error && <div style={{ color: "#ff4d4f", textAlign: "center", marginBottom: 16 }}>{error}</div>}
-                        <button type="submit" className={styles['login-btn']}>Đăng ký</button>
+                        <Button type="submit" className={styles['login-btn']}>Đăng ký</Button>
                     </form>
                 )}
                 </div>

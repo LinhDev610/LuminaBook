@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import Header from "../../Layout/Header";
 import Footer from "../../Layout/Footer";
 import styles from "../ForgotPassword/ForgotPasswordModal.module.scss";
+import Button from "../../Common/Button";
 
 const API_BASE_URL = "http://localhost:8080/identity";
 
@@ -45,7 +46,7 @@ export default function ForgotPassword() {
             <div className={styles['forgot-container']}>
                 <div className={styles['forgot-card']}>
                 <div className={styles['forgot-header']}>
-                    <button className={styles['back-btn']} onClick={() => navigate(-1)} aria-label="Quay lại">←</button>
+                    <Button className={styles['back-btn']} onClick={() => navigate(-1)} aria-label="Quay lại">←</Button>
                     <h2 className={styles['forgot-title']}>Khôi phục mật khẩu</h2>
                 </div>
 
@@ -70,9 +71,9 @@ export default function ForgotPassword() {
                         />
                     </div>
 
-                    <button type="submit" className={styles['submit-btn']} disabled={isLoading}>
+                    <Button type="submit" primary className={styles['submit-btn']} disabled={isLoading}>
                         {isLoading ? "Đang gửi..." : "Gửi mã code"}
-                    </button>
+                    </Button>
                 </form>
                 </div>
             </div>

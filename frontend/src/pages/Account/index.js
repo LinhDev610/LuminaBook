@@ -4,6 +4,7 @@ import Header from "../../components/Layout/Header";
 import Footer from "../../components/Layout/Footer";
 import useLocalStorage from "../../hooks/useLocalStorage";
 import "./AccountPage.module.scss";
+import Button from "../../components/Common/Button";
 
 export default function Account() {
     const navigate = useNavigate();
@@ -22,7 +23,7 @@ export default function Account() {
         <div className="account-wrapper">
             <Header />
             <nav className="account-nav">
-                <button className="nav-trigger" />
+                <Button className="nav-trigger" />
                 <Link className="active" to="#">TẤT CẢ DANH MỤC</Link>
                 <Link to="#">KHUYẾN MÃI</Link>
                 <Link to="#">SÁCH MỚI</Link>
@@ -82,7 +83,7 @@ export default function Account() {
                             </div>
                         </div>
                         <div className="form-actions">
-                            <button className="primary">Lưu thay đổi</button>
+                            <Button className="primary">Lưu thay đổi</Button>
                         </div>
                     </section>
                 </main>

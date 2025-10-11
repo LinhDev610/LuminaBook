@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import Header from "../../Layout/Header";
 import Footer from "../../Layout/Footer";
 import styles from "../Login/LoginModal.module.scss";
+import Button from "../../Common/Button";
 
 const API_BASE_URL = "http://localhost:8080/identity";
 
@@ -97,7 +98,7 @@ export default function VerifyCode() {
             <div className={styles['forgot-container']}>
                 <div className={styles['forgot-box']} style={{ height: "auto", paddingTop: 60, paddingBottom: 60 }}>
                 <div className={styles['forgot-header']}>
-                    <button className={styles['back-btn']} onClick={() => navigate(-1)} aria-label="Quay lại">←</button>
+                    <Button className={styles['back-btn']} text onClick={() => navigate(-1)} aria-label="Quay lại">←</Button>
                     <h2 className={styles['forgot-title']}>Xác nhận mã code</h2>
                 </div>
                 <p className={styles['sub-text']} style={{ marginBottom: 24 }}>
@@ -133,12 +134,12 @@ export default function VerifyCode() {
                     {seconds === 0 && (
                         <div style={{ textAlign: "center", marginBottom: 16 }}>
                             <span style={{ color: "#666", marginRight: 6 }}>Bạn không nhận được mã code</span>
-                            <button type="button" onClick={handleResend} style={{ background: "transparent", border: "none", color: "#111", fontWeight: 600, cursor: "pointer" }}>Gửi lại.</button>
+                            <Button text onClick={handleResend} style={{ color: "#111", fontWeight: 600, cursor: "pointer" }}>Gửi lại.</Button>
                         </div>
                     )}
-                    <button type="submit" className={styles['login-btn']} disabled={isLoading}>
+                    <Button type="submit" className={styles['login-btn']} disabled={isLoading}>
                         {isLoading ? "Đang xử lý..." : "Xác nhận"}
-                    </button>
+                    </Button>
                     {seconds > 0 && (
                         <div style={{ textAlign: "center", marginTop: 16, color: "#666" }}>
                             <span>Gửi lại sau</span>

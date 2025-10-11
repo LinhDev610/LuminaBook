@@ -7,6 +7,7 @@ import useLocalStorage from '../../../hooks/useLocalStorage';
 import '../Auth.module.scss';
 import visibleIcon from '../../assets/styles/Icon/icons8-visible.png';
 import invisibleIcon from '../../assets/styles/Icon/icons8-invisible.png';
+import Button from '../../Common/Button';
 
 const API_BASE_URL = 'http://localhost:8080/identity';
 
@@ -129,13 +130,14 @@ export default function RegisterModal({ open = false, onClose }) {
         <div className="auth-modal" role="dialog" aria-modal="true">
             <div className="auth-card">
                 <div className="auth-header">
-                    <button
+                    <Button
                         className="auth-close"
                         onClick={onClose}
                         aria-label="Đóng"
+                        type="button"
                     >
                         ×
-                    </button>
+                    </Button>
                     <h3 className="auth-title">Đăng ký</h3>
                 </div>
                 {step === 1 ? (
@@ -151,13 +153,13 @@ export default function RegisterModal({ open = false, onClose }) {
                             />
                         </div>
                         {error && <div className="error-text">{error}</div>}
-                        <button
+                        <Button
                             className="auth-submit"
                             type="submit"
                             disabled={isLoading}
                         >
                             {isLoading ? 'Đang gửi...' : 'Gửi mã xác nhận'}
-                        </button>
+                        </Button>
                     </form>
                 ) : (
                     <form className="auth-form" onSubmit={handleSubmit}>
@@ -181,7 +183,7 @@ export default function RegisterModal({ open = false, onClose }) {
                                     }}
                                     placeholder="********"
                                 />
-                                <button
+                                <Button
                                     type="button"
                                     className="pw-toggle"
                                     onClick={() => setShow1(!show1)}
@@ -201,7 +203,7 @@ export default function RegisterModal({ open = false, onClose }) {
                                         alt={show1 ? 'Ẩn' : 'Hiện'}
                                         style={{ width: 20, height: 20 }}
                                     />
-                                </button>
+                                </Button>
                             </div>
                         </div>
                         <div className="form-group">
@@ -216,7 +218,7 @@ export default function RegisterModal({ open = false, onClose }) {
                                     }}
                                     placeholder="********"
                                 />
-                                <button
+                                <Button
                                     type="button"
                                     className="pw-toggle"
                                     onClick={() => setShow2(!show2)}
@@ -236,7 +238,7 @@ export default function RegisterModal({ open = false, onClose }) {
                                         alt={show2 ? 'Ẩn' : 'Hiện'}
                                         style={{ width: 20, height: 20 }}
                                     />
-                                </button>
+                                </Button>
                             </div>
                         </div>
                         <div className="form-group">
@@ -250,13 +252,13 @@ export default function RegisterModal({ open = false, onClose }) {
                             </label>
                         </div>
                         {error && <div className="error-text">{error}</div>}
-                        <button
+                        <Button
                             className="auth-submit"
                             type="submit"
                             disabled={isLoading}
                         >
                             {isLoading ? 'Đang xử lý...' : 'Đăng ký'}
-                        </button>
+                        </Button>
                     </form>
                 )}
             </div>

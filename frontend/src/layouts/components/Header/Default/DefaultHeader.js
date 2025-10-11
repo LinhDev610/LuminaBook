@@ -39,7 +39,7 @@ function DefaultHeader() {
                 </div>
                 <div className={cx('search')}>
                     <input type="text" placeholder="Tìm kiếm theo tên tác phẩm,…" />
-                    <button>Tim</button>
+                    <button>Tìm</button>
                 </div>
                 <div className={cx('actions')}>
                     {displayName ? (

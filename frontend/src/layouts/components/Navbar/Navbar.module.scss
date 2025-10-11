@@ -1,0 +1,37 @@
+.account-nav {
+    display: flex;
+    background: #1a3c5a;
+    padding: 15px;
+}
+
+.account-nav a {
+    color: white;
+    text-decoration: none;
+    margin-right: 20px;
+}
+
+.nav-trigger {
+    width: 26px;
+    height: 18px;
+    border: 0;
+    background: transparent;
+    position: relative;
+}
+
+.nav-trigger::before,
+.nav-trigger::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: #fff;
+}
+
+.nav-trigger::before {
+    top: 0;
+}
+
+.nav-trigger::after {
+    bottom: 0;
+}

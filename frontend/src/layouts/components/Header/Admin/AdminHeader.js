@@ -1,22 +1,22 @@
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import React from 'react';
 import classNames from 'classnames/bind';
 
-import logoIcon from '../../../assets/icons/logo_luminabook.png';
-import useLocalStorage from '../../../hooks/useLocalStorage';
+import logoIcon from '../../../../assets/icons/logo_luminabook.png';
+import useLocalStorage from '../../../../hooks/useLocalStorage';
 
-import styles from './Header.module.scss';
+import styles from './AdminHeader.module.scss';
 
 const cx = classNames.bind(styles);
 
-function Header() {
+function AdminHeader() {
     const navigate = useNavigate();
     const [displayName, setDisplayName, removeDisplayName] = useLocalStorage(
         'displayName',
         null,
     );
     const [token, setToken, removeToken] = useLocalStorage('token', null);
-    const [menuOpen, setMenuOpen] = React.useState(false);
+    const [menuOpen, setMenuOpen] = useState(false);
     const toggleMenu = () => setMenuOpen((v) => !v);
     const handleLogout = () => {
         removeToken();
@@ -29,16 +29,8 @@ function Header() {
         <header className={cx('header')}>
             <div className={cx('logo')}>
                 <Link to="/">
-                    <img
-                        src={logoIcon}
-                        alt="LuminaBook"
-                        className={cx('logo-image')}
-                    />
+                    <img src={logoIcon} alt="LuminaBook" className={cx('logo-image')} />
                 </Link>
-            </div>
-            <div className={cx('search')}>
-                <input type="text" placeholder="Tìm kiếm theo tên tác phẩm,…" />
-                <button>Tim</button>
             </div>
             <div className={cx('actions')}>
                 {displayName ? (
@@ -49,16 +41,11 @@ function Header() {
                             aria-haspopup="menu"
                             aria-expanded={menuOpen}
                         >
-                            <span className={cx('user-menu__name')}>
-                                {displayName}
-                            </span>
+                            <span className={cx('user-menu__name')}>{displayName}</span>
                             <span className={cx('user-menu__avatar')}></span>
                         </button>
                         {menuOpen && (
-                            <div
-                                className={cx('user-menu__dropdown')}
-                                role="menu"
-                            >
+                            <div className={cx('user-menu__dropdown')} role="menu">
                                 <Link
                                     to="/account"
                                     className={cx('user-menu__item')}
@@ -93,4 +80,4 @@ function Header() {
     );
 }
 
-export default Header;
+export default AdminHeader;

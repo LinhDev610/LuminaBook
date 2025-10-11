@@ -1,9 +1,9 @@
-import Header from '../components/Header/Header';
+import { AdminHeader } from '../components/Header';
 
-function CustomLayout({ children }) {
+function AdminLayout({ children }) {
     return (
         <div>
-            <Header />
+            <AdminHeader />
             <div className="container">
                 <div className="content">{children}</div>
             </div>
@@ -11,4 +11,4 @@ function CustomLayout({ children }) {
     );
 }
 
-export default CustomLayout;
+export default AdminLayout;

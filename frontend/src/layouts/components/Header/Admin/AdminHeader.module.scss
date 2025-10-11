@@ -1,0 +1,118 @@
+/* Header Styles */
+.header { 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+    background: #fff; 
+    padding: 20px 40px; 
+    border-bottom: 1px solid #ddd; 
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+}
+
+.logo a {
+    display: flex;
+    align-items: center;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.logo-image {
+    height: 70px; /* Tăng gấp 2 lần từ 50px */
+    width: auto;
+    max-width: 400px; /* Tăng max-width tương ứng */
+    transition: opacity 0.2s ease;
+}
+
+.logo a:hover .logo-image {
+    opacity: 0.8;
+}
+
+.actions { 
+    display: flex; 
+    align-items: center; 
+    gap: 15px; 
+}
+
+.login-link { 
+    margin-right: 15px; 
+    color: #1A3C5A; 
+    text-decoration: none; 
+    display: flex; 
+    align-items: center; 
+    gap: 5px; 
+}
+
+.cart { 
+    font-size: 20px; 
+    cursor: pointer; 
+}
+
+.cart img { 
+    width: 28px; 
+    height: 28px; 
+    vertical-align: middle; 
+    cursor: pointer; 
+}
+
+.user-menu {
+    position: relative;
+    display: inline-block;
+    margin-right: 12px;
+}
+
+.user-menu__trigger {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #fff;
+    border: 1px solid #ddd;
+    padding: 6px 10px;
+    border-radius: 20px;
+    cursor: pointer;
+}
+
+.user-menu__name {
+    font-weight: 600;
+}
+
+.user-menu__avatar {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 2px solid #111;
+    display: inline-block;
+}
+
+.user-menu__dropdown {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 8px);
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0,0,0,.08);
+    min-width: 160px;
+    z-index: 10;
+    padding: 6px;
+}
+
+.user-menu__item {
+    width: 100%;
+    text-align: left;
+    background: #fff;
+    border: none;
+    padding: 8px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    text-decoration: none;
+    color: #111;
+    display: block;
+}
+
+.user-menu__item:hover {
+    background: #f3f4f6;
+}

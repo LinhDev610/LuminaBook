@@ -1,6 +1,4 @@
-import React from 'react';
 import classNames from 'classnames/bind';
-import { Link } from 'react-router-dom';
 
 import styles from './Home.module.scss';
 
@@ -9,20 +7,11 @@ const cx = classNames.bind(styles);
 function Home() {
     return (
         <div className={cx('home-wrapper')}>
-            <nav className={cx('navbar')}>
-                <Link to="#">TẤT CẢ DANH MỤC</Link>
-                <Link to="#">Khuyến mãi</Link>
-                <Link to="#">Sách mới</Link>
-                <Link to="#">Hỗ trợ khách hàng</Link>
-                <Link to="#">Liên hệ</Link>
-            </nav>
             <main className={cx('home-content')}>
                 <section className={cx('banner')}>
                     <div className={cx('banner-text')}>
                         <h1>Sài Gòn bao thương</h1>
-                        <p>
-                            Một góc ký ức về tình người trong đại dịch COVID-19
-                        </p>
+                        <p>Một góc ký ức về tình người trong đại dịch COVID-19</p>
                         <button>Mua ngay</button>
                     </div>
                     <div className={cx('banner-img')}>

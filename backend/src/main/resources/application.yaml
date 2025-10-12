@@ -15,7 +15,7 @@ spring:
   # Chi dung jpa duoi day de tu dong tao table User, tuy nhien khi di lam can dua vao 1 script SQL
   jpa:
     hibernate:
-      ddl-auto: validate  Hibernate chỉ kiểm tra xem các bảng, cột, kiểu dữ liệu trong DB có phù hợp với entity trong code hay không. Nếu không khớp → báo lỗi, không tự sửa.
+      ddl-auto: validate
     show-sql: false
     database-platform: org.hibernate.dialect.MySQLDialect
   # validate: Hibernate chỉ kiểm tra xem các bảng, cột, kiểu dữ liệu trong DB có phù hợp với entity trong code hay không. Nếu không khớp → báo lỗi, không tự sửa.

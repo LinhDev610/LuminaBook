@@ -1,6 +1,7 @@
 import classNames from 'classnames/bind';
 
 import styles from './Home.module.scss';
+import Button from '../../components/Common/Button';
 
 const cx = classNames.bind(styles);
 
@@ -12,7 +13,7 @@ function Home() {
                     <div className={cx('banner-text')}>
                         <h1>Sài Gòn bao thương</h1>
                         <p>Một góc ký ức về tình người trong đại dịch COVID-19</p>
-                        <button>Mua ngay</button>
+                        <Button>Mua ngay</Button>
                     </div>
                     <div className={cx('banner-img')}>
                         <img

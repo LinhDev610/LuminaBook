@@ -4,7 +4,7 @@
 .account-wrapper {
     background: #fff;
     color: #111;
-    min-height: 100vh;
+    min-height: 70vh;
     display: flex;
     flex-direction: column;
 }
@@ -28,6 +28,7 @@
     border: 1px solid #ddd;
     border-radius: 8px;
     padding: 16px;
+    height: auto
 }
 
 /* Profile section in sidebar */
@@ -36,13 +37,13 @@
     flex-direction: column;
     align-items: center;
     gap: 10px;
-    padding: 16px 0 12px;
+    padding: 16px 0 50px;
     border-bottom: 1px solid #eee;
 }
 
 .side-avatar {
-    width: 68px;
-    height: 68px;
+    width: 85px;
+    height: 85px;
     border-radius: 50%;
     background: #1a3c5a;
 }
@@ -77,6 +78,14 @@
     display: inline-block;
 }
 
+.menu-item .mi-large {
+    width: 30px;
+    height: 30px;
+    display: inline-block;
+    
+}
+
+
 .menu-item.active {
     background: #edeeef;
     box-shadow: inset 0 0 0 1px #d6d7d9;
@@ -94,14 +103,13 @@
     display: flex;
     flex-direction: column;
     gap: 16px;
-    overflow-y: auto;
-    max-height: calc(100vh - 200px); /* Giới hạn chiều cao */
+    
+    /* Giới hạn chiều cao */
 }
 
 /* Panels */
 .panel {
     background: #fff;
-    border: 1px solid #ddd;
     border-radius: 8px;
     padding: 16px;
 }
@@ -120,6 +128,7 @@
     border-radius: 50%;
     border: 2px solid #111;
     display: inline-block;
+    
 }
 
 /* =========================
@@ -127,30 +136,34 @@
 ========================= */
 .form-row {
     display: flex;
-    gap: 22px;
-    margin-bottom: 16px;
+    gap: 40px;           /* khoảng cách ngang giữa Username và Gmail */
+    margin-bottom: 28px; /* khoảng cách dọc giữa các hàng */
 }
 
 .form-group {
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 10px; /* khoảng cách giữa label và input */
 }
 
 .form-group label {
-    font-size: 13px;
-    color: #111;
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 6px;
+    color: #333;
 }
 
 .form-group input {
-    height: 36px;
-    border: 1px solid #dcdcdc;
-    border-radius: 8px;
+    height: 50px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
     padding: 0 12px;
-    background: #f3f4f6;
+    background: #fff;
     color: #111;
+    font-size: 15px; 
 }
+
 
 .form-actions {
     display: flex;

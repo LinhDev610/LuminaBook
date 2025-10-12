@@ -4,6 +4,7 @@ import classNames from 'classnames/bind';
 
 import logoIcon from '../../../../assets/icons/logo_luminabook.png';
 import useLocalStorage from '../../../../hooks/useLocalStorage';
+import { useAuth } from '../../../../contexts/AuthContext';
 
 import styles from './DefaultHeader.module.scss';
 
@@ -11,16 +12,28 @@ const cx = classNames.bind(styles);
 
 function DefaultHeader() {
     const navigate = useNavigate();
+    const { openLoginModal, openRegisterModal, openForgotPasswordModal } = useAuth();
     const [displayName, setDisplayName, removeDisplayName] = useLocalStorage(
         'displayName',
         null,
     );
     const [token, setToken, removeToken] = useLocalStorage('token', null);
+    const [refreshToken, setRefreshToken, removeRefreshToken] = useLocalStorage('refreshToken', null);
+    const [savedEmail, setSavedEmail, removeSavedEmail] = useLocalStorage('savedEmail', null);
+    
+    // Check for token in both localStorage and sessionStorage
+    const currentToken = token || sessionStorage.getItem('token');
+    const isLoggedIn = !!currentToken;
     const [menuOpen, setMenuOpen] = useState(false);
+    
     const toggleMenu = () => setMenuOpen((v) => !v);
     const handleLogout = () => {
         removeToken();
+        removeRefreshToken();
         removeDisplayName();
+        // Clear sessionStorage
+        sessionStorage.removeItem('token');
+        // Don't remove savedEmail - keep it for next login
         setMenuOpen(false);
         navigate(0);
     };
@@ -42,7 +55,7 @@ function DefaultHeader() {
                     <button>Tìm</button>
                 </div>
                 <div className={cx('actions')}>
-                    {displayName ? (
+                    {isLoggedIn && displayName ? (
                         <div className={cx('user-menu')}>
                             <button
                                 className={cx('user-menu__trigger')}
@@ -76,9 +89,16 @@ function DefaultHeader() {
                             )}
                         </div>
                     ) : (
-                        <Link to="/login" className={cx('login-link')}>
-                            <i className={cx('fi fi-ss-user')}></i> Đăng nhập
-                        </Link>
+                        <div className={cx('auth-buttons')} style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                            <button 
+                                onClick={openLoginModal} 
+                                className={cx('login-link')}
+                                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px' }}
+                            >
+                                <i className={cx('fi fi-ss-user')}></i> Đăng nhập
+                            </button>
+
+                        </div>
                     )}
                     <span className={cx('cart')}>
                         <img

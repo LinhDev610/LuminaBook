@@ -45,8 +45,12 @@ function Button({
         Comp = 'a';
     }
 
-    const classes = cx('wrapper', {
-        [className]: className,
+    // Ensure native button does not accidentally submit forms unless explicitly set
+    if (Comp === 'button' && props.type === undefined) {
+        props.type = 'button';
+    }
+
+    const boundClasses = cx('wrapper', {
         primary,
         outline,
         text,
@@ -55,6 +59,7 @@ function Button({
         small,
         large,
     });
+    const classes = className ? `${boundClasses} ${className}` : boundClasses;
 
     return (
         <Comp className={classes} {...props}>

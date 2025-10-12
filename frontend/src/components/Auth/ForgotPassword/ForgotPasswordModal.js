@@ -1,11 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import './Auth.css';
+import { useAuth } from '../../../contexts/AuthContext';
+import styles from './ForgotPasswordModal.module.scss';
+import Button from '../../Common/Button';
+import classNames from 'classnames/bind';
+
+const cx = classNames.bind(styles);
 
 const API_BASE_URL = 'http://localhost:8080/identity';
 
 export default function ForgotPasswordModal({ open = false, onClose }) {
     const navigate = useNavigate();
+    const { switchToLogin } = useAuth();
     const [step, setStep] = useState(1); // 1: email, 2: verify, 3: reset
     const [email, setEmail] = useState('');
     const [error, setError] = useState('');
@@ -40,20 +46,63 @@ export default function ForgotPasswordModal({ open = false, onClose }) {
         setIsLoading(true);
         setError('');
         try {
-            const response = await fetch(`${API_BASE_URL}/auth/send-otp?email=${encodeURIComponent(email)}`, {
+            // Bước 1: Kiểm tra email có tồn tại không bằng cách thử đăng nhập với password giả
+            // Nếu email không tồn tại, API sẽ trả về lỗi "User not existed"
+            const checkUserResponse = await fetch(`${API_BASE_URL}/auth/token`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username: email,
+                    password: 'dummy-password-to-check-user-exists'
+                })
             });
-            const data = await response.json();
-            if (response.ok && data.code === 200) {
-                setStep(2);
-                setSeconds(60);
-                setTimeout(() => inputsRef.current[0]?.focus(), 0);
+            
+            const checkData = await checkUserResponse.json();
+            
+            // Nếu user không tồn tại (lỗi "User not existed"), báo lỗi
+            if (checkData.message && (
+                checkData.message.includes('User not existed') ||
+                checkData.message.includes('User not found') ||
+                checkData.message.includes('User không tồn tại')
+            )) {
+                setError('Email không tồn tại trong hệ thống. Vui lòng kiểm tra lại email.');
+                return;
+            }
+            
+            // Nếu user tồn tại (lỗi "Unauthenticated" - sai password), tiếp tục gửi OTP
+            if (checkData.message && checkData.message.includes('Unauthenticated')) {
+                // User tồn tại nhưng sai password, tiếp tục gửi OTP
+                const response = await fetch(`${API_BASE_URL}/auth/send-otp?email=${encodeURIComponent(email)}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                });
+                const data = await response.json();
+                
+                if (response.ok && data.code === 200) {
+                    setStep(2);
+                    setSeconds(60);
+                    setTimeout(() => inputsRef.current[0]?.focus(), 0);
+                } else {
+                    setError(data.message || 'Không thể gửi mã code. Vui lòng thử lại.');
+                }
             } else {
-                setError(data.message || 'Không thể gửi mã code. Vui lòng thử lại.');
+                // Trường hợp khác, thử gửi OTP trực tiếp
+                const response = await fetch(`${API_BASE_URL}/auth/send-otp?email=${encodeURIComponent(email)}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                });
+                const data = await response.json();
+                
+                if (response.ok && data.code === 200) {
+                    setStep(2);
+                    setSeconds(60);
+                    setTimeout(() => inputsRef.current[0]?.focus(), 0);
+                } else {
+                    setError(data.message || 'Không thể gửi mã code. Vui lòng thử lại.');
+                }
             }
         } catch (err) {
-            setError('Có lỗi xảy ra khi gửi mã code. Vui lòng thử lại.');
+            setError('Có lỗi xảy ra khi kiểm tra email. Vui lòng thử lại.');
         } finally {
             setIsLoading(false);
         }
@@ -120,7 +169,18 @@ useEffect(() => {
                 inputsRef.current[0]?.focus();
                 setSeconds(60);
             } else {
-                setError(data.message || 'Không thể gửi lại mã code. Vui lòng thử lại.');
+                // Xử lý các trường hợp lỗi cụ thể
+                const errorMessage = data.message || 'Không thể gửi lại mã code. Vui lòng thử lại.';
+                
+                // Kiểm tra nếu email không tồn tại
+                if (errorMessage.includes('User not found') || 
+                    errorMessage.includes('Email không tồn tại') ||
+                    errorMessage.includes('User not exist') ||
+                    errorMessage.includes('Email not found')) {
+                    setError('Email không tồn tại trong hệ thống. Vui lòng kiểm tra lại email.');
+                } else {
+                    setError(errorMessage);
+                }
             }
         } catch (err) {
             setError('Có lỗi xảy ra khi gửi lại mã code. Vui lòng thử lại.');
@@ -143,10 +203,28 @@ useEffect(() => {
             });
             const data = await resp.json();
             if (resp.ok && data?.code === 200) {
-                onClose?.();
-                navigate('/login');
+                // Đổi mật khẩu thành công, chuyển về form đăng nhập
+                setStep(1);
+                setEmail('');
+                setPassword('');
+                setConfirm('');
+                setValues(['', '', '', '', '', '']);
+                switchToLogin();
             } else {
-                setError(data?.message || 'Không thể đặt lại mật khẩu. Vui lòng thử lại.');
+                // Xử lý lỗi cụ thể
+                const errorMessage = data?.message || 'Không thể đặt lại mật khẩu. Vui lòng thử lại.';
+                
+                // Kiểm tra nếu user không tồn tại
+                if (errorMessage.includes('User not found') || 
+                    errorMessage.includes('User not existed') ||
+                    errorMessage.includes('User không tồn tại')) {
+                    setError('Email không tồn tại trong hệ thống. Vui lòng kiểm tra lại email và thử lại từ đầu.');
+                    // Reset về step 1 để user nhập lại email
+                    setStep(1);
+                    setEmail('');
+                } else {
+                    setError(errorMessage);
+                }
             }
         } catch (err) {
             setError('Có lỗi xảy ra. Vui lòng thử lại.');
@@ -156,68 +234,124 @@ useEffect(() => {
     };
 
     if (!open) return null;
+
     return (
-        <div className="auth-modal" role="dialog" aria-modal="true">
-            <div className="auth-card">
-                <div className="auth-header">
-                    <button className="auth-close" onClick={onClose} aria-label="Đóng">×</button>
-                    <h3 className="auth-title">Khôi phục mật khẩu</h3>
-                </div>
-                {step === 1 && (
-                    <form className="auth-form" onSubmit={sendOtp}>
-                        <div className="form-group">
-                            <label>Email</label>
-                            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="example@example" required />
-                        </div>
-                        {error && <div className="error-text">{error}</div>}
-                        <button className="auth-submit" type="submit" disabled={isLoading}>{isLoading ? 'Đang gửi...' : 'Gửi mã code'}</button>
-                    </form>
-                )}
-                {step === 2 && (
-                    <form className="auth-form" onSubmit={verifyOtp}>
-                        <p className="auth-subtext">Nhập mã gồm 6 chữ số đã được gửi tới {email}</p>
-                        <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginBottom: 12 }}>
-                            {values.map((v, i) => (
-                                <input
-                                    key={i}
-                                    ref={(el) => (inputsRef.current[i] = el)}
-                                    type="text"
-                                    inputMode="numeric"
-                                    maxLength={1}
-                                    value={v}
-                                    onChange={(e) => onChangeDigit(i, e.target.value)}
-                                    onKeyDown={(e) => onKeyDownDigit(i, e)}
-                                    style={{ width: 44, height: 52, textAlign: 'center', fontSize: 18, borderRadius: 8, border: '1px solid #ddd' }}
-                                />
-                            ))}
-                        </div>
-                        {error && <div className="error-text">{error}</div>}
-                        {seconds === 0 ? (
-                            <div style={{ textAlign: 'center', marginBottom: 10 }}>
-                                <span style={{ color: '#666', marginRight: 6 }}>Bạn không nhận được mã code</span>
-                                <button type="button" onClick={resend} style={{ background: 'transparent', border: 'none', color: '#111', fontWeight: 600, cursor: 'pointer' }}>Gửi lại</button>
-                            </div>
-                        ) : (
-                            <div className="auth-subtext">Gửi lại sau 00:{seconds.toString().padStart(2, '0')}</div>
-                        )}
-                        <button className="auth-submit" type="submit" disabled={isLoading}>{isLoading ? 'Đang xử lý...' : 'Xác nhận'}</button>
-                    </form>
-                )}
-                {step === 3 && (
-                    <form className="auth-form" onSubmit={resetPassword}>
-                        <div className="form-group">
-                            <label>Mật khẩu mới</label>
-                            <input type="password" value={password} onChange={(e) => { setPassword(e.target.value); setError(''); }} placeholder="********" />
-                        </div>
-                        <div className="form-group">
-                            <label>Xác nhận mật khẩu</label>
-                            <input type="password" value={confirm} onChange={(e) => { setConfirm(e.target.value); setError(''); }} placeholder="********" />
-                        </div>
-                        {error && <div className="error-text">{error}</div>}
-                        <button className="auth-submit" type="submit" disabled={isLoading}>{isLoading ? 'Đang xử lý...' : 'Đổi mật khẩu'}</button>
-                    </form>
-                )}
+        <div>
+            <div className={cx('auth-header')}>
+                <h3 className={cx('auth-title')}>Khôi phục mật khẩu</h3>
+                <Button
+                    onClick={onClose}
+                    aria-label="Đóng"
+                    className={cx('auth-close')}
+                >
+                    ×
+                </Button>
             </div>
+            <p className={cx('auth-subtext')}>
+                Nhớ mật khẩu?{' '}
+                <button 
+                    onClick={switchToLogin}
+                    className={cx('auth-link')}
+                >
+                    Đăng nhập
+                </button>
+            </p>
+            {step === 1 && (
+                <form onSubmit={sendOtp} className={cx('auth-form')}>
+                    <div className={cx('form-group')}>
+                        <label className={cx('form-label')}>Email</label>
+                        <input
+                            type="email"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            placeholder="example@example"
+                            className={cx('form-input')}
+                            required
+                        />
+                    </div>
+                    {error && <div className={cx('error-text')}>{error}</div>}
+                    <Button
+                        type="submit"
+                        className={cx('auth-submit')}
+                        disabled={isLoading}
+                    >
+                        {isLoading ? 'Đang gửi...' : 'Gửi mã code'}
+                    </Button>
+                </form>
+            )}
+            {step === 2 && (
+                <form onSubmit={verifyOtp} className={cx('auth-form')}>
+                    <p className={cx('auth-subtext')}>Nhập mã gồm 6 chữ số đã được gửi tới {email}</p>
+                    <div className={cx('otp-container')}>
+                        {values.map((v, i) => (
+                            <input
+                                key={i}
+                                ref={(el) => (inputsRef.current[i] = el)}
+                                type="text"
+                                inputMode="numeric"
+                                maxLength={1}
+                                value={v}
+                                onChange={(e) => onChangeDigit(i, e.target.value)}
+                                onKeyDown={(e) => onKeyDownDigit(i, e)}
+                                className={cx('otp-input')}
+                            />
+                        ))}
+                    </div>
+                    {error && <div className={cx('error-text')}>{error}</div>}
+                    {seconds === 0 ? (
+                        <div className={cx('resend-container')}>
+                            <span className={cx('resend-text')}>Bạn không nhận được mã code</span>
+                            <Button
+                                onClick={resend}
+                                className={cx('resend-btn')}
+                            >
+                                Gửi lại
+                            </Button>
+                        </div>
+                    ) : (
+                        <div className={cx('countdown')}>Gửi lại sau 00:{seconds.toString().padStart(2, '0')}</div>
+                    )}
+                    <Button
+                        type="submit"
+                        className={cx('auth-submit')}
+                        disabled={isLoading}
+                    >
+                        {isLoading ? 'Đang xử lý...' : 'Xác nhận'}
+                    </Button>
+                </form>
+            )}
+            {step === 3 && (
+                <form onSubmit={resetPassword} className={cx('auth-form')}>
+                    <div className={cx('form-group')}>
+                        <label className={cx('form-label')}>Mật khẩu mới</label>
+                        <input
+                            type="password"
+                            value={password}
+                            onChange={(e) => { setPassword(e.target.value); setError(''); }}
+                            placeholder="********"
+                            className={cx('form-input')}
+                        />
+                    </div>
+                    <div className={cx('form-group')}>
+                        <label className={cx('form-label')}>Xác nhận mật khẩu</label>
+                        <input
+                            type="password"
+                            value={confirm}
+                            onChange={(e) => { setConfirm(e.target.value); setError(''); }}
+                            placeholder="********"
+                            className={cx('form-input')}
+                        />
+                    </div>
+                    {error && <div className={cx('error-text')}>{error}</div>}
+                    <Button
+                        type="submit"
+                        className={cx('auth-submit')}
+                        disabled={isLoading}
+                    >
+                        {isLoading ? 'Đang xử lý...' : 'Đổi mật khẩu'}
+                    </Button>
+                </form>
+            )}
         </div>
     );
 }

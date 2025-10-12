@@ -1,11 +1,31 @@
-.btn {
-    padding: 24px 10px;
+.wrapper {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 16px;
     border: 1px solid #FFFFFF;
     border-radius: 10px;
+    background-color: transparent;
+    cursor: pointer;
+}
 
-    display: flex;
-    justify-content: center;
+.icon {
+    display: inline-flex;
     align-items: center;
+    justify-content: center;
+    line-height: 0;
+}
+
+.icon svg,
+.icon img {
+    display: block;
+}
+
+.title {
+    display: inline-flex;
+    align-items: center;
+    line-height: 1;
 }
 
 .secondary {
@@ -16,6 +36,33 @@
 .primary {
     color: #FFFFFF;
     background-color: #2E2E2E;
+}
+
+.outline {
+    color: #2E2E2E;
+    background-color: transparent;
+    border-color: #2E2E2E;
+}
+
+.text {
+    color: #2E2E2E;
+    background: transparent;
+    border: none;
+    padding: 0;
+}
+
+.rounded {
+    border-radius: 9999px;
+}
+
+.small {
+    padding: 6px 12px;
+    font-size: 14px;
+}
+
+.large {
+    padding: 12px 20px;
+    font-size: 16px;
 }
 
 .disabled {

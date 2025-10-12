@@ -15,9 +15,12 @@ spring:
   # Chi dung jpa duoi day de tu dong tao table User, tuy nhien khi di lam can dua vao 1 script SQL
   jpa:
     hibernate:
-      ddl-auto: update
-    show-sql: true
+      ddl-auto: validate  Hibernate chỉ kiểm tra xem các bảng, cột, kiểu dữ liệu trong DB có phù hợp với entity trong code hay không. Nếu không khớp → báo lỗi, không tự sửa.
+    show-sql: false
     database-platform: org.hibernate.dialect.MySQLDialect
+  # validate: Hibernate chỉ kiểm tra xem các bảng, cột, kiểu dữ liệu trong DB có phù hợp với entity trong code hay không. Nếu không khớp → báo lỗi, không tự sửa.
+  # update : Hibernate so sánh entity và DB → tự động thêm hoặc chỉnh sửa bảng/cột để khớp. Tuy nhiên, nó không xóa các cột cũ.
+
 #  Brevo Email Configuration
 brevo:
   api:

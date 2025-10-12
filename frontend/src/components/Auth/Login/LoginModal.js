@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import useLocalStorage from '../../../hooks/useLocalStorage';
 import { useAuth } from '../../../contexts/AuthContext';
@@ -13,12 +13,45 @@ export default function LoginModal({ open = false, onClose }) {
     const navigate = useNavigate();
     const { switchToRegister, switchToForgotPassword } = useAuth();
     const [token, setToken] = useLocalStorage('token', null);
+    const [refreshToken, setRefreshToken, removeRefreshToken] = useLocalStorage('refreshToken', null);
     const [displayName, setDisplayName] = useLocalStorage('displayName', null);
-    const [email, setEmail] = useState('');
+    const [savedEmail, setSavedEmail, removeSavedEmail] = useLocalStorage('savedEmail', null);
+    const [email, setEmail] = useState(savedEmail || '');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
+    const [rememberMe, setRememberMe] = useState(!!savedEmail);
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+
+    // Function to refresh token using backend endpoint
+    const refreshTokenIfNeeded = async () => {
+        if (!refreshToken) return false;
+        
+        try {
+            const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token: refreshToken }),
+            });
+            
+            const data = await response.json();
+            if (response.ok && data?.result?.token) {
+                setToken(data.result.token);
+                setRefreshToken(data.result.token);
+                return true;
+            }
+        } catch (err) {
+            console.log('Token refresh failed:', err);
+        }
+        return false;
+    };
+
+    // Auto-refresh token when component mounts (for Remember Me)
+    useEffect(() => {
+        if (refreshToken && !token) {
+            refreshTokenIfNeeded();
+        }
+    }, []);
 
     if (!open) return null;
 
@@ -35,7 +68,19 @@ export default function LoginModal({ open = false, onClose }) {
             });
             const data = await resp.json().catch(() => ({}));
             if (resp.ok && data?.result?.token) {
-                setToken(data.result.token);
+                // Handle Remember Me
+                if (rememberMe) {
+                    // Lưu token và refresh token vào localStorage (persistent)
+                    setToken(data.result.token);
+                    setRefreshToken(data.result.token);
+                    setSavedEmail(email.trim());
+                } else {
+                    // Chỉ lưu token vào sessionStorage (temporary)
+                    sessionStorage.setItem('token', data.result.token);
+                    removeSavedEmail();
+                    removeRefreshToken();
+                }
+                
                 try {
                     const me = await fetch(`${API_BASE_URL}/users/my-info`, {
                         headers: {
@@ -51,8 +96,10 @@ export default function LoginModal({ open = false, onClose }) {
                 } catch (_) {
                     setDisplayName(payload.username);
                 }
+                
                 onClose?.();
-                navigate('/');
+                // Force refresh to update Header
+                navigate(0);
             } else {
                 setError('Tài khoản hoặc mật khẩu không đúng');
             }
@@ -132,8 +179,13 @@ export default function LoginModal({ open = false, onClose }) {
                 </div>
                 {error && <div style={{ color: 'red', textAlign: 'center', marginBottom: '10px' }}>{error}</div>}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                    <label>
-                        <input type="checkbox" /> Nhớ tài khoản
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                        <input 
+                            type="checkbox" 
+                            checked={rememberMe}
+                            onChange={(e) => setRememberMe(e.target.checked)}
+                        /> 
+                        Nhớ tài khoản
                     </label>
                     <button
                         onClick={switchToForgotPassword}

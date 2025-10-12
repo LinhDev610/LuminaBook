@@ -18,11 +18,22 @@ function DefaultHeader() {
         null,
     );
     const [token, setToken, removeToken] = useLocalStorage('token', null);
+    const [refreshToken, setRefreshToken, removeRefreshToken] = useLocalStorage('refreshToken', null);
+    const [savedEmail, setSavedEmail, removeSavedEmail] = useLocalStorage('savedEmail', null);
+    
+    // Check for token in both localStorage and sessionStorage
+    const currentToken = token || sessionStorage.getItem('token');
+    const isLoggedIn = !!currentToken;
     const [menuOpen, setMenuOpen] = useState(false);
+    
     const toggleMenu = () => setMenuOpen((v) => !v);
     const handleLogout = () => {
         removeToken();
+        removeRefreshToken();
         removeDisplayName();
+        // Clear sessionStorage
+        sessionStorage.removeItem('token');
+        // Don't remove savedEmail - keep it for next login
         setMenuOpen(false);
         navigate(0);
     };
@@ -44,7 +55,7 @@ function DefaultHeader() {
                     <button>Tim</button>
                 </div>
                 <div className={cx('actions')}>
-                    {displayName ? (
+                    {isLoggedIn && displayName ? (
                         <div className={cx('user-menu')}>
                             <button
                                 className={cx('user-menu__trigger')}

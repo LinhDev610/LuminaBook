@@ -2,6 +2,9 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import styles from "../Login/LoginModal.module.scss";
 import Button from "../../Common/Button";
+import classNames from 'classnames/bind';
+
+const cx = classNames.bind(styles);
 
 const API_BASE_URL = "http://localhost:8080/identity";
 
@@ -101,7 +104,7 @@ export default function VerifyCode() {
                     Vui lòng nhập mã xác nhận đã được gửi{email ? ` đến email của bạn (${email}).` : " đến email của bạn vào đây."}
                 </p>
                 <form onSubmit={handleSubmit}>
-                    <div style={{ display: "flex", gap: 12, justifyContent: "center", marginBottom: 20 }}>
+                    <div className={cx('otp-container')}>
                         {values.map((v, i) => (
                             <input
                                 key={i}
@@ -112,34 +115,26 @@ export default function VerifyCode() {
                                 value={v}
                                 onChange={(e) => onChange(i, e.target.value)}
                                 onKeyDown={(e) => onKeyDown(i, e)}
-                                style={{
-                                    width: 48,
-                                    height: 56,
-                                    borderRadius: 10,
-                                    border: error ? "1px solid #ff4d4f" : "1px solid #ddd",
-                                    textAlign: "center",
-                                    fontSize: 20,
-                                    outline: "none",
-                                }}
+                                className={cx('otp-input', { 'error': error })}
                             />
                         ))}
                     </div>
                     {error && (
-                        <div style={{ textAlign: "center", color: "#ff4d4f", marginBottom: 16, fontSize: 14 }}>{error}</div>
+                        <div className={cx('error-text')}>{error}</div>
                     )}
                     {seconds === 0 && (
-                        <div style={{ textAlign: "center", marginBottom: 16 }}>
-                            <span style={{ color: "#666", marginRight: 6 }}>Bạn không nhận được mã code</span>
-                            <Button text onClick={handleResend} style={{ color: "#111", fontWeight: 600, cursor: "pointer" }}>Gửi lại.</Button>
+                        <div className={cx('resend-container')}>
+                            <span className={cx('resend-text')}>Bạn không nhận được mã code</span>
+                            <Button text onClick={handleResend} className={cx('resend-btn')}>Gửi lại.</Button>
                         </div>
                     )}
-                    <Button type="submit" className={styles['login-btn']} disabled={isLoading}>
+                    <Button type="submit" className={cx('auth-submit')} disabled={isLoading}>
                         {isLoading ? "Đang xử lý..." : "Xác nhận"}
                     </Button>
                     {seconds > 0 && (
-                        <div style={{ textAlign: "center", marginTop: 16, color: "#666" }}>
+                        <div className={cx('countdown')}>
                             <span>Gửi lại sau</span>
-                            <span style={{ marginLeft: 8 }}>{`00:${seconds.toString().padStart(2, "0")}`}</span>
+                            <span className={cx('countdown-time')}>{`00:${seconds.toString().padStart(2, "0")}`}</span>
                         </div>
                     )}
                 </form>

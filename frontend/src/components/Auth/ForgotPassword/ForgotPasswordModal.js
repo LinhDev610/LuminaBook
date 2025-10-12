@@ -3,6 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../contexts/AuthContext';
 import styles from './ForgotPasswordModal.module.scss';
 import Button from '../../Common/Button';
+import classNames from 'classnames/bind';
+
+const cx = classNames.bind(styles);
 
 const API_BASE_URL = 'http://localhost:8080/identity';
 
@@ -234,42 +237,42 @@ useEffect(() => {
 
     return (
         <div>
-            <div className="auth-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                <h3 style={{ margin: 0, fontSize: '24px', fontWeight: 'bold' }}>Khôi phục mật khẩu</h3>
+            <div className={cx('auth-header')}>
+                <h3 className={cx('auth-title')}>Khôi phục mật khẩu</h3>
                 <Button
                     onClick={onClose}
                     aria-label="Đóng"
-                    style={{ background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer' }}
+                    className={cx('auth-close')}
                 >
                     ×
                 </Button>
             </div>
-            <p style={{ textAlign: 'center', marginBottom: '20px', color: '#666' }}>
+            <p className={cx('auth-subtext')}>
                 Nhớ mật khẩu?{' '}
                 <button 
                     onClick={switchToLogin}
-                    style={{ background: 'none', border: 'none', color: '#0077ff', cursor: 'pointer', textDecoration: 'underline' }}
+                    className={cx('auth-link')}
                 >
                     Đăng nhập
                 </button>
             </p>
             {step === 1 && (
-                <form onSubmit={sendOtp}>
-                    <div style={{ marginBottom: '15px' }}>
-                        <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Email</label>
+                <form onSubmit={sendOtp} className={cx('auth-form')}>
+                    <div className={cx('form-group')}>
+                        <label className={cx('form-label')}>Email</label>
                         <input
                             type="email"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             placeholder="example@example"
-                            style={{ width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '5px' }}
+                            className={cx('form-input')}
                             required
                         />
                     </div>
-                    {error && <div style={{ color: 'red', textAlign: 'center', marginBottom: '10px' }}>{error}</div>}
+                    {error && <div className={cx('error-text')}>{error}</div>}
                     <Button
                         type="submit"
-                        style={{ width: '100%', padding: '12px', background: '#2E2E2E', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}
+                        className={cx('auth-submit')}
                         disabled={isLoading}
                     >
                         {isLoading ? 'Đang gửi...' : 'Gửi mã code'}
@@ -277,9 +280,9 @@ useEffect(() => {
                 </form>
             )}
             {step === 2 && (
-                <form onSubmit={verifyOtp}>
-                    <p style={{ textAlign: 'center', marginBottom: '20px', color: '#666' }}>Nhập mã gồm 6 chữ số đã được gửi tới {email}</p>
-                    <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginBottom: '20px' }}>
+                <form onSubmit={verifyOtp} className={cx('auth-form')}>
+                    <p className={cx('auth-subtext')}>Nhập mã gồm 6 chữ số đã được gửi tới {email}</p>
+                    <div className={cx('otp-container')}>
                         {values.map((v, i) => (
                             <input
                                 key={i}
@@ -290,27 +293,27 @@ useEffect(() => {
                                 value={v}
                                 onChange={(e) => onChangeDigit(i, e.target.value)}
                                 onKeyDown={(e) => onKeyDownDigit(i, e)}
-                                style={{ width: '44px', height: '52px', textAlign: 'center', fontSize: '18px', borderRadius: '8px', border: '1px solid #ddd' }}
+                                className={cx('otp-input')}
                             />
                         ))}
                     </div>
-                    {error && <div style={{ color: 'red', textAlign: 'center', marginBottom: '10px' }}>{error}</div>}
+                    {error && <div className={cx('error-text')}>{error}</div>}
                     {seconds === 0 ? (
-                        <div style={{ textAlign: 'center', marginBottom: '10px' }}>
-                            <span style={{ color: '#666', marginRight: '6px' }}>Bạn không nhận được mã code</span>
+                        <div className={cx('resend-container')}>
+                            <span className={cx('resend-text')}>Bạn không nhận được mã code</span>
                             <Button
                                 onClick={resend}
-                                style={{ background: 'none', border: 'none', color: '#111', fontWeight: '600', cursor: 'pointer' }}
+                                className={cx('resend-btn')}
                             >
                                 Gửi lại
                             </Button>
                         </div>
                     ) : (
-                        <div style={{ textAlign: 'center', marginBottom: '10px', color: '#666' }}>Gửi lại sau 00:{seconds.toString().padStart(2, '0')}</div>
+                        <div className={cx('countdown')}>Gửi lại sau 00:{seconds.toString().padStart(2, '0')}</div>
                     )}
                     <Button
                         type="submit"
-                        style={{ width: '100%', padding: '12px', background: '#2E2E2E', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}
+                        className={cx('auth-submit')}
                         disabled={isLoading}
                     >
                         {isLoading ? 'Đang xử lý...' : 'Xác nhận'}
@@ -318,31 +321,31 @@ useEffect(() => {
                 </form>
             )}
             {step === 3 && (
-                <form onSubmit={resetPassword}>
-                    <div style={{ marginBottom: '15px' }}>
-                        <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Mật khẩu mới</label>
+                <form onSubmit={resetPassword} className={cx('auth-form')}>
+                    <div className={cx('form-group')}>
+                        <label className={cx('form-label')}>Mật khẩu mới</label>
                         <input
                             type="password"
                             value={password}
                             onChange={(e) => { setPassword(e.target.value); setError(''); }}
                             placeholder="********"
-                            style={{ width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '5px' }}
+                            className={cx('form-input')}
                         />
                     </div>
-                    <div style={{ marginBottom: '15px' }}>
-                        <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Xác nhận mật khẩu</label>
+                    <div className={cx('form-group')}>
+                        <label className={cx('form-label')}>Xác nhận mật khẩu</label>
                         <input
                             type="password"
                             value={confirm}
                             onChange={(e) => { setConfirm(e.target.value); setError(''); }}
                             placeholder="********"
-                            style={{ width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '5px' }}
+                            className={cx('form-input')}
                         />
                     </div>
-                    {error && <div style={{ color: 'red', textAlign: 'center', marginBottom: '10px' }}>{error}</div>}
+                    {error && <div className={cx('error-text')}>{error}</div>}
                     <Button
                         type="submit"
-                        style={{ width: '100%', padding: '12px', background: '#2E2E2E', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}
+                        className={cx('auth-submit')}
                         disabled={isLoading}
                     >
                         {isLoading ? 'Đang xử lý...' : 'Đổi mật khẩu'}

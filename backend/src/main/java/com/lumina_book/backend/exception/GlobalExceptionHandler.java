@@ -59,8 +59,9 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(value = MethodArgumentNotValidException.class)
     ResponseEntity<ApiResponse> handlingValidation(MethodArgumentNotValidException exception) {
-        String enumKey =
-                exception.getFieldError().getDefaultMessage(); // trả về thông báo lỗi gắn trong annotation(message)
+        String enumKey = (exception.getFieldError() != null)
+                ? exception.getFieldError().getDefaultMessage() // trả về thông báo lỗi gắn trong annotation(message)
+                : ErrorCode.INVALID_KEY.name();
 
         ErrorCode errorCode = ErrorCode.INVALID_KEY;
 
@@ -89,12 +90,11 @@ public class GlobalExceptionHandler {
         ApiResponse apiResponse = new ApiResponse();
 
         apiResponse.setCode(errorCode.getCode());
-        apiResponse.setMessage(
-                Objects.nonNull(attributes)
-                        ? mapAttribute(
-                                errorCode.getMessage(),
-                                attributes) // Hàm mapAttribute sẽ thay {min} bằng giá trị thực tế trong annotation (3).
-                        : errorCode.getMessage());
+        String message = errorCode.getMessage();
+        if (Objects.nonNull(attributes) && message != null && message.contains("{")) {
+            message = mapAttribute(message, attributes); // thay {min} nếu có
+        }
+        apiResponse.setMessage(message);
 
         return ResponseEntity.badRequest().body(apiResponse);
     }

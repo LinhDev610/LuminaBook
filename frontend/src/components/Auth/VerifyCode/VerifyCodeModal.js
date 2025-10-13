@@ -59,7 +59,12 @@ export default function VerifyCode() {
                     navigate("/reset-password", { state: { email, otp: code } });
                 }
             } else {
-                setError(data.message || "Mã code sai, vui lòng nhập lại mã code.");
+                // Xử lý lỗi OTP cụ thể
+                if (data.code === 1010 || (data.message && data.message.includes('OTP'))) {
+                    setError('Mã OTP không đúng, yêu cầu nhập lại');
+                } else {
+                    setError(data.message || "Mã code sai, vui lòng nhập lại mã code.");
+                }
             }
         } catch (err) {
             setError("Có lỗi xảy ra khi xác thực mã code. Vui lòng thử lại.");

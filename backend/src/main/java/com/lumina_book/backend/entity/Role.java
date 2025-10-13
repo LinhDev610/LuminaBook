@@ -18,7 +18,7 @@ import lombok.experimental.FieldDefaults;
 @Entity
 public class Role {
     @Id
-    String name;
+    String roleName;
 
     String description;
 

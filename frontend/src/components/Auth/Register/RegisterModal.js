@@ -136,7 +136,12 @@ export default function RegisterModal({ open = false, onClose }) {
             if (response.ok && data.code === 200) {
                 setStep(3);
             } else {
-                setError(data.message || 'Mã xác thực không đúng. Vui lòng thử lại.');
+                // Xử lý lỗi OTP cụ thể
+                if (data.code === 1010 || (data.message && data.message.includes('OTP'))) {
+                    setError('Mã OTP không đúng, yêu cầu nhập lại');
+                } else {
+                    setError(data.message || 'Mã xác thực không đúng. Vui lòng thử lại.');
+                }
             }
         } catch (err) {
             setError('Có lỗi xảy ra. Vui lòng thử lại.');

@@ -145,7 +145,12 @@ useEffect(() => {
             if (response.ok && data.code === 200) {
                 setStep(3);
             } else {
-                setError(data.message || 'Mã code sai, vui lòng nhập lại mã code.');
+                // Xử lý lỗi OTP cụ thể
+                if (data.code === 1010 || (data.message && data.message.includes('OTP'))) {
+                    setError('Mã OTP không đúng, yêu cầu nhập lại');
+                } else {
+                    setError(data.message || 'Mã code sai, vui lòng nhập lại mã code.');
+                }
             }
         } catch (err) {
             setError('Có lỗi xảy ra khi xác thực mã code. Vui lòng thử lại.');
@@ -231,7 +236,7 @@ useEffect(() => {
                 const code = data?.code;
                 let errorMessage = data?.message || 'Không thể đặt lại mật khẩu. Vui lòng thử lại.';
                 if (code === 1004 || (errorMessage || '').includes('INVALID_PASSWORD')) {
-                    errorMessage = 'Mật khẩu ít nhất phải chứa một chữ cái thường, 1 chữ cái in hoa,1 số và 1 kí tự đặc biệt';
+                    errorMessage = 'Mật khẩu ít nhất phải chứa một chữ cái thường, 1 chữ cái in hoa, 1 số và 1 kí tự đặc biệt';
                 }
                 
                 // Kiểm tra nếu user không tồn tại

@@ -21,7 +21,7 @@ public enum ErrorCode {
     UNAUTHORIZED(1007, "You do not have permission", HttpStatus.FORBIDDEN),
     INVALID_DOB(1008, "Your age must be as least {min}", HttpStatus.BAD_REQUEST),
     EMAIL_SEND_FAILED(1009, "Failed to send email", HttpStatus.INTERNAL_SERVER_ERROR),
-    INVALID_OTP(1010, "Invalid or expired OTP", HttpStatus.BAD_REQUEST),
+    INVALID_OTP(1010, "Mã OTP không đúng, yêu cầu nhập lại", HttpStatus.BAD_REQUEST),
     ;
 
     ErrorCode(int code, String message, HttpStatusCode statusCode) {

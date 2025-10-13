@@ -17,6 +17,7 @@ spring:
     hibernate:
       ddl-auto: update  # Hibernate chỉ kiểm tra xem các bảng, cột, kiểu dữ liệu trong DB có phù hợp với entity trong code hay không. Nếu không khớp → báo lỗi, không tự sửa.
 
+
     show-sql: false
     database-platform: org.hibernate.dialect.MySQLDialect
   # validate: Hibernate chi kiem tra cac bang, cot, kieu du lieu trong DB co phu hop voi entity trong code hay không. Neu khong khop → bao loi, khong tu sua.
@@ -32,7 +33,7 @@ brevo:
 #  Secret Key
 jwt:
   signerKey: "/nvphzRqEgduNfnKy2ztU3XBeojbmK8jzDivxOxLIGnl+D5GfkjyXdLq15xz9af/\n"
-  valid-duration: 3600  # in second
+  valid-duration: 3600 # in second
   refreshable-duration: 360000 # in seconds
 
 # Layer1 - Controller: Quan ly cac mapping, endpoint

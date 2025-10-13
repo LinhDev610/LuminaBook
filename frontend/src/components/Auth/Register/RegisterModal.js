@@ -175,6 +175,9 @@ export default function RegisterModal({ open = false, onClose }) {
         // Password policy: 8-32 chars, at least 1 lowercase, 1 uppercase, 1 digit, 1 special
         if (password.length < 8) return setError('Mật khẩu quá ngắn, tối thiểu 8 ký tự');
         if (password.length > 32) return setError('Mật khẩu quá dài, tối đa 32 ký tự');
+        const hasAnyWhitespace = /[\s\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000\uFEFF\u200B\u200C\u200D]/.test(password);
+        const confirmHasWhitespace = /[\s\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000\uFEFF\u200B\u200C\u200D]/.test(confirm);
+        if (hasAnyWhitespace || confirmHasWhitespace) return setError('Mật khẩu không được chứa khoảng trắng.');
         const hasLowercase = /[a-z]/.test(password);
         const hasUppercase = /[A-Z]/.test(password);
         const hasDigit = /\d/.test(password);
@@ -227,13 +230,19 @@ export default function RegisterModal({ open = false, onClose }) {
                     navigate('/login');
                 }
             } else {
-                const message =
-                    data?.message || 'Đăng ký thất bại. Vui lòng thử lại.';
-                setError(
-                    message === 'User existed'
-                        ? 'Tài khoản đã tồn tại'
-                        : message,
-                );
+                // If current password contains whitespace, always prefer FE message
+                const whitespaceRegex = /[\s\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000\uFEFF\u200B\u200C\u200D]/;
+                if (whitespaceRegex.test(password)) {
+                    setError('Mật khẩu không được chứa khoảng trắng.');
+                    return;
+                }
+                const code = data?.code;
+                if (code === 1004 || (data?.message || '').includes('INVALID_PASSWORD')) {
+                    setError('Mật khẩu ít nhất phải chứa một chữ cái thường, 1 chữ cái in hoa,1 số và 1 kí tự đặc biệt');
+                } else {
+                    const message = data?.message || 'Đăng ký thất bại. Vui lòng thử lại.';
+                    setError(message === 'User existed' ? 'Tài khoản đã tồn tại' : message);
+                }
             }
         } catch (err) {
             setError('Không thể kết nối máy chủ. Vui lòng thử lại.');

@@ -14,7 +14,7 @@ import styles from './RegisterModal.module.scss';
 
 const cx = classNames.bind(styles);
 
-const API_BASE_URL = 'http://localhost:8080/identity';
+const API_BASE_URL = 'http://localhost:8080/lumina_book';
 
 export default function RegisterModal({ open = false, onClose }) {
     const navigate = useNavigate();
@@ -172,7 +172,16 @@ export default function RegisterModal({ open = false, onClose }) {
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!agree) return setError('Hãy đồng ý điều khoản');
-        if (password.length < 6) return setError('Mật khẩu tối thiểu 6 ký tự');
+        // Password policy: 8-32 chars, at least 1 lowercase, 1 uppercase, 1 digit, 1 special
+        if (password.length < 8) return setError('Mật khẩu quá ngắn, tối thiểu 8 ký tự');
+        if (password.length > 32) return setError('Mật khẩu quá dài, tối đa 32 ký tự');
+        const hasLowercase = /[a-z]/.test(password);
+        const hasUppercase = /[A-Z]/.test(password);
+        const hasDigit = /\d/.test(password);
+        const hasSpecial = /[^A-Za-z0-9]/.test(password);
+        if (!(hasLowercase && hasUppercase && hasDigit && hasSpecial)) {
+            return setError('Mật khẩu ít nhất phải chứa một chữ cái thường, 1 chữ cái in hoa,1 số và 1 kí tự đặc biệt');
+        }
         if (password !== confirm) return setError('Mật khẩu không khớp');
         setIsLoading(true);
         setError('');

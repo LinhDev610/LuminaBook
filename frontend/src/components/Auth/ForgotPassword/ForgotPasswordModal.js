@@ -7,11 +7,11 @@ import classNames from 'classnames/bind';
 
 const cx = classNames.bind(styles);
 
-const API_BASE_URL = 'http://localhost:8080/identity';
+const API_BASE_URL = 'http://localhost:8080/lumina_book';
 
 export default function ForgotPasswordModal({ open = false, onClose }) {
     const navigate = useNavigate();
-    const { switchToLogin } = useAuth();
+    const { switchToLogin } = useAuth(); // dùng AuthContext để chuyển về màn đăng nhập
     const [step, setStep] = useState(1); // 1: email, 2: verify, 3: reset
     const [email, setEmail] = useState('');
     const [error, setError] = useState('');
@@ -53,7 +53,7 @@ export default function ForgotPasswordModal({ open = false, onClose }) {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     username: email,
-                    password: 'dummy-password-to-check-user-exists'
+                    password: 'password-to-check-user-exists'
                 })
             });
             
@@ -191,7 +191,16 @@ useEffect(() => {
 
     const resetPassword = async (e) => {
         e.preventDefault();
-        if (password.length < 6) return setError('Mật khẩu tối thiểu 6 ký tự');
+        // Password policy: 8-32 chars, at least 1 lowercase, 1 uppercase, 1 digit, 1 special
+        if (password.length < 8) return setError('Mật khẩu quá ngắn, tối thiểu 8 ký tự');
+        if (password.length > 32) return setError('Mật khẩu quá dài, tối đa 32 ký tự');
+        const hasLowercase = /[a-z]/.test(password);
+        const hasUppercase = /[A-Z]/.test(password);
+        const hasDigit = /\d/.test(password);
+        const hasSpecial = /[^A-Za-z0-9]/.test(password);
+        if (!(hasLowercase && hasUppercase && hasDigit && hasSpecial)) {
+            return setError('Mật khẩu ít nhất phải chứa một chữ cái thường, 1 chữ cái in hoa,1 số và 1 kí tự đặc biệt');
+        }
         if (password !== confirm) return setError('Mật khẩu không khớp');
         setIsLoading(true);
         setError('');

@@ -18,8 +18,8 @@ spring:
       ddl-auto: validate
     show-sql: false
     database-platform: org.hibernate.dialect.MySQLDialect
-  # validate: Hibernate chỉ kiểm tra xem các bảng, cột, kiểu dữ liệu trong DB có phù hợp với entity trong code hay không. Nếu không khớp → báo lỗi, không tự sửa.
-  # update : Hibernate so sánh entity và DB → tự động thêm hoặc chỉnh sửa bảng/cột để khớp. Tuy nhiên, nó không xóa các cột cũ.
+  # validate: Hibernate chi kiem tra cac bang, cot, kieu du lieu trong DB co phu hop voi entity trong code hay không. Neu khong khop → bao loi, khong tu sua.
+  # update : Hibernate so sanh entity va DB → tu dong them hoac chinh sua bang/cot de khop. Tuy nhien, no khong xoa cac cot cu.
 
 #  Brevo Email Configuration
 brevo:
@@ -34,6 +34,6 @@ jwt:
   valid-duration: 3600  # in second
   refreshable-duration: 360000 # in seconds
 
-Layer1 - Controller: Quan ly cac mapping, endpoint
-Layer2 - Service: Xu ly cac logic lien quan toi subdomain
-Layer3 - Repository: Tang tuong tac truc tiep voi DBMS
+# Layer1 - Controller: Quan ly cac mapping, endpoint
+# Layer2 - Service: Xu ly cac logic lien quan toi subdomain
+# Layer3 - Repository: Tang tuong tac truc tiep voi DBMS

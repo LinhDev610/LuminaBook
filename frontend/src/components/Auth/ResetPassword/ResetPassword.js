@@ -5,7 +5,7 @@ import invisibleIcon from "../../../assets/icons/icon-invisible.png";
 import styles from "../Login/LoginModal.module.scss";
 import Button from "../../Common/Button";
 
-const API_BASE_URL = "http://localhost:8080/identity";
+const API_BASE_URL = "http://localhost:8080/lumina_book";
 
 export default function ResetPassword() {
     const navigate = useNavigate();

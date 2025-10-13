@@ -6,7 +6,7 @@ import classNames from 'classnames/bind';
 
 const cx = classNames.bind(styles);
 
-const API_BASE_URL = "http://localhost:8080/identity";
+const API_BASE_URL = "http://localhost:8080/lumina_book";
 
 export default function VerifyCode() {
     const navigate = useNavigate();

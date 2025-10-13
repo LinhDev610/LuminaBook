@@ -7,11 +7,11 @@ import classNames from 'classnames/bind';
 
 const cx = classNames.bind(styles);
 
-const API_BASE_URL = 'http://localhost:8080/identity';
+const API_BASE_URL = 'http://localhost:8080/lumina_book';
 
 export default function ForgotPasswordModal({ open = false, onClose }) {
     const navigate = useNavigate();
-    const { switchToLogin } = useAuth();
+    const { switchToLogin } = useAuth(); // dùng AuthContext để chuyển về màn đăng nhập
     const [step, setStep] = useState(1); // 1: email, 2: verify, 3: reset
     const [email, setEmail] = useState('');
     const [error, setError] = useState('');
@@ -53,7 +53,7 @@ export default function ForgotPasswordModal({ open = false, onClose }) {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     username: email,
-                    password: 'dummy-password-to-check-user-exists'
+                    password: 'password-to-check-user-exists'
                 })
             });
             

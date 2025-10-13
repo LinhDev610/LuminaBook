@@ -3,7 +3,7 @@
 server:
   port: 8080
   servlet:
-    context-path: /lumina-book
+    context-path: /lumina_book
 
 #  Config cau hinh database
 spring:
@@ -15,7 +15,7 @@ spring:
   # Chi dung jpa duoi day de tu dong tao table User, tuy nhien khi di lam can dua vao 1 script SQL
   jpa:
     hibernate:
-      ddl-auto: validate
+      ddl-auto: update
     show-sql: false
     database-platform: org.hibernate.dialect.MySQLDialect
   # validate: Hibernate chi kiem tra cac bang, cot, kieu du lieu trong DB co phu hop voi entity trong code hay không. Neu khong khop → bao loi, khong tu sua.

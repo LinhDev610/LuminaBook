@@ -194,6 +194,8 @@ useEffect(() => {
         // Password policy: 8-32 chars, at least 1 lowercase, 1 uppercase, 1 digit, 1 special
         if (password.length < 8) return setError('Mật khẩu quá ngắn, tối thiểu 8 ký tự');
         if (password.length > 32) return setError('Mật khẩu quá dài, tối đa 32 ký tự');
+        const hasAnyWhitespace = /[\s\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000\uFEFF\u200B\u200C\u200D]/.test(password);
+        if (hasAnyWhitespace) return setError('Mật khẩu không được chứa khoảng trắng.');
         const hasLowercase = /[a-z]/.test(password);
         const hasUppercase = /[A-Z]/.test(password);
         const hasDigit = /\d/.test(password);
@@ -221,7 +223,16 @@ useEffect(() => {
                 switchToLogin();
             } else {
                 // Xử lý lỗi cụ thể
-                const errorMessage = data?.message || 'Không thể đặt lại mật khẩu. Vui lòng thử lại.';
+                const whitespaceRegex = /[\s\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000\uFEFF\u200B\u200C\u200D]/;
+                if (whitespaceRegex.test(password)) {
+                    setError('Mật khẩu không được chứa khoảng trắng.');
+                    return;
+                }
+                const code = data?.code;
+                let errorMessage = data?.message || 'Không thể đặt lại mật khẩu. Vui lòng thử lại.';
+                if (code === 1004 || (errorMessage || '').includes('INVALID_PASSWORD')) {
+                    errorMessage = 'Mật khẩu ít nhất phải chứa một chữ cái thường, 1 chữ cái in hoa,1 số và 1 kí tự đặc biệt';
+                }
                 
                 // Kiểm tra nếu user không tồn tại
                 if (errorMessage.includes('User not found') || 

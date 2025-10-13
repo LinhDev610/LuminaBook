@@ -1,4 +1,4 @@
-w// useLocalStorage Hook
+// useLocalStorage Hook
 // Lưu trữ dữ liệu trong localStorage
 
 import { useState, useEffect } from 'react';

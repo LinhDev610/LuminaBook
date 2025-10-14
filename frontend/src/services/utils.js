@@ -25,8 +25,27 @@ export const formatDate = (date, options = {}) => {
 
 // Validate email
 export const isValidEmail = (email) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
+    // Kiểm tra dấu chấm liên tiếp trước
+    if (email.includes('..')) {
+        return false;
+    }
+    
+    // Kiểm tra dấu chấm ở đầu hoặc cuối tên email
+    const [localPart, domainPart] = email.split('@');
+    if (!localPart || !domainPart) {
+        return false;
+    }
+    
+    if (localPart.startsWith('.') || localPart.endsWith('.')) {
+        return false;
+    }
+    
+    if (domainPart.startsWith('.') || domainPart.endsWith('.')) {
+        return false;
+    }
+    
+    const emailRe = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    return emailRe.test(email);
 };
 
 // Calculate discount percentage

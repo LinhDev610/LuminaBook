@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../contexts/AuthContext';
+import { isValidEmail } from '../../../services/utils';
 import styles from './ForgotPasswordModal.module.scss';
 import Button from '../../Common/Button';
 import classNames from 'classnames/bind';
@@ -45,6 +46,10 @@ export default function ForgotPasswordModal({ open = false, onClose }) {
         e.preventDefault();
         if (!email || email.trim() === '') {
             setError('Vui lòng nhập địa chỉ email');
+            return;
+        }
+        if (!isValidEmail(email)) {
+            setError('Email sai định dạng');
             return;
         }
         setIsLoading(true);
@@ -290,7 +295,7 @@ useEffect(() => {
                     <div className={cx('form-group')}>
                         <label className={cx('form-label')}>Email</label>
                         <input
-                            type="email"
+                            type="text"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             placeholder="example@example"

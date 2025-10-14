@@ -31,7 +31,7 @@ public class OtpController {
     PasswordEncoder passwordEncoder;
 
     @PostMapping("/send-otp")
-    public ApiResponse<String> sendOtp(@RequestParam @NotBlank @Email String email,
+    public ApiResponse<String> sendOtp(@RequestParam @NotBlank(message = "Email không được để trống") @Email(message = "Email sai định dạng") String email,
                                        @RequestParam(required = false) String mode) {
         try {
             // If in register mode and email already exists, block sending OTP

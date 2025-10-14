@@ -83,7 +83,10 @@ export default function RegisterModal({ open = false, onClose }) {
 
     const handleSendEmail = async (e) => {
         e.preventDefault();
-        if (!email) return;
+        if (!email || email.trim() === '') {
+            setError('Vui lòng nhập địa chỉ email');
+            return;
+        }
         setIsLoading(true);
         setError('');
         try {
@@ -414,7 +417,6 @@ export default function RegisterModal({ open = false, onClose }) {
                             onChange={(e) => setEmail(e.target.value)}
                             placeholder="email@domain.com"
                             className={cx('form-input')}
-                            required
                         />
                     </div>
                     {error && <div className={cx('error-text')}>{error}</div>}

@@ -25,6 +25,8 @@
     width: auto;
     max-width: 400px; /* Tăng max-width tương ứng */
     transition: opacity 0.2s ease;
+    margin: 0 30px 0 20px;
+    
 }
 
 .logo a:hover .logo-image {
@@ -38,14 +40,14 @@
 }
 
 .search input {
-    width: 560px;
+    width: 700px;
     max-width: 80%;
     height: 35px;
     padding: 0 14px;
     border: 1px solid #000000;
     background-color: #dddddd;
     border-radius: 8px 0 0 8px;
-    font-size: 15px;
+    font-size: 17px;
     box-shadow: 0 6px 18px rgba(16, 24, 40, 0.04);
 }
 
@@ -62,26 +64,85 @@
 .actions {
     display: flex;
     align-items: center;
-    gap: 15px;
+    gap: 20px;
+}
+
+.auth-buttons {
+    display: flex;
+    gap: 10px;
+    align-items: center;
 }
 
 .login-link {
-    margin-right: 15px;
+    margin-right: 0;
     color: #1a3c5a;
     text-decoration: none;
     display: flex;
     align-items: center;
-    gap: 5px;
+    justify-content: center;
+    gap: 8px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    padding: 8px 12px;
+    border-radius: 4px;
+    min-height: 48px;
+    
+    &:hover {
+        color: #0f2a3f;
+        background-color: rgba(0, 0, 0, 0.05);
+    }
+}
+
+.guest-icon {
+    width: 32px;
+    height: 32px;
+}
+
+.notifications {
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px;
+    border-radius: 4px;
+    transition: background-color 0.2s ease;
+    width: 48px;
+    height: 48px;
+    
+    &:hover {
+        background-color: rgba(0, 0, 0, 0.05);
+    }
+}
+
+.ring-icon {
+    width: 32px;
+    height: 32px;
 }
 
 .cart {
     font-size: 20px;
     cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px;
+    border-radius: 4px;
+    transition: background-color 0.2s ease;
+    width: 48px;
+    height: 48px;
+    
+    &:hover {
+        background-color: rgba(0, 0, 0, 0.05);
+    }
 }
 
 .cart img {
-    width: 28px;
-    height: 28px;
+    width: 32px;
+    height: 32px;
     vertical-align: middle;
     cursor: pointer;
 }
@@ -148,7 +209,7 @@
 }
 
 /* Mobile responsive */
-@media (max-width: 700px) {
+@media (max-width: 1400px) {
     .header {
         flex-direction: row;
         padding: 10px 16px;

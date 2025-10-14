@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import useLocalStorage from '../../hooks/useLocalStorage';
+import guestImgIcon from '../../assets/icons/icon_img_guest.png';
 
 import styles from './CustomerAccountPage.module.scss';
 import classNames from 'classnames/bind';
@@ -16,6 +17,10 @@ function CustomerAccountPage() {
     );
     const [email, setEmail, removeEmail] = useLocalStorage('email', 'user123@gmail.com');
     const [token, setToken, removeToken] = useLocalStorage('token', null);
+    
+    // Check if user is logged in
+    const isLoggedIn = !!token;
+    const [userAvatar, setUserAvatar] = useLocalStorage('userAvatar', null);
 
     const handleLogout = () => {
         removeToken();
@@ -29,9 +34,23 @@ function CustomerAccountPage() {
             <div className={cx('account-content')}>
                 <aside className={cx('account-side')}>
                     <div className={cx('side-profile')}>
-                        <div className={cx('side-avatar')} />
+                        <div className={cx('side-avatar')}>
+                            {!isLoggedIn || !userAvatar ? (
+                                <img 
+                                    src={guestImgIcon} 
+                                    alt="Guest Avatar" 
+                                    className={cx('avatar-image')}
+                                />
+                            ) : (
+                                <img 
+                                    src={userAvatar} 
+                                    alt="User Avatar" 
+                                    className={cx('avatar-image')}
+                                />
+                            )}
+                        </div>
                         <div className={cx('side-name')}>
-                            {displayName || 'User………12'}
+                            {displayName || 'Khách'}
                         </div>
                     </div>
                     <ul className={cx('side-menu')}>
@@ -90,7 +109,7 @@ function CustomerAccountPage() {
                         <div className={cx('form-row')}>
                             <div className={cx('form-group')}>
                                 <label>Username</label>
-                                <input defaultValue={displayName || 'User………12'} />
+                                <input defaultValue={displayName || 'Khách'} />
                             </div>
                             <div className={cx('form-group')}>
                                 <label>Gmail</label>

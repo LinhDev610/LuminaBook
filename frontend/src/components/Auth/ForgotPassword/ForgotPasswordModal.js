@@ -43,6 +43,10 @@ export default function ForgotPasswordModal({ open = false, onClose }) {
 
     const sendOtp = async (e) => {
         e.preventDefault();
+        if (!email || email.trim() === '') {
+            setError('Vui lòng nhập địa chỉ email');
+            return;
+        }
         setIsLoading(true);
         setError('');
         try {
@@ -291,7 +295,6 @@ useEffect(() => {
                             onChange={(e) => setEmail(e.target.value)}
                             placeholder="example@example"
                             className={cx('form-input')}
-                            required
                         />
                     </div>
                     {error && <div className={cx('error-text')}>{error}</div>}

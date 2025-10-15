@@ -1,4 +1,4 @@
-import VerifyCode from './VerifyCode';
-export default VerifyCode;
+import VerifyCodeModal from './VerifyCodeModal';
+export default VerifyCodeModal;
 
 

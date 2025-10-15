@@ -153,9 +153,21 @@
     .dropdown-container {
         display: none;
     }
-
-    .account-nav a {
+    
+    // ẩn hoàn toàn menu thả xuống khi ở mobile
+    .dropdown-container .dropdown-menu {
+        display: none !important;
+    }
+    
+    // Chỉ ẩn các link menu, không ẩn icon user
+    .account-nav a:not(.user-menu):not(.login-link) {
         display: none;
+    }
+    
+    // Đảm bảo icon user vẫn hiển thị
+    .account-nav .user-menu,
+    .account-nav .login-link {
+        display: flex !important;
     }
 
     /* Mobile navbar elements */
@@ -250,7 +262,6 @@
         margin: 0;
         width: 200px;
         min-width: fit-content;
-        display: block !important; /* Force display */
     }
 
     .mobile-dropdown-item {

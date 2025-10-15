@@ -248,8 +248,19 @@
         height: 28px;
     }
 
-    .login-link {
+    // Chỉ ẩn text "Đăng nhập", giữ lại icon
+    .login-text {
         display: none;
+    }
+
+    .login-link {
+        display: flex !important;
+        padding: 8px;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        justify-content: center;
+        align-items: center;
     }
 
     .cart {

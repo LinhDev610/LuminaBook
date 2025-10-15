@@ -14,6 +14,13 @@ import bannerImage2 from '../../assets/images/img_qc.png';
 import bannerImage3 from '../../assets/images/img_qc.png';
 import imgsach_test from '../../assets/images/img_sach.png';
 import imgsach_tiente from '../../assets/images/img_chinhsachtiente.jpeg';
+import bgTetOngTrang from '../../assets/images/img_tetongtrang.png';
+// service icons
+import iconGiaoHang from '../../assets/icons/icon_giaohangtannoi.png';
+import iconDoiTra from '../../assets/icons/icon_doitrahang.png';
+import iconThanhToan from '../../assets/icons/icon_thanhtoanantoan.png';
+import iconHoTro from '../../assets/icons/icon_hotro247.png';
+import iconKhuyenMai from '../../assets/icons/icon_khuyenmaihapdan.png';
 
 
 const cx = classNames.bind(styles);
@@ -124,6 +131,7 @@ function Home() {
                     </div>
                 </section>
 
+                
                 {/* Bottom Promotional Banners */}
                 <section className={cx('bottom-banners')}>
                     {/* Khung 5 */}
@@ -154,6 +162,118 @@ function Home() {
                     title="KHUYẾN MÃI HOT" 
                     showNavigation={true}
                 />
+
+                {/* Mid-Autumn Promo Section (new) */}
+                <section
+                    className={cx('mid-autumn-section')}
+                    style={{ backgroundImage: `url(${bgTetOngTrang})` }}
+                >
+                    <div className={cx('mid-autumn-overlay')} />
+                    <div className={cx('mid-autumn-products')}>
+                        <div className={cx('mid-autumn-header')}>
+                            
+                        </div>
+                        <ProductList 
+                            products={mockProducts.slice(0, 5)}
+                            title="Tết ông trăng"
+                            showNavigation={false}
+                            showHeader={false}
+                            minimal={true}
+                            isGrid={true}
+                            gridColumns={5}
+                        />
+                    </div>
+                </section>
+
+                {/* Trending Section */}
+                <section className={cx('trending-section')}>
+                    <div className={cx('trending-header')}>
+                        <h3 className={cx('trending-title')}>SÁCH THỊNH HÀNH</h3>
+                    </div>
+                    <ProductList
+                        products={mockProducts}
+                        title="SÁCH THỊNH HÀNH"
+                        showNavigation={true}
+                        showHeader={false}
+                        minimal={true}
+                    />
+                </section>
+
+                
+
+                {/* Trending Section */}
+                <section className={cx('trending-section')}>
+                    <div className={cx('trending-header')}>
+                        <h3 className={cx('trending-title')}>SÁCH BÁN CHẠY</h3>
+                    </div>
+                    <ProductList
+                        products={mockProducts}
+                        title="SÁCH BÁN CHẠY"
+                        showNavigation={true}
+                        showHeader={false}
+                        minimal={true}
+                    />
+                </section>
+
+
+                <section className={cx('trending-section')}>
+                    <div className={cx('trending-header')}>
+                        <h3 className={cx('trending-title')}>COMBO SÁCH HOT</h3>
+                    </div>
+                    <ProductList
+                        products={mockProducts}
+                        title="SÁCH BÁN CHẠY"
+                        showNavigation={true}
+                        showHeader={false}
+                        minimal={true}
+                    />
+                </section>
+
+
+
+                {/* Service Highlights Row */}
+                <section className={cx('service-row')}>
+                    <div className={cx('service-grid')}>
+                        <div className={cx('service-item')}>
+                            <img className={cx('service-icon')} src={iconGiaoHang} alt="Giao hàng tận nơi" />
+                            <div className={cx('service-text')}>
+                                <div className={cx('service-title')}>Giao hàng tận nơi</div>
+                                <div className={cx('service-desc')}>Dành cho tất cả đơn hàng</div>
+                            </div>
+                        </div>
+                        <div className={cx('service-item')}>
+                            <img className={cx('service-icon')} src={iconDoiTra} alt="Đổi trả hàng 90 ngày trở lại" />
+                            <div className={cx('service-text')}>
+                                <div className={cx('service-title')}>Đổi trả hàng 90 ngày trở lại</div>
+                                <div className={cx('service-desc')}>Nếu hàng hóa có vấn đề</div>
+                            </div>
+                        </div>
+                        <div className={cx('service-item')}>
+                            <img className={cx('service-icon')} src={iconThanhToan} alt="Thanh toán an toàn" />
+                            <div className={cx('service-text')}>
+                                <div className={cx('service-title')}>Thanh toán an toàn</div>
+                                <div className={cx('service-desc')}>100% thanh toán an toàn</div>
+                            </div>
+                        </div>
+                        <div className={cx('service-item')}>
+                            <img className={cx('service-icon')} src={iconHoTro} alt="Hỗ trợ 24/7" />
+                            <div className={cx('service-text')}>
+                                <div className={cx('service-title')}>Hỗ trợ 24/7</div>
+                                <div className={cx('service-desc')}>Hỗ trợ khách hàng 24/7</div>
+                            </div>
+                        </div>
+                        <div className={cx('service-item')}>
+                            <img className={cx('service-icon')} src={iconKhuyenMai} alt="Khuyến mãi hấp dẫn" />
+                            <div className={cx('service-text')}>
+                                <div className={cx('service-title')}>Khuyến mãi hấp dẫn</div>
+                                <div className={cx('service-desc')}>Chương trình khuyến mãi hấp dẫn</div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                {/* Solid blue bar like header (no content) */}
+                <div className={cx('home-bottom-bar')}></div>
             </main>
         </div>
     );

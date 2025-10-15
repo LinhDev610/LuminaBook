@@ -1,9 +1,10 @@
-@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
 
 .home-wrapper {
     min-height: 100vh;
     display: flex;
     flex-direction: column;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', sans-serif;
 }
 
 .home-content {
@@ -266,5 +267,130 @@
     }
 }
 
+/* Mid-Autumn background section */
+.mid-autumn-section {
+    position: relative;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    padding: 350px 16px 0; /* space for banner area on top */
+    margin-bottom: 24px;
+}
+
+.mid-autumn-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.12);
+}
+
+.mid-autumn-content {
+    position: relative;
+}
+
+.mid-autumn-header {
+    padding: 26px 20px 10px;
+    text-align: center;
+}
+
+.mid-autumn-title {
+    color: #fff;
+    font-size: 1.6rem;
+    font-weight: 800;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin: 0;
+}
+/* Trending section */
+.trending-section {
+    margin-top: 32px;
+    background: #fff;
+    border-radius: 10px;
+    border: 1px solid #e5e7eb; /* subtle frame */
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.16), 0 8px 24px rgba(0, 0, 0, 0.12);
+    overflow: hidden;
+}
+
+.trending-header {
+    background: linear-gradient(#f3f4f6, #ededed);
+    padding: 14px 70px;
+    border-bottom: 1px solid #dadde2;
+    box-shadow: 0 2px 6px rgba(0,0,0,.12), inset 0 -1px 0 rgba(0,0,0,.04);/* hairline */
+}
+
+.trending-title {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 800;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+}
+
+/* Service highlights row */
+.service-row {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.12);
+    border-radius: 0;
+    margin-top: 16px;
+}
+
+.service-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+}
+
+.service-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 50px 18px;
+    border-right: 1px solid #e5e7eb;
+}
+
+.service-item:last-child {
+    border-right: none;
+}
+
+.service-icon {
+    width: 40px;
+    height: 40px;
+    object-fit: contain;
+}
+
+.service-text {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.service-title {
+    font-weight: 700;
+    font-size: 0.95rem;
+}
+
+.service-desc {
+    font-size: 0.8rem;
+    color: #555;
+}
+
+/* New: banner separated from products */
+.mid-autumn-banner {
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    height: 360px;
+}
+
+.mid-autumn-products { /* container for products over background */ }
+
 /* Hot Promotions styles moved into component-scoped styles */
+
+/* Solid blue bar like header navbar at page bottom */
+.home-bottom-bar {
+    height: 56px;
+    background: #173a55;
+}
 

@@ -7,6 +7,11 @@
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
+.minimal {
+    background: transparent;
+    box-shadow: none;
+}
+
 .hot-header {
     background: #b91c1c;
     padding: 15px 20px;
@@ -41,6 +46,12 @@
     &::-webkit-scrollbar {
         display: none;
     }
+}
+
+.grid-products {
+    padding: 16px 16px 0;
+    gap: 20px;
+    justify-items: center;
 }
 
 .nav-button {

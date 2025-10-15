@@ -11,7 +11,15 @@ const cx = classNames.bind(styles);
 
 // ProductList Component
 // Danh sách sản phẩm với filter, sort, pagination
-export default function ProductList({ products = [], title = "SẢN PHẨM", showNavigation = true }) {
+export default function ProductList({
+    products = [],
+    title = "SẢN PHẨM",
+    showNavigation = true,
+    showHeader = true,
+    minimal = false,
+    isGrid = false,
+    gridColumns = 4
+}) {
     const productsRef = useRef(null);
     const [canScrollLeft, setCanScrollLeft] = useState(false);
     const [canScrollRight, setCanScrollRight] = useState(true);
@@ -67,10 +75,12 @@ export default function ProductList({ products = [], title = "SẢN PHẨM", sho
 
     if (!products || products.length === 0) {
         return (
-            <section className={cx('hot-promotions')}>
-                <div className={cx('hot-header')}>
-                    <h2 className={cx('hot-title')}>{title}</h2>
-                </div>
+            <section className={cx('hot-promotions', { minimal })}>
+                {showHeader && (
+                    <div className={cx('hot-header')}>
+                        <h2 className={cx('hot-title')}>{title}</h2>
+                    </div>
+                )}
                 <div className={cx('hot-products-container')}>
                     <div className={cx('hot-products')} />
                 </div>
@@ -79,12 +89,14 @@ export default function ProductList({ products = [], title = "SẢN PHẨM", sho
     }
 
     return (
-        <section className={cx('hot-promotions')}>
-            <div className={cx('hot-header')}>
-                <h2 className={cx('hot-title')}>{title}</h2>
-            </div>
+        <section className={cx('hot-promotions', { minimal })}>
+            {showHeader && (
+                <div className={cx('hot-header')}>
+                    <h2 className={cx('hot-title')}>{title}</h2>
+                </div>
+            )}
             <div className={cx('hot-products-container')}>
-                {showNavigation && (
+                {showNavigation && !isGrid && (
                     <>
                         {canScrollLeft && (
                             <button className={cx('nav-button', 'nav-left')} onClick={scrollLeft}>
@@ -98,7 +110,11 @@ export default function ProductList({ products = [], title = "SẢN PHẨM", sho
                         )}
                     </>
                 )}
-                <div className={cx('hot-products')} ref={productsRef}>
+                <div
+                    className={cx(isGrid ? 'grid-products' : 'hot-products')}
+                    ref={isGrid ? undefined : productsRef}
+                    style={isGrid ? { display: 'grid', gridTemplateColumns: `repeat(${gridColumns}, 1fr)` } : undefined}
+                >
                     {products.map((product) => (
                         <ProductCard key={product.id} product={product} />
                     ))}

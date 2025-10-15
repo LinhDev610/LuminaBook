@@ -1,6 +1,6 @@
 // Styles aligned with Home.module.scss for ProductCard rendering
 .hot-product {
-    flex: 0 0 270px;
+    flex: 0 0 320px; /* enlarge card width */
     background: #fff;
     border-radius: 10px;
     border: 1px solid rgba(0, 0, 0, 0.04);
@@ -8,6 +8,7 @@
     transition: all 0.3s ease;
     cursor: pointer;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    gap: 50px;
 
     &:hover {
         transform: translateY(-6px);
@@ -44,7 +45,7 @@
 
 .product-image {
     width: 100%;
-    height: 300px;
+    height: 380px; /* enlarge product image */
     object-fit: cover;
     border-radius: 6px 6px 0 0;
     transition: transform 0.3s ease;
@@ -97,3 +98,5 @@
     transition: all 0.3s ease;
     opacity: 0.9;
 }
+
+

@@ -1,4 +1,5 @@
 import Home from '../pages/Home';
+import PromotionPage from '../pages/Promotion';
 import Contact from '../pages/Contact';
 import Login from '../components/Auth/Login';
 import Register from '../components/Auth/Register';
@@ -10,6 +11,7 @@ import Account from '../pages/CustomerAccount';
 // Public routes
 const publicRoutes = [
     { path: '/', component: Home },
+    { path: '/promotion', component: PromotionPage },
     { path: '/contact', component: Contact },
     { path: '/login', component: Login },
     { path: '/register', component: Register },

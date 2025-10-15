@@ -27,6 +27,7 @@ function DefaultHeader() {
     const currentToken = token || sessionStorage.getItem('token');
     const isLoggedIn = !!currentToken;
     const [menuOpen, setMenuOpen] = useState(false);
+    const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
     
     const toggleMenu = () => setMenuOpen((v) => !v);
     const handleLogout = () => {
@@ -83,7 +84,7 @@ function DefaultHeader() {
                                     <button
                                         className={cx('user-menu__item')}
                                         role="menuitem"
-                                        onClick={handleLogout}
+                                        onClick={() => setShowLogoutConfirm(true)}
                                     >
                                         Đăng xuất
                                     </button>
@@ -121,6 +122,18 @@ function DefaultHeader() {
                     </span>
                 </div>
             </header>
+            {showLogoutConfirm && (
+                <div className={cx('modal-overlay')} role="dialog" aria-modal="true">
+                    <div className={cx('modal')}>
+                        <h3 className={cx('modal-title')}>Đăng xuất tài khoản?</h3>
+                        <p className={cx('modal-desc')}>Bạn có chắc chắn muốn đăng xuất khỏi hệ thống không?</p>
+                        <div className={cx('modal-actions')}>
+                            <button className={cx('btn', 'btn-muted')} onClick={() => setShowLogoutConfirm(false)}>Hủy</button>
+                            <button className={cx('btn', 'btn-primary')} onClick={handleLogout}>Đăng xuất</button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

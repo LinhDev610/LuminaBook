@@ -9,6 +9,7 @@ import { isValidEmail } from '../../../services/utils';
 import '../Auth.module.scss';
 import visibleIcon from '../../../assets/icons/icon-visible.png';
 import invisibleIcon from '../../../assets/icons/icon-invisible.png';
+import iconBack from '../../../assets/icons/icon_back.png';
 import Button from '../../Common/Button';
 import classNames from 'classnames/bind';
 import styles from './RegisterModal.module.scss';
@@ -264,154 +265,42 @@ export default function RegisterModal({ open = false, onClose }) {
         }
     };
 
-    // If used as standalone page, return page version
-    if (open === undefined) {
-        return (
-            <div className="forgot-container" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', background: '#f5f5f5' }}>
-                <div className="forgot-box" style={{ background: '#fff', padding: '60px', borderRadius: '10px', boxShadow: '0 4px 15px rgba(0, 0, 0, 0.1)', width: '560px', maxWidth: '90%' }}>
-                    <div className="forgot-header" style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '10px' }}>
-                        <Button
-                            className="back-btn"
-                            onClick={() => navigate(-1)}
-                            aria-label="Quay lại"
-                            style={{ position: 'absolute', left: 0, background: 'transparent', border: 'none', fontSize: '20px', cursor: 'pointer' }}
-                        >
-                            ←
-                        </Button>
-                        <h2 className="forgot-title" style={{ margin: 0, fontSize: '22px', fontWeight: '700' }}>Đăng ký</h2>
-                    </div>
-                    {step === 1 ? (
-                        <form onSubmit={handleSendEmail}>
-                            <div className="form-group" style={{ marginBottom: '15px', marginTop: '30px' }}>
-                                <label style={{ display: 'block', fontSize: '14px', marginBottom: '5px', color: '#555' }}>Địa chỉ Email</label>
-                                <input
-                                    type="text"
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                    placeholder="email@domain.com"
-                                    style={{ width: '100%', padding: '12px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '14px' }}
-                                />
-                            </div>
-                            <p style={{ textAlign: 'center', fontSize: '14px', color: '#555', marginTop: '-6px' }}>Mã xác nhận sẽ được gửi đến địa chỉ email của bạn.</p>
-                            {error && (
-                                <div style={{ textAlign: 'center', color: '#ff4d4f', marginBottom: '16px', fontSize: '14px' }}>
-                                    {error}
-                                </div>
-                            )}
-                            <Button
-                                type="submit"
-                                style={{ width: '100%', padding: '20px', background: '#fff', color: '#111', border: '1px solid #111', borderRadius: '8px', fontSize: '15px', fontWeight: '600', cursor: 'pointer' }}
-                                disabled={isLoading}
-                            >
-                                {isLoading ? 'Đang gửi...' : 'Gửi mã xác nhận'}
-                            </Button>
-                        </form>
-                    ) : (
-                        <form onSubmit={handleSubmit}>
-                            <div className="form-group" style={{ marginBottom: '15px', marginTop: '30px' }}>
-                                <label style={{ display: 'block', fontSize: '14px', marginBottom: '5px', color: '#555' }}>Tên đăng nhập</label>
-                                <input
-                                    value={username}
-                                    onChange={(e) => setUsername(e.target.value)}
-                                    placeholder="Tên đăng nhập"
-                                    style={{ width: '100%', padding: '12px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '14px' }}
-                                />
-                            </div>
-                            <div className="form-group" style={{ marginBottom: '15px' }}>
-                                <label style={{ display: 'block', fontSize: '14px', marginBottom: '5px', color: '#555' }}>Mật khẩu</label>
-                                <div style={{ position: 'relative', width: '100%' }}>
-                                    <input
-                                        type={show1 ? 'text' : 'password'}
-                                        value={password}
-                                        onChange={(e) => { setPassword(e.target.value); setError(''); }}
-                                        placeholder="********"
-                                        style={{ width: '100%', padding: '12px', paddingRight: '42px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '14px' }}
-                                    />
-                                    <Button
-                                        type="button"
-                                        onClick={() => setShow1(!show1)}
-                                        aria-label={show1 ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
-                                        style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'transparent', border: 'none', padding: 0 }}
-                                    >
-                                        <img
-                                            src={show1 ? invisibleIcon : visibleIcon}
-                                            alt={show1 ? 'Ẩn' : 'Hiện'}
-                                            style={{ width: 20, height: 20 }}
-                                        />
-                                    </Button>
-                                </div>
-                            </div>
-                            <div className="form-group" style={{ marginBottom: '15px' }}>
-                                <label style={{ display: 'block', fontSize: '14px', marginBottom: '5px', color: '#555' }}>Xác nhận mật khẩu</label>
-                                <div style={{ position: 'relative', width: '100%' }}>
-                                    <input
-                                        type={show2 ? 'text' : 'password'}
-                                        value={confirm}
-                                        onChange={(e) => { setConfirm(e.target.value); setError(''); }}
-                                        placeholder="********"
-                                        style={{ width: '100%', padding: '12px', paddingRight: '42px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '14px' }}
-                                    />
-                                    <Button
-                                        type="button"
-                                        onClick={() => setShow2(!show2)}
-                                        aria-label={show2 ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
-                                        style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'transparent', border: 'none', padding: 0 }}
-                                    >
-                                        <img
-                                            src={show2 ? invisibleIcon : visibleIcon}
-                                            alt={show2 ? 'Ẩn' : 'Hiện'}
-                                            style={{ width: 20, height: 20 }}
-                                        />
-                                    </Button>
-                                </div>
-                            </div>
-                            <div className="form-group" style={{ marginTop: '8px', marginBottom: '16px' }}>
-                                <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '14px', color: '#333' }}>
-                                    <input
-                                        type="checkbox"
-                                        checked={agree}
-                                        onChange={(e) => setAgree(e.target.checked)}
-                                    />
-                                    <span>Tôi đồng ý với các điều khoản và chính sách bảo mật</span>
-                                </label>
-                            </div>
-                            {error && <div style={{ color: '#ff4d4f', textAlign: 'center', marginBottom: '16px' }}>{error}</div>}
-                            <Button
-                                type="submit"
-                                style={{ width: '100%', padding: '20px', background: '#2E2E2E', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer' }}
-                            >
-                                Đăng ký
-                            </Button>
-                        </form>
-                    )}
-                </div>
-            </div>
-        );
-    }
 
     // Modal version
     return (
         <div>
             <div className={cx('auth-header')}>
+                {step === 1 ? (
+                    <Button
+                        onClick={switchToLogin}
+                        aria-label="Quay lại đăng nhập"
+                        type="button"
+                        className={styles['auth-back']}
+                    >
+                        <img src={iconBack} alt="Quay lại đăng nhập" className={styles['back-icon']} />
+                    </Button>
+                ) : step === 2 ? (
+                    <Button
+                        onClick={() => setStep(step - 1)}
+                        aria-label="Quay lại bước trước"
+                        type="button"
+                        className={styles['auth-back']}
+                    >
+                        <img src={iconBack} alt="Quay lại bước trước" className={styles['back-icon']} />
+                    </Button>
+                ) : (
+                    <Button
+                        onClick={onClose}
+                        aria-label="Đóng"
+                        type="button"
+                        className={cx('auth-close')}
+                    >
+                        ×
+                    </Button>
+                )}
                 <h3 className={cx('auth-title')}>Đăng ký</h3>
-                <Button
-                    onClick={onClose}
-                    aria-label="Đóng"
-                    type="button"
-                    className={cx('auth-close')}
-                >
-                    ×
-                </Button>
             </div>
-            <p className={cx('auth-subtext')}>
-                Đã có tài khoản?{' '}
-                <button 
-                    onClick={switchToLogin}
-                    className={cx('auth-link')}
-                >
-                    Đăng nhập
-                </button>
-            </p>
+            {/* Subtext sẽ hiển thị bên dưới nút ở Bước 1 */}
             {step === 1 && (
                 <form onSubmit={handleSendEmail} className={cx('auth-form')}>
                     <div className={cx('form-group')}>
@@ -424,14 +313,25 @@ export default function RegisterModal({ open = false, onClose }) {
                             className={cx('form-input')}
                         />
                     </div>
+                    <p className={cx('helper-text')}>Mã xác nhận sẽ được gửi đến địa chỉ email của bạn.</p>
                     {error && <div className={cx('error-text')}>{error}</div>}
                     <Button
                         type="submit"
-                        className={cx('auth-submit')}
+                        className={cx('auth-submit', 'auth-submit--nohover')}
                         disabled={isLoading}
                     >
                         {isLoading ? 'Đang gửi...' : 'Gửi mã xác nhận'}
                     </Button>
+                    <p className={cx('auth-subtext', 'auth-subtext--below')}>
+                        Đã có tài khoản?{' '}
+                        <button 
+                            onClick={switchToLogin}
+                            type="button"
+                            className={cx('auth-link')}
+                        >
+                            Đăng nhập
+                        </button>
+                    </p>
                 </form>
             )}
             

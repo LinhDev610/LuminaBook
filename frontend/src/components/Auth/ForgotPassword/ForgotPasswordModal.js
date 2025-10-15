@@ -4,6 +4,7 @@ import { useAuth } from '../../../contexts/AuthContext';
 import { isValidEmail } from '../../../services/utils';
 import styles from './ForgotPasswordModal.module.scss';
 import Button from '../../Common/Button';
+import iconBack from '../../../assets/icons/icon_back.png';
 import classNames from 'classnames/bind';
 
 const cx = classNames.bind(styles);
@@ -272,23 +273,36 @@ useEffect(() => {
     return (
         <div>
             <div className={cx('auth-header')}>
+                {step === 1 ? (
+                    <Button
+                        onClick={switchToLogin}
+                        aria-label="Quay lại đăng nhập"
+                        className={styles['auth-back']}
+                    >
+                        <img src={iconBack} alt="Quay lại đăng nhập" className={styles['back-icon']} />
+                    </Button>
+                ) : step === 2 ? (
+                    <Button
+                        onClick={() => setStep(step - 1)}
+                        aria-label="Quay lại bước trước"
+                        className={styles['auth-back']}
+                    >
+                        <img src={iconBack} alt="Quay lại bước trước" className={styles['back-icon']} />
+                    </Button>
+                ) : (
+                    <Button
+                        onClick={onClose}
+                        aria-label="Đóng"
+                        className={cx('auth-close')}
+                    >
+                        ×
+                    </Button>
+                )}
                 <h3 className={cx('auth-title')}>Khôi phục mật khẩu</h3>
-                <Button
-                    onClick={onClose}
-                    aria-label="Đóng"
-                    className={cx('auth-close')}
-                >
-                    ×
-                </Button>
             </div>
             <p className={cx('auth-subtext')}>
-                Nhớ mật khẩu?{' '}
-                <button 
-                    onClick={switchToLogin}
-                    className={cx('auth-link')}
-                >
-                    Đăng nhập
-                </button>
+                Chúng tôi sẽ gửi bạn mã code qua Email {' '}
+
             </p>
             {step === 1 && (
                 <form onSubmit={sendOtp} className={cx('auth-form')}>

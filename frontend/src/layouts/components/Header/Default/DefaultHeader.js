@@ -96,13 +96,12 @@ function DefaultHeader() {
                                 onClick={openLoginModal} 
                                 className={cx('login-link')}
                             >
-                                Đăng nhập
+                                <span className={cx('login-text')}>Đăng nhập</span>
                                 <img 
                                     src={guestIcon} 
                                     alt="Guest" 
                                     className={cx('guest-icon')}
                                 />
-                                
                             </button>
 
                         </div>

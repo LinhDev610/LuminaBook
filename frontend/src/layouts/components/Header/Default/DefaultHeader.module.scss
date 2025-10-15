@@ -97,6 +97,8 @@
     }
 }
 
+.login-text { display: inline; }
+
 .guest-icon {
     width: 32px;
     height: 32px;
@@ -248,9 +250,9 @@
         height: 28px;
     }
 
-    .login-link {
-        display: none;
-    }
+    .login-link { display: inline-flex; }
+    .login-text { display: none; }
+    .guest-icon { position: static; }
 
     .cart {
         font-size: 24px;
@@ -260,5 +262,8 @@
     .cart img {
         width: 32px;
         height: 32px;
+    }
+    .guest-icon{
+        position: absolute;
     }
 }

@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import styles from "../Login/LoginModal.module.scss";
 import Button from "../../Common/Button";
+import iconBack from '../../../assets/icons/icon_back.png';
 import classNames from 'classnames/bind';
 
 const cx = classNames.bind(styles);
@@ -102,7 +103,13 @@ export default function VerifyCode() {
         <div className={styles['forgot-container']}>
             <div className={styles['forgot-box']} style={{ height: "auto", paddingTop: 60, paddingBottom: 60 }}>
             <div className={styles['forgot-header']}>
-                <Button className={styles['back-btn']} text onClick={() => navigate(-1)} aria-label="Quay lại">←</Button>
+                <Button 
+                    className={styles['auth-back']} 
+                    onClick={() => navigate(-1)} 
+                    aria-label="Quay lại"
+                >
+                    <img src={iconBack} alt="Quay lại" className={styles['back-icon']} />
+                </Button>
                 <h2 className={styles['forgot-title']}>Xác nhận mã code</h2>
             </div>
                 <p className={styles['sub-text']} style={{ marginBottom: 24 }}>

@@ -6,12 +6,14 @@ import ProductList from '../../components/Common/ProductList/ProductList';
 
 // Import images
 import heroImage from '../../assets/images/img_qc.png';
+import Banner1 from '../../components/Common/Banner/Banner1';
 import promoImage1 from '../../assets/images/img_kinangsong.png';
 import promoImage2 from '../../assets/images/img_taichinh.png';
 import promoImage3 from '../../assets/images/img_sachgiadinh.png';
 import bannerImage1 from '../../assets/images/img_qc.png';
 import bannerImage2 from '../../assets/images/img_qc.png';
 import bannerImage3 from '../../assets/images/img_qc.png';
+import Banner2 from '../../components/Common/Banner/Banner2';
 import imgsach_test from '../../assets/images/img_sach.png';
 import imgsach_tiente from '../../assets/images/img_chinhsachtiente.jpeg';
 import bgTetOngTrang from '../../assets/images/img_tetongtrang.png';
@@ -98,63 +100,24 @@ function Home() {
         <div className={cx('home-wrapper')}>
             <main className={cx('home-content')}>
                 {/* Main Content Area - 2 columns layout */}
-                <section className={cx('main-content')}>
-                    {/* Left Column - Hero Banner (Khung 1) */}
-                    <div className={cx('hero-banner')}>
-                        <Link to="#" className={cx('hero-link')}>
-                            <img src={heroImage} alt="Ảnh quảng cáo" className={cx('hero-image')} />
-                        </Link>
-                    </div>
-
-                    {/* Right Column - 3 Promo Blocks */}
-                    <div className={cx('promo-column')}>
-                        {/* Khung 2 */}
-                        <div className={cx('promo-block', 'promo-block-1')}>
-                            <Link to="#" className={cx('promo-link')}>
-                                <img src={promoImage1} alt="Sách kĩ năng sống" className={cx('promo-image')} />
-                            </Link>
-                        </div>
-
-                        {/* Khung 3 */}
-                        <div className={cx('promo-block', 'promo-block-2')}>
-                            <Link to="#" className={cx('promo-link')}>
-                                <img src={promoImage2} alt="Sách tài chính" className={cx('promo-image')} />
-                            </Link>
-                        </div>
-
-                        {/* Khung 4 */}
-                        <div className={cx('promo-block', 'promo-block-3')}>
-                            <Link to="#" className={cx('promo-link')}>
-                                <img src={promoImage3} alt="Sách gia đình" className={cx('promo-image')} />
-                            </Link>
-                        </div>
-                    </div>
-                </section>
+                <Banner1
+                    heroImage={heroImage}
+                    promos={[
+                        { image: promoImage1, alt: 'Sách kĩ năng sống' },
+                        { image: promoImage2, alt: 'Sách tài chính' },
+                        { image: promoImage3, alt: 'Sách gia đình' },
+                    ]}
+                />
 
                 
                 {/* Bottom Promotional Banners */}
-                <section className={cx('bottom-banners')}>
-                    {/* Khung 5 */}
-                    <div className={cx('banner-card', 'banner-1')}>
-                        <Link to="#" className={cx('banner-link')}>
-                            <img src={bannerImage1} alt="Banner image 1" className={cx('banner-image')} />
-                        </Link>
-                    </div>
-
-                    {/* Khung 6 */}
-                    <div className={cx('banner-card', 'banner-2')}>
-                        <Link to="#" className={cx('banner-link')}>
-                            <img src={bannerImage2} alt="Banner image 2" className={cx('banner-image')} />
-                        </Link>
-                    </div>
-
-                    {/* Khung 7 */}
-                    <div className={cx('banner-card', 'banner-3')}>
-                        <Link to="#" className={cx('banner-link')}>
-                            <img src={bannerImage3} alt="Banner image 3" className={cx('banner-image')} />
-                        </Link>
-                    </div>
-                </section>
+                <Banner2
+                    items={[
+                        { image: bannerImage1, alt: 'Banner image 1', variant: 1 },
+                        { image: bannerImage2, alt: 'Banner image 2', variant: 2 },
+                        { image: bannerImage3, alt: 'Banner image 3', variant: 3 },
+                    ]}
+                />
 
                 {/* Hot Promotions Section */}
                 <ProductList 

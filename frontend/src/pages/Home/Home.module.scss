@@ -15,104 +15,33 @@
     gap: 22px;
 }
 
-/* Main Content Area - 2 columns layout */
-.main-content {
-    display: grid;
-    grid-template-columns: 2fr 1fr;
-    gap: 15px;
-    min-height: 375px;
-}
+/* Banner1 layout moved to components/Common/Banner/Banner1 */
 
-/* Left Column - Hero Banner (Khung 1) */
-.hero-banner {
-    background: linear-gradient(135deg, #20B2AA, #40E0D0);
-    border-radius: 4px;
-    padding: 15px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    position: relative;
-    overflow: hidden;
-    border: 1px solid #ddd;
-}
+/* Hero banner styles moved to Banner1 */
 
 
 
-.hero-link {
-    display: block;
-    width: 100%;
-    height: 100%;
-    text-decoration: none;
-}
+/* .hero-link moved to Banner1 */
 
-.hero-image {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    border-radius: 2px;
-}
+/* .hero-image moved to Banner1 */
 
-/* Right Column - 3 Promo Blocks */
-.promo-column {
-    display: flex;
-    flex-direction: column;
-    gap: 11px;
-}
+/* Promo column moved to Banner1 */
 
-.promo-block {
-    border-radius: 4px;
-    padding: 10px;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    min-height: 80px;
-    position: relative;
-    overflow: hidden;
-    border: 1px solid #ddd;
-}
+/* .promo-block moved to Banner1 */
 
-.promo-block-1 {
-    background: linear-gradient(135deg, #F5E6D3, #E8D5B7);
-}
+/* .promo-block-1 moved to Banner1 */
 
-.promo-block-2 {
-    background: linear-gradient(135deg, #1A3C5A, #2C5282);
-    color: white;
-}
+/* .promo-block-2 moved to Banner1 */
 
-.promo-block-3 {
-    background: linear-gradient(135deg, #FFD700, #FFA500);
-    color: #000;
-}
+/* .promo-block-3 moved to Banner1 */
 
-.promo-author {
-    font-size: 0.7rem;
-    font-weight: 600;
-    margin: 0 0 7px 0;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-}
+/* .promo-author removed */
 
-.promo-title {
-    font-size: 1.1rem;
-    font-weight: 700;
-    margin: 0 0 15px 0;
-    line-height: 1.2;
-}
+/* .promo-title removed */
 
-.promo-link {
-    display: block;
-    width: 100%;
-    height: 100%;
-    text-decoration: none;
-}
+/* .promo-link moved to Banner1 */
 
-.promo-image {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    border-radius: 2px;
-}
+/* .promo-image moved to Banner1 */
 
 .promo-button {
     background: #8B4513;
@@ -132,74 +61,25 @@
     }
 }
 
-/* Bottom Promotional Banners */
-.bottom-banners {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 15px;
-    margin-top: 15px;
-}
+/* Banner2 moved to components/Common/Banner/Banner2 */
 
-.banner-card {
-    border-radius: 4px;
-    padding: 10px;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    min-height: 100px;
-    position: relative;
-    overflow: hidden;
-    border: 1px solid #ddd;
-}
+/* .banner-card moved to Banner2 */
 
-.banner-1 {
-    background: linear-gradient(135deg, #FFFFFF, #F8F9FA);
-    border: 1px solid #4A90E2;
-}
+/* .banner-1 moved to Banner2 */
 
-.banner-2 {
-    background: linear-gradient(135deg, #87CEEB, #B0E0E6);
-}
+/* .banner-2 moved to Banner2 */
 
-.banner-3 {
-    background: linear-gradient(135deg, #1A3C5A, #2C5282);
-    color: white;
-}
+/* .banner-3 moved to Banner2 */
 
-.banner-content {
-    flex: 1;
-    z-index: 2;
-}
+/* .banner-content removed */
 
-.banner-title {
-    font-size: 0.9rem;
-    font-weight: 700;
-    margin: 0 0 7px 0;
-    line-height: 1.2;
-}
+/* .banner-title removed */
 
-.banner-discount,
-.banner-location,
-.banner-date,
-.banner-offer {
-    font-size: 0.7rem;
-    margin: 3px 0;
-    opacity: 0.9;
-}
+/* banner text helpers removed */
 
-.banner-link {
-    display: block;
-    width: 100%;
-    height: 100%;
-    text-decoration: none;
-}
+/* .banner-link moved to Banner2 */
 
-.banner-image {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    border-radius: 2px;
-}
+/* .banner-image moved to Banner2 */
 
 .sale-tag {
     position: absolute;
@@ -284,10 +164,6 @@
     position: absolute;
     inset: 0;
     background: rgba(0, 0, 0, 0.12);
-}
-
-.mid-autumn-content {
-    position: relative;
 }
 
 .mid-autumn-header {
@@ -376,15 +252,10 @@
     color: #555;
 }
 
-/* New: banner separated from products */
-.mid-autumn-banner {
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
-    height: 360px;
+/* Container below background for products */
+.mid-autumn-products {
+    padding: 0 16px 0;
 }
-
-.mid-autumn-products { /* container for products over background */ }
 
 /* Hot Promotions styles moved into component-scoped styles */
 

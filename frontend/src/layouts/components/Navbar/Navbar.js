@@ -1,4 +1,4 @@
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import routes from '../../../config/routes';
 import { useState } from 'react';
 import classNames from 'classnames/bind';
@@ -9,7 +9,6 @@ const cx = classNames.bind(styles);
 
 function Navbar() {
     const location = useLocation();
-    const navigate = useNavigate();
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     

@@ -28,7 +28,7 @@ brevo:
   api:
     key: ${BREVO_API_KEY}
   sender:
-    email: ${BREVO_EMAIL} # Email ?� verify trong Brevo
+    email: ${BREVO_EMAIL} # Email đã verify trong Brevo
 
 #  Secret Key
 jwt:

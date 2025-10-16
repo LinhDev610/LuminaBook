@@ -31,6 +31,8 @@ function DefaultHeader() {
     
     const toggleMenu = () => setMenuOpen((v) => !v);
     const handleLogout = () => {
+        // Close confirm modal immediately so it disappears before navigation
+        setShowLogoutConfirm(false);
         removeToken();
         removeRefreshToken();
         removeDisplayName();
@@ -38,7 +40,8 @@ function DefaultHeader() {
         sessionStorage.removeItem('token');
         // Don't remove savedEmail - keep it for next login
         setMenuOpen(false);
-        navigate(0);
+        // Always go back to home after logout
+        navigate('/');
     };
 
     return (

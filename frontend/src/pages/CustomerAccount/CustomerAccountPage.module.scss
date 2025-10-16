@@ -192,6 +192,34 @@
     font-weight: 600;
 }
 
+/* Logout confirm modal (reuse style similar to header modal) */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.35);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal {
+    width: 520px;
+    max-width: 90vw;
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(0,0,0,.2);
+    padding: 24px 24px 20px;
+    text-align: center;
+}
+
+.modal-title { margin: 0 0 8px; font-size: 24px; font-weight: 800; color: #173a55; }
+.modal-desc { margin: 0 0 16px; color: #4b5563; font-size: 16px; }
+.modal-actions { display: flex; gap: 12px; justify-content: center; }
+.btn { min-width: 120px; padding: 10px 14px; border-radius: 12px; border: none; cursor: pointer; font-weight: 700; }
+.btn-muted { background: #c7ccd1; color: #0f172a; }
+.btn-primary { background: #173a55; color: #fff; }
+
 /* =========================
    ORDERS
 ========================= */

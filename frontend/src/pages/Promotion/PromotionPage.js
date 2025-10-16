@@ -1,8 +1,8 @@
 import classNames from 'classnames/bind';
-import { Link } from 'react-router-dom';
 import homeStyles from '../Home/Home.module.scss';
 import promoStyles from './Promotion.module.scss';
 import ProductList from '../../components/Common/ProductList/ProductList';
+import Banner1 from '../../components/Common/Banner/Banner1';
 
 // Tái sử dụng mock dữ liệu nhanh từ Home nếu cần, nhưng ở trang thật sẽ lấy API
 import imgsach_test from '../../assets/images/img_sach.png';
@@ -30,39 +30,14 @@ export default function PromotionPage() {
     return (
         <div className={cxHome('home-wrapper')}> {/* dùng chung wrapper của Home */}
             <main className={cxHome('home-content')}>
-                {/* Main Content Area - 2 columns layout (reuse from Home) */}
-                <section className={cxHome('main-content')}>
-                    {/* Left Column - Hero Banner (Khung 1) */}
-                    <div className={cxHome('hero-banner')}>
-                        <Link to="#" className={cxHome('hero-link')}>
-                            <img src={heroImage} alt="Ảnh quảng cáo" className={cxHome('hero-image')} />
-                        </Link>
-                    </div>
-
-                    {/* Right Column - 3 Promo Blocks */}
-                    <div className={cxHome('promo-column')}>
-                        {/* Khung 2 */}
-                        <div className={cxHome('promo-block', 'promo-block-1')}>
-                            <Link to="#" className={cxHome('promo-link')}>
-                                <img src={promoImage1} alt="Sách kĩ năng sống" className={cxHome('promo-image')} />
-                            </Link>
-                        </div>
-
-                        {/* Khung 3 */}
-                        <div className={cxHome('promo-block', 'promo-block-2')}>
-                            <Link to="#" className={cxHome('promo-link')}>
-                                <img src={promoImage2} alt="Sách tài chính" className={cxHome('promo-image')} />
-                            </Link>
-                        </div>
-
-                        {/* Khung 4 */}
-                        <div className={cxHome('promo-block', 'promo-block-3')}>
-                            <Link to="#" className={cxHome('promo-link')}>
-                                <img src={promoImage3} alt="Sách gia đình" className={cxHome('promo-image')} />
-                            </Link>
-                        </div>
-                    </div>
-                </section>
+                <Banner1
+                    heroImage={heroImage}
+                    promos={[
+                        { image: promoImage1, alt: 'Sách kĩ năng sống' },
+                        { image: promoImage2, alt: 'Sách tài chính' },
+                        { image: promoImage3, alt: 'Sách gia đình' },
+                    ]}
+                />
 
                 
                 <section className={cxHome('trending-section', cxPromo('promo-container'))}>

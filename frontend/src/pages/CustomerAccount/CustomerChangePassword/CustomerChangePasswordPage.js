@@ -2,6 +2,7 @@ import { useState } from 'react';
 import classNames from 'classnames/bind';
 import styles from './CustomerChangePasswordPage.module.scss';
 import useLocalStorage from '../../../hooks/useLocalStorage';
+import lockIcon from '../../../assets/icons/icon_lock.png';
 
 const cx = classNames.bind(styles);
 
@@ -39,19 +40,40 @@ export default function CustomerChangePasswordPage() {
 
     return (
         <section className={cx('panel')}>
-            <h3 className={cx('panel-title')}>Đổi mật khẩu</h3>
-            <form onSubmit={handleSubmit}>
+            <div className={cx('title-row')}>
+                <img src={lockIcon} alt="lock" className={cx('title-icon')} />
+                <h3 className={cx('panel-title')}>Đổi mật khẩu</h3>
+            </div>
+            <form onSubmit={handleSubmit} className={cx('form')}>
                 <div className={cx('form-group')}>
                     <label>Mật khẩu hiện tại</label>
-                    <input type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} />
+                    <input
+                        type="password"
+                        className={cx('input')}
+                        value={currentPassword}
+                        onChange={(e) => setCurrentPassword(e.target.value)}
+                        placeholder="****************"
+                    />
                 </div>
                 <div className={cx('form-group')}>
                     <label>Mật khẩu mới</label>
-                    <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+                    <input
+                        type="password"
+                        className={cx('input')}
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        placeholder="****************"
+                    />
                 </div>
                 <div className={cx('form-group')}>
                     <label>Xác nhận mật khẩu mới</label>
-                    <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
+                    <input
+                        type="password"
+                        className={cx('input')}
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        placeholder="****************"
+                    />
                 </div>
                 {message && <div className={cx('hint')}>{message}</div>}
                 <div className={cx('form-actions')}>

@@ -18,6 +18,7 @@ function Navbar() {
                              pathname.includes('/account');
     const isHome = pathname === routes.home;
     const isPromotion = pathname.startsWith(routes.promotion);
+    const isNewBook = pathname.startsWith(routes.newbook);
     
     const handleAllCategoriesClick = () => {
         setIsDropdownOpen(!isDropdownOpen);
@@ -62,7 +63,7 @@ function Navbar() {
             </div>
             
             <Link to={routes.promotion} className={cx({ active: isPromotion })}>KHUYẾN MÃI</Link>
-            <Link to="#" className={cx({ active: false })}>SÁCH MỚI</Link>
+            <Link to={routes.newbook} className={cx({ active: isNewBook })}>SÁCH MỚI</Link>
             <Link to="#" className={cx({ active: false })}>HỖ TRỢ KHÁCH HÀNG</Link>
             <Link to="#" className={cx({ active: false })}>LIÊN HỆ</Link>
 

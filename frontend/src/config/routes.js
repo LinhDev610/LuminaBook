@@ -4,6 +4,7 @@ const routes = {
     contact: '/contact',
     customerAccount: '/customer-account',
     promotion: '/promotion',
+    newbook: '/newbook',
 };
 
 export default routes;

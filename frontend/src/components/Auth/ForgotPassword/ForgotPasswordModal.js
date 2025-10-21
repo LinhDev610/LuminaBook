@@ -189,15 +189,6 @@ export default function ForgotPasswordModal({ open = false, onClose }) {
                     ×
                 </Button>
             </div>
-            <p className={cx('auth-subtext')}>
-                Nhớ mật khẩu?{' '}
-                <button 
-                    onClick={switchToLogin}
-                    className={cx('auth-link')}
-                >
-                    Đăng nhập
-                </button>
-            </p>
             {forgotPasswordStep === 1 && (
                 <form onSubmit={sendOtp} className={cx('auth-form')}>
                     <div className={cx('form-group')}>
@@ -210,6 +201,7 @@ export default function ForgotPasswordModal({ open = false, onClose }) {
                             className={cx('form-input')}
                         />
                     </div>
+                    <p className={cx('auth-description')}>Mã xác nhận sẽ được gửi đến địa chỉ email của bạn.</p>
                     {error && <div className={cx('error-text')}>{error}</div>}
                     <Button
                         type="submit"
@@ -218,6 +210,15 @@ export default function ForgotPasswordModal({ open = false, onClose }) {
                     >
                         {isLoading ? 'Đang gửi...' : 'Gửi mã code'}
                     </Button>
+                    <p className={cx('auth-subtext')}>
+                        Nhớ mật khẩu?{' '}
+                        <button 
+                            onClick={switchToLogin}
+                            className={cx('auth-link')}
+                        >
+                            Đăng nhập
+                        </button>
+                    </p>
                 </form>
             )}
             {forgotPasswordStep === 3 && (
@@ -250,6 +251,15 @@ export default function ForgotPasswordModal({ open = false, onClose }) {
                     >
                         {isLoading ? 'Đang xử lý...' : 'Đổi mật khẩu'}
                     </Button>
+                    <p className={cx('auth-subtext')}>
+                        Nhớ mật khẩu?{' '}
+                        <button 
+                            onClick={switchToLogin}
+                            className={cx('auth-link')}
+                        >
+                            Đăng nhập
+                        </button>
+                    </p>
                 </form>
             )}
         </div>

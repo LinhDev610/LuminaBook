@@ -1,57 +1,100 @@
-/* ForgotPassword Component Styles */
-.forgot-container {
-  min-height: 100vh;
-  background-color: #f5f5f5;
+/* VerifyCodeModal Component Styles - Based on Image Design */
+
+.verify-container {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
+  flex-direction: column;
+  position: relative;
 }
 
-.forgot-card {
-  background: white;
-  border-radius: 12px;
-  padding: 32px;
-  width: 100%;
-  max-width: 400px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.forgot-header {
-  display: flex;
-  align-items: center;
-  margin-bottom: 20px;
-}
-
-.back-btn {
+.back-button {
+  position: absolute;
+  top: 0;
+  left: 0;
   background: none;
   border: none;
-  font-size: 18px;
+  font-size: 24px;
   cursor: pointer;
-  margin-right: 12px;
-  color: #333;
-  padding: 4px;
+  color: #000;
+  padding: 0;
+  z-index: 10;
 }
 
-.forgot-title {
-  font-size: 20px;
-  font-weight: 600;
-  color: #333;
-  margin: 0;
+.verify-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0;
+  max-width: 400px;
+  margin: 0 auto;
 }
 
-.forgot-description {
+.verify-title {
+  font-size: 32px;
+  font-weight: 700;
+  color: #000;
+  margin: 0 0 24px 0;
   text-align: center;
-  color: #666;
+}
+
+.verify-description {
   font-size: 14px;
-  margin-bottom: 24px;
+  color: #666;
+  text-align: center;
+  margin: 0 0 30px 0;
   line-height: 1.4;
 }
 
-.error-message {
+.verify-form {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.otp-container {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.otp-input {
+  width: 60px;
+  height: 60px;
+  border: 2px solid #ddd;
+  border-radius: 8px;
   text-align: center;
+  font-size: 24px;
+  font-weight: normal;
+  background: #fff;
+  transition: all 0.2s ease;
+}
+
+.otp-input:focus {
+  outline: none;
+  border-color: #000;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
+}
+
+.otp-input.active {
+  border-color: #000;
+}
+
+.otp-input.filled {
+  border-color: #000;
+  background: #f8f8f8;
+}
+
+.otp-input.error {
+  border-color: #ff4d4f;
+  background: #fff2f0;
+  box-shadow: 0 0 0 2px rgba(255, 77, 79, 0.1);
+}
+
+.error-text {
   color: #ff4d4f;
-  margin-bottom: 16px;
+  text-align: center;
+  margin-bottom: 20px;
   font-size: 14px;
   background: #fff2f0;
   padding: 8px 12px;
@@ -59,79 +102,66 @@
   border: 1px solid #ffccc7;
 }
 
-.forgot-form {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.form-label {
-  font-size: 14px;
-  font-weight: 500;
-  color: #333;
-  margin-bottom: 4px;
-}
-
-.form-input {
+.verify-submit {
   width: 100%;
-  height: 44px;
-  border: 1px solid #d9d9d9;
-  border-radius: 8px;
-  padding: 0 12px;
-  font-size: 14px;
-  background: white;
-  transition: border-color 0.2s;
-}
-
-.form-input:focus {
-  outline: none;
-  border-color: #1890ff;
-  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
-}
-
-.form-input::placeholder {
-  color: #bfbfbf;
-}
-
-.submit-btn {
-  width: 100%;
-  height: 44px;
-  background: #333;
-  color: white;
+  padding: 16px;
+  background: #2E2E2E;
+  color: #fff;
   border: none;
   border-radius: 8px;
   font-size: 16px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
-  transition: background-color 0.2s;
-  margin-top: 8px;
+  margin-bottom: 16px;
+  transition: background-color 0.2s ease;
 }
 
-.submit-btn:hover:not(:disabled) {
-  background: #555;
+.verify-submit:hover:not(:disabled) {
+  background: #333;
 }
 
-.submit-btn:disabled {
-  background: #ccc;
+.verify-submit:disabled {
+  opacity: 0.6;
   cursor: not-allowed;
 }
 
-/* Responsive */
-@media (max-width: 480px) {
-  .forgot-container {
-    padding: 16px;
-  }
-  .forgot-card {
-    padding: 24px;
-  }
-  .forgot-title {
-    font-size: 18px;
-  }
+.resend-section {
+  text-align: center;
 }
 
+.countdown-text {
+  color: #666;
+  font-size: 14px;
+}
+
+.countdown-time {
+  font-weight: bold;
+  color: #000;
+}
+
+.resend-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+
+.resend-text {
+  color: #666;
+  font-size: 14px;
+}
+
+.resend-button {
+  background: none;
+  border: none;
+  color: #000;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: bold;
+  text-decoration: underline;
+  padding: 0;
+}
+
+.resend-button:hover {
+  color: #333;
+}

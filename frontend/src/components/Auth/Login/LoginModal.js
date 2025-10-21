@@ -158,7 +158,7 @@ export default function LoginModal({ open = false, onClose }) {
                     />
                 </div>
                 <div className={cx('form-group')}>
-                    <label className={cx('form-label')}>Password</label>
+                    <label className={cx('form-label')}>Mật khẩu</label>
                     <div className={cx('pw-wrap')}>
                         <input
                             type={showPassword ? 'text' : 'password'}
@@ -190,7 +190,7 @@ export default function LoginModal({ open = false, onClose }) {
                             checked={rememberMe}
                             onChange={(e) => setRememberMe(e.target.checked)}
                         /> 
-                        Nhớ tài khoản
+                        Ghi nhớ đăng nhập
                     </label>
                     <button
                         onClick={switchToForgotPassword}

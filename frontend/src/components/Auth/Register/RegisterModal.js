@@ -314,15 +314,6 @@ export default function RegisterModal({ open = false, onClose }) {
                     ×
                 </Button>
             </div>
-            <p className={cx('auth-subtext')}>
-                Đã có tài khoản?{' '}
-                <button 
-                    onClick={switchToLogin}
-                    className={cx('auth-link')}
-                >
-                    Đăng nhập
-                </button>
-            </p>
             {registerStep === 1 && (
                 <form onSubmit={handleSendEmail} className={cx('auth-form')}>
                     <div className={cx('form-group')}>
@@ -335,6 +326,7 @@ export default function RegisterModal({ open = false, onClose }) {
                             className={cx('form-input')}
                         />
                     </div>
+                    <p className={cx('auth-description')}>Mã xác nhận sẽ được gửi đến địa chỉ email của bạn.</p>
                     {error && <div className={cx('error-text')}>{error}</div>}
                     <Button
                         type="submit"
@@ -343,6 +335,15 @@ export default function RegisterModal({ open = false, onClose }) {
                     >
                         {isLoading ? 'Đang gửi...' : 'Gửi mã xác nhận'}
                     </Button>
+                    <p className={cx('auth-subtext')}>
+                        Đã có tài khoản?{' '}
+                        <button 
+                            onClick={switchToLogin}
+                            className={cx('auth-link')}
+                        >
+                            Đăng nhập
+                        </button>
+                    </p>
                 </form>
             )}
             

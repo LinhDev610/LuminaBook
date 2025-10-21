@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../../../contexts/AuthContext";
 import Button from "../../Common/Button";
 import classNames from 'classnames/bind';
-import styles from "../Login/LoginModal.module.scss";
+import styles from "./VerifyCodeModal.module.scss";
 
 const cx = classNames.bind(styles);
 
@@ -138,62 +138,74 @@ export default function VerifyCodeModal({ open = false, onClose }) {
     if (!open) return null;
 
     return (
-        <div>
-            <div className={cx('auth-header')}>
-                <h3 className={cx('auth-title')}>Xác nhận mã code</h3>
-                <Button
-                    onClick={onClose}
-                    aria-label="Đóng"
-                    className={cx('auth-close')}
-                >
-                    ×
-                </Button>
+        <div className={cx('verify-container')}>
+            <Button 
+                onClick={handleBack}
+                className={cx('back-button')}
+            >
+                ←
+            </Button>
+            
+            <div className={cx('verify-content')}>
+                <h1 className={cx('verify-title')}>Xác nhận mã code</h1>
+                
+                <p className={cx('verify-description')}>
+                    Vui lòng nhập mã xác nhận đã được gửi đến email của bạn vào đây.
+                </p>
+                
+                <form onSubmit={handleSubmit} className={cx('verify-form')}>
+                    <div className={cx('otp-container')}>
+                        {values.map((v, i) => (
+                            <input
+                                key={i}
+                                ref={(el) => (inputsRef.current[i] = el)}
+                                type="text"
+                                inputMode="numeric"
+                                maxLength={1}
+                                value={v}
+                                onChange={(e) => onChange(i, e.target.value)}
+                                onKeyDown={(e) => onKeyDown(i, e)}
+                                className={cx('otp-input', { 
+                                    'active': i === 0 && !v, 
+                                    'filled': v,
+                                    'error': error 
+                                })}
+                            />
+                        ))}
+                    </div>
+                    
+                    {error && (
+                        <div className={cx('error-text')}>{error}</div>
+                    )}
+                    
+                    <Button 
+                        type="submit" 
+                        className={cx('verify-submit')} 
+                        disabled={isLoading}
+                    >
+                        {isLoading ? "Đang xử lý..." : "Xác nhận"}
+                    </Button>
+                    
+                    <div className={cx('resend-section')}>
+                        {seconds > 0 ? (
+                            <span className={cx('countdown-text')}>
+                                Gửi lại sau <span className={cx('countdown-time')}>{`00:${seconds.toString().padStart(2, "0")}`}</span>
+                            </span>
+                        ) : (
+                            <div className={cx('resend-container')}>
+                                <span className={cx('resend-text')}>Bạn không nhận được mã code</span>
+                                <button 
+                                    type="button"
+                                    onClick={handleResend} 
+                                    className={cx('resend-button')}
+                                >
+                                    Gửi lại.
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                </form>
             </div>
-            <p className={cx('auth-subtext')}>
-                Vui lòng nhập mã xác nhận đã được gửi đến {email}
-            </p>
-            <form onSubmit={handleSubmit} className={cx('auth-form')}>
-                <div className={cx('otp-container')}>
-                    {values.map((v, i) => (
-                        <input
-                            key={i}
-                            ref={(el) => (inputsRef.current[i] = el)}
-                            type="text"
-                            inputMode="numeric"
-                            maxLength={1}
-                            value={v}
-                            onChange={(e) => onChange(i, e.target.value)}
-                            onKeyDown={(e) => onKeyDown(i, e)}
-                            className={cx('otp-input', { 'error': error })}
-                        />
-                    ))}
-                </div>
-                {error && (
-                    <div className={cx('error-text')}>{error}</div>
-                )}
-                {seconds === 0 && (
-                    <div className={cx('resend-container')}>
-                        <span className={cx('resend-text')}>Bạn không nhận được mã code</span>
-                        <Button text onClick={handleResend} className={cx('resend-btn')}>Gửi lại.</Button>
-                    </div>
-                )}
-                <Button type="submit" className={cx('auth-submit')} disabled={isLoading}>
-                    {isLoading ? "Đang xử lý..." : "Xác nhận"}
-                </Button>
-                {seconds > 0 && (
-                    <div className={cx('countdown')}>
-                        <span>Gửi lại sau</span>
-                        <span className={cx('countdown-time')}>{`00:${seconds.toString().padStart(2, "0")}`}</span>
-                    </div>
-                )}
-                <Button 
-                    type="button" 
-                    onClick={handleBack}
-                    className={cx('auth-back')}
-                >
-                    ← Quay lại
-                </Button>
-            </form>
         </div>
     );
 }

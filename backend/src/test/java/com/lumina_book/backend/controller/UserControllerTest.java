@@ -51,18 +51,20 @@ class UserControllerTest {
 
         request = UserCreationRequest.builder()
                 .username("john")
-                .firstName("John")
-                .lastName("Doe")
+                .email("john@example.com")
+                .fullName("John Doe")
+                .address("123 Main St")
                 .password("12345678")
-                .dob(dob)
                 .build();
 
         userResponse = UserResponse.builder()
                 .id("2b02565661d3")
                 .username("john")
-                .firstName("John")
-                .lastName("Doe")
-                .dob(dob)
+                .email("john@example.com")
+                .fullName("John Doe")
+                .address("123 Main St")
+                .isActive(true)
+                .createAt(LocalDate.now())
                 .build();
     }
 

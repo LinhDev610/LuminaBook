@@ -57,18 +57,20 @@ public class UserControllerIntergrationTest {
 
         request = UserCreationRequest.builder()
                 .username("john")
-                .firstName("John")
-                .lastName("Doe")
+                .email("john@example.com")
+                .fullName("John Doe")
+                .address("123 Main St")
                 .password("12345678")
-                .dob(dob)
                 .build();
 
         userResponse = UserResponse.builder()
                 .id("2b02565661d3")
                 .username("john")
-                .firstName("John")
-                .lastName("Doe")
-                .dob(dob)
+                .email("john@example.com")
+                .fullName("John Doe")
+                .address("123 Main St")
+                .isActive(true)
+                .createAt(LocalDate.now())
                 .build();
     }
 
@@ -94,8 +96,8 @@ public class UserControllerIntergrationTest {
                 .andExpect(MockMvcResultMatchers.status().isOk())
                 .andExpect(MockMvcResultMatchers.jsonPath("code").value(1000))
                 .andExpect(MockMvcResultMatchers.jsonPath("result.username").value("john"))
-                .andExpect(MockMvcResultMatchers.jsonPath("result.firstName").value("John"))
-                .andExpect(MockMvcResultMatchers.jsonPath("result.lastName").value("Doe"));
+                .andExpect(MockMvcResultMatchers.jsonPath("result.email").value("john@example.com"))
+                .andExpect(MockMvcResultMatchers.jsonPath("result.fullName").value("John Doe"));
         log.info("Results: {}", response.andReturn().getResponse().getContentAsString());
     }
 }

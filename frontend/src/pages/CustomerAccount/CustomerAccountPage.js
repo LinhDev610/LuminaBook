@@ -79,7 +79,7 @@ function CustomerAccountPage() {
                 </aside>
                 <main className={cx('account-main')}>
                     <section className={cx('panel')}>
-                        <h3 className={cx('menu-item')} >
+                        <h3 className={cx('menu-item')}>
                             <img
                                 className={cx('mi-large')}
                                 src={require('../../assets/icons/icon_user.png')}

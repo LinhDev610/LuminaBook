@@ -34,6 +34,10 @@ jwt:
   valid-duration: 3600  # in second
   refreshable-duration: 360000 # in seconds
 
+# Default avatar configuration
+app:
+  default-avatar: "/assets/images/default-avatar.png"
+
 # Layer1 - Controller: Quan ly cac mapping, endpoint
 # Layer2 - Service: Xu ly cac logic lien quan toi subdomain
 # Layer3 - Repository: Tang tuong tac truc tiep voi DBMS

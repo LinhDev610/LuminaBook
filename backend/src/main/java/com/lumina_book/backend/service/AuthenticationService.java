@@ -142,7 +142,7 @@ public class AuthenticationService {
         // payload = nhieu claim
         JWTClaimsSet jwtClaimSet = new JWTClaimsSet.Builder()
                 .subject(user.getUsername()) // user đăng nhập là ai
-                .issuer("devteria.com") // Định danh ai là người issuer này được issuer từ ai, thường là issue
+                .issuer("lumina_book.com") // Định danh ai là người issuer này được issuer từ ai, thường là issue
                 .issueTime(new Date()) // Thời điểm lần đầu login
                 .expirationTime(
                         new Date( // Thời điểm hết hạn token
@@ -197,7 +197,7 @@ public class AuthenticationService {
 
         if (!CollectionUtils.isEmpty(user.getRoles()))
             user.getRoles().forEach(role -> {
-                stringJoiner.add("ROLE_" + role.getRoleName());
+                stringJoiner.add("ROLE_" + role.getName());
                 if (!CollectionUtils.isEmpty(role.getPermissions()))
                     role.getPermissions().forEach(permission -> stringJoiner.add(permission.getName()));
             });

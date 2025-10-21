@@ -1,9 +1,9 @@
 package com.lumina_book.backend.dto.request;
 
-import java.time.LocalDate;
 import java.util.List;
 
-import com.lumina_book.backend.validator.DobConstraint;
+import com.lumina_book.backend.validator.EmailConstraint;
+import com.lumina_book.backend.validator.PasswordConstraint;
 
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -14,12 +14,17 @@ import lombok.experimental.FieldDefaults;
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class UserUpdateRequest {
+    @PasswordConstraint
     String password;
-    String firstName;
-    String lastName;
-
-    @DobConstraint(min = 18, message = "INVALID_DOB")
-    LocalDate dob;
+    
+    @EmailConstraint
+    String email;
+    
+    String phoneNumber;
+    String fullName;
+    String address;
+    String avatarUrl;
+    Boolean isActive;
 
     List<String> roles;
 }

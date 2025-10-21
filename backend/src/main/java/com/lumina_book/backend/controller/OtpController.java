@@ -4,13 +4,10 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
-import com.lumina_book.backend.entity.User;
 import com.lumina_book.backend.repository.UserRepository;
 import com.lumina_book.backend.service.OtpService;
-import com.lumina_book.backend.dto.request.ResetPasswordRequest;
 import com.lumina_book.backend.dto.request.OtpVerificationRequest;
 import com.lumina_book.backend.dto.request.ApiResponse;
 
@@ -28,10 +25,9 @@ public class OtpController {
 
     OtpService otpService;
     UserRepository userRepository;
-    PasswordEncoder passwordEncoder;
 
     @PostMapping("/send-otp")
-    public ApiResponse<String> sendOtp(@RequestParam @NotBlank @Email String email,
+    public ApiResponse<String> sendOtp(@RequestParam @NotBlank(message = "Email không được để trống") @Email(message = "Email sai định dạng") String email,
                                        @RequestParam(required = false) String mode) {
         try {
             // If in register mode and email already exists, block sending OTP
@@ -86,29 +82,5 @@ public class OtpController {
         }
     }
 
-    @PostMapping("/reset-password")
-    public ApiResponse<String> resetPassword(@RequestBody @Valid ResetPasswordRequest request) {
-        try {
-            // Validate OTP and then consume it
-            otpService.consumeOtp(request.getEmail(), request.getOtp());
-
-            User user = userRepository.findByUsername(request.getEmail())
-                    .orElseThrow(() -> new RuntimeException("User not found"));
-            user.setPassword(passwordEncoder.encode(request.getNewPassword()));
-            userRepository.save(user);
-
-            return ApiResponse.<String>builder()
-                    .code(200)
-                    .message("Password reset successfully")
-                    .result("OK")
-                    .build();
-        } catch (Exception e) {
-            log.error("Error resetting password for email: {}", request.getEmail(), e);
-            return ApiResponse.<String>builder()
-                    .code(400)
-                    .message(e.getMessage())
-                    .result(null)
-                    .build();
-        }
-    }
+    // reset-password endpoint moved to PasswordController
 }

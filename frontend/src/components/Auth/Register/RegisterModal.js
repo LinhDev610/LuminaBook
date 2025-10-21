@@ -1,10 +1,11 @@
 // RegisterModal Component
 // Modal đăng ký với form đầy đủ
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useLocalStorage from '../../../hooks/useLocalStorage';
 import { useAuth } from '../../../contexts/AuthContext';
+import { isValidEmail, validatePassword } from '../../../services/utils';
 import '../Auth.module.scss';
 import visibleIcon from '../../../assets/icons/icon-visible.png';
 import invisibleIcon from '../../../assets/icons/icon-invisible.png';
@@ -18,19 +19,12 @@ const API_BASE_URL = 'http://localhost:8080/lumina_book';
 
 export default function RegisterModal({ open = false, onClose }) {
     const navigate = useNavigate();
-    const { switchToLogin } = useAuth();
+    const { switchToLogin, switchToVerifyCode, registerStep, setRegisterStep } = useAuth();
     const [token, setToken] = useLocalStorage('token', null);
     const [displayName, setDisplayName] = useLocalStorage('displayName', null);
-    const [step, setStep] = useState(1); // 1: email, 2: verify, 3: register
     const [email, setEmail] = useState('');
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
-
-    // verify code state
-    const [values, setValues] = useState(['', '', '', '', '', '']);
-    const inputsRef = useRef([]);
-    const [seconds, setSeconds] = useState(60);
-    const code = useMemo(() => values.join(''), [values]);
 
     // register state
     const [username, setUsername] = useState('');
@@ -42,48 +36,43 @@ export default function RegisterModal({ open = false, onClose }) {
 
     useEffect(() => {
         if (!open) return;
-        setStep(1);
-        setEmail('');
+        
+        // Check if we have a verified email from localStorage
+        const verifiedEmail = localStorage.getItem('verifiedEmail');
+        const isVerified = localStorage.getItem('emailVerified') === 'true';
+        
+        if (isVerified && verifiedEmail) {
+            // If email is verified, set email and go to step 3
+            setEmail(verifiedEmail);
+            setRegisterStep(3);
+        } else {
+            // If not verified, start from step 1
+            setRegisterStep(1);
+            setEmail('');
+        }
+        
         setError('');
         setIsLoading(false);
-        setValues(['', '', '', '', '', '']);
-        setSeconds(60);
         setUsername('');
         setPassword('');
         setConfirm('');
         setAgree(false);
     }, [open]);
 
-    useEffect(() => {
-        if (seconds > 0) {
-            const timer = setTimeout(() => setSeconds(seconds - 1), 1000);
-            return () => clearTimeout(timer);
-        }
-    }, [seconds]);
 
-    const onChangeDigit = (index, value) => {
-        if (value.length > 1) return;
-        const newValues = [...values];
-        newValues[index] = value;
-        setValues(newValues);
-        setError('');
-
-        if (value && index < 5) {
-            inputsRef.current[index + 1]?.focus();
-        }
-    };
-
-    const onKeyDownDigit = (index, e) => {
-        if (e.key === 'Backspace' && !values[index] && index > 0) {
-            inputsRef.current[index - 1]?.focus();
-        }
-    };
 
     if (!open) return null;
 
     const handleSendEmail = async (e) => {
         e.preventDefault();
-        if (!email) return;
+        if (!email || email.trim() === '') {
+            setError('Vui lòng nhập địa chỉ email');
+            return;
+        }
+        if (!isValidEmail(email)) {
+            setError('Email sai định dạng');
+            return;
+        }
         setIsLoading(true);
         setError('');
         try {
@@ -98,7 +87,8 @@ export default function RegisterModal({ open = false, onClose }) {
             );
             const data = await response.json();
             if (response.ok && data.code === 200) {
-                setStep(2);
+                // Switch to verify code modal
+                switchToVerifyCode(email, 'register');
             } else {
                 const msg =
                     data.message || 'Không thể gửi mã code. Vui lòng thử lại.';
@@ -115,74 +105,17 @@ export default function RegisterModal({ open = false, onClose }) {
         }
     };
 
-    const verifyOtp = async (e) => {
-        e.preventDefault();
-        if (code.length !== 6) {
-            setError('Vui lòng nhập đầy đủ 6 chữ số');
-            return;
-        }
-
-        setIsLoading(true);
-        setError('');
-        
-        try {
-            const response = await fetch(`${API_BASE_URL}/auth/verify-otp`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, otp: code }),
-            });
-            
-            const data = await response.json();
-            if (response.ok && data.code === 200) {
-                setStep(3);
-            } else {
-                setError(data.message || 'Mã xác thực không đúng. Vui lòng thử lại.');
-            }
-        } catch (err) {
-            setError('Có lỗi xảy ra. Vui lòng thử lại.');
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    const resend = async () => {
-        if (seconds > 0) return;
-        setIsLoading(true);
-        setError('');
-        try {
-            const response = await fetch(`${API_BASE_URL}/auth/send-otp?email=${encodeURIComponent(email)}&mode=register`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-            });
-            const data = await response.json();
-            if (response.ok && data.code === 200) {
-                setValues(['', '', '', '', '', '']);
-                inputsRef.current[0]?.focus();
-                setSeconds(60);
-            } else {
-                setError(data.message || 'Không thể gửi lại mã. Vui lòng thử lại.');
-            }
-        } catch (err) {
-            setError('Có lỗi xảy ra khi gửi lại mã. Vui lòng thử lại.');
-        } finally {
-            setIsLoading(false);
-        }
-    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!agree) return setError('Hãy đồng ý điều khoản');
-        // Password policy: 8-32 chars, at least 1 lowercase, 1 uppercase, 1 digit, 1 special
-        if (password.length < 8) return setError('Mật khẩu quá ngắn, tối thiểu 8 ký tự');
-        if (password.length > 32) return setError('Mật khẩu quá dài, tối đa 32 ký tự');
-        const hasLowercase = /[a-z]/.test(password);
-        const hasUppercase = /[A-Z]/.test(password);
-        const hasDigit = /\d/.test(password);
-        const hasSpecial = /[^A-Za-z0-9]/.test(password);
-        if (!(hasLowercase && hasUppercase && hasDigit && hasSpecial)) {
-            return setError('Mật khẩu ít nhất phải chứa một chữ cái thường, 1 chữ cái in hoa,1 số và 1 kí tự đặc biệt');
+        
+        // Validate password using utility function
+        const passwordValidation = validatePassword(password, confirm);
+        if (!passwordValidation.isValid) {
+            return setError(passwordValidation.error);
         }
-        if (password !== confirm) return setError('Mật khẩu không khớp');
+        
         setIsLoading(true);
         setError('');
         try {
@@ -227,13 +160,14 @@ export default function RegisterModal({ open = false, onClose }) {
                     navigate('/login');
                 }
             } else {
-                const message =
-                    data?.message || 'Đăng ký thất bại. Vui lòng thử lại.';
-                setError(
-                    message === 'User existed'
-                        ? 'Tài khoản đã tồn tại'
-                        : message,
-                );
+                // Handle backend validation errors
+                const code = data?.code;
+                if (code === 1004 || (data?.message || '').includes('INVALID_PASSWORD')) {
+                    setError('Mật khẩu ít nhất phải chứa một chữ cái thường, 1 chữ cái in hoa,1 số và 1 kí tự đặc biệt');
+                } else {
+                    const message = data?.message || 'Đăng ký thất bại. Vui lòng thử lại.';
+                    setError(message === 'User existed' ? 'Tài khoản đã tồn tại' : message);
+                }
             }
         } catch (err) {
             setError('Không thể kết nối máy chủ. Vui lòng thử lại.');
@@ -245,40 +179,39 @@ export default function RegisterModal({ open = false, onClose }) {
     // If used as standalone page, return page version
     if (open === undefined) {
         return (
-            <div className="forgot-container" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', background: '#f5f5f5' }}>
-                <div className="forgot-box" style={{ background: '#fff', padding: '60px', borderRadius: '10px', boxShadow: '0 4px 15px rgba(0, 0, 0, 0.1)', width: '560px', maxWidth: '90%' }}>
-                    <div className="forgot-header" style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '10px' }}>
+            <div className={cx('standalone-container')}>
+                <div className={cx('standalone-box')}>
+                    <div className={cx('standalone-header')}>
                         <Button
-                            className="back-btn"
+                            className={cx('standalone-back-btn')}
                             onClick={() => navigate(-1)}
                             aria-label="Quay lại"
-                            style={{ position: 'absolute', left: 0, background: 'transparent', border: 'none', fontSize: '20px', cursor: 'pointer' }}
                         >
                             ←
                         </Button>
-                        <h2 className="forgot-title" style={{ margin: 0, fontSize: '22px', fontWeight: '700' }}>Đăng ký</h2>
+                        <h2 className={cx('standalone-title')}>Đăng ký</h2>
                     </div>
-                    {step === 1 ? (
+                    {registerStep === 1 ? (
                         <form onSubmit={handleSendEmail}>
-                            <div className="form-group" style={{ marginBottom: '15px', marginTop: '30px' }}>
-                                <label style={{ display: 'block', fontSize: '14px', marginBottom: '5px', color: '#555' }}>Địa chỉ Email</label>
+                            <div className={cx('standalone-form-group')}>
+                                <label className={cx('standalone-label')}>Địa chỉ Email</label>
                                 <input
-                                    type="email"
+                                    type="text"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
                                     placeholder="email@domain.com"
-                                    style={{ width: '100%', padding: '12px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '14px' }}
+                                    className={cx('standalone-input')}
                                 />
                             </div>
-                            <p style={{ textAlign: 'center', fontSize: '14px', color: '#555', marginTop: '-6px' }}>Mã xác nhận sẽ được gửi đến địa chỉ email của bạn.</p>
+                            <p className={cx('standalone-description')}>Mã xác nhận sẽ được gửi đến địa chỉ email của bạn.</p>
                             {error && (
-                                <div style={{ textAlign: 'center', color: '#ff4d4f', marginBottom: '16px', fontSize: '14px' }}>
+                                <div className={cx('standalone-error')}>
                                     {error}
                                 </div>
                             )}
                             <Button
                                 type="submit"
-                                style={{ width: '100%', padding: '20px', background: '#fff', color: '#111', border: '1px solid #111', borderRadius: '8px', fontSize: '15px', fontWeight: '600', cursor: 'pointer' }}
+                                className={cx('standalone-submit')}
                                 disabled={isLoading}
                             >
                                 {isLoading ? 'Đang gửi...' : 'Gửi mã xác nhận'}
@@ -286,65 +219,65 @@ export default function RegisterModal({ open = false, onClose }) {
                         </form>
                     ) : (
                         <form onSubmit={handleSubmit}>
-                            <div className="form-group" style={{ marginBottom: '15px', marginTop: '30px' }}>
-                                <label style={{ display: 'block', fontSize: '14px', marginBottom: '5px', color: '#555' }}>Tên đăng nhập</label>
+                            <div className={cx('standalone-form-group')}>
+                                <label className={cx('standalone-label')}>Tên đăng nhập</label>
                                 <input
                                     value={username}
                                     onChange={(e) => setUsername(e.target.value)}
                                     placeholder="Tên đăng nhập"
-                                    style={{ width: '100%', padding: '12px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '14px' }}
+                                    className={cx('standalone-input')}
                                 />
                             </div>
-                            <div className="form-group" style={{ marginBottom: '15px' }}>
-                                <label style={{ display: 'block', fontSize: '14px', marginBottom: '5px', color: '#555' }}>Mật khẩu</label>
-                                <div style={{ position: 'relative', width: '100%' }}>
+                            <div className={cx('standalone-password-group')}>
+                                <label className={cx('standalone-label')}>Mật khẩu</label>
+                                <div className={cx('standalone-password-wrapper')}>
                                     <input
                                         type={show1 ? 'text' : 'password'}
                                         value={password}
                                         onChange={(e) => { setPassword(e.target.value); setError(''); }}
                                         placeholder="********"
-                                        style={{ width: '100%', padding: '12px', paddingRight: '42px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '14px' }}
+                                        className={cx('standalone-password-input')}
                                     />
                                     <Button
                                         type="button"
                                         onClick={() => setShow1(!show1)}
                                         aria-label={show1 ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
-                                        style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'transparent', border: 'none', padding: 0 }}
+                                        className={cx('standalone-password-toggle')}
                                     >
                                         <img
                                             src={show1 ? invisibleIcon : visibleIcon}
                                             alt={show1 ? 'Ẩn' : 'Hiện'}
-                                            style={{ width: 20, height: 20 }}
+                                            className={cx('standalone-password-icon')}
                                         />
                                     </Button>
                                 </div>
                             </div>
-                            <div className="form-group" style={{ marginBottom: '15px' }}>
-                                <label style={{ display: 'block', fontSize: '14px', marginBottom: '5px', color: '#555' }}>Xác nhận mật khẩu</label>
-                                <div style={{ position: 'relative', width: '100%' }}>
+                            <div className={cx('standalone-password-group')}>
+                                <label className={cx('standalone-label')}>Xác nhận mật khẩu</label>
+                                <div className={cx('standalone-password-wrapper')}>
                                     <input
                                         type={show2 ? 'text' : 'password'}
                                         value={confirm}
                                         onChange={(e) => { setConfirm(e.target.value); setError(''); }}
                                         placeholder="********"
-                                        style={{ width: '100%', padding: '12px', paddingRight: '42px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '14px' }}
+                                        className={cx('standalone-password-input')}
                                     />
                                     <Button
                                         type="button"
                                         onClick={() => setShow2(!show2)}
                                         aria-label={show2 ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
-                                        style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'transparent', border: 'none', padding: 0 }}
+                                        className={cx('standalone-password-toggle')}
                                     >
                                         <img
                                             src={show2 ? invisibleIcon : visibleIcon}
                                             alt={show2 ? 'Ẩn' : 'Hiện'}
-                                            style={{ width: 20, height: 20 }}
+                                            className={cx('standalone-password-icon')}
                                         />
                                     </Button>
                                 </div>
                             </div>
-                            <div className="form-group" style={{ marginTop: '8px', marginBottom: '16px' }}>
-                                <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '14px', color: '#333' }}>
+                            <div className={cx('standalone-checkbox-group')}>
+                                <label className={cx('standalone-checkbox-label')}>
                                     <input
                                         type="checkbox"
                                         checked={agree}
@@ -353,10 +286,10 @@ export default function RegisterModal({ open = false, onClose }) {
                                     <span>Tôi đồng ý với các điều khoản và chính sách bảo mật</span>
                                 </label>
                             </div>
-                            {error && <div style={{ color: '#ff4d4f', textAlign: 'center', marginBottom: '16px' }}>{error}</div>}
+                            {error && <div className={cx('standalone-error')}>{error}</div>}
                             <Button
                                 type="submit"
-                                style={{ width: '100%', padding: '20px', background: '#2E2E2E', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer' }}
+                                className={cx('standalone-submit-dark')}
                             >
                                 Đăng ký
                             </Button>
@@ -381,28 +314,19 @@ export default function RegisterModal({ open = false, onClose }) {
                     ×
                 </Button>
             </div>
-            <p className={cx('auth-subtext')}>
-                Đã có tài khoản?{' '}
-                <button 
-                    onClick={switchToLogin}
-                    className={cx('auth-link')}
-                >
-                    Đăng nhập
-                </button>
-            </p>
-            {step === 1 && (
+            {registerStep === 1 && (
                 <form onSubmit={handleSendEmail} className={cx('auth-form')}>
                     <div className={cx('form-group')}>
                         <label className={cx('form-label')}>Địa chỉ Email</label>
                         <input
-                            type="email"
+                            type="text"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             placeholder="email@domain.com"
                             className={cx('form-input')}
-                            required
                         />
                     </div>
+                    <p className={cx('auth-description')}>Mã xác nhận sẽ được gửi đến địa chỉ email của bạn.</p>
                     {error && <div className={cx('error-text')}>{error}</div>}
                     <Button
                         type="submit"
@@ -411,52 +335,19 @@ export default function RegisterModal({ open = false, onClose }) {
                     >
                         {isLoading ? 'Đang gửi...' : 'Gửi mã xác nhận'}
                     </Button>
+                    <p className={cx('auth-subtext')}>
+                        Đã có tài khoản?{' '}
+                        <button 
+                            onClick={switchToLogin}
+                            className={cx('auth-link')}
+                        >
+                            Đăng nhập
+                        </button>
+                    </p>
                 </form>
             )}
             
-            {step === 2 && (
-                <form onSubmit={verifyOtp} className={cx('auth-form')}>
-                    <p className={cx('auth-subtext')}>Nhập mã gồm 6 chữ số đã được gửi tới {email}</p>
-                    <div className={cx('otp-container')}>
-                        {values.map((v, i) => (
-                            <input
-                                key={i}
-                                ref={(el) => (inputsRef.current[i] = el)}
-                                type="text"
-                                inputMode="numeric"
-                                maxLength={1}
-                                value={v}
-                                onChange={(e) => onChangeDigit(i, e.target.value)}
-                                onKeyDown={(e) => onKeyDownDigit(i, e)}
-                                className={cx('otp-input')}
-                            />
-                        ))}
-                    </div>
-                    {error && <div className={cx('error-text')}>{error}</div>}
-                    {seconds === 0 ? (
-                        <div className={cx('resend-container')}>
-                            <span className={cx('resend-text')}>Bạn không nhận được mã code</span>
-                            <Button
-                                onClick={resend}
-                                className={cx('resend-btn')}
-                            >
-                                Gửi lại
-                            </Button>
-                        </div>
-                    ) : (
-                        <div className={cx('countdown')}>Gửi lại sau 00:{seconds.toString().padStart(2, '0')}</div>
-                    )}
-                    <Button
-                        type="submit"
-                        className={cx('auth-submit')}
-                        disabled={isLoading}
-                    >
-                        {isLoading ? 'Đang xử lý...' : 'Xác nhận'}
-                    </Button>
-                </form>
-            )}
-            
-            {step === 3 && (
+            {registerStep === 3 && (
                 <form onSubmit={handleSubmit} className={cx('auth-form')}>
                     <div className={cx('form-group')}>
                         <label className={cx('form-label')}>Tên hiển thị</label>

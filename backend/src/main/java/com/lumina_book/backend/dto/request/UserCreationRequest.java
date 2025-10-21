@@ -5,6 +5,10 @@ import com.lumina_book.backend.validator.EmailConstraint;
 import com.lumina_book.backend.validator.PasswordConstraint;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import java.time.LocalDate;
+
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 import lombok.*;
@@ -31,7 +35,7 @@ public class UserCreationRequest {
     String phoneNumber;
     String fullName;
     String address;
-    
+
     String avatarUrl;
 
     @Builder.Default

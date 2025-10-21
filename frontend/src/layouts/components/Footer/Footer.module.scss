@@ -37,3 +37,32 @@
 .footer-col a:hover {
     color: #1A3C5A;
 }
+
+/* Social icons row under contact column */
+.social-row {
+    display: flex;
+    align-items: center;
+    gap: 16px; /* spacing between icons */
+    margin-top: 32px; /* push icons downward like reference */
+}
+
+.social-icon {
+    width: 40px; /* enlarge icons */
+    height: 40px;
+    object-fit: contain;
+    filter: grayscale(10%);
+    padding: 6px; /* extra padding around icon */
+    transition: transform 0.15s ease, filter 0.15s ease;
+    cursor: pointer;
+}
+
+.social-icon:hover {
+    transform: translateY(-1px) scale(1.05);
+    filter: none;
+}
+
+/* Solid blue bar like header navbar, empty content */
+.footer-bottom {
+    height: 56px; /* match header height visually */
+    background: #173a55;
+}

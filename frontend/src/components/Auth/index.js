@@ -6,3 +6,5 @@
 export { default as LoginModal } from './Login/LoginModal';
 export { default as RegisterModal } from './Register/RegisterModal';
 export { default as ForgotPasswordModal } from './ForgotPassword/ForgotPasswordModal';
+export { default as ResetPassword } from './ResetPassword/ResetPassword';
+export { default as VerifyCode } from './VerifyCode/VerifyCodeModal';

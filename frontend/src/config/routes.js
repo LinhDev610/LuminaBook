@@ -8,6 +8,8 @@ const routes = {
     verifyCode: './verify-code',
     resetPassword: './reset-password',
     customerAccount: '/customer-account',
+    promotion: '/promotion',
+    newbook: '/newbook',
 };
 
 export default routes;

@@ -1,0 +1,91 @@
+// Styles aligned with Home.module.scss for ProductList rendering
+.hot-promotions {
+    margin-top: 30px;
+    background: #fff;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.minimal {
+    background: transparent;
+    box-shadow: none;
+}
+
+.hot-header {
+    background: #b91c1c;
+    padding: 15px 20px;
+    text-align: center;
+}
+
+.hot-title {
+    color: white;
+    font-size: 1.4rem;
+    font-weight: 700;
+    margin: 0;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.hot-products-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.hot-products {
+    display: flex;
+    gap: 65px;
+    padding: 30px;
+    overflow-x: auto;
+    scroll-behavior: smooth;
+    flex: 1;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+
+    &::-webkit-scrollbar {
+        display: none;
+    }
+}
+
+.grid-products {
+    padding: 16px 16px 0;
+    gap: 20px;
+    justify-items: center;
+}
+
+.nav-button {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+
+    &:hover {
+        transform: translateY(-50%) scale(1.1);
+    }
+
+    &:active {
+        transform: translateY(-50%) scale(0.95);
+    }
+}
+
+.nav-left {
+    left: 10px;
+}
+
+.nav-right {
+    right: 10px;
+}
+
+.nav-icon {
+    width: 30px;
+    height: 30px;
+    object-fit: contain;
+}

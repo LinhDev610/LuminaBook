@@ -2,6 +2,11 @@ import { useAuth } from '../contexts/AuthContext';
 import LoginModal from './Auth/Login/LoginModal';
 import RegisterModal from './Auth/Register/RegisterModal';
 import ForgotPasswordModal from './Auth/ForgotPassword/ForgotPasswordModal';
+import VerifyCodeModal from './Auth/VerifyCode/VerifyCodeModal';
+import classNames from 'classnames/bind';
+import styles from './AuthModals.module.scss';
+
+const cx = classNames.bind(styles);
 
 export default function AuthModals() {
     const {
@@ -13,27 +18,8 @@ export default function AuthModals() {
     if (!authModalOpen) return null;
 
     return (
-        <div className="auth-modal-overlay" style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            zIndex: 1000
-        }}>
-            <div className="auth-modal-content" style={{
-                backgroundColor: 'white',
-                borderRadius: '10px',
-                padding: '20px',
-                maxWidth: '500px',
-                width: '90%',
-                maxHeight: '90vh',
-                overflow: 'auto'
-            }}>
+        <div className={cx('auth-modal-overlay')}>
+            <div className={cx('auth-modal-content')}>
                 {authStep === 'login' && (
                     <LoginModal
                         open={true}
@@ -48,6 +34,12 @@ export default function AuthModals() {
                 )}
                 {authStep === 'forgot-password' && (
                     <ForgotPasswordModal
+                        open={true}
+                        onClose={closeAuthModal}
+                    />
+                )}
+                {authStep === 'verify-code' && (
+                    <VerifyCodeModal
                         open={true}
                         onClose={closeAuthModal}
                     />

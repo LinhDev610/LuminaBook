@@ -1,6 +1,8 @@
 import config from '../config';
 
 import Home from '../pages/Home';
+import PromotionPage from '../pages/Promotion';
+import NewBookPage from '../pages/NewBook';
 import Contact from '../pages/Contact';
 import Login from '../components/Auth/Login';
 import Register from '../components/Auth/Register';

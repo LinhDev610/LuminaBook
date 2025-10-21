@@ -1,24 +1,46 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
-import styles from "../Login/LoginModal.module.scss";
+import { useAuth } from "../../../contexts/AuthContext";
 import Button from "../../Common/Button";
 import classNames from 'classnames/bind';
+import styles from "./VerifyCodeModal.module.scss";
 
 const cx = classNames.bind(styles);
 
 const API_BASE_URL = "http://localhost:8080/lumina_book";
 
-export default function VerifyCode() {
-    const navigate = useNavigate();
-    const { state } = useLocation();
-    const email = state?.email || "";
-    const mode = state?.mode || "recover";
-
+export default function VerifyCodeModal({ open = false, onClose }) {
+    const { 
+        authStep, 
+        switchToLogin, 
+        switchToRegister, 
+        switchToForgotPassword,
+        setAuthStep 
+    } = useAuth();
+    
     const [values, setValues] = useState(["", "", "", "", "", ""]);
     const [error, setError] = useState("");
     const [isLoading, setIsLoading] = useState(false);
     const inputsRef = useRef([]);
     const [seconds, setSeconds] = useState(60);
+    const [email, setEmail] = useState("");
+    const [mode, setMode] = useState("register");
+
+    useEffect(() => {
+        if (!open) return;
+        
+        // Reset state when modal opens
+        setValues(["", "", "", "", "", ""]);
+        setError("");
+        setIsLoading(false);
+        setSeconds(60);
+        
+        // Get email and mode from AuthContext or props
+        // This will be set by the parent component (Register/ForgotPassword)
+        const storedEmail = localStorage.getItem('verifyEmail');
+        const storedMode = localStorage.getItem('verifyMode');
+        if (storedEmail) setEmail(storedEmail);
+        if (storedMode) setMode(storedMode);
+    }, [open]);
 
     useEffect(() => {
         const timer = setInterval(() => setSeconds((s) => (s > 0 ? s - 1 : 0)), 1000);
@@ -53,13 +75,25 @@ export default function VerifyCode() {
             });
             const data = await response.json();
             if (response.ok && data.code === 200) {
-                if (mode === "register") {
-                    navigate("/register", { state: { verified: true, email } });
-                } else {
-                    navigate("/reset-password", { state: { email, otp: code } });
-                }
+                // Store verification success
+                localStorage.setItem('emailVerified', 'true');
+                localStorage.setItem('verifiedEmail', email);
+                localStorage.setItem('verifiedOtp', code);
+                    // Use setTimeout to ensure localStorage is set before switching
+                setTimeout(() => {
+                    if (mode === "register") {
+                        switchToRegister(); // Go back to register step 3 (password)
+                    } else {
+                        switchToForgotPassword(); // Go back to forgot password step 3 (reset password)
+                    }
+                }, 100);
             } else {
-                setError(data.message || "Mã code sai, vui lòng nhập lại mã code.");
+                // Xử lý lỗi OTP cụ thể
+                if (data.code === 1010 || (data.message && data.message.includes('OTP'))) {
+                    setError('Mã OTP không đúng, yêu cầu nhập lại');
+                } else {
+                    setError(data.message || "Mã code sai, vui lòng nhập lại mã code.");
+                }
             }
         } catch (err) {
             setError("Có lỗi xảy ra khi xác thực mã code. Vui lòng thử lại.");
@@ -73,7 +107,7 @@ export default function VerifyCode() {
         setIsLoading(true);
         setError("");
         try {
-            const response = await fetch(`${API_BASE_URL}/auth/send-otp?email=${encodeURIComponent(email)}`, {
+            const response = await fetch(`${API_BASE_URL}/auth/send-otp?email=${encodeURIComponent(email)}&mode=${mode}`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
             });
@@ -93,17 +127,33 @@ export default function VerifyCode() {
         }
     };
 
+    const handleBack = () => {
+        if (mode === "register") {
+            switchToRegister();
+        } else {
+            switchToForgotPassword();
+        }
+    };
+
+    if (!open) return null;
+
     return (
-        <div className={styles['forgot-container']}>
-            <div className={styles['forgot-box']} style={{ height: "auto", paddingTop: 60, paddingBottom: 60 }}>
-            <div className={styles['forgot-header']}>
-                <Button className={styles['back-btn']} text onClick={() => navigate(-1)} aria-label="Quay lại">←</Button>
-                <h2 className={styles['forgot-title']}>Xác nhận mã code</h2>
-            </div>
-                <p className={styles['sub-text']} style={{ marginBottom: 24 }}>
-                    Vui lòng nhập mã xác nhận đã được gửi{email ? ` đến email của bạn (${email}).` : " đến email của bạn vào đây."}
+        <div className={cx('verify-container')}>
+            <Button 
+                onClick={handleBack}
+                className={cx('back-button')}
+            >
+                ←
+            </Button>
+            
+            <div className={cx('verify-content')}>
+                <h1 className={cx('verify-title')}>Xác nhận mã code</h1>
+                
+                <p className={cx('verify-description')}>
+                    Vui lòng nhập mã xác nhận đã được gửi đến email của bạn vào đây.
                 </p>
-                <form onSubmit={handleSubmit}>
+                
+                <form onSubmit={handleSubmit} className={cx('verify-form')}>
                     <div className={cx('otp-container')}>
                         {values.map((v, i) => (
                             <input
@@ -115,28 +165,45 @@ export default function VerifyCode() {
                                 value={v}
                                 onChange={(e) => onChange(i, e.target.value)}
                                 onKeyDown={(e) => onKeyDown(i, e)}
-                                className={cx('otp-input', { 'error': error })}
+                                className={cx('otp-input', { 
+                                    'active': i === 0 && !v, 
+                                    'filled': v,
+                                    'error': error 
+                                })}
                             />
                         ))}
                     </div>
+                    
                     {error && (
                         <div className={cx('error-text')}>{error}</div>
                     )}
-                    {seconds === 0 && (
-                        <div className={cx('resend-container')}>
-                            <span className={cx('resend-text')}>Bạn không nhận được mã code</span>
-                            <Button text onClick={handleResend} className={cx('resend-btn')}>Gửi lại.</Button>
-                        </div>
-                    )}
-                    <Button type="submit" className={cx('auth-submit')} disabled={isLoading}>
+                    
+                    <Button 
+                        type="submit" 
+                        className={cx('verify-submit')} 
+                        disabled={isLoading}
+                    >
                         {isLoading ? "Đang xử lý..." : "Xác nhận"}
                     </Button>
-                    {seconds > 0 && (
-                        <div className={cx('countdown')}>
-                            <span>Gửi lại sau</span>
-                            <span className={cx('countdown-time')}>{`00:${seconds.toString().padStart(2, "0")}`}</span>
-                        </div>
-                    )}
+                    
+                    <div className={cx('resend-section')}>
+                        {seconds > 0 ? (
+                            <span className={cx('countdown-text')}>
+                                Gửi lại sau <span className={cx('countdown-time')}>{`00:${seconds.toString().padStart(2, "0")}`}</span>
+                            </span>
+                        ) : (
+                            <div className={cx('resend-container')}>
+                                <span className={cx('resend-text')}>Bạn không nhận được mã code</span>
+                                <button 
+                                    type="button"
+                                    onClick={handleResend} 
+                                    className={cx('resend-button')}
+                                >
+                                    Gửi lại.
+                                </button>
+                            </div>
+                        )}
+                    </div>
                 </form>
             </div>
         </div>

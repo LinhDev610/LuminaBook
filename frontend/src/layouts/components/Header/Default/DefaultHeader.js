@@ -5,6 +5,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import classNames from 'classnames/bind';
 
 import logoIcon from '../../../../assets/icons/logo_luminabook.png';
+import guestIcon from '../../../../assets/icons/icon_guest.png';
+import ringIcon from '../../../../assets/icons/icon_ring.png';
 import useLocalStorage from '../../../../hooks/useLocalStorage';
 import { useAuth } from '../../../../contexts/AuthContext';
 
@@ -35,9 +37,12 @@ function DefaultHeader() {
     const currentToken = token || sessionStorage.getItem('token');
     const isLoggedIn = !!currentToken;
     const [menuOpen, setMenuOpen] = useState(false);
+    const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
     const toggleMenu = () => setMenuOpen((v) => !v);
     const handleLogout = () => {
+        // Close confirm modal immediately so it disappears before navigation
+        setShowLogoutConfirm(false);
         removeToken();
         removeRefreshToken();
         removeDisplayName();
@@ -45,7 +50,8 @@ function DefaultHeader() {
         sessionStorage.removeItem('token');
         // Don't remove savedEmail - keep it for next login
         setMenuOpen(false);
-        navigate(0);
+        // Always go back to home after logout
+        navigate('/');
     };
 
     return (
@@ -91,7 +97,7 @@ function DefaultHeader() {
                                     <button
                                         className={cx('user-menu__item')}
                                         role="menuitem"
-                                        onClick={handleLogout}
+                                        onClick={() => setShowLogoutConfirm(true)}
                                     >
                                         Đăng xuất
                                     </button>
@@ -99,24 +105,27 @@ function DefaultHeader() {
                             )}
                         </div>
                     ) : (
-                        <div
-                            className={cx('auth-buttons')}
-                            style={{ display: 'flex', gap: '10px', alignItems: 'center' }}
-                        >
-                            <button
-                                onClick={openLoginModal}
+                        <div className={cx('auth-buttons')}>
+                            <button 
+                                onClick={openLoginModal} 
                                 className={cx('login-link')}
-                                style={{
-                                    background: 'none',
-                                    border: 'none',
-                                    cursor: 'pointer',
-                                    fontSize: '14px',
-                                }}
                             >
-                                <i className={cx('fi fi-ss-user')}></i> Đăng nhập
+                                <span className={cx('login-text')}>Đăng nhập</span>
+                                <img
+                                    src={guestIcon}
+                                    alt="Guest"
+                                    className={cx('guest-icon')}
+                                />
                             </button>
                         </div>
                     )}
+                    <span className={cx('notifications')}>
+                        <img
+                            src={ringIcon}
+                            alt="Notifications"
+                            className={cx('ring-icon')}
+                        />
+                    </span>
                     <span className={cx('cart')}>
                         <img
                             src="https://cdn0.iconfinder.com/data/icons/mobile-basic-vol-1/32/Tote_Bag-1024.png"
@@ -125,6 +134,18 @@ function DefaultHeader() {
                     </span>
                 </div>
             </header>
+            {showLogoutConfirm && (
+                <div className={cx('modal-overlay')} role="dialog" aria-modal="true">
+                    <div className={cx('modal')}>
+                        <h3 className={cx('modal-title')}>Đăng xuất tài khoản?</h3>
+                        <p className={cx('modal-desc')}>Bạn có chắc chắn muốn đăng xuất khỏi hệ thống không?</p>
+                        <div className={cx('modal-actions')}>
+                            <button className={cx('btn', 'btn-muted')} onClick={() => setShowLogoutConfirm(false)}>Hủy</button>
+                            <button className={cx('btn', 'btn-primary')} onClick={handleLogout}>Đăng xuất</button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

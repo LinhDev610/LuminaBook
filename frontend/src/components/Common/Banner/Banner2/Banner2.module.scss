@@ -1,0 +1,49 @@
+/* Banner2 styles (extracted from Home.module.scss for reuse) */
+
+.bottom-banners {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+    margin-top: 15px;
+}
+
+.banner-card {
+    border-radius: 4px;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 100px;
+    position: relative;
+    overflow: hidden;
+    border: 1px solid #ddd;
+}
+
+.banner-1 {
+    background: linear-gradient(135deg, #FFFFFF, #F8F9FA);
+    border: 1px solid #4A90E2;
+}
+
+.banner-2 {
+    background: linear-gradient(135deg, #87CEEB, #B0E0E6);
+}
+
+.banner-3 {
+    background: linear-gradient(135deg, #1A3C5A, #2C5282);
+    color: white;
+}
+
+.banner-link {
+    display: block;
+    width: 100%;
+    height: 100%;
+    text-decoration: none;
+}
+
+.banner-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 2px;
+}
+

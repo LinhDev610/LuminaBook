@@ -1,0 +1,42 @@
+/* AuthModals Component Styles */
+
+.auth-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.auth-modal-content {
+  background-color: white;
+  border-radius: 12px;
+  padding: 60px;
+  max-width: 700px;
+  width: 95%;
+  max-height: 90vh;
+  overflow: auto;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .auth-modal-content {
+    padding: 30px;
+    max-width: 95%;
+    width: 95%;
+  }
+}
+
+@media (max-width: 480px) {
+  .auth-modal-content {
+    padding: 20px;
+    max-width: 98%;
+    width: 98%;
+  }
+}

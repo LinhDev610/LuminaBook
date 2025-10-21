@@ -2,6 +2,7 @@ import { useAuth } from '../contexts/AuthContext';
 import LoginModal from './Auth/Login/LoginModal';
 import RegisterModal from './Auth/Register/RegisterModal';
 import ForgotPasswordModal from './Auth/ForgotPassword/ForgotPasswordModal';
+import VerifyCodeModal from './Auth/VerifyCode/VerifyCodeModal';
 
 export default function AuthModals() {
     const {
@@ -48,6 +49,12 @@ export default function AuthModals() {
                 )}
                 {authStep === 'forgot-password' && (
                     <ForgotPasswordModal
+                        open={true}
+                        onClose={closeAuthModal}
+                    />
+                )}
+                {authStep === 'verify-code' && (
+                    <VerifyCodeModal
                         open={true}
                         onClose={closeAuthModal}
                     />

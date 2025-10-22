@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import useLocalStorage from '../../../hooks/useLocalStorage';
 import { useAuth } from '../../../contexts/AuthContext';
 import { isValidEmail } from '../../../services/utils';
@@ -18,9 +18,15 @@ export default function LoginModal({ open = false, onClose }) {
     const navigate = useNavigate();
     const { switchToRegister, switchToForgotPassword } = useAuth();
     const [token, setToken] = useLocalStorage('token', null);
-    const [refreshToken, setRefreshToken, removeRefreshToken] = useLocalStorage('refreshToken', null);
+    const [refreshToken, setRefreshToken, removeRefreshToken] = useLocalStorage(
+        'refreshToken',
+        null,
+    );
     const [displayName, setDisplayName] = useLocalStorage('displayName', null);
-    const [savedEmail, setSavedEmail, removeSavedEmail] = useLocalStorage('savedEmail', null);
+    const [savedEmail, setSavedEmail, removeSavedEmail] = useLocalStorage(
+        'savedEmail',
+        null,
+    );
     const [email, setEmail] = useState(savedEmail || '');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
@@ -31,14 +37,14 @@ export default function LoginModal({ open = false, onClose }) {
     // Function to refresh token using backend endpoint
     const refreshTokenIfNeeded = async () => {
         if (!refreshToken) return false;
-        
+
         try {
             const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ token: refreshToken }),
             });
-            
+
             const data = await response.json();
             if (response.ok && data?.result?.token) {
                 setToken(data.result.token);
@@ -93,7 +99,7 @@ export default function LoginModal({ open = false, onClose }) {
                     removeSavedEmail();
                     removeRefreshToken();
                 }
-                
+
                 try {
                     const me = await fetch(`${API_BASE_URL}/users/my-info`, {
                         headers: {
@@ -102,14 +108,14 @@ export default function LoginModal({ open = false, onClose }) {
                     });
                     const meData = await me.json().catch(() => ({}));
                     const displayNameValue =
-                        meData?.result?.firstName ||
+                        meData?.result?.fullName ||
                         meData?.result?.username ||
                         payload.username;
                     setDisplayName(displayNameValue);
                 } catch (_) {
                     setDisplayName(payload.username);
                 }
-                
+
                 onClose?.();
                 // Force refresh to update Header
                 navigate(0);
@@ -138,10 +144,7 @@ export default function LoginModal({ open = false, onClose }) {
             </div>
             <p className={cx('auth-subtext')}>
                 Bạn chưa có tài khoản?{' '}
-                <button 
-                    onClick={switchToRegister}
-                    className={cx('auth-link')}
-                >
+                <button onClick={switchToRegister} className={cx('auth-link')}>
                     Đăng ký
                 </button>
             </p>
@@ -185,25 +188,18 @@ export default function LoginModal({ open = false, onClose }) {
                 {error && <div className={cx('error-text')}>{error}</div>}
                 <div className={cx('auth-row')}>
                     <label className={cx('remember-me')}>
-                        <input 
-                            type="checkbox" 
+                        <input
+                            type="checkbox"
                             checked={rememberMe}
                             onChange={(e) => setRememberMe(e.target.checked)}
-                        /> 
+                        />
                         Ghi nhớ đăng nhập
                     </label>
-                    <button
-                        onClick={switchToForgotPassword}
-                        className={cx('auth-link')}
-                    >
+                    <button onClick={switchToForgotPassword} className={cx('auth-link')}>
                         Quên mật khẩu?
                     </button>
                 </div>
-                <Button
-                    type="submit"
-                    className={cx('auth-submit')}
-                    disabled={isLoading}
-                >
+                <Button type="submit" className={cx('auth-submit')} disabled={isLoading}>
                     {isLoading ? 'Đang đăng nhập...' : 'Đăng nhập'}
                 </Button>
             </form>

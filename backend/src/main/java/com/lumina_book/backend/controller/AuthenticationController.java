@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.lumina_book.backend.dto.request.*;
+import com.lumina_book.backend.dto.request.ApiResponse;
 import com.lumina_book.backend.dto.response.AuthenticationResponse;
 import com.lumina_book.backend.dto.response.IntrospectResponse;
 import com.lumina_book.backend.service.AuthenticationService;

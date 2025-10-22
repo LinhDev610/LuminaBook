@@ -122,7 +122,8 @@ export default function RegisterModal({ open = false, onClose }) {
             const payload = {
                 username: (email || '').trim(),
                 password,
-                firstName: (username || '').trim(),
+                email: (email || '').trim(),
+                fullName: (username || '').trim(),
             };
             const resp = await fetch(`${API_BASE_URL}/users`, {
                 method: 'POST',

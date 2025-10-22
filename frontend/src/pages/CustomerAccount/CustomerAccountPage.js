@@ -54,7 +54,7 @@ function CustomerAccountPage() {
             return setChangePwdMsg('Mật khẩu xác nhận không khớp');
         }
         try {
-            const resp = await fetch(`${process.env.REACT_APP_API_BASE_URL || ''}/auth/change-password`, {
+            const resp = await fetch(`http://localhost:8080/lumina_book/auth/change-password`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

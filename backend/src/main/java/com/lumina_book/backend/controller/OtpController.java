@@ -38,6 +38,16 @@ public class OtpController {
                         .result(null)
                         .build();
             }
+            
+            // If in forgot mode and email doesn't exist, block sending OTP
+            if ("forgot".equalsIgnoreCase(mode) && !userRepository.findByUsername(email).isPresent()) {
+                return ApiResponse.<String>builder()
+                        .code(400)
+                        .message("Email không tồn tại trong hệ thống")
+                        .result(null)
+                        .build();
+            }
+            
             String otpCode = otpService.generateAndSendOtp(email);
             return ApiResponse.<String>builder()
                     .code(200)

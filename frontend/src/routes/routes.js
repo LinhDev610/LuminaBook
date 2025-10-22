@@ -1,5 +1,3 @@
-import config from '../config';
-
 import Home from '../pages/Home';
 import PromotionPage from '../pages/Promotion';
 import NewBookPage from '../pages/NewBook';
@@ -8,19 +6,22 @@ import Login from '../components/Auth/Login';
 import Register from '../components/Auth/Register';
 import ForgotPassword from '../components/Auth/ForgotPassword';
 import VerifyCode from '../components/Auth/VerifyCode';
-import ResetPassword from '../components/Auth/ResetPassword';
-import CustomerAccount from '../pages/CustomerAccount';
+
+import Account from '../pages/CustomerAccount';
+import CustomerAccountLayout from '../layouts/CustomerAccountLayout';
 
 // Public routes
 const publicRoutes = [
-    { path: config.routes.home, component: Home },
-    { path: config.routes.contact, component: Contact },
-    { path: config.routes.login, component: Login },
-    { path: config.routes.register, component: Register },
-    { path: config.routes.forgotPassword, component: ForgotPassword },
-    { path: config.routes.verifyCode, component: VerifyCode },
-    { path: config.routes.resetPassword, component: ResetPassword },
-    { path: config.routes.customerAccount, component: CustomerAccount },
+    { path: '/', component: Home },
+    { path: '/promotion', component: PromotionPage },
+    { path: '/newbook', component: NewBookPage },
+    { path: '/contact', component: Contact },
+    { path: '/login', component: Login },
+    { path: '/register', component: Register },
+    { path: '/forgot-password', component: ForgotPassword },
+    { path: '/verify-code', component: VerifyCode },
+    { path: '/account', component: Account },
+    { path: '/customer-account', component: Account, layout: CustomerAccountLayout },
 ];
 
 // Private routes

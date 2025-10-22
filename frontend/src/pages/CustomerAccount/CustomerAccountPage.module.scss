@@ -28,7 +28,7 @@
     border: 1px solid #ddd;
     border-radius: 8px;
     padding: 16px;
-    height: auto
+    height: auto;
 }
 
 /* Profile section in sidebar */
@@ -94,9 +94,7 @@
     width: 30px;
     height: 30px;
     display: inline-block;
-    
 }
-
 
 .menu-item.active {
     background: #edeeef;
@@ -115,7 +113,7 @@
     display: flex;
     flex-direction: column;
     gap: 16px;
-    
+
     /* Giới hạn chiều cao */
 }
 
@@ -140,7 +138,6 @@
     border-radius: 50%;
     border: 2px solid #111;
     display: inline-block;
-    
 }
 
 /* =========================
@@ -148,7 +145,7 @@
 ========================= */
 .form-row {
     display: flex;
-    gap: 40px;           /* khoảng cách ngang giữa Username và Gmail */
+    gap: 40px; /* khoảng cách ngang giữa Username và Gmail */
     margin-bottom: 28px; /* khoảng cách dọc giữa các hàng */
 }
 
@@ -173,9 +170,8 @@
     padding: 0 12px;
     background: #fff;
     color: #111;
-    font-size: 15px; 
+    font-size: 15px;
 }
-
 
 .form-actions {
     display: flex;
@@ -309,4 +305,3 @@
     font-weight: 700;
     color: #d00000;
 }
-

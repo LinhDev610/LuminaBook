@@ -25,10 +25,20 @@ public class User {
     String username;
 
     String password;
-    String firstName;
-    String lastName;
-    LocalDate dob;
+    String fullName;
+    String email;
+    String phoneNumber;
+    String address;
+    String avatarUrl;
+    boolean isActive;
+    LocalDate createAt;
 
+    // @ManyToMany(fetch = FetchType.EAGER)
+    // @JoinTable(
+    //     name = "user_roles",
+    //     joinColumns = @JoinColumn(name = "user_id"),
+    //     inverseJoinColumns = @JoinColumn(name = "role_id")
+    // )
     @ManyToMany
     Set<Role> roles;
 }

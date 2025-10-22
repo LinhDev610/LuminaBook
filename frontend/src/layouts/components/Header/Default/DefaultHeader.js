@@ -1,3 +1,5 @@
+import config from '../../../../config/';
+
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import classNames from 'classnames/bind';
@@ -13,6 +15,8 @@ import styles from './DefaultHeader.module.scss';
 const cx = classNames.bind(styles);
 
 function DefaultHeader() {
+    const customerAccount = config.routes.customerAccount;
+
     const navigate = useNavigate();
     const { openLoginModal, openRegisterModal, openForgotPasswordModal } = useAuth();
     const [displayName, setDisplayName, removeDisplayName] = useLocalStorage(
@@ -20,15 +24,21 @@ function DefaultHeader() {
         null,
     );
     const [token, setToken, removeToken] = useLocalStorage('token', null);
-    const [refreshToken, setRefreshToken, removeRefreshToken] = useLocalStorage('refreshToken', null);
-    const [savedEmail, setSavedEmail, removeSavedEmail] = useLocalStorage('savedEmail', null);
-    
+    const [refreshToken, setRefreshToken, removeRefreshToken] = useLocalStorage(
+        'refreshToken',
+        null,
+    );
+    const [savedEmail, setSavedEmail, removeSavedEmail] = useLocalStorage(
+        'savedEmail',
+        null,
+    );
+
     // Check for token in both localStorage and sessionStorage
     const currentToken = token || sessionStorage.getItem('token');
     const isLoggedIn = !!currentToken;
     const [menuOpen, setMenuOpen] = useState(false);
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-    
+
     const toggleMenu = () => setMenuOpen((v) => !v);
     const handleLogout = () => {
         // Close confirm modal immediately so it disappears before navigation
@@ -58,7 +68,7 @@ function DefaultHeader() {
                 </div>
                 <div className={cx('search')}>
                     <input type="text" placeholder="Tìm kiếm theo tên tác phẩm,…" />
-                    <button>Tim</button>
+                    <button>Tìm</button>
                 </div>
                 <div className={cx('actions')}>
                     {isLoggedIn && displayName ? (
@@ -77,7 +87,7 @@ function DefaultHeader() {
                             {menuOpen && (
                                 <div className={cx('user-menu__dropdown')} role="menu">
                                     <Link
-                                        to="/account"
+                                        to={customerAccount}
                                         className={cx('user-menu__item')}
                                         role="menuitem"
                                         onClick={() => setMenuOpen(false)}
@@ -101,13 +111,12 @@ function DefaultHeader() {
                                 className={cx('login-link')}
                             >
                                 <span className={cx('login-text')}>Đăng nhập</span>
-                                <img 
-                                    src={guestIcon} 
-                                    alt="Guest" 
+                                <img
+                                    src={guestIcon}
+                                    alt="Guest"
                                     className={cx('guest-icon')}
                                 />
                             </button>
-
                         </div>
                     )}
                     <span className={cx('notifications')}>

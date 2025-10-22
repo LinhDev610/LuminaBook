@@ -1,12 +1,15 @@
 package com.lumina_book.backend.dto.request;
 
+import com.lumina_book.backend.constant.PredefinedRole;
+import com.lumina_book.backend.validator.EmailConstraint;
+import com.lumina_book.backend.validator.PasswordConstraint;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import java.time.LocalDate;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
-
-import com.lumina_book.backend.validator.DobConstraint;
 
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -18,19 +21,23 @@ import lombok.experimental.FieldDefaults;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 // 1 số annotation khác: @Email, @NotNull, @NotBlack, @NotEmpty
 public class UserCreationRequest {
-    @Size(min = 4, message = "USERNAME_INVALID")
+    @Size(min = 3, message = "USERNAME_INVALID")
     String username;
 
-    @NotBlank(message = "INVALID_PASSWORD")
-    @Size(min = 8, max = 32, message = "INVALID_PASSWORD")
-    @Pattern(
-            regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^A-Za-z0-9])\\S{8,32}$",
-            message = "INVALID_PASSWORD")
+    @NotNull(message = "PASSWORD_REQUIRED")
+    @PasswordConstraint
     String password;
 
-    String firstName;
-    String lastName;
+    @EmailConstraint
+    @NotBlank(message = "EMAIL_REQUIRED")
+    String email;
 
-    @DobConstraint(min = 10, message = "INVALID_DOB")
-    LocalDate dob;
+    String phoneNumber;
+    String fullName;
+    String address;
+
+    String avatarUrl;
+
+    @Builder.Default
+    String roleName = PredefinedRole.CUSTOMER_ROLE.getName();
 }

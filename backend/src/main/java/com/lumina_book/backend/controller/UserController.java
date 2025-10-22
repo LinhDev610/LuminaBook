@@ -27,7 +27,15 @@ class UserController {
 
     @PostMapping
     ApiResponse<UserResponse> createUser(@RequestBody @Valid UserCreationRequest request) {
-        // log.info("Controller: create User");
+        log.info("Controller: create User");
+        return ApiResponse.<UserResponse>builder()
+                .result(userService.createUser(request))
+                .build();
+    }
+
+    @PostMapping("/staff")
+    ApiResponse<UserResponse> createStaff(@RequestBody @Valid UserCreationRequest request) {
+        log.info("Controller: create Staff");
         return ApiResponse.<UserResponse>builder()
                 .result(userService.createUser(request))
                 .build();

@@ -52,7 +52,7 @@ public class SecurityConfig {
                                 .decoder(customJwtDecoder) // Dùng jwtDecoder để giải mã và xác minh token
                                 .jwtAuthenticationConverter(jwtAuthenticationConverter()))
                         .authenticationEntryPoint(
-                                new JwtAuthenticationEntryPoint()) // Điều hướng user sau khi authentication fail
+                                new com.lumina_book.backend.configuration.JwtAuthenticationEntryPoint()) // Điều hướng user sau khi authentication fail
                 );
 
         httpSecurity.csrf(

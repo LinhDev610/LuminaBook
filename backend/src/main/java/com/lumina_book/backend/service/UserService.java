@@ -12,7 +12,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import com.lumina_book.backend.constant.PredefinedRole;
 import com.lumina_book.backend.dto.request.UserCreationRequest;
 import com.lumina_book.backend.dto.request.UserUpdateRequest;
 import com.lumina_book.backend.dto.response.UserResponse;
@@ -47,28 +46,50 @@ public class UserService {
     private String defaultAvatarUrl;
 
     public UserResponse createUser(UserCreationRequest request) {
-        User user = userMapper.toUser(request);
-        user.setPassword(passwordEncoder.encode(request.getPassword()));
-        user.setEmail(request.getEmail());
-        user.setPhoneNumber(request.getPhoneNumber() != null ? request.getPhoneNumber() : "");
-        user.setFullName(request.getFullName() != null ? request.getFullName() : request.getUsername());
-        user.setAddress(request.getAddress() != null ? request.getAddress() : "");
-        user.setAvatarUrl(defaultAvatarUrl);
-        user.setCreateAt(LocalDate.now());
-        user.setActive(true);
-
-        HashSet<Role> roles = new HashSet<>();
-        roleRepository.findById(request.getRoleName()).ifPresent(roles::add);
-
-        user.setRoles(roles);
-
+        log.info("Creating user with email: {}", request.getEmail());
+        
         try {
-            user = userRepository.save(user);
-        } catch (DataIntegrityViolationException exception) {
-            throw new AppException(ErrorCode.USER_EXISTED);
-        }
+            // Kiểm tra email đã tồn tại chưa
+            if (userRepository.existsByEmail(request.getEmail())) {
+                log.warn("Email already exists: {}", request.getEmail());
+                throw new AppException(ErrorCode.USER_EXISTED);
+            }
 
-        return userMapper.toUserResponse(user);
+            // Kiểm tra username đã tồn tại chưa
+            if (userRepository.existsByUsername(request.getUsername())) {
+                log.warn("Username already exists: {}", request.getUsername());
+                throw new AppException(ErrorCode.USER_EXISTED);
+            }
+
+            User user = userMapper.toUser(request);
+            user.setPassword(passwordEncoder.encode(request.getPassword()));
+            user.setEmail(request.getEmail());
+            user.setPhoneNumber(request.getPhoneNumber() != null ? request.getPhoneNumber() : "");
+            user.setFullName(request.getFullName() != null ? request.getFullName() : request.getUsername());
+            user.setAddress(request.getAddress() != null ? request.getAddress() : "");
+            user.setAvatarUrl(request.getAvatarUrl() != null ? request.getAvatarUrl() : defaultAvatarUrl);
+            user.setCreateAt(LocalDate.now());
+            user.setActive(request.isActive());
+
+            HashSet<Role> roles = new HashSet<>();
+            roleRepository.findById(request.getRoleName()).ifPresent(roles::add);
+            user.setRoles(roles);
+
+            user = userRepository.save(user);
+            log.info("User created successfully with ID: {}", user.getId());
+            
+            return userMapper.toUserResponse(user);
+            
+        } catch (AppException e) {
+            log.error("AppException in createUser: {}", e.getMessage());
+            throw e;
+        } catch (DataIntegrityViolationException e) {
+            log.error("DataIntegrityViolationException in createUser: {}", e.getMessage());
+            throw new AppException(ErrorCode.USER_EXISTED);
+        } catch (Exception e) {
+            log.error("Unexpected error in createUser: {}", e.getMessage(), e);
+            throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION);
+        }
     }
 
     public UserResponse getMyInfo() {

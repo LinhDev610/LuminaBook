@@ -19,7 +19,7 @@ public class PasswordService {
 
     public void resetPasswordByOtp(String email, String otp, String newPassword) {
         otpService.consumeOtp(email, otp);
-        User user = userRepository.findByUsername(email)
+        User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
         user.setPassword(passwordEncoder.encode(newPassword));
         userRepository.save(user);

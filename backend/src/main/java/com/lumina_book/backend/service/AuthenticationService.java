@@ -74,14 +74,20 @@ public class AuthenticationService {
         return IntrospectResponse.builder().valid(isValid).build();
     }
 
-    // Verify username, password request vs repository
+    // Verify username/email, password request vs repository
     public AuthenticationResponse authenticate(AuthenticationRequest request) {
         log.info("SignKey: {}", SIGNER_KEY);
 
         PasswordEncoder passwordEncoder = new BCryptPasswordEncoder(10);
+        
+        // Thử tìm user bằng username trước, nếu không có thì thử bằng email
         var user = userRepository
                 .findByUsername(request.getUsername())
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+                .orElseGet(() -> {
+                    // Nếu không tìm thấy bằng username, thử tìm bằng email
+                    return userRepository.findByEmail(request.getUsername())
+                            .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+                });
 
         boolean authenticated = passwordEncoder.matches(request.getPassword(), user.getPassword());
 

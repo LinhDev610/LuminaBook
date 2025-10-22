@@ -11,6 +11,9 @@ import com.lumina_book.backend.entity.User;
 
 @Mapper(componentModel = "spring")
 public interface UserMapper {
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "createAt", ignore = true)
+    @Mapping(target = "roles", ignore = true)
     User toUser(UserCreationRequest request);
 
     // @Mapping(source = "firstName", target = "lastName")  // Custom mapping attribute

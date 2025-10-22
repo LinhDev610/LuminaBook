@@ -2,6 +2,13 @@ import { useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import useLocalStorage from '../../hooks/useLocalStorage';
 import guestImgIcon from '../../assets/icons/icon_img_guest.png';
+import userIcon from '../../assets/icons/icon_user.png';
+import clockIcon from '../../assets/icons/icon_clock.png';
+import giftIcon from '../../assets/icons/icon_gift.png';
+import complaintIcon from '../../assets/icons/icon_hotro247.png';
+import logoutIcon from '../../assets/icons/icon_logout.png';
+import lockIcon from '../../assets/icons/icon_lock.png';
+import voucherIcon from '../../assets/icons/icon_voucher.png';
 
 import styles from './CustomerAccountPage.module.scss';
 import classNames from 'classnames/bind';
@@ -23,6 +30,11 @@ function CustomerAccountPage() {
     const isLoggedIn = !!token;
     const [userAvatar, setUserAvatar] = useLocalStorage('userAvatar', null);
     const [activeTab, setActiveTab] = useState('profile'); // 'profile' | 'password'
+
+    // Debug logging
+    console.log('CustomerAccountPage - isLoggedIn:', isLoggedIn);
+    console.log('CustomerAccountPage - token:', token);
+    console.log('CustomerAccountPage - displayName:', displayName);
 
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
@@ -104,7 +116,7 @@ function CustomerAccountPage() {
                         <li className={cx('menu-item', { active: activeTab === 'profile' })} onClick={() => setActiveTab('profile')}>
                             <img
                                 className={cx('mi')}
-                                src={require('../../assets/icons/icon_user.png')}
+                                src={userIcon}
                                 alt="user"
                             />
                             <span>Thông tin cá nhân</span>
@@ -112,7 +124,7 @@ function CustomerAccountPage() {
                         <li className={cx('menu-item')}>
                             <img
                                 className={cx('mi')}
-                                src={require('../../assets/icons/icon_clock.png')}
+                                src={clockIcon}
                                 alt="history"
                             />
                             <span>Lịch sử mua hàng</span>
@@ -120,7 +132,7 @@ function CustomerAccountPage() {
                         <li className={cx('menu-item')}>
                             <img
                                 className={cx('mi')}
-                                src={require('../../assets/icons/icon_voucher.png')}
+                                src={voucherIcon}
                                 alt="voucher"
                             />
                             <span>Voucher và khuyến mãi</span>
@@ -128,7 +140,7 @@ function CustomerAccountPage() {
                         <li className={cx('menu-item', { active: activeTab === 'password' })} onClick={() => setActiveTab('password')}>
                             <img
                                 className={cx('mi')}
-                                src={require('../../assets/icons/icon_lock.png')}
+                                src={lockIcon}
                                 alt="lock"
                             />
                             <span>Đổi mật khẩu</span>
@@ -136,7 +148,7 @@ function CustomerAccountPage() {
                         <li className={cx('menu-item')} onClick={() => setShowLogoutConfirm(true)}>
                             <img
                                 className={cx('mi')}
-                                src={require('../../assets/icons/icon_logout.png')}
+                                src={logoutIcon}
                                 alt="logout"
                             />
                             <span>Đăng xuất</span>

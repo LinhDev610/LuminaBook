@@ -6,6 +6,7 @@ import Login from '../components/Auth/Login';
 import Register from '../components/Auth/Register';
 import ForgotPassword from '../components/Auth/ForgotPassword';
 import VerifyCode from '../components/Auth/VerifyCode';
+import CustomerAccountLayout from '../layouts/CustomerAccountLayout';
 
 import Account from '../pages/CustomerAccount';
 
@@ -20,6 +21,7 @@ const publicRoutes = [
     { path: '/forgot-password', component: ForgotPassword },
     { path: '/verify-code', component: VerifyCode },
     { path: '/account', component: Account },
+    { path: '/customer-account', component: Account, layout: CustomerAccountLayout },
 ];
 
 // Private routes

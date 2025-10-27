@@ -1,7 +1,5 @@
 package com.lumina_book.backend.dto.request;
 
-import java.util.List;
-
 import com.lumina_book.backend.validator.EmailConstraint;
 import com.lumina_book.backend.validator.PasswordConstraint;
 
@@ -16,15 +14,15 @@ import lombok.experimental.FieldDefaults;
 public class UserUpdateRequest {
     @PasswordConstraint
     String password;
-    
+
     @EmailConstraint
     String email;
-    
+
     String phoneNumber;
     String fullName;
     String address;
     String avatarUrl;
     Boolean isActive;
 
-    List<String> roles;
+    String role;
 }

@@ -1,7 +1,6 @@
 package com.lumina_book.backend.service;
 
 import java.time.LocalDate;
-import java.util.HashSet;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -12,7 +11,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import com.lumina_book.backend.constant.PredefinedRole;
 import com.lumina_book.backend.dto.request.UserCreationRequest;
 import com.lumina_book.backend.dto.request.UserUpdateRequest;
 import com.lumina_book.backend.dto.response.UserResponse;
@@ -26,8 +24,8 @@ import com.lumina_book.backend.repository.UserRepository;
 
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
-import lombok.experimental.NonFinal;
 import lombok.experimental.FieldDefaults;
+import lombok.experimental.NonFinal;
 import lombok.extern.slf4j.Slf4j;
 
 @Service
@@ -51,16 +49,16 @@ public class UserService {
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setEmail(request.getEmail());
         user.setPhoneNumber(request.getPhoneNumber() != null ? request.getPhoneNumber() : "");
-        user.setFullName(request.getFullName() != null ? request.getFullName() : request.getUsername());
+        user.setFullName(request.getFullName());
         user.setAddress(request.getAddress() != null ? request.getAddress() : "");
         user.setAvatarUrl(defaultAvatarUrl);
         user.setCreateAt(LocalDate.now());
         user.setActive(true);
 
-        HashSet<Role> roles = new HashSet<>();
-        roleRepository.findById(request.getRoleName()).ifPresent(roles::add);
-
-        user.setRoles(roles);
+        Role role = roleRepository
+                .findById(request.getRoleName())
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+        user.setRole(role);
 
         try {
             user = userRepository.save(user);
@@ -77,13 +75,13 @@ public class UserService {
         var context = SecurityContextHolder.getContext();
         String name = context.getAuthentication().getName();
 
-        User user = userRepository.findByUsername(name).orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+        User user = userRepository.findByEmail(name).orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
 
         return userMapper.toUserResponse(user);
     }
 
     // User chỉ có thể lấy được thông tin của chính mình, không thể lấy được thông tin của người khác
-    @PostAuthorize("returnObject.username == authentication.name")
+    @PostAuthorize("returnObject.email == authentication.name")
     public UserResponse updateUser(String userId, UserUpdateRequest request) {
         User user = userRepository.findById(userId).orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
 
@@ -91,12 +89,13 @@ public class UserService {
 
         // Check current user is ADMIN
         var context = SecurityContextHolder.getContext();
-        String currentUsername = context.getAuthentication().getName();
-        User currentUser = userRepository.findByUsername(currentUsername)
+        String currentEmail = context.getAuthentication().getName();
+        User currentUser = userRepository
+                .findByEmail(currentEmail)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
 
-        boolean isAdmin = currentUser.getRoles().stream()
-                .anyMatch(role -> role.getName().equals("ADMIN"));
+        boolean isAdmin =
+                currentUser.getRole() != null && currentUser.getRole().getName().equals("ADMIN");
 
         // Password TODO: Nhập mật khẩu cũ
         if (request.getPassword() != null && !request.getPassword().isEmpty()) {
@@ -127,10 +126,12 @@ public class UserService {
         }
 
         // role
-        if (request.getRoles() != null && !request.getRoles().isEmpty()) {
+        if (request.getRole() != null && !request.getRole().isEmpty()) {
             if (isAdmin) {
-                var roles = roleRepository.findAllById(request.getRoles());
-                user.setRoles(new HashSet<>(roles));
+                Role newRole = roleRepository
+                        .findById(request.getRole())
+                        .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+                user.setRole(newRole);
             } else {
                 throw new AppException(ErrorCode.UNAUTHORIZED);
             }

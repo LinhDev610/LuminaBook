@@ -1,8 +1,9 @@
 package com.lumina_book.backend.dto.request;
 
-import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
+
+import com.lumina_book.backend.validator.EmailConstraint;
 
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -18,7 +19,7 @@ import lombok.experimental.FieldDefaults;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class OtpVerificationRequest {
     @NotBlank(message = "Email không được để trống")
-    @Email(message = "Email sai định dạng")
+    @EmailConstraint
     String email;
 
     @NotBlank(message = "OTP is required")

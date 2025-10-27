@@ -1,6 +1,6 @@
 package com.lumina_book.backend.configuration;
 
-import java.util.HashSet;
+import java.time.LocalDate;
 
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -29,7 +29,7 @@ public class ApplicationInitConfig {
     PasswordEncoder passwordEncoder;
 
     @NonFinal
-    static final String ADMIN_USER_NAME = "admin";
+    static final String ADMIN_EMAIL = "admin@luminabook.com";
 
     @NonFinal
     static final String ADMIN_PASSWORD = "admin";
@@ -42,7 +42,7 @@ public class ApplicationInitConfig {
     ApplicationRunner applicationRunner(UserRepository userRepository, RoleRepository roleRepository) {
         log.info("Initializing  application.....");
         return args -> {
-            if (userRepository.findByUsername(ADMIN_USER_NAME).isEmpty()) {
+            if (userRepository.findByEmail(ADMIN_EMAIL).isEmpty()) {
                 // Customer
                 roleRepository.save(Role.builder()
                         .name(PredefinedRole.CUSTOMER_ROLE.getName())
@@ -64,13 +64,12 @@ public class ApplicationInitConfig {
                         .description(PredefinedRole.ADMIN_ROLE.getDescription())
                         .build());
 
-                var roles = new HashSet<Role>();
-                roles.add(adminRole);
-
                 User user = User.builder()
-                        .username(ADMIN_USER_NAME)
+                        .email(ADMIN_EMAIL)
                         .password(passwordEncoder.encode(ADMIN_PASSWORD))
-                        .roles(roles)
+                        .role(adminRole)
+                        .isActive(true)
+                        .createAt(LocalDate.now())
                         .build();
 
                 userRepository.save(user);

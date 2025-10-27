@@ -32,7 +32,8 @@ public class PasswordValidator implements ConstraintValidator<PasswordConstraint
         }
 
         // Kiểm tra khoảng trắng (bao gồm tất cả loại khoảng trắng Unicode)
-        String whitespaceRegex = "[\\s\\u00A0\\u1680\\u2000-\\u200A\\u2028\\u2029\\u202F\\u205F\\u3000\\uFEFF\\u200B\\u200C\\u200D]";
+        String whitespaceRegex =
+                "[\\s\\u00A0\\u1680\\u2000-\\u200A\\u2028\\u2029\\u202F\\u205F\\u3000\\uFEFF\\u200B\\u200C\\u200D]";
         if (password.matches(".*" + whitespaceRegex + ".*")) {
             context.disableDefaultConstraintViolation();
             context.buildConstraintViolationWithTemplate("Mật khẩu không được chứa khoảng trắng")
@@ -48,7 +49,8 @@ public class PasswordValidator implements ConstraintValidator<PasswordConstraint
 
         if (!(hasLowercase && hasUppercase && hasDigit && hasSpecial)) {
             context.disableDefaultConstraintViolation();
-            context.buildConstraintViolationWithTemplate("Mật khẩu ít nhất phải chứa một chữ cái thường, 1 chữ cái in hoa, 1 số và 1 ký tự đặc biệt")
+            context.buildConstraintViolationWithTemplate(
+                            "Mật khẩu ít nhất phải chứa một chữ cái thường, 1 chữ cái in hoa, 1 số và 1 ký tự đặc biệt")
                     .addConstraintViolation();
             return false;
         }

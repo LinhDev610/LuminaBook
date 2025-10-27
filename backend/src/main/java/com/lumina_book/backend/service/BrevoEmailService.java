@@ -24,13 +24,14 @@ public class BrevoEmailService {
     String apiKey;
     String senderEmail;
 
-    public BrevoEmailService(@Value("${brevo.api.key}") String apiKey,
-                             @Value("${brevo.sender.email}") String senderEmail) {
+    public BrevoEmailService(
+            @Value("${brevo.api.key}") String apiKey, @Value("${brevo.sender.email}") String senderEmail) {
         this.apiKey = apiKey;
         this.senderEmail = senderEmail;
     }
 
-    private static final String BREVO_API_URL = "https://api.brevo.com/v3/smtp/email"; // correct Brevo transactional email endpoint
+    private static final String BREVO_API_URL =
+            "https://api.brevo.com/v3/smtp/email"; // correct Brevo transactional email endpoint
 
     public void sendOtpEmail(String toEmail, String otpCode) {
         try {
@@ -45,18 +46,16 @@ public class BrevoEmailService {
             // Prepare request body
             Map<String, Object> requestBody = new HashMap<>();
             requestBody.put("sender", Map.of("email", senderEmail, "name", "LuminaBook"));
-            requestBody.put("to", new Object[]{Map.of("email", toEmail, "name", "User")});
+            requestBody.put("to", new Object[] {Map.of("email", toEmail, "name", "User")});
             requestBody.put("subject", "Mã xác thực OTP - LuminaBook");
 
             String emailContent = String.format(
-                    "Xin chào,\n\n" +
-                            "Mã xác thực OTP của bạn là: %s\n\n" +
-                            "Mã này có hiệu lực trong 5 phút.\n" +
-                            "Vui lòng không chia sẻ mã này với bất kỳ ai.\n\n" +
-                            "Trân trọng,\n" +
-                            "Đội ngũ LuminaBook",
-                    otpCode
-            );
+                    "Xin chào,\n\n" + "Mã xác thực OTP của bạn là: %s\n\n"
+                            + "Mã này có hiệu lực trong 5 phút.\n"
+                            + "Vui lòng không chia sẻ mã này với bất kỳ ai.\n\n"
+                            + "Trân trọng,\n"
+                            + "Đội ngũ LuminaBook",
+                    otpCode);
 
             requestBody.put("textContent", emailContent);
             requestBody.put("htmlContent", emailContent.replace("\n", "<br>"));
@@ -64,11 +63,7 @@ public class BrevoEmailService {
             HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
 
             // Send request
-            ResponseEntity<Map> response = restTemplate.postForEntity(
-                    BREVO_API_URL,
-                    request,
-                    Map.class
-            );
+            ResponseEntity<Map> response = restTemplate.postForEntity(BREVO_API_URL, request, Map.class);
 
             if (response.getStatusCode() == HttpStatus.CREATED) {
                 log.info("Email sent successfully to: {} via Brevo API", toEmail);

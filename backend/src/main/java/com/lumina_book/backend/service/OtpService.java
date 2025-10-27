@@ -52,16 +52,16 @@ public class OtpService {
 
     @Transactional(readOnly = true)
     public boolean isValidOtp(String email, String otpCode) {
-        otpRepository.findByEmailAndCodeAndExpiresAtAfterAndIsUsedFalse(
-                        email, otpCode, LocalDateTime.now())
+        otpRepository
+                .findByEmailAndCodeAndExpiresAtAfterAndIsUsedFalse(email, otpCode, LocalDateTime.now())
                 .orElseThrow(() -> new AppException(ErrorCode.INVALID_OTP));
         return true;
     }
 
     @Transactional
     public void consumeOtp(String email, String otpCode) {
-        otpRepository.findByEmailAndCodeAndExpiresAtAfterAndIsUsedFalse(
-                        email, otpCode, LocalDateTime.now())
+        otpRepository
+                .findByEmailAndCodeAndExpiresAtAfterAndIsUsedFalse(email, otpCode, LocalDateTime.now())
                 .orElseThrow(() -> new AppException(ErrorCode.INVALID_OTP));
         otpRepository.markOtpAsUsed(email, otpCode);
     }

@@ -80,58 +80,18 @@ export default function ForgotPasswordModal({ open = false, onClose }) {
         setIsLoading(true);
         setError('');
         try {
-            // Bước 1: Kiểm tra email có tồn tại không bằng cách thử đăng nhập với password giả
-            // Nếu email không tồn tại, API sẽ trả về lỗi "User not existed"
-            const checkUserResponse = await fetch(`${API_BASE_URL}/auth/token`, {
+            // Gửi OTP với mode=forgot để backend tự động kiểm tra email tồn tại
+            const response = await fetch(`${API_BASE_URL}/auth/send-otp?email=${encodeURIComponent(email)}&mode=forgot`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    username: email,
-                    password: 'password-to-check-user-exists'
-                })
             });
+            const data = await response.json();
             
-            const checkData = await checkUserResponse.json();
-            
-            // Nếu user không tồn tại (lỗi "User not existed"), báo lỗi
-            if (checkData.message && (
-                checkData.message.includes('User not existed') ||
-                checkData.message.includes('User not found') ||
-                checkData.message.includes('User không tồn tại')
-            )) {
-                setError('Email không tồn tại trong hệ thống. Vui lòng kiểm tra lại email.');
-                return;
-            }
-            
-            // Nếu user tồn tại (lỗi "Unauthenticated" - sai password), tiếp tục gửi OTP
-            if (checkData.message && checkData.message.includes('Unauthenticated')) {
-                // User tồn tại nhưng sai password, tiếp tục gửi OTP
-                const response = await fetch(`${API_BASE_URL}/auth/send-otp?email=${encodeURIComponent(email)}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                });
-                const data = await response.json();
-                
-                if (response.ok && data.code === 200) {
-                    // Switch to verify code modal
-                    switchToVerifyCode(email, 'forgot-password');
-                } else {
-                    setError(data.message || 'Không thể gửi mã code. Vui lòng thử lại.');
-                }
+            if (response.ok && data.code === 200) {
+                // Switch to verify code modal
+                switchToVerifyCode(email, 'forgot-password');
             } else {
-                // Trường hợp khác, thử gửi OTP trực tiếp
-                const response = await fetch(`${API_BASE_URL}/auth/send-otp?email=${encodeURIComponent(email)}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                });
-                const data = await response.json();
-                
-                if (response.ok && data.code === 200) {
-                    // Switch to verify code modal
-                    switchToVerifyCode(email, 'forgot-password');
-                } else {
-                    setError(data.message || 'Không thể gửi mã code. Vui lòng thử lại.');
-                }
+                setError(data.message || 'Không thể gửi mã code. Vui lòng thử lại.');
             }
         } catch (err) {
             setError('Có lỗi xảy ra khi kiểm tra email. Vui lòng thử lại.');

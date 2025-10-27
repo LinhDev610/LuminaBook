@@ -91,6 +91,10 @@ mvn spring-boot:run
 - `POST /auth/refresh` - Refresh token
 - `POST /auth/logout` - Đăng xuất
 - `POST /auth/introspect` - Kiểm tra token
+- `POST /auth/send-otp` - Gửi mã OTP
+- `POST /auth/verify-otp` - Xác định mã OTP
+- `POST /auth/reset-password` - Quên mật khẩu
+- `POST /auth/change-password` - Đổi mật khẩu
 
 ### User Management
 - `POST /users` - Tạo user mới

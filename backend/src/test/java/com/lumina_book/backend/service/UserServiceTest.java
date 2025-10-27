@@ -18,12 +18,12 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.web.servlet.support.WebContentGenerator;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumina_book.backend.dto.request.UserCreationRequest;
 import com.lumina_book.backend.dto.response.UserResponse;
 import com.lumina_book.backend.entity.User;
 import com.lumina_book.backend.exception.AppException;
 import com.lumina_book.backend.repository.UserRepository;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 @SpringBootTest
 @TestPropertySource("/test.properties") // Chỉ định ghi đè file cấu hình riêng cho môi trường test.

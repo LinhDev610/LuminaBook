@@ -7,10 +7,10 @@ function CustomerAccountLayout({ children }) {
     return (
         <div>
             <DefaultHeader />
-            <div className="container" style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: 16 }}>
-                <aside>
+            <div className="container" style={{ display: 'block' }}>
+                {/* <aside>
                     <CustomerSideBar />
-                </aside>
+                </aside> */}
                 <div className="content">{children}</div>
             </div>
             <Footer />

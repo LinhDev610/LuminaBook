@@ -25,7 +25,7 @@ function AdminHeader() {
         removeToken();
         removeDisplayName();
         setMenuOpen(false);
-        navigate(0);
+        navigate('/', { replace: true });
     };
 
     return (

@@ -103,65 +103,95 @@ export default function LoginModal({ open = false, onClose }) {
         
         setError('');
         setIsLoading(true);
+        
         try {
-            const payload = { username: email.trim(), password };
+            const payload = { email: email.trim(), password };
             const resp = await fetch(`${API_BASE_URL}/auth/token`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload),
             });
             const data = await resp.json().catch(() => ({}));
+            
             if (resp.ok && data?.result?.token) {
                 // Handle Remember Me
                 if (rememberMe) {
-                    // Lưu token và refresh token vào localStorage (persistent)
                     setToken(data.result.token);
                     setRefreshToken(data.result.token);
                     setSavedEmail(email.trim());
                 } else {
-                    // Chỉ lưu token vào sessionStorage (temporary)
                     sessionStorage.setItem('token', data.result.token);
                     removeSavedEmail();
                     removeRefreshToken();
                 }
 
                 try {
+                    console.log('Calling /users/my-info with token:', data.result.token);
                     const me = await fetch(`${API_BASE_URL}/users/my-info`, {
                         headers: {
                             Authorization: `Bearer ${data.result.token}`,
+                            'Content-Type': 'application/json',
                         },
                     });
+                    console.log('API call status:', me.status);
                     const meData = await me.json().catch(() => ({}));
+                    
+                    // Debug: Log API response để kiểm tra cấu trúc
+                    console.log('API Response:', meData);
+                    console.log('API Response Status:', me.status);
+                    
+                    // Thử nhiều cách để lấy displayName
                     const displayNameValue =
                         meData?.result?.fullName ||
                         meData?.result?.username ||
-                        payload.username;
+                        meData?.result?.displayName ||
+                        meData?.fullName ||
+                        meData?.username ||
+                        meData?.displayName ||
+                        email.trim();
+                    
+                    console.log('Display Name Value:', displayNameValue);
+                    console.log('Setting displayName to localStorage...');
                     setDisplayName(displayNameValue);
+                    console.log('DisplayName set successfully');
+                    
+                    // Dispatch custom event to notify header
+                    window.dispatchEvent(new CustomEvent('displayNameUpdated'));
                     
                     // Kiểm tra nếu là admin thì chuyển hướng đến trang admin
-                    const userRole = meData?.result?.role || meData?.result?.authorities?.[0]?.authority;
+                    const userRole = meData?.result?.role || 
+                                   meData?.result?.authorities?.[0]?.authority ||
+                                   meData?.role ||
+                                   meData?.authorities?.[0]?.authority;
+                    
+                    console.log('User Role:', userRole);
+                    
                     if (userRole === 'ADMIN' || email.toLowerCase().includes('admin')) {
                         onClose?.();
-                        navigate('/admin');
+                        navigate('/admin', { replace: true });
                         return;
                     }
-                } catch (_) {
-                    setDisplayName(payload.username);
+                } catch (error) {
+                    console.log('Error fetching user info:', error);
+                    console.log('Setting fallback displayName to email:', email.trim());
+                    setDisplayName(email.trim());
+                    
+                    // Dispatch custom event to notify header
+                    window.dispatchEvent(new CustomEvent('displayNameUpdated'));
                     // Nếu không lấy được thông tin user nhưng email chứa 'admin' thì vẫn chuyển hướng
                     if (email.toLowerCase().includes('admin')) {
                         onClose?.();
-                        navigate('/admin');
+                        navigate('/admin', { replace: true });
                         return;
                     }
                 }
 
                 onClose?.();
-                // Chuyển hướng đến trang chủ thay vì refresh
-                navigate('/');
+                console.log('LoginModal: Redirecting to home page');
+                navigate('/', { replace: true });
             } else {
                 // Nếu API trả về lỗi nhưng email chứa 'admin', vẫn cho phép đăng nhập
                 if (email.toLowerCase().includes('admin')) {
-                    // Tạo token giả cho admin
                     const fakeToken = 'admin-token-' + Date.now();
                     if (rememberMe) {
                         setToken(fakeToken);
@@ -172,7 +202,7 @@ export default function LoginModal({ open = false, onClose }) {
                     }
                     setDisplayName('Admin');
                     onClose?.();
-                    navigate('/admin');
+                    navigate('/admin', { replace: true });
                     return;
                 }
                 setError('Tài khoản hoặc mật khẩu không đúng');
@@ -190,7 +220,7 @@ export default function LoginModal({ open = false, onClose }) {
                 }
                 setDisplayName('Admin');
                 onClose?.();
-                navigate('/admin');
+                navigate('/admin', { replace: true });
                 return;
             }
             setError('Không thể kết nối máy chủ. Vui lòng thử lại.');

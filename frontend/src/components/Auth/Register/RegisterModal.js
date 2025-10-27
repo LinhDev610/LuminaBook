@@ -139,9 +139,8 @@ export default function RegisterModal({ open = false, onClose }) {
         setError('');
         try {
             const payload = {
-                username: (email || '').trim(),
-                password,
                 email: (email || '').trim(),
+                password,
                 fullName: (username || '').trim(),
             };
             const resp = await fetch(`${API_BASE_URL}/users`, {
@@ -158,7 +157,7 @@ export default function RegisterModal({ open = false, onClose }) {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
-                                username: (email || '').trim(),
+                                email: (email || '').trim(),
                                 password,
                             }),
                         },

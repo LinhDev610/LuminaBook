@@ -1,6 +1,7 @@
 package com.lumina_book.backend.entity;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Set;
 
 import jakarta.persistence.*;
@@ -21,9 +22,6 @@ public class User {
     @GeneratedValue(strategy = GenerationType.UUID) // Tạo chuỗi ID ngẫu nhiên
     String id;
 
-    @Column(name = "username", unique = true, columnDefinition = "VARCHAR(255) COLLATE utf8mb4_unicode_ci")
-    String username;
-
     String password;
     String fullName;
     String email;
@@ -33,6 +31,24 @@ public class User {
     boolean isActive;
     LocalDate createAt;
 
-    @ManyToMany
-    Set<Role> roles;
+    @OneToMany(mappedBy = "user")
+    List<Review> reviews;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "role")
+    Role role;
+
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "user_notifications",
+            joinColumns = @JoinColumn(name = "user_id"),
+            inverseJoinColumns = @JoinColumn(name = "notification_id"))
+    Set<Notification> notifications;
+
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "user_addresses",
+            joinColumns = @JoinColumn(name = "user_id"),
+            inverseJoinColumns = @JoinColumn(name = "address_id"))
+    Set<Address> addresses;
 }

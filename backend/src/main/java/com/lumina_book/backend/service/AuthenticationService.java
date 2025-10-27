@@ -75,7 +75,7 @@ public class AuthenticationService {
         return IntrospectResponse.builder().valid(isValid).build();
     }
 
-    // Verify username, password request vs repository
+    // Verify email, password request vs repository
     public AuthenticationResponse authenticate(AuthenticationRequest request) {
         log.info("SignKey: {}", SIGNER_KEY);
 
@@ -183,9 +183,9 @@ public class AuthenticationService {
 
         invalidatedRepository.save(invalidatedToken);
 
-        var username = signJWT.getJWTClaimsSet().getSubject();
+        var email = signJWT.getJWTClaimsSet().getSubject();
 
-        var user = userRepository.findByEmail(username).orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+        var user = userRepository.findByEmail(email).orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
 
         var token = generateToken(user);
 

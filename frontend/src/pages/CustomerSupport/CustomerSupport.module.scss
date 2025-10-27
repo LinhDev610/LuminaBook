@@ -13,7 +13,7 @@
     display: flex;
     align-items: center;
     gap: 16px;
-    background: #dc2626;
+    background: #1A3C5A;
     padding: 20px 24px;
     position: relative;
 }
@@ -35,7 +35,7 @@
 .header-bar {
     width: 4px;
     height: 32px;
-    background: #dc2626;
+    background: #1A3C5A;
     border-radius: 2px;
 }
 
@@ -165,7 +165,7 @@
 }
 
 .submit-button {
-    background: #1e40af;
+    background: #1A3C5A;
     color: #fff;
     border: none;
     padding: 14px 32px;
@@ -174,10 +174,10 @@
     font-weight: 600;
     cursor: pointer;
     transition: all 0.2s ease;
-    min-width: 200px;
+    min-width: 2000px;
     
     &:hover {
-        background: #1d4ed8;
+        background: #1A3C5A;
         transform: translateY(-1px);
         box-shadow: 0 4px 12px rgba(30, 64, 175, 0.3);
     }

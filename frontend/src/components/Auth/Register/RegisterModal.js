@@ -59,7 +59,26 @@ export default function RegisterModal({ open = false, onClose }) {
         setAgree(false);
     }, [open]);
 
+    // Handle Enter key press
+    useEffect(() => {
+        const handleKeyPress = (event) => {
+            if (event.key === 'Enter' && open) {
+                if (registerStep === 1) {
+                    handleSendEmail(event);
+                } else if (registerStep === 3) {
+                    handleSubmit(event);
+                }
+            }
+        };
 
+        if (open) {
+            document.addEventListener('keydown', handleKeyPress);
+        }
+
+        return () => {
+            document.removeEventListener('keydown', handleKeyPress);
+        };
+    }, [open, registerStep, email, username, password, confirm]);
 
     if (!open) return null;
 

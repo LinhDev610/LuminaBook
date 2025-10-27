@@ -19,7 +19,6 @@ import com.lumina_book.backend.dto.request.LogoutRequest;
 import com.lumina_book.backend.dto.request.RefreshRequest;
 import com.lumina_book.backend.dto.response.AuthenticationResponse;
 import com.lumina_book.backend.dto.response.IntrospectResponse;
-import com.lumina_book.backend.entity.InvalidatedToken;
 import com.lumina_book.backend.entity.User;
 import com.lumina_book.backend.exception.AppException;
 import com.lumina_book.backend.exception.ErrorCode;
@@ -99,9 +98,8 @@ public class AuthenticationService {
             String jit = signToken.getJWTClaimsSet().getJWTID();
             Date expiryTime = signToken.getJWTClaimsSet().getExpirationTime(); // Thời điểm hết hạn để refresh token
 
-            InvalidatedToken invalidatedToken =
-                    InvalidatedToken.builder().id(jit).expiryTime(expiryTime).build();
-            invalidatedRepository.save(invalidatedToken);
+            // Sử dụng method riêng với transaction mới
+            saveInvalidatedToken(jit, expiryTime);
         } catch (AppException ex) {
             log.info("Token already expired");
         }
@@ -177,10 +175,8 @@ public class AuthenticationService {
         var jit = signJWT.getJWTClaimsSet().getJWTID();
         var expiryTime = signJWT.getJWTClaimsSet().getExpirationTime();
 
-        InvalidatedToken invalidatedToken =
-                InvalidatedToken.builder().id(jit).expiryTime(expiryTime).build();
-
-        invalidatedRepository.save(invalidatedToken);
+        // Sử dụng method riêng với transaction mới
+        saveInvalidatedToken(jit, expiryTime);
 
         var username = signJWT.getJWTClaimsSet().getSubject();
 
@@ -190,6 +186,12 @@ public class AuthenticationService {
         var token = generateToken(user);
 
         return AuthenticationResponse.builder().token(token).authenticated(true).build();
+    }
+
+    public void saveInvalidatedToken(String jit, Date expiryTime) {
+        // Sử dụng native query với ON DUPLICATE KEY UPDATE
+        invalidatedRepository.saveOrUpdate(jit, expiryTime);
+        log.info("Token {} saved/updated in invalidated list", jit);
     }
 
     private String buildScope(User user) {

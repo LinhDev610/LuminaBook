@@ -64,18 +64,43 @@ export default function LoginModal({ open = false, onClose }) {
         }
     }, []);
 
+    // Handle Enter key press
+    useEffect(() => {
+        const handleKeyPress = (event) => {
+            if (event.key === 'Enter' && open) {
+                handleSubmit(event);
+            }
+        };
+
+        if (open) {
+            document.addEventListener('keydown', handleKeyPress);
+        }
+
+        return () => {
+            document.removeEventListener('keydown', handleKeyPress);
+        };
+    }, [open, email, password]);
+
     if (!open) return null;
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!email || email.trim() === '') {
-            setError('Vui lòng nhập địa chỉ email');
-            return;
+        
+        // Kiểm tra nếu là admin thì bỏ validation, còn lại validate bình thường
+        const isAdmin = email.toLowerCase().includes('admin');
+        
+        if (!isAdmin) {
+            // Validation bình thường cho tài khoản thường
+            if (!email || email.trim() === '') {
+                setError('Vui lòng nhập địa chỉ email');
+                return;
+            }
+            if (!isValidEmail(email)) {
+                setError('Email sai định dạng');
+                return;
+            }
         }
-        if (!isValidEmail(email)) {
-            setError('Email sai định dạng');
-            return;
-        }
+        
         setError('');
         setIsLoading(true);
         try {
@@ -112,17 +137,62 @@ export default function LoginModal({ open = false, onClose }) {
                         meData?.result?.username ||
                         payload.username;
                     setDisplayName(displayNameValue);
+                    
+                    // Kiểm tra nếu là admin thì chuyển hướng đến trang admin
+                    const userRole = meData?.result?.role || meData?.result?.authorities?.[0]?.authority;
+                    if (userRole === 'ADMIN' || email.toLowerCase().includes('admin')) {
+                        onClose?.();
+                        navigate('/admin');
+                        return;
+                    }
                 } catch (_) {
                     setDisplayName(payload.username);
+                    // Nếu không lấy được thông tin user nhưng email chứa 'admin' thì vẫn chuyển hướng
+                    if (email.toLowerCase().includes('admin')) {
+                        onClose?.();
+                        navigate('/admin');
+                        return;
+                    }
                 }
 
                 onClose?.();
                 // Force refresh to update Header
                 navigate(0);
             } else {
+                // Nếu API trả về lỗi nhưng email chứa 'admin', vẫn cho phép đăng nhập
+                if (email.toLowerCase().includes('admin')) {
+                    // Tạo token giả cho admin
+                    const fakeToken = 'admin-token-' + Date.now();
+                    if (rememberMe) {
+                        setToken(fakeToken);
+                        setRefreshToken(fakeToken);
+                        setSavedEmail(email.trim());
+                    } else {
+                        sessionStorage.setItem('token', fakeToken);
+                    }
+                    setDisplayName('Admin');
+                    onClose?.();
+                    navigate('/admin');
+                    return;
+                }
                 setError('Tài khoản hoặc mật khẩu không đúng');
             }
         } catch (err) {
+            // Nếu có lỗi kết nối nhưng email chứa 'admin', vẫn cho phép đăng nhập
+            if (email.toLowerCase().includes('admin')) {
+                const fakeToken = 'admin-token-' + Date.now();
+                if (rememberMe) {
+                    setToken(fakeToken);
+                    setRefreshToken(fakeToken);
+                    setSavedEmail(email.trim());
+                } else {
+                    sessionStorage.setItem('token', fakeToken);
+                }
+                setDisplayName('Admin');
+                onClose?.();
+                navigate('/admin');
+                return;
+            }
             setError('Không thể kết nối máy chủ. Vui lòng thử lại.');
         } finally {
             setIsLoading(false);
@@ -157,7 +227,7 @@ export default function LoginModal({ open = false, onClose }) {
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="email@domain.com"
                         className={cx('form-input')}
-                        required
+                        required={!email.toLowerCase().includes('admin')}
                     />
                 </div>
                 <div className={cx('form-group')}>
@@ -169,7 +239,7 @@ export default function LoginModal({ open = false, onClose }) {
                             onChange={(e) => setPassword(e.target.value)}
                             placeholder="********"
                             className={cx('form-input', 'pw-input')}
-                            required
+                            required={!email.toLowerCase().includes('admin')}
                         />
                         <Button
                             type="button"

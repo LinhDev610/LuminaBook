@@ -1,4 +1,5 @@
 import config from '../../../../config/';
+import routes from '../../../../config/routes';
 
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -15,7 +16,7 @@ import styles from './DefaultHeader.module.scss';
 const cx = classNames.bind(styles);
 
 function DefaultHeader() {
-    const customerAccount = config.routes.customerAccount;
+    const customerAccount = routes?.customerAccount || '/customer-account';
 
     const navigate = useNavigate();
     const { openLoginModal, openRegisterModal, openForgotPasswordModal } = useAuth();

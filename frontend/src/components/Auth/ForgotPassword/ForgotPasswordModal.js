@@ -44,7 +44,26 @@ export default function ForgotPasswordModal({ open = false, onClose }) {
         setConfirm('');
     }, [open]);
 
+    // Handle Enter key press
+    useEffect(() => {
+        const handleKeyPress = (event) => {
+            if (event.key === 'Enter' && open) {
+                if (forgotPasswordStep === 1) {
+                    sendOtp(event);
+                } else if (forgotPasswordStep === 3) {
+                    resetPassword(event);
+                }
+            }
+        };
 
+        if (open) {
+            document.addEventListener('keydown', handleKeyPress);
+        }
+
+        return () => {
+            document.removeEventListener('keydown', handleKeyPress);
+        };
+    }, [open, forgotPasswordStep, email, password, confirm]);
 
     // remove early return here to keep hooks order consistent
 

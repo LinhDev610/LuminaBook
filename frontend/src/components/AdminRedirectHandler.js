@@ -13,20 +13,14 @@ function AdminRedirectHandler() {
     useEffect(() => {
         // Chỉ redirect nếu:
         // 1. Có token
-        // 2. Email chứa admin
-        // 3. Đang ở trang chủ (không phải admin page)
+        // 2. Đang ở trang chủ (không phải admin page)
         const hasToken = token || sessionToken;
-        const isAdminEmail = savedEmail && savedEmail.toLowerCase().includes('admin');
         const isOnHomePage = location.pathname === '/';
         
-        if (hasToken && isAdminEmail && isOnHomePage) {
-            console.log('AdminRedirectHandler: Redirecting admin to /admin');
-            // Sử dụng setTimeout để tránh conflict với các navigate khác
-            const timer = setTimeout(() => {
-                navigate('/admin', { replace: true });
-            }, 100);
-            
-            return () => clearTimeout(timer);
+        // Kiểm tra role từ token hoặc API để quyết định redirect
+        if (hasToken && isOnHomePage) {
+            // Có thể thêm logic kiểm tra role ở đây nếu cần
+            // Hiện tại không tự động redirect admin
         }
     }, [savedEmail, token, sessionToken, navigate, location.pathname]);
 

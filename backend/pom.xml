@@ -203,6 +203,10 @@
             <maven.compiler.target>24</maven.compiler.target>
         </properties>
     </profile>
+
+         <properties>
+           <sonar.organization>linhdev610</sonar.organization>
+         </properties>
 </profiles>
 
 <!-- ===================================== -->

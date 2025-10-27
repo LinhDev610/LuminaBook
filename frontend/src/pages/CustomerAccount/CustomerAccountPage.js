@@ -156,7 +156,7 @@ function CustomerAccountPage() {
                         </h3>
                         <div className={cx('form-row')}>
                             <div className={cx('form-group')}>
-                                <label>Username</label>
+                                <label>Họ và tên</label>
                                 <input defaultValue={displayName || 'Khách'} />
                             </div>
                             <div className={cx('form-group')}>

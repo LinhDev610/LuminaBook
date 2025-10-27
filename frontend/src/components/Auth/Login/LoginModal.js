@@ -86,19 +86,17 @@ export default function LoginModal({ open = false, onClose }) {
     const handleSubmit = async (e) => {
         e.preventDefault();
         
-        // Kiểm tra nếu là admin thì bỏ validation, còn lại validate bình thường
-        const isAdmin = email.toLowerCase().includes('admin');
+        // Validation bình thường cho tất cả tài khoản
+        if (!email || email.trim() === '') {
+            setError('Vui lòng nhập địa chỉ email');
+            return;
+        }
         
-        if (!isAdmin) {
-            // Validation bình thường cho tài khoản thường
-            if (!email || email.trim() === '') {
-                setError('Vui lòng nhập địa chỉ email');
-                return;
-            }
-            if (!isValidEmail(email)) {
-                setError('Email sai định dạng');
-                return;
-            }
+        console.log('Email validation check:', { email: email.trim(), isValid: isValidEmail(email) });
+        
+        if (!isValidEmail(email)) {
+            setError('Email sai định dạng');
+            return;
         }
         
         setError('');
@@ -106,12 +104,17 @@ export default function LoginModal({ open = false, onClose }) {
         
         try {
             const payload = { email: email.trim(), password };
+            console.log('Login attempt with:', { email: email.trim(), password: password ? '***' : 'empty' });
+            
             const resp = await fetch(`${API_BASE_URL}/auth/token`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload),
             });
+            
+            console.log('Login response status:', resp.status);
             const data = await resp.json().catch(() => ({}));
+            console.log('Login response data:', data);
             
             if (resp.ok && data?.result?.token) {
                 // Handle Remember Me
@@ -159,17 +162,23 @@ export default function LoginModal({ open = false, onClose }) {
                     window.dispatchEvent(new CustomEvent('displayNameUpdated'));
                     
                     // Kiểm tra nếu là admin thì chuyển hướng đến trang admin
-                    const userRole = meData?.result?.role || 
+                    const userRole = meData?.result?.role?.name || 
+                                   meData?.result?.role ||
                                    meData?.result?.authorities?.[0]?.authority ||
+                                   meData?.role?.name ||
                                    meData?.role ||
                                    meData?.authorities?.[0]?.authority;
                     
                     console.log('User Role:', userRole);
+                    console.log('Full meData structure:', JSON.stringify(meData, null, 2));
                     
-                    if (userRole === 'ADMIN' || email.toLowerCase().includes('admin')) {
+                    if (userRole === 'ADMIN') {
+                        console.log('Admin detected, redirecting to /admin');
                         onClose?.();
                         navigate('/admin', { replace: true });
                         return;
+                    } else {
+                        console.log('Not admin, redirecting to home page');
                     }
                 } catch (error) {
                     console.log('Error fetching user info:', error);
@@ -178,51 +187,15 @@ export default function LoginModal({ open = false, onClose }) {
                     
                     // Dispatch custom event to notify header
                     window.dispatchEvent(new CustomEvent('displayNameUpdated'));
-                    // Nếu không lấy được thông tin user nhưng email chứa 'admin' thì vẫn chuyển hướng
-                    if (email.toLowerCase().includes('admin')) {
-                        onClose?.();
-                        navigate('/admin', { replace: true });
-                        return;
-                    }
                 }
 
                 onClose?.();
                 console.log('LoginModal: Redirecting to home page');
                 navigate('/', { replace: true });
             } else {
-                // Nếu API trả về lỗi nhưng email chứa 'admin', vẫn cho phép đăng nhập
-                if (email.toLowerCase().includes('admin')) {
-                    const fakeToken = 'admin-token-' + Date.now();
-                    if (rememberMe) {
-                        setToken(fakeToken);
-                        setRefreshToken(fakeToken);
-                        setSavedEmail(email.trim());
-                    } else {
-                        sessionStorage.setItem('token', fakeToken);
-                    }
-                    setDisplayName('Admin');
-                    onClose?.();
-                    navigate('/admin', { replace: true });
-                    return;
-                }
                 setError('Tài khoản hoặc mật khẩu không đúng');
             }
         } catch (err) {
-            // Nếu có lỗi kết nối nhưng email chứa 'admin', vẫn cho phép đăng nhập
-            if (email.toLowerCase().includes('admin')) {
-                const fakeToken = 'admin-token-' + Date.now();
-                if (rememberMe) {
-                    setToken(fakeToken);
-                    setRefreshToken(fakeToken);
-                    setSavedEmail(email.trim());
-                } else {
-                    sessionStorage.setItem('token', fakeToken);
-                }
-                setDisplayName('Admin');
-                onClose?.();
-                navigate('/admin', { replace: true });
-                return;
-            }
             setError('Không thể kết nối máy chủ. Vui lòng thử lại.');
         } finally {
             setIsLoading(false);
@@ -257,7 +230,7 @@ export default function LoginModal({ open = false, onClose }) {
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="email@domain.com"
                         className={cx('form-input')}
-                        required={!email.toLowerCase().includes('admin')}
+                        required
                     />
                 </div>
                 <div className={cx('form-group')}>
@@ -269,7 +242,7 @@ export default function LoginModal({ open = false, onClose }) {
                             onChange={(e) => setPassword(e.target.value)}
                             placeholder="********"
                             className={cx('form-input', 'pw-input')}
-                            required={!email.toLowerCase().includes('admin')}
+                            required
                         />
                         <Button
                             type="button"

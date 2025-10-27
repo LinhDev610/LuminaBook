@@ -1,5 +1,7 @@
 import classNames from 'classnames/bind';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useEffect } from 'react';
+import useLocalStorage from '../../hooks/useLocalStorage';
 
 import styles from './Home.module.scss';
 import ProductList from '../../components/Common/ProductList/ProductList';
@@ -96,6 +98,16 @@ const mockProducts = [
 ];
 
 function Home() {
+    const navigate = useNavigate();
+    const [savedEmail] = useLocalStorage('savedEmail', null);
+
+    // Kiểm tra nếu là admin thì redirect đến trang admin
+    useEffect(() => {
+        if (savedEmail && savedEmail.toLowerCase().includes('admin')) {
+            navigate('/admin', { replace: true });
+        }
+    }, [savedEmail, navigate]);
+
     return (
         <div className={cx('home-wrapper')}>
             <main className={cx('home-content')}>

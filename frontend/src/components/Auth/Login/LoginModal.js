@@ -156,8 +156,8 @@ export default function LoginModal({ open = false, onClose }) {
                 }
 
                 onClose?.();
-                // Force refresh to update Header
-                navigate(0);
+                // Chuyển hướng đến trang chủ thay vì refresh
+                navigate('/');
             } else {
                 // Nếu API trả về lỗi nhưng email chứa 'admin', vẫn cho phép đăng nhập
                 if (email.toLowerCase().includes('admin')) {

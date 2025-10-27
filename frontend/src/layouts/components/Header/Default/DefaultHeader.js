@@ -1,6 +1,7 @@
 import config from '../../../../config/';
+import routes from '../../../../config/routes';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import classNames from 'classnames/bind';
 
@@ -15,7 +16,7 @@ import styles from './DefaultHeader.module.scss';
 const cx = classNames.bind(styles);
 
 function DefaultHeader() {
-    const customerAccount = config.routes.customerAccount;
+    const customerAccount = routes?.customerAccount || '/customer-account';
 
     const navigate = useNavigate();
     const { openLoginModal, openRegisterModal, openForgotPasswordModal } = useAuth();
@@ -38,6 +39,31 @@ function DefaultHeader() {
     const isLoggedIn = !!currentToken;
     const [menuOpen, setMenuOpen] = useState(false);
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+    const [forceUpdate, setForceUpdate] = useState(0);
+
+    // Force re-render when localStorage changes
+    useEffect(() => {
+        const handleStorageChange = () => {
+            setForceUpdate(prev => prev + 1);
+        };
+        
+        window.addEventListener('storage', handleStorageChange);
+        
+        // Also listen for custom events from login
+        window.addEventListener('displayNameUpdated', handleStorageChange);
+        
+        return () => {
+            window.removeEventListener('storage', handleStorageChange);
+            window.removeEventListener('displayNameUpdated', handleStorageChange);
+        };
+    }, []);
+
+    // Debug logging
+    console.log('DefaultHeader - Token:', currentToken);
+    console.log('DefaultHeader - DisplayName:', displayName);
+    console.log('DefaultHeader - IsLoggedIn:', isLoggedIn);
+    console.log('DefaultHeader - localStorage displayName:', localStorage.getItem('displayName'));
+    console.log('DefaultHeader - ForceUpdate:', forceUpdate);
 
     const toggleMenu = () => setMenuOpen((v) => !v);
     const handleLogout = () => {

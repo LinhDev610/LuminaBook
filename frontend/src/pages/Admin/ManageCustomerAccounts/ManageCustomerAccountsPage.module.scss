@@ -1,0 +1,148 @@
+.admin-page {
+    padding: 24px;
+    background: #f8f9fa;
+    min-height: 100vh;
+}
+
+.page-title {
+    font-size: 24px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 24px;
+}
+
+.table-container {
+    background: #ffffff;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.table-header {
+    background: #1A3C5A;
+    color: #ffffff;
+}
+
+.table-header th {
+    padding: 16px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.table-row {
+    border-bottom: 1px solid #e9ecef;
+    transition: background 0.2s ease;
+}
+
+.table-row:hover {
+    background: #f8f9fa;
+}
+
+.table-row td {
+    padding: 16px;
+    font-size: 14px;
+    color: #333;
+}
+
+.status {
+    font-weight: 500;
+}
+
+.status.active {
+    color: #10B981;
+}
+
+.status.locked {
+    color: #EF4444;
+}
+
+.actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.btn.edit-btn {
+    background: #3B82F6;
+    color: #ffffff;
+}
+
+.btn.edit-btn:hover {
+    background: #2563EB;
+}
+
+.btn.lock-btn {
+    background: #6B7280;
+    color: #ffffff;
+}
+
+.btn.lock-btn:hover {
+    background: #4B5563;
+}
+
+.btn.unlock-btn {
+    background: #10B981;
+    color: #ffffff;
+}
+
+.btn.unlock-btn:hover {
+    background: #059669;
+}
+
+.btn.delete-btn {
+    background: #EF4444;
+    color: #ffffff;
+}
+
+.btn.delete-btn:hover {
+    background: #DC2626;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .admin-page {
+        padding: 16px;
+    }
+    
+    .page-title {
+        font-size: 20px;
+        margin-bottom: 16px;
+    }
+    
+    .table-container {
+        overflow-x: auto;
+    }
+    
+    .table-header th,
+    .table-row td {
+        padding: 12px 8px;
+        font-size: 12px;
+    }
+    
+    .actions {
+        flex-direction: column;
+        gap: 4px;
+    }
+    
+    .btn {
+        padding: 6px 12px;
+        font-size: 11px;
+    }
+}

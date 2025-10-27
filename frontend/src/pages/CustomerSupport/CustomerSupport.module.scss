@@ -1,0 +1,259 @@
+/* Customer Support Page Styles */
+
+.faq-section,
+.support-form-section {
+    background: #fff;
+    border-radius: 14px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
+    margin-bottom: 32px;
+    overflow: hidden;
+}
+
+.section-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: #1A3C5A;
+    padding: 20px 24px;
+    position: relative;
+}
+
+.header-icon {
+    font-size: 24px;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    
+    img {
+        width: 24px;
+        height: 24px;
+        object-fit: contain;
+    }
+}
+
+.header-bar {
+    width: 4px;
+    height: 32px;
+    background: #1A3C5A;
+    border-radius: 2px;
+}
+
+.section-title {
+    margin: 0;
+    color: #fff;
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+}
+
+/* FAQ Styles */
+.faq-list {
+    padding: 24px;
+}
+
+.faq-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 16px 0;
+    border-bottom: 1px solid #e5e7eb;
+    text-decoration: none;
+    color: inherit;
+    transition: all 0.2s ease;
+    
+    &:hover {
+        background: #f8fafc;
+        padding-left: 8px;
+        border-radius: 8px;
+        transform: translateX(4px);
+    }
+    
+    &:last-child {
+        border-bottom: none;
+    }
+}
+
+.faq-icon {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f3f4f6;
+    border-radius: 8px;
+    flex-shrink: 0;
+    
+    img {
+        width: 20px;
+        height: 20px;
+        object-fit: contain;
+    }
+}
+
+.faq-content {
+    flex: 1;
+}
+
+.faq-question {
+    margin: 0 0 8px 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #1f2937;
+    line-height: 1.4;
+}
+
+.faq-answer {
+    margin: 0;
+    color: #6b7280;
+    line-height: 1.6;
+    font-size: 0.95rem;
+}
+
+/* Support Form Styles */
+.support-form {
+    padding: 24px;
+}
+
+.form-row {
+    margin-bottom: 20px;
+}
+
+.form-group {
+    width: 100%;
+}
+
+.form-label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #374151;
+    font-size: 0.95rem;
+}
+
+.form-input,
+.form-textarea {
+    width: 100%;
+    padding: 12px 16px;
+    border: 2px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: all 0.2s ease;
+    background: #fff;
+    
+    &:focus {
+        outline: none;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+    
+    &::placeholder {
+        color: #9ca3af;
+    }
+}
+
+.form-textarea {
+    resize: vertical;
+    min-height: 100px;
+    font-family: inherit;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: center;
+    margin-top: 32px;
+}
+
+.submit-button {
+    background: #1A3C5A;
+    color: #fff;
+    border: none;
+    padding: 14px 32px;
+    border-radius: 8px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-width: 2000px;
+    
+    &:hover {
+        background: #1A3C5A;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(30, 64, 175, 0.3);
+    }
+    
+    &:active {
+        transform: translateY(0);
+    }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .section-header {
+        padding: 16px 20px;
+        gap: 12px;
+    }
+    
+    .section-title {
+        font-size: 1.3rem;
+    }
+    
+    .faq-list,
+    .support-form {
+        padding: 20px;
+    }
+    
+    .faq-item {
+        gap: 12px;
+        padding: 12px 0;
+    }
+    
+    .faq-icon {
+        width: 28px;
+        height: 28px;
+        font-size: 18px;
+    }
+    
+    .faq-question {
+        font-size: 1rem;
+    }
+    
+    .faq-answer {
+        font-size: 0.9rem;
+    }
+    
+    .form-input,
+    .form-textarea {
+        padding: 10px 14px;
+        font-size: 0.95rem;
+    }
+    
+    .submit-button {
+        padding: 12px 24px;
+        font-size: 1rem;
+        min-width: 160px;
+    }
+}
+
+@media (max-width: 480px) {
+    .section-header {
+        padding: 14px 16px;
+    }
+    
+    .section-title {
+        font-size: 1.2rem;
+    }
+    
+    .faq-list,
+    .support-form {
+        padding: 16px;
+    }
+    
+    .form-row {
+        margin-bottom: 16px;
+    }
+    
+    .form-label {
+        font-size: 0.9rem;
+    }
+}

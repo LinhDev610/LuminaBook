@@ -1,5 +1,7 @@
 import classNames from 'classnames/bind';
 import { Link } from 'react-router-dom';
+import AdminRedirectHandler from '../../components/AdminRedirectHandler';
+
 
 import styles from './Home.module.scss';
 import ProductList from '../../components/Common/ProductList/ProductList';
@@ -98,6 +100,7 @@ const mockProducts = [
 function Home() {
     return (
         <div className={cx('home-wrapper')}>
+            <AdminRedirectHandler />
             <main className={cx('home-content')}>
                 {/* Main Content Area - 2 columns layout */}
                 <Banner1

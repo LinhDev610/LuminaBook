@@ -1,0 +1,155 @@
+.search-sort-container {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+}
+
+.search-section {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    min-width: 300px;
+}
+
+.search-input {
+    flex: 1;
+    padding: 12px 16px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 14px;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.search-input:focus {
+    outline: none;
+    border-color: #1A3C5A;
+    box-shadow: 0 0 0 3px rgba(26, 60, 90, 0.1);
+}
+
+.search-btn {
+    padding: 12px 20px;
+    background: #1A3C5A;
+    color: #ffffff;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s ease;
+    white-space: nowrap;
+}
+
+.search-btn:hover {
+    background: #0f2a3f;
+}
+
+.sort-section {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 0 0 auto;
+}
+
+.sort-label {
+    font-size: 14px;
+    font-weight: 500;
+    color: #333;
+    white-space: nowrap;
+}
+
+.sort-dropdown {
+    padding: 12px 16px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 14px;
+    background: #fff;
+    cursor: pointer;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    min-width: 120px;
+}
+
+.sort-dropdown:focus {
+    outline: none;
+    border-color: #1A3C5A;
+    box-shadow: 0 0 0 3px rgba(26, 60, 90, 0.1);
+}
+
+.btn {
+    padding: 12px 20px;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.btn.add-btn {
+    background: #1A3C5A;
+    color: #ffffff;
+}
+
+.btn.add-btn:hover {
+    background: #0f2a3f;
+}
+
+.btn.edit-btn {
+    background: #3B82F6;
+    color: #ffffff;
+}
+
+.btn.edit-btn:hover {
+    background: #2563EB;
+}
+
+.btn.lock-btn {
+    background: #6B7280;
+    color: #ffffff;
+}
+
+.btn.lock-btn:hover {
+    background: #4B5563;
+}
+
+.btn.unlock-btn {
+    background: #10B981;
+    color: #ffffff;
+}
+
+.btn.unlock-btn:hover {
+    background: #059669;
+}
+
+.btn.delete-btn {
+    background: #EF4444;
+    color: #ffffff;
+}
+
+.btn.delete-btn:hover {
+    background: #DC2626;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .search-sort-container {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+    }
+    
+    .search-section {
+        min-width: auto;
+    }
+    
+    .sort-section {
+        justify-content: space-between;
+    }
+    
+    .btn {
+        width: 100%;
+    }
+}

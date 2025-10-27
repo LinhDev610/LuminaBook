@@ -1,4 +1,4 @@
-/* Header Styles */
+/* Admin Header Styles */
 .header { 
     display: flex; 
     justify-content: space-between; 
@@ -21,9 +21,9 @@
 }
 
 .logo-image {
-    height: 70px; /* Tăng gấp 2 lần từ 50px */
+    height: 70px;
     width: auto;
-    max-width: 400px; /* Tăng max-width tương ứng */
+    max-width: 400px;
     transition: opacity 0.2s ease;
 }
 
@@ -31,60 +31,41 @@
     opacity: 0.8;
 }
 
-.actions { 
-    display: flex; 
-    align-items: center; 
-    gap: 15px; 
+.admin-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
 }
 
-.login-link { 
-    margin-right: 15px; 
-    color: #1A3C5A; 
-    text-decoration: none; 
-    display: flex; 
-    align-items: center; 
-    gap: 5px; 
-}
-
-.cart { 
-    font-size: 20px; 
-    cursor: pointer; 
-}
-
-.cart img { 
-    width: 28px; 
-    height: 28px; 
-    vertical-align: middle; 
-    cursor: pointer; 
+.admin-text {
+    font-size: 16px;
+    font-weight: 600;
+    color: #333;
+    letter-spacing: 0.5px;
 }
 
 .user-menu {
     position: relative;
     display: inline-block;
-    margin-right: 12px;
 }
 
 .user-menu__trigger {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    background: #fff;
-    border: 1px solid #ddd;
-    padding: 6px 10px;
-    border-radius: 20px;
+    background: none;
+    border: none;
     cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    transition: background 0.2s ease;
 }
 
-.user-menu__name {
-    font-weight: 600;
+.user-menu__trigger:hover {
+    background: rgba(0, 0, 0, 0.05);
 }
 
-.user-menu__avatar {
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    border: 2px solid #111;
-    display: inline-block;
+.user-icon {
+    width: 32px;
+    height: 32px;
+    object-fit: contain;
 }
 
 .user-menu__dropdown {
@@ -93,11 +74,12 @@
     top: calc(100% + 8px);
     background: #fff;
     border: 1px solid #e5e7eb;
-    border-radius: 8px;
-    box-shadow: 0 8px 24px rgba(0,0,0,.08);
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     min-width: 160px;
     z-index: 10;
-    padding: 6px;
+    padding: 8px;
+    overflow: hidden;
 }
 
 .user-menu__item {
@@ -105,14 +87,22 @@
     text-align: left;
     background: #fff;
     border: none;
-    padding: 8px 10px;
-    border-radius: 6px;
+    padding: 12px 16px;
+    border-radius: 8px;
     cursor: pointer;
-    text-decoration: none;
     color: #111;
+    font-size: 14px;
+    font-weight: 500;
+    transition: background 0.2s ease;
+    text-decoration: none;
     display: block;
+    margin-bottom: 4px;
+}
+
+.user-menu__item:last-child {
+    margin-bottom: 0;
 }
 
 .user-menu__item:hover {
-    background: #f3f4f6;
+    background: #f8f9fa;
 }

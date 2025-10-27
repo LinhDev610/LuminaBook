@@ -2,6 +2,7 @@ const routes = {
     home: '/',
     cart: '/cart',
     contact: '/contact',
+    customerSupport: '/customer-support',
     login: './login',
     register: './register',
     forgotPassword: './forgot-password',
@@ -10,6 +11,16 @@ const routes = {
     customerAccount: '/customer-account',
     promotion: '/promotion',
     newbook: '/newbook',
+    admin: '/admin',
+    adminCustomerAccounts: '/admin/customer-accounts',
+    adminProducts: '/admin/products',
+    adminCategories: '/admin/categories',
+    adminOrders: '/admin/orders',
+    adminVouchers: '/admin/vouchers',
+    adminComplaints: '/admin/complaints',
+    adminContent: '/admin/content',
+    adminReports: '/admin/reports',
+    adminProfile: '/admin/profile',
 };
 
 export default routes;

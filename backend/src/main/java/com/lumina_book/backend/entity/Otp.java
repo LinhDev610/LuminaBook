@@ -7,7 +7,6 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
-@Entity
 @Table(name = "otp")
 @Getter
 @Setter
@@ -15,6 +14,7 @@ import lombok.experimental.FieldDefaults;
 @NoArgsConstructor
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
+@Entity
 public class Otp {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)

@@ -6,10 +6,10 @@ import jakarta.validation.constraints.NotBlank;
 
 import org.springframework.web.bind.annotation.*;
 
+import com.lumina_book.backend.dto.request.ApiResponse;
+import com.lumina_book.backend.dto.request.OtpVerificationRequest;
 import com.lumina_book.backend.repository.UserRepository;
 import com.lumina_book.backend.service.OtpService;
-import com.lumina_book.backend.dto.request.OtpVerificationRequest;
-import com.lumina_book.backend.dto.request.ApiResponse;
 
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -27,27 +27,31 @@ public class OtpController {
     UserRepository userRepository;
 
     @PostMapping("/send-otp")
-    public ApiResponse<String> sendOtp(@RequestParam @NotBlank(message = "Email không được để trống") @Email(message = "Email sai định dạng") String email,
-                                       @RequestParam(required = false) String mode) {
+    public ApiResponse<String> sendOtp(
+            @RequestParam @NotBlank(message = "Email không được để trống") @Email(message = "Email sai định dạng")
+                    String email,
+            @RequestParam(required = false) String mode) {
         try {
             // If in register mode and email already exists, block sending OTP
-            if ("register".equalsIgnoreCase(mode) && userRepository.findByUsername(email).isPresent()) {
+            if ("register".equalsIgnoreCase(mode)
+                    && userRepository.findByEmail(email).isPresent()) {
                 return ApiResponse.<String>builder()
                         .code(400)
                         .message("Email đã được sử dụng")
                         .result(null)
                         .build();
             }
-            
+
             // If in forgot mode and email doesn't exist, block sending OTP
-            if ("forgot".equalsIgnoreCase(mode) && !userRepository.findByUsername(email).isPresent()) {
+            if ("forgot".equalsIgnoreCase(mode)
+                    && !userRepository.findByEmail(email).isPresent()) {
                 return ApiResponse.<String>builder()
                         .code(400)
                         .message("Email không tồn tại trong hệ thống")
                         .result(null)
                         .build();
             }
-            
+
             String otpCode = otpService.generateAndSendOtp(email);
             return ApiResponse.<String>builder()
                     .code(200)

@@ -1,7 +1,6 @@
 package com.lumina_book.backend.dto.response;
 
 import java.time.LocalDate;
-import java.util.Set;
 
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -13,7 +12,6 @@ import lombok.experimental.FieldDefaults;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class UserResponse {
     String id;
-    String username;
     String fullName;
     String email;
     String phoneNumber;
@@ -22,5 +20,5 @@ public class UserResponse {
     boolean isActive;
     LocalDate createAt;
 
-    Set<RoleResponse> roles;
+    RoleResponse role;
 }

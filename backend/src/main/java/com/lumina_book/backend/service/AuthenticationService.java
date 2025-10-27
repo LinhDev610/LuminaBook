@@ -20,6 +20,7 @@ import com.lumina_book.backend.dto.request.RefreshRequest;
 import com.lumina_book.backend.dto.response.AuthenticationResponse;
 import com.lumina_book.backend.dto.response.IntrospectResponse;
 import com.lumina_book.backend.entity.InvalidatedToken;
+import com.lumina_book.backend.entity.Role;
 import com.lumina_book.backend.entity.User;
 import com.lumina_book.backend.exception.AppException;
 import com.lumina_book.backend.exception.ErrorCode;
@@ -80,7 +81,7 @@ public class AuthenticationService {
 
         PasswordEncoder passwordEncoder = new BCryptPasswordEncoder(10);
         var user = userRepository
-                .findByUsername(request.getUsername())
+                .findByEmail(request.getEmail())
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
 
         boolean authenticated = passwordEncoder.matches(request.getPassword(), user.getPassword());
@@ -117,11 +118,11 @@ public class AuthenticationService {
         // Thời điểm hết hạn
         Date expiryTime = (isRefresh)
                 ? new Date(signedJWT
-                .getJWTClaimsSet()
-                .getIssueTime()
-                .toInstant()
-                .plus(REFRESHABLE_DURATION, ChronoUnit.SECONDS)
-                .toEpochMilli()) // thời điểm cần login lại
+                        .getJWTClaimsSet()
+                        .getIssueTime()
+                        .toInstant()
+                        .plus(REFRESHABLE_DURATION, ChronoUnit.SECONDS)
+                        .toEpochMilli()) // thời điểm cần login lại
                 : signedJWT.getJWTClaimsSet().getExpirationTime(); // Thời điểm refresh tiếp theo
 
         // Kiểm tra hết hạn token
@@ -141,7 +142,7 @@ public class AuthenticationService {
 
         // payload = nhieu claim
         JWTClaimsSet jwtClaimSet = new JWTClaimsSet.Builder()
-                .subject(user.getUsername()) // user đăng nhập là ai
+                .subject(user.getEmail()) // user đăng nhập là ai
                 .issuer("lumina_book.com") // Định danh ai là người issuer này được issuer từ ai, thường là issue
                 .issueTime(new Date()) // Thời điểm lần đầu login
                 .expirationTime(
@@ -184,8 +185,7 @@ public class AuthenticationService {
 
         var username = signJWT.getJWTClaimsSet().getSubject();
 
-        var user =
-                userRepository.findByUsername(username).orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+        var user = userRepository.findByEmail(username).orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
 
         var token = generateToken(user);
 
@@ -195,12 +195,13 @@ public class AuthenticationService {
     private String buildScope(User user) {
         StringJoiner stringJoiner = new StringJoiner(" ");
 
-        if (!CollectionUtils.isEmpty(user.getRoles()))
-            user.getRoles().forEach(role -> {
-                stringJoiner.add("ROLE_" + role.getName());
-                if (!CollectionUtils.isEmpty(role.getPermissions()))
-                    role.getPermissions().forEach(permission -> stringJoiner.add(permission.getName()));
-            });
+        if (user.getRole() != null) {
+            Role role = user.getRole();
+            stringJoiner.add("ROLE_" + role.getName());
+            if (!CollectionUtils.isEmpty(role.getPermissions()))
+                role.getPermissions().forEach(permission -> stringJoiner.add(permission.getName()));
+        }
+        ;
 
         return stringJoiner.toString();
     }

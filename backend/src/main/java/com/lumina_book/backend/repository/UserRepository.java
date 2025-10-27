@@ -9,8 +9,9 @@ import com.lumina_book.backend.entity.User;
 
 @Repository
 public interface UserRepository extends JpaRepository<User, String> {
-    // Spring JPA tự động generate 1 câu query kiểm tra sự tồn tại của field username với value = parameter truyền vào
-    boolean existsByUsername(String username);
+    // Check if email exists
+    boolean existsByEmail(String email);
 
-    Optional<User> findByUsername(String username);
+    // Find user by email
+    Optional<User> findByEmail(String email);
 }

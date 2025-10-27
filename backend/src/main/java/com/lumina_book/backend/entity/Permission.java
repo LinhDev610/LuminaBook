@@ -1,7 +1,6 @@
 package com.lumina_book.backend.entity;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
+import jakarta.persistence.*;
 
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -18,4 +17,8 @@ public class Permission {
     String name;
 
     String description;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "role_name")
+    Role role;
 }

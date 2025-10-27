@@ -22,6 +22,19 @@ public enum ErrorCode {
     INVALID_DOB(1008, "Your age must be as least {min}", HttpStatus.BAD_REQUEST),
     EMAIL_SEND_FAILED(1009, "Failed to send email", HttpStatus.INTERNAL_SERVER_ERROR),
     INVALID_OTP(1010, "Mã OTP không đúng, yêu cầu nhập lại", HttpStatus.BAD_REQUEST),
+
+    // Promotion
+    PROMOTION_NOT_EXISTED(2001, "Khuyến mãi không tồn tại", HttpStatus.NOT_FOUND),
+    PROMOTION_CODE_ALREADY_EXISTS(2002, "Mã khuyến mãi đã tồn tại", HttpStatus.BAD_REQUEST),
+    PROMOTION_NOT_PENDING(2003, "Khuyến mãi không ở trạng thái chờ duyệt", HttpStatus.BAD_REQUEST),
+    CATEGORY_NOT_EXISTED(2004, "Danh mục không tồn tại", HttpStatus.NOT_FOUND),
+    PRODUCT_NOT_EXISTED(2005, "Sản phẩm không tồn tại", HttpStatus.NOT_FOUND),
+
+    // Banner
+    BANNER_NOT_EXISTED(3001, "Banner không tồn tại", HttpStatus.NOT_FOUND),
+
+    // REVIEW
+    REVIEW_NOT_EXISTED(4001, "Review không tồn tại", HttpStatus.NOT_FOUND),
     ;
 
     ErrorCode(int code, String message, HttpStatusCode statusCode) {

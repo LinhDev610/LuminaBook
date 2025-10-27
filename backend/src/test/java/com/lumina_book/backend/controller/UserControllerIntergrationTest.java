@@ -17,10 +17,10 @@ import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-import com.lumina_book.backend.dto.request.UserCreationRequest;
-import com.lumina_book.backend.dto.response.UserResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.lumina_book.backend.dto.request.UserCreationRequest;
+import com.lumina_book.backend.dto.response.UserResponse;
 
 import lombok.extern.slf4j.Slf4j;
 

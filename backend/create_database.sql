@@ -7,11 +7,16 @@ USE identity_service;
 -- Tạo bảng users (đã được đổi tên từ user)
 CREATE TABLE IF NOT EXISTS users (
     id VARCHAR(36) PRIMARY KEY,
-    username VARCHAR(255) UNIQUE NOT NULL,
     password VARCHAR(255) NOT NULL,
-    first_name VARCHAR(255),
-    last_name VARCHAR(255),
-    dob DATE
+    full_name VARCHAR(255),
+    email VARCHAR(255) UNIQUE NOT NULL,
+    phone_number VARCHAR(20),
+    address TEXT,
+    avatar_url VARCHAR(500),
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    create_at DATE,
+    role VARCHAR(36),
+    FOREIGN KEY (role) REFERENCES roles(id)
 );
 
 -- Tạo bảng otp
@@ -36,15 +41,6 @@ CREATE TABLE IF NOT EXISTS permissions (
     id VARCHAR(36) PRIMARY KEY,
     name VARCHAR(255) UNIQUE NOT NULL,
     description TEXT
-);
-
--- Tạo bảng user_roles (many-to-many)
-CREATE TABLE IF NOT EXISTS user_roles (
-    user_id VARCHAR(36),
-    role_id VARCHAR(36),
-    PRIMARY KEY (user_id, role_id),
-    FOREIGN KEY (user_id) REFERENCES users(id),
-    FOREIGN KEY (role_id) REFERENCES roles(id)
 );
 
 -- Tạo bảng role_permissions (many-to-many)

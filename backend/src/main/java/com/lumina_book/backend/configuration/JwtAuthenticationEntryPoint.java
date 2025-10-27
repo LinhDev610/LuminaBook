@@ -10,9 +10,9 @@ import org.springframework.http.MediaType;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.AuthenticationEntryPoint;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumina_book.backend.dto.request.ApiResponse;
 import com.lumina_book.backend.exception.ErrorCode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 // Gọi API mà không có JWT token, hoặc token sau/hết hạn -> Spring tự động nhảy vào đây AuthenticationEntryPoint
 // -> Class này giúp API trả về lỗi 401 dưới dạng JSON chuẩn, thay vì response HTML mặc định.

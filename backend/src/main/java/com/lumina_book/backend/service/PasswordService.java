@@ -1,12 +1,14 @@
 package com.lumina_book.backend.service;
 
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+
 import com.lumina_book.backend.entity.User;
 import com.lumina_book.backend.repository.UserRepository;
+
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
@@ -19,10 +21,14 @@ public class PasswordService {
 
     public void resetPasswordByOtp(String email, String otp, String newPassword) {
         otpService.consumeOtp(email, otp);
-        User user = userRepository.findByUsername(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        User user = userRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("User not found"));
         user.setPassword(passwordEncoder.encode(newPassword));
         userRepository.save(user);
+    }
+
+    public void changePasswordByEmail(String email, String currentPassword, String newPassword) {
+        User user = userRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("User not found"));
+        changePassword(user, currentPassword, newPassword);
     }
 
     public void changePassword(User user, String currentPassword, String newPassword) {
@@ -33,11 +39,4 @@ public class PasswordService {
         userRepository.save(user);
     }
 
-    public void changePasswordByUsername(String username, String currentPassword, String newPassword) {
-        User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-        changePassword(user, currentPassword, newPassword);
-    }
 }
-
-

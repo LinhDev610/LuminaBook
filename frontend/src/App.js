@@ -4,12 +4,14 @@ import { publicRoutes, privateRoutes } from './routes';
 import DefaultLayout from './layouts/DefaultLayout';
 import PrivateRoute from './routes/PrivateRoute';
 import { AuthProvider } from './contexts/AuthContext';
+import AdminRedirectHandler from './components/AdminRedirectHandler';
 
 function App() {
     return (
         <AuthProvider>
             <Router>
                 <div className="App">
+                    <AdminRedirectHandler />
                     <Routes>
                         {/* Public Routes */}
                         {publicRoutes.map((route, index) => {

@@ -1,5 +1,6 @@
 .side {
-    background: #1A3C5A;
+    background: #1A3C5A; /* match admin */
+    color: #fff;
     border-radius: 12px;
     padding: 20px 16px;
     min-height: 100vh;
@@ -12,6 +13,35 @@
     text-transform: uppercase;
     margin-bottom: 20px;
     padding: 0 4px;
+}
+
+.profile {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 999px;
+    object-fit: cover;
+}
+
+.info {
+    display: flex;
+    flex-direction: column;
+}
+
+.name {
+    font-weight: 700;
+    font-size: 16px;
+}
+
+.role {
+    font-size: 13px;
+    opacity: 0.8;
 }
 
 .menu {
@@ -37,17 +67,9 @@
     background: rgba(255, 255, 255, 0.1);
 }
 
-.link.active {
+.active {
     background: #6D94C5;
     color: #ffffff;
 }
 
-.link.logout {
-    color: #FBBE24;
-    margin-top: 16px;
-    padding-top: 16px;
-}
 
-.link.logout:hover {
-    background: rgba(251, 190, 36, 0.1);
-}

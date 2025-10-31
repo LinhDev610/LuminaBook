@@ -83,7 +83,13 @@ function ManageStaffAccountsPage() {
         { value: 'locked', label: 'Đã khóa' }
     ];
 
-    const additionalButtons = [];
+    const additionalButtons = [
+        {
+            text: 'Thêm nhân viên',
+            className: 'add-btn',
+            onClick: handleAddEmployee
+        }
+    ];
 
     return (
         <div className={cx('admin-page')}>

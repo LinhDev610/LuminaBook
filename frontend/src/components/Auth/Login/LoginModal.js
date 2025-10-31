@@ -177,9 +177,16 @@ export default function LoginModal({ open = false, onClose }) {
                         onClose?.();
                         navigate('/admin', { replace: true });
                         return;
-                    } else {
-                        console.log('Not admin, redirecting to home page');
                     }
+
+                    if (userRole === 'STAFF' || userRole === 'CUSTOMER_SUPPORT') {
+                        console.log('Staff or Customer Support detected, redirecting to /staff');
+                        onClose?.();
+                        navigate('/staff', { replace: true });
+                        return;
+                    }
+
+                    console.log('Role not matched for admin/staff, redirecting to home page');
                 } catch (error) {
                     console.log('Error fetching user info:', error);
                     console.log('Setting fallback displayName to email:', email.trim());

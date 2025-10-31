@@ -1,6 +1,7 @@
 package com.lumina_book.backend.entity;
 
 import jakarta.persistence.*;
+
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
@@ -11,20 +12,13 @@ import lombok.experimental.FieldDefaults;
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @Entity
-public class CartItem {
+public class Permission {
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    String id;
+    String name;
 
-    Integer quantity;
-    Double unitPrice;
-    Double finalPrice;
+    String description;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "product_id")
-    Product product;
-
-    @ManyToOne
-    @JoinColumn(name = "cart_id")
-    Cart cart;
+    @JoinColumn(name = "role_name")
+    Role role;
 }

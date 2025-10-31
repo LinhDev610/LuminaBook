@@ -9,8 +9,11 @@ import org.springframework.web.bind.annotation.*;
 import com.lumina_book.backend.dto.request.ApiResponse;
 import com.lumina_book.backend.dto.request.UserCreationRequest;
 import com.lumina_book.backend.dto.request.UserUpdateRequest;
+import com.lumina_book.backend.dto.request.StaffCreationRequest;
 import com.lumina_book.backend.dto.response.UserResponse;
+import com.lumina_book.backend.entity.Role;
 import com.lumina_book.backend.service.UserService;
+import com.lumina_book.backend.repository.RoleRepository;
 
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +27,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 class UserController {
     UserService userService;
+    RoleRepository roleRepository;
 
     @PostMapping
     ApiResponse<UserResponse> createUser(@RequestBody @Valid UserCreationRequest request) {
@@ -34,10 +38,10 @@ class UserController {
     }
 
     @PostMapping("/staff")
-    ApiResponse<UserResponse> createStaff(@RequestBody @Valid UserCreationRequest request) {
+    ApiResponse<UserResponse> createStaff(@RequestBody @Valid StaffCreationRequest request) {
         log.info("Controller: create Staff");
         return ApiResponse.<UserResponse>builder()
-                .result(userService.createUser(request))
+                .result(userService.createStaff(request))
                 .build();
     }
 
@@ -84,6 +88,14 @@ class UserController {
     ApiResponse<UserResponse> updateUser(@PathVariable String userId, @RequestBody UserUpdateRequest request) {
         return ApiResponse.<UserResponse>builder()
                 .result(userService.updateUser(userId, request))
+                .build();
+    }
+
+    @GetMapping("/roles")
+    ApiResponse<List<Role>> getRoles() {
+        log.info("Controller: get all roles");
+        return ApiResponse.<List<Role>>builder()
+                .result(roleRepository.findAll())
                 .build();
     }
 }

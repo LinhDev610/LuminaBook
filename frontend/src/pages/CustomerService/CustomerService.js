@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import classNames from 'classnames/bind';
 import homeStyles from '../Home/Home.module.scss';
-import supportStyles from './CustomerSupport.module.scss';
+import supportStyles from './CustomerService.module.scss';
 import { useAuth } from '../../contexts/AuthContext';
 
 // Import icons
@@ -15,7 +15,7 @@ import iconComplaint from '../../assets/icons/icon_complaint.png';
 const cxHome = classNames.bind(homeStyles);
 const cxSupport = classNames.bind(supportStyles);
 
-export default function CustomerSupport() {
+export default function CustomerService() {
     const { user } = useAuth();
     const [formData, setFormData] = useState({
         orderId: '',

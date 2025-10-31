@@ -2,7 +2,7 @@ import Home from '../pages/Home';
 import PromotionPage from '../pages/Promotion';
 import NewBookPage from '../pages/NewBook';
 import Contact from '../pages/Contact';
-import CustomerSupport from '../pages/CustomerSupport';
+import CustomerService from '../pages/CustomerService';
 import ProductDetailPage from '../pages/ProductDetail';
 import Login from '../components/Auth/Login';
 import Register from '../components/Auth/Register';
@@ -23,7 +23,7 @@ const publicRoutes = [
     { path: '/promotion', component: PromotionPage },
     { path: '/newbook', component: NewBookPage },
     { path: '/contact', component: Contact },
-    { path: '/customer-support', component: CustomerSupport },
+    { path: '/customer-support', component: CustomerService },
     { path: '/product/:id', component: ProductDetailPage },
     { path: '/login', component: Login },
     { path: '/register', component: Register },

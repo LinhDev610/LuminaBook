@@ -5,20 +5,25 @@ import styles from './AddEmployeePage.module.scss';
 
 const cx = classNames.bind(styles);
 
+const API_BASE_URL = 'http://localhost:8080/lumina_book';
+
 function AddEmployeePage() {
     const navigate = useNavigate();
     const [formData, setFormData] = useState({
         fullName: '',
-        position: '',
+        roleName: '',
         email: '',
-        phone: ''
+        phoneNumber: '',
+        address: ''
     });
 
     const [errors, setErrors] = useState({});
+    const [isLoading, setIsLoading] = useState(false);
 
-    const positions = [
-        'Nhân viên',
-        'Chăm sóc khách hàng'
+    // Định nghĩa các vai trò có sẵn
+    const availableRoles = [
+        { name: 'STAFF', description: 'Nhân viên' },
+        { name: 'CUSTOMER_SUPPORT', description: 'Chăm sóc khách hàng' }
     ];
 
     const handleInputChange = (field, value) => {
@@ -43,8 +48,8 @@ function AddEmployeePage() {
             newErrors.fullName = 'Vui lòng nhập họ và tên';
         }
 
-        if (!formData.position) {
-            newErrors.position = 'Vui lòng chọn chức vụ';
+        if (!formData.roleName) {
+            newErrors.roleName = 'Vui lòng chọn vai trò';
         }
 
         if (!formData.email.trim()) {
@@ -53,23 +58,43 @@ function AddEmployeePage() {
             newErrors.email = 'Email không hợp lệ';
         }
 
-        if (!formData.phone.trim()) {
-            newErrors.phone = 'Vui lòng nhập số điện thoại';
-        } else if (!/^[0-9]{10,11}$/.test(formData.phone.replace(/\s/g, ''))) {
-            newErrors.phone = 'Số điện thoại không hợp lệ';
+        if (formData.phoneNumber && !/^[0-9]{10,11}$/.test(formData.phoneNumber.replace(/\s/g, ''))) {
+            newErrors.phoneNumber = 'Số điện thoại không hợp lệ';
         }
 
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
 
-    const handleSave = () => {
+    const handleSave = async () => {
         if (validateForm()) {
-            // TODO: Call API to save employee
-            console.log('Saving employee:', formData);
-            
-            // Navigate back to staff management page
-            navigate('/admin');
+            setIsLoading(true);
+            try {
+                const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+                const response = await fetch(`${API_BASE_URL}/users/staff`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(formData),
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    alert('Tạo tài khoản nhân viên thành công! Mật khẩu đã được gửi qua email.');
+                    navigate('/admin');
+                } else {
+                    const errorMessage = data.message || 'Có lỗi xảy ra khi tạo tài khoản nhân viên';
+                    alert(errorMessage);
+                }
+            } catch (error) {
+                console.error('Error creating staff:', error);
+                alert('Không thể kết nối máy chủ. Vui lòng thử lại.');
+            } finally {
+                setIsLoading(false);
+            }
         }
     };
 
@@ -105,18 +130,20 @@ function AddEmployeePage() {
                         </div>
 
                         <div className={cx('form-group')}>
-                            <label className={cx('form-label')}>Chức vụ</label>
+                            <label className={cx('form-label')}>Vai trò</label>
                             <select
-                                className={cx('form-select', { error: errors.position })}
-                                value={formData.position}
-                                onChange={(e) => handleInputChange('position', e.target.value)}
+                                className={cx('form-select', { error: errors.roleName })}
+                                value={formData.roleName}
+                                onChange={(e) => handleInputChange('roleName', e.target.value)}
                             >
-                                <option value="">-- Chọn chức vụ --</option>
-                                {positions.map((position, index) => (
-                                    <option key={index} value={position}>{position}</option>
+                                <option value="">-- Chọn vai trò --</option>
+                                {availableRoles.map((role) => (
+                                    <option key={role.name} value={role.name}>
+                                        {role.description}
+                                    </option>
                                 ))}
                             </select>
-                            {errors.position && <span className={cx('error-message')}>{errors.position}</span>}
+                            {errors.roleName && <span className={cx('error-message')}>{errors.roleName}</span>}
                         </div>
 
                         <div className={cx('form-group')}>
@@ -135,12 +162,24 @@ function AddEmployeePage() {
                             <label className={cx('form-label')}>Số điện thoại</label>
                             <input
                                 type="tel"
-                                className={cx('form-input', { error: errors.phone })}
-                                placeholder="Nhập số điện thoại"
-                                value={formData.phone}
-                                onChange={(e) => handleInputChange('phone', e.target.value)}
+                                className={cx('form-input', { error: errors.phoneNumber })}
+                                placeholder="Nhập số điện thoại (không bắt buộc)"
+                                value={formData.phoneNumber}
+                                onChange={(e) => handleInputChange('phoneNumber', e.target.value)}
                             />
-                            {errors.phone && <span className={cx('error-message')}>{errors.phone}</span>}
+                            {errors.phoneNumber && <span className={cx('error-message')}>{errors.phoneNumber}</span>}
+                        </div>
+
+                        <div className={cx('form-group')}>
+                            <label className={cx('form-label')}>Địa chỉ</label>
+                            <input
+                                type="text"
+                                className={cx('form-input', { error: errors.address })}
+                                placeholder="Nhập địa chỉ (không bắt buộc)"
+                                value={formData.address}
+                                onChange={(e) => handleInputChange('address', e.target.value)}
+                            />
+                            {errors.address && <span className={cx('error-message')}>{errors.address}</span>}
                         </div>
                     </div>
 
@@ -148,8 +187,12 @@ function AddEmployeePage() {
                         <button className={cx('btn', 'cancel-btn')} onClick={handleCancel}>
                             Hủy
                         </button>
-                        <button className={cx('btn', 'save-btn')} onClick={handleSave}>
-                            Lưu nhân viên
+                        <button 
+                            className={cx('btn', 'save-btn')} 
+                            onClick={handleSave}
+                            disabled={isLoading}
+                        >
+                            {isLoading ? 'Đang tạo...' : 'Tạo tài khoản nhân viên'}
                         </button>
                     </div>
                 </div>

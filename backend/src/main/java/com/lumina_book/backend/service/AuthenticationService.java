@@ -102,7 +102,8 @@ public class AuthenticationService {
 
             InvalidatedToken invalidatedToken =
                     InvalidatedToken.builder().id(jit).expiryTime(expiryTime).build();
-            invalidatedRepository.save(invalidatedToken);
+            // Use upsert to avoid duplicate key on concurrent/logout retries
+            invalidatedRepository.saveOrUpdate(jit, expiryTime);
         } catch (AppException ex) {
             log.info("Token already expired");
         }
@@ -181,7 +182,8 @@ public class AuthenticationService {
         InvalidatedToken invalidatedToken =
                 InvalidatedToken.builder().id(jit).expiryTime(expiryTime).build();
 
-        invalidatedRepository.save(invalidatedToken);
+        // Idempotent insert to handle concurrent refresh requests
+        invalidatedRepository.saveOrUpdate(jit, expiryTime);
 
         var email = signJWT.getJWTClaimsSet().getSubject();
 

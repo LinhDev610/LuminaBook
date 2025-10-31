@@ -12,10 +12,14 @@ import VerifyCode from '../components/Auth/VerifyCode';
 import Account from '../pages/CustomerAccount';
 import CustomerAccountLayout from '../layouts/CustomerAccountLayout';
 import AdminLayout from '../layouts/AdminLayout';
+import StaffLayout from '../layouts/StaffLayout';
 import ManageStaffAccountsPage from '../pages/Admin/ManageStaffAccounts';
+import StaffMainPage from '../pages/Employees/Staff/StaffMain';
 import ManageCustomerAccountsPage from '../pages/Admin/ManageCustomerAccounts';
 import ManageProductsPage from '../pages/Admin/ManageProduct';
 import AddEmployeePage from '../pages/Admin/ManageStaffAccounts/AddEmployee';
+import StaffProductsPage from '../pages/Employees/Staff/ProductManagement';
+import StaffAddProductPage from '../pages/Employees/Staff/ProductManagement/AddProduct';
 
 // Public routes
 const publicRoutes = [
@@ -46,6 +50,10 @@ const privateRoutes = [
     { path: '/admin/content', component: ManageStaffAccountsPage, layout: AdminLayout },
     { path: '/admin/reports', component: ManageStaffAccountsPage, layout: AdminLayout },
     { path: '/admin/profile', component: ManageStaffAccountsPage, layout: AdminLayout },
+    // Staff routes
+    { path: '/staff', component: StaffMainPage, layout: StaffLayout },
+    { path: '/staff/products', component: StaffProductsPage, layout: StaffLayout },
+    { path: '/staff/products/new', component: StaffAddProductPage, layout: StaffLayout },
 ];
 
 export { publicRoutes, privateRoutes };

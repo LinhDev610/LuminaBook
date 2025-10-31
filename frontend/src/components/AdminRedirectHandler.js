@@ -3,6 +3,8 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import useLocalStorage from '../hooks/useLocalStorage';
 
 // Component để xử lý redirect admin một cách mượt mà
+const API_BASE_URL = 'http://localhost:8080/lumina_book';
+
 function AdminRedirectHandler() {
     const navigate = useNavigate();
     const location = useLocation();
@@ -17,10 +19,37 @@ function AdminRedirectHandler() {
         const hasToken = token || sessionToken;
         const isOnHomePage = location.pathname === '/';
         
-        // Kiểm tra role từ token hoặc API để quyết định redirect
+        // Kiểm tra role từ API để quyết định redirect
         if (hasToken && isOnHomePage) {
-            // Có thể thêm logic kiểm tra role ở đây nếu cần
-            // Hiện tại không tự động redirect admin
+            (async () => {
+                try {
+                    const tokenToUse = token || sessionToken;
+                    const me = await fetch(`${API_BASE_URL}/users/my-info`, {
+                        headers: {
+                            Authorization: `Bearer ${tokenToUse}`,
+                            'Content-Type': 'application/json',
+                        },
+                    });
+                    const meData = await me.json().catch(() => ({}));
+                    const userRole = meData?.result?.role?.name ||
+                        meData?.result?.role ||
+                        meData?.role?.name ||
+                        meData?.role ||
+                        meData?.result?.authorities?.[0]?.authority ||
+                        meData?.authorities?.[0]?.authority;
+
+                    if (userRole === 'ADMIN') {
+                        navigate('/admin', { replace: true });
+                        return;
+                    }
+                    if (userRole === 'STAFF' || userRole === 'CUSTOMER_SUPPORT') {
+                        navigate('/staff', { replace: true });
+                        return;
+                    }
+                } catch (_e) {
+                    // ignore errors, stay on home
+                }
+            })();
         }
     }, [savedEmail, token, sessionToken, navigate, location.pathname]);
 

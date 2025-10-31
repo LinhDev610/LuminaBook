@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import useLocalStorage from '../hooks/useLocalStorage';
 
@@ -12,6 +12,8 @@ function AdminRedirectHandler() {
     const [token] = useLocalStorage('token', null);
     const sessionToken = sessionStorage.getItem('token');
 
+    const hasRedirectedRef = useRef(false);
+
     useEffect(() => {
         // Chỉ redirect nếu:
         // 1. Có token
@@ -19,8 +21,9 @@ function AdminRedirectHandler() {
         const hasToken = token || sessionToken;
         const isOnHomePage = location.pathname === '/';
         
-        // Kiểm tra role từ API để quyết định redirect
-        if (hasToken && isOnHomePage) {
+        // Kiểm tra role từ API để quyết định redirect (chỉ chạy 1 lần)
+        if (hasToken && isOnHomePage && !hasRedirectedRef.current) {
+            hasRedirectedRef.current = true;
             (async () => {
                 try {
                     const tokenToUse = token || sessionToken;
@@ -46,12 +49,14 @@ function AdminRedirectHandler() {
                         navigate('/staff', { replace: true });
                         return;
                     }
+                    // Nếu không phải role đặc biệt, cho ở nguyên trang chủ
                 } catch (_e) {
                     // ignore errors, stay on home
                 }
             })();
         }
-    }, [savedEmail, token, sessionToken, navigate, location.pathname]);
+        // Deps hạn chế để tránh lặp vô hạn khi navigate
+    }, [token, sessionToken, location.pathname, navigate]);
 
     return null; // Component này không render gì
 }

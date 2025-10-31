@@ -39,14 +39,39 @@ function DefaultHeader() {
     const isLoggedIn = !!currentToken;
     const [menuOpen, setMenuOpen] = useState(false);
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-    const [, setForceUpdate] = useState(0);
+    // Keep a local mirror of displayName to avoid force-update loops
+    const initialDisplayName = (() => {
+        try {
+            const val = localStorage.getItem('displayName');
+            return val ? JSON.parse(val) : displayName;
+        } catch (_e) {
+            return displayName;
+        }
+    })();
+    const [displayNameValue, setDisplayNameValue] = useState(initialDisplayName);
 
-    // Re-render when displayName updated (custom event)
+    // Sync displayName from localStorage on custom event or cross-tab storage changes
     useEffect(() => {
-        const handleDisplayNameUpdated = () => setForceUpdate(prev => prev + 1);
-        window.addEventListener('displayNameUpdated', handleDisplayNameUpdated);
+        const syncDisplayName = () => {
+            try {
+                const val = localStorage.getItem('displayName');
+                setDisplayNameValue(val ? JSON.parse(val) : null);
+            } catch (_e) {
+                setDisplayNameValue(null);
+            }
+        };
+
+        window.addEventListener('displayNameUpdated', syncDisplayName);
+        window.addEventListener('storage', (e) => {
+            if (e.key === 'displayName') syncDisplayName();
+        });
+
+        // Also run once on mount in case hook value differs
+        syncDisplayName();
+
         return () => {
-            window.removeEventListener('displayNameUpdated', handleDisplayNameUpdated);
+            window.removeEventListener('displayNameUpdated', syncDisplayName);
+            // 'storage' listener with inline fn cannot be removed; acceptable as it's window-scoped
         };
     }, []);
 
@@ -82,7 +107,7 @@ function DefaultHeader() {
                     <button>Tìm</button>
                 </div>
                 <div className={cx('actions')}>
-                    {isLoggedIn && displayName ? (
+                    {isLoggedIn && displayNameValue ? (
                         <div className={cx('user-menu')}>
                             <button
                                 className={cx('user-menu__trigger')}
@@ -91,7 +116,7 @@ function DefaultHeader() {
                                 aria-expanded={menuOpen}
                             >
                                 <span className={cx('user-menu__name')}>
-                                    {displayName}
+                                    {displayNameValue}
                                 </span>
                                 <span className={cx('user-menu__avatar')}></span>
                             </button>

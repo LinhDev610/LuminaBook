@@ -66,12 +66,36 @@ function AddEmployeePage() {
         return Object.keys(newErrors).length === 0;
     };
 
+    const refreshTokenIfNeeded = async () => {
+        const refreshToken = localStorage.getItem('refreshToken');
+        if (!refreshToken) return null;
+        try {
+            const resp = await fetch(`${API_BASE_URL}/auth/refresh`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token: refreshToken })
+            });
+            const data = await resp.json().catch(() => ({}));
+            if (resp.ok && data?.result?.token) {
+                localStorage.setItem('token', data.result.token);
+                localStorage.setItem('refreshToken', data.result.token);
+                return data.result.token;
+            }
+        } catch (_) {}
+        return null;
+    };
+
     const handleSave = async () => {
         if (validateForm()) {
             setIsLoading(true);
             try {
-                const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-                const response = await fetch(`${API_BASE_URL}/users/staff`, {
+                let token = localStorage.getItem('token') || sessionStorage.getItem('token');
+                if (!token) {
+                    alert('Thiếu token xác thực. Vui lòng đăng nhập lại bằng tài khoản admin.');
+                    setIsLoading(false);
+                    return;
+                }
+                let response = await fetch(`${API_BASE_URL}/users/staff`, {
                     method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${token}`,
@@ -80,14 +104,34 @@ function AddEmployeePage() {
                     body: JSON.stringify(formData),
                 });
 
-                const data = await response.json();
+                let data = {};
+                try {
+                    data = await response.json();
+                } catch (_) {}
                 
+                // Nếu hết hạn -> thử refresh và gọi lại 1 lần
+                if (response.status === 401) {
+                    const newToken = await refreshTokenIfNeeded();
+                    if (newToken) {
+                        token = newToken;
+                        response = await fetch(`${API_BASE_URL}/users/staff`, {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${token}`,
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify(formData),
+                        });
+                        try { data = await response.json(); } catch (_) {}
+                    }
+                }
+
                 if (response.ok) {
                     alert('Tạo tài khoản nhân viên thành công! Mật khẩu đã được gửi qua email.');
                     navigate('/admin');
                 } else {
-                    const errorMessage = data.message || 'Có lỗi xảy ra khi tạo tài khoản nhân viên';
-                    alert(errorMessage);
+                    const serverMsg = data?.message || data?.error || data?.result || '';
+                    alert(`Lỗi tạo tài khoản (HTTP ${response.status}): ${serverMsg || 'Không rõ nguyên nhân'}`);
                 }
             } catch (error) {
                 console.error('Error creating staff:', error);

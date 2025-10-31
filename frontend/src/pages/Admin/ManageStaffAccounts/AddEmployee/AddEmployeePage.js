@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import classNames from 'classnames/bind';
 import styles from './AddEmployeePage.module.scss';
+import { useAuth } from '../../../../contexts/AuthContext';
 
 const cx = classNames.bind(styles);
 
@@ -9,6 +10,7 @@ const API_BASE_URL = 'http://localhost:8080/lumina_book';
 
 function AddEmployeePage() {
     const navigate = useNavigate();
+    const { openLoginModal } = useAuth();
     const [formData, setFormData] = useState({
         fullName: '',
         roleName: '',
@@ -19,6 +21,21 @@ function AddEmployeePage() {
 
     const [errors, setErrors] = useState({});
     const [isLoading, setIsLoading] = useState(false);
+    // Đọc token/refreshToken từ storage và chuẩn hóa (vì useLocalStorage lưu JSON.stringify)
+    const getStoredToken = (key) => {
+        try {
+            const raw = localStorage.getItem(key);
+            if (!raw) return null;
+            // Nếu giá trị được stringify, parse ra; nếu không, dùng trực tiếp
+            if ((raw.startsWith('"') && raw.endsWith('"')) || raw.startsWith('{') || raw.startsWith('[')) {
+                return JSON.parse(raw);
+            }
+            return raw;
+        } catch (_) {
+            return null;
+        }
+    };
+
 
     // Định nghĩa các vai trò có sẵn
     const availableRoles = [
@@ -67,7 +84,7 @@ function AddEmployeePage() {
     };
 
     const refreshTokenIfNeeded = async () => {
-        const refreshToken = localStorage.getItem('refreshToken');
+        const refreshToken = getStoredToken('refreshToken');
         if (!refreshToken) return null;
         try {
             const resp = await fetch(`${API_BASE_URL}/auth/refresh`, {
@@ -89,7 +106,7 @@ function AddEmployeePage() {
         if (validateForm()) {
             setIsLoading(true);
             try {
-                let token = localStorage.getItem('token') || sessionStorage.getItem('token');
+                let token = getStoredToken('token') || sessionStorage.getItem('token');
                 if (!token) {
                     alert('Thiếu token xác thực. Vui lòng đăng nhập lại bằng tài khoản admin.');
                     setIsLoading(false);
@@ -123,6 +140,16 @@ function AddEmployeePage() {
                             body: JSON.stringify(formData),
                         });
                         try { data = await response.json(); } catch (_) {}
+                    } else {
+                        // Không có refreshToken (user không tick Ghi nhớ) -> buộc đăng nhập lại
+                        localStorage.removeItem('token');
+                        localStorage.removeItem('refreshToken');
+                        sessionStorage.removeItem('token');
+                        alert('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+                        navigate('/', { replace: true });
+                        // Mở modal đăng nhập nếu có sẵn context
+                        try { openLoginModal?.(); } catch (_) {}
+                        return;
                     }
                 }
 
@@ -131,7 +158,15 @@ function AddEmployeePage() {
                     navigate('/admin');
                 } else {
                     const serverMsg = data?.message || data?.error || data?.result || '';
-                    alert(`Lỗi tạo tài khoản (HTTP ${response.status}): ${serverMsg || 'Không rõ nguyên nhân'}`);
+                    if (response.status === 403) {
+                        alert('Bạn không có quyền thực hiện hành động này. Vui lòng đăng nhập bằng tài khoản ADMIN.');
+                    } else if (response.status === 401) {
+                        alert('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+                    } else if (response.status === 400) {
+                        alert(`Dữ liệu không hợp lệ: ${serverMsg || 'Vui lòng kiểm tra lại thông tin.'}`);
+                    } else {
+                        alert(`Lỗi tạo tài khoản (HTTP ${response.status}): ${serverMsg || 'Không rõ nguyên nhân'}`);
+                    }
                 }
             } catch (error) {
                 console.error('Error creating staff:', error);

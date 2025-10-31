@@ -1,7 +1,7 @@
 package com.lumina_book.backend.entity;
 
-import jakarta.persistence.*;
-
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
@@ -12,13 +12,8 @@ import lombok.experimental.FieldDefaults;
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @Entity
-public class Permission {
+public class Permision {
     @Id
     String name;
-
     String description;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "role_name")
-    Role role;
 }

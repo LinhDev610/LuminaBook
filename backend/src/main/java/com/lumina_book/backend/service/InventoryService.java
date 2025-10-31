@@ -3,6 +3,8 @@ package com.lumina_book.backend.service;
 import java.time.LocalDate;
 import java.util.List;
 
+import com.lumina_book.backend.exception.AppException;
+import com.lumina_book.backend.exception.ErrorCode;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,7 +37,7 @@ public class InventoryService {
     public Inventory addStock(String productId, Integer quantity) {
         Inventory inventory = inventoryRepository
                 .findByProductId(productId)
-                .orElseThrow(() -> new RuntimeException("Inventory not found for product: " + productId));
+                .orElseThrow(() -> new AppException(ErrorCode.PRODUCT_NOT_EXISTED));
 
         inventory.setStockQuantity(inventory.getStockQuantity() + quantity);
         inventory.setLastUpdated(LocalDate.now());
@@ -47,7 +49,7 @@ public class InventoryService {
     public Inventory updateStock(String productId, Integer newStock) {
         Inventory inventory = inventoryRepository
                 .findByProductId(productId)
-                .orElseThrow(() -> new RuntimeException("Inventory not found for product: " + productId));
+                .orElseThrow(() -> new AppException(ErrorCode.PRODUCT_NOT_EXISTED));
 
         inventory.setStockQuantity(newStock);
         inventory.setLastUpdated(LocalDate.now());
@@ -59,10 +61,10 @@ public class InventoryService {
     public Inventory reduceStock(String productId, Integer quantity) {
         Inventory inventory = inventoryRepository
                 .findByProductId(productId)
-                .orElseThrow(() -> new RuntimeException("Inventory not found for product: " + productId));
+                .orElseThrow(() -> new AppException(ErrorCode.PRODUCT_NOT_EXISTED));
 
         if (inventory.getStockQuantity() < quantity) {
-            throw new RuntimeException("Insufficient stock. Available: " + inventory.getStockQuantity());
+            throw new AppException(ErrorCode.OUT_OF_STOCK);
         }
 
         inventory.setStockQuantity(inventory.getStockQuantity() - quantity);

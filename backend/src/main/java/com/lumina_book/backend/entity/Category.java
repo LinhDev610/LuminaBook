@@ -36,7 +36,7 @@ public class Category {
     @Column(name = "updated_at")
     LocalDateTime updatedAt;
 
-    // Self-referencing: Category parent-child
+    // Categories
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "parent_id")
     Category parentCategory;
@@ -44,7 +44,12 @@ public class Category {
     @OneToMany(mappedBy = "parentCategory", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     List<Category> subCategories;
 
-    // Products in this category
+    // Products
     @OneToMany(mappedBy = "category", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     List<Product> products;
+
+    // Promotions
+    @ManyToOne(fetch =  FetchType.LAZY)
+    @JoinColumn(name = "promotion")
+    Promotion promotionApply;
 }

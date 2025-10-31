@@ -20,5 +20,3 @@ function CustomerAccountLayout({ children }) {
 }
 
 export default CustomerAccountLayout;
-
-

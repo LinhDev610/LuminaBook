@@ -53,11 +53,11 @@ public class UserService {
         user.setAddress(request.getAddress() != null ? request.getAddress() : "");
         user.setAvatarUrl(defaultAvatarUrl);
         user.setCreateAt(LocalDate.now());
-        user.setActive(true);
 
         Role role = roleRepository
                 .findById(request.getRoleName())
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+        user.setActive(role.getName().equals("CUSTOMER"));
         user.setRole(role);
 
         try {
@@ -97,14 +97,19 @@ public class UserService {
         boolean isAdmin =
                 currentUser.getRole() != null && currentUser.getRole().getName().equals("ADMIN");
 
-        // Password TODO: Nhập mật khẩu cũ
         if (request.getPassword() != null && !request.getPassword().isEmpty()) {
             user.setPassword(passwordEncoder.encode(request.getPassword()));
+            String roleName = currentUser.getRole().getName();
+            if (roleName.equals("STAFF") || roleName.equals("CUSTOMER_SUPPORT")) {
+                user.setActive(true);
+            }
         }
 
-        // Email TODO: Thêm OTP khi thay pass
+        // Change Email
         if (request.getEmail() != null && !request.getEmail().isEmpty()) {
-            user.setEmail(request.getEmail());
+            if (isAdmin) {
+                user.setEmail(request.getEmail());
+            }
         }
 
         // PhoneNumber

@@ -57,7 +57,6 @@ public class Promotion {
     @Column(name = "is_active")
     Boolean isActive;
 
-    // Approval workflow fields
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
     PromotionStatus status;
@@ -80,17 +79,9 @@ public class Promotion {
     String rejectionReason;
 
     // Promotion application scope
-    @ManyToMany(fetch = FetchType.LAZY)
-    @JoinTable(
-            name = "promotion_categories",
-            joinColumns = @JoinColumn(name = "promotion_id"),
-            inverseJoinColumns = @JoinColumn(name = "category_id"))
+    @OneToMany(mappedBy = "promotionApply")
     Set<Category> categoryApply;
 
-    @ManyToMany(fetch = FetchType.LAZY)
-    @JoinTable(
-            name = "promotion_products",
-            joinColumns = @JoinColumn(name = "promotion_id"),
-            inverseJoinColumns = @JoinColumn(name = "product_id"))
+    @OneToMany(mappedBy = "promotionApply")
     Set<Product> productApply;
 }

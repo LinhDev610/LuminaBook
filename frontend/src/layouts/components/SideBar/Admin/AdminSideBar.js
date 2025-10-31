@@ -13,6 +13,7 @@ export default function AdminSideBar() {
     const navigate = useNavigate();
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
     const [token, setToken, removeToken] = useLocalStorage('token', null);
+    const [refreshToken, setRefreshToken, removeRefreshToken] = useLocalStorage('refreshToken', null);
     const [displayName, setDisplayName, removeDisplayName] = useLocalStorage('displayName', null);
     
     // Check if current path is related to staff management
@@ -22,7 +23,9 @@ export default function AdminSideBar() {
         // Close confirm modal immediately so it disappears before navigation
         setShowLogoutConfirm(false);
         removeToken();
+        removeRefreshToken();
         removeDisplayName();
+        sessionStorage.removeItem('token');
         // Always go back to home after logout
         navigate('/', { replace: true });
     };

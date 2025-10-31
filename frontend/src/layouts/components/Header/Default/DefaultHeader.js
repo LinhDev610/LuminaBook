@@ -39,31 +39,16 @@ function DefaultHeader() {
     const isLoggedIn = !!currentToken;
     const [menuOpen, setMenuOpen] = useState(false);
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-    const [forceUpdate, setForceUpdate] = useState(0);
+    const [, setForceUpdate] = useState(0);
 
-    // Force re-render when localStorage changes
+    // Re-render when displayName updated (custom event)
     useEffect(() => {
-        const handleStorageChange = () => {
-            setForceUpdate(prev => prev + 1);
-        };
-        
-        window.addEventListener('storage', handleStorageChange);
-        
-        // Also listen for custom events from login
-        window.addEventListener('displayNameUpdated', handleStorageChange);
-        
+        const handleDisplayNameUpdated = () => setForceUpdate(prev => prev + 1);
+        window.addEventListener('displayNameUpdated', handleDisplayNameUpdated);
         return () => {
-            window.removeEventListener('storage', handleStorageChange);
-            window.removeEventListener('displayNameUpdated', handleStorageChange);
+            window.removeEventListener('displayNameUpdated', handleDisplayNameUpdated);
         };
     }, []);
-
-    // Debug logging
-    console.log('DefaultHeader - Token:', currentToken);
-    console.log('DefaultHeader - DisplayName:', displayName);
-    console.log('DefaultHeader - IsLoggedIn:', isLoggedIn);
-    console.log('DefaultHeader - localStorage displayName:', localStorage.getItem('displayName'));
-    console.log('DefaultHeader - ForceUpdate:', forceUpdate);
 
     const toggleMenu = () => setMenuOpen((v) => !v);
     const handleLogout = () => {

@@ -14,6 +14,7 @@ function StaffHeader() {
     const handleLogout = () => {
         setShowLogoutConfirm(false);
         localStorage.removeItem('token');
+        localStorage.removeItem('refreshToken');
         localStorage.removeItem('displayName');
         sessionStorage.removeItem('token');
         navigate('/', { replace: true });

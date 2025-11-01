@@ -38,5 +38,4 @@ public class PasswordService {
         user.setPassword(passwordEncoder.encode(newPassword));
         userRepository.save(user);
     }
-
 }

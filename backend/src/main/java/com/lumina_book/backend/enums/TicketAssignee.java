@@ -4,5 +4,3 @@ public enum TicketAssignee {
     CS,
     ADMIN
 }
-
-

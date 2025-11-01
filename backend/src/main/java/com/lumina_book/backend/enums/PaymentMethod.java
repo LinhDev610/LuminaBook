@@ -4,5 +4,3 @@ public enum PaymentMethod {
     MOMO,
     COD
 }
-
-

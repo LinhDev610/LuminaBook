@@ -6,5 +6,3 @@ public enum TicketStatus {
     RESOLVED,
     ESCALATED
 }
-
-

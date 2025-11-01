@@ -27,5 +27,3 @@ public interface CartMapper {
         return items.stream().map(this::toItemResponse).toList();
     }
 }
-
-

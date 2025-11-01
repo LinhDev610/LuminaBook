@@ -1,13 +1,14 @@
 package com.lumina_book.backend.controller;
 
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.*;
+
 import com.lumina_book.backend.dto.request.ApiResponse;
 import com.lumina_book.backend.dto.request.CreateGhnShipmentRequest;
 import com.lumina_book.backend.entity.Shipment;
 import com.lumina_book.backend.service.ShipmentService;
+
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
-import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/shipments")
@@ -18,8 +19,6 @@ public class ShipmentController {
     @PostMapping("/ghn")
     public ApiResponse<Shipment> createGhnShipment(@RequestBody @Validated CreateGhnShipmentRequest request) {
         Shipment shipment = shipmentService.createGhnOrder(request);
-        return ApiResponse.<Shipment>builder()
-                .result(shipment)
-                .build();
+        return ApiResponse.<Shipment>builder().result(shipment).build();
     }
 }

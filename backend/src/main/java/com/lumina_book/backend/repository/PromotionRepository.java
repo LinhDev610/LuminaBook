@@ -57,13 +57,13 @@ public interface PromotionRepository extends JpaRepository<Promotion, String> {
     List<Promotion> findByProductId(@Param("productId") String productId);
 
     // Active by product/category (approved, active, not expired)
-    @Query("SELECT p FROM Promotion p JOIN p.productApply pr " +
-            "WHERE pr.id = :productId AND p.status = 'APPROVED' AND p.isActive = true " +
-            "AND (p.expiryDate IS NULL OR p.expiryDate >= :today)")
+    @Query("SELECT p FROM Promotion p JOIN p.productApply pr "
+            + "WHERE pr.id = :productId AND p.status = 'APPROVED' AND p.isActive = true "
+            + "AND (p.expiryDate IS NULL OR p.expiryDate >= :today)")
     List<Promotion> findActiveByProductId(@Param("productId") String productId, @Param("today") LocalDate today);
 
-    @Query("SELECT p FROM Promotion p JOIN p.categoryApply c " +
-            "WHERE c.id = :categoryId AND p.status = 'APPROVED' AND p.isActive = true " +
-            "AND (p.expiryDate IS NULL OR p.expiryDate >= :today)")
+    @Query("SELECT p FROM Promotion p JOIN p.categoryApply c "
+            + "WHERE c.id = :categoryId AND p.status = 'APPROVED' AND p.isActive = true "
+            + "AND (p.expiryDate IS NULL OR p.expiryDate >= :today)")
     List<Promotion> findActiveByCategoryId(@Param("categoryId") String categoryId, @Param("today") LocalDate today);
 }

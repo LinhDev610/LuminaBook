@@ -1,11 +1,20 @@
 package com.lumina_book.backend.service;
 
+import java.time.OffsetDateTime;
+import java.time.format.DateTimeParseException;
+import java.util.HashMap;
+import java.util.Map;
+
+import org.springframework.http.*;
+import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumina_book.backend.configuration.GhnProperties;
 import com.lumina_book.backend.dto.request.CreateGhnShipmentRequest;
-import com.lumina_book.backend.dto.response.GhnShipmentResponse;
 import com.lumina_book.backend.dto.response.GhnShipmentFee;
+import com.lumina_book.backend.dto.response.GhnShipmentResponse;
 import com.lumina_book.backend.entity.Order;
 import com.lumina_book.backend.entity.Shipment;
 import com.lumina_book.backend.enums.ShipmentProvider;
@@ -14,15 +23,8 @@ import com.lumina_book.backend.exception.AppException;
 import com.lumina_book.backend.exception.ErrorCode;
 import com.lumina_book.backend.repository.OrderRepository;
 import com.lumina_book.backend.repository.ShipmentRepository;
-import lombok.RequiredArgsConstructor;
-import org.springframework.http.*;
-import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
 
-import java.time.OffsetDateTime;
-import java.time.format.DateTimeParseException;
-import java.util.HashMap;
-import java.util.Map;
+import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
@@ -33,7 +35,8 @@ public class ShipmentService {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public Shipment createGhnOrder(CreateGhnShipmentRequest req) {
-        Order order = orderRepository.findById(req.getOrderId())
+        Order order = orderRepository
+                .findById(req.getOrderId())
                 .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_EXISTED));
 
         // Prepare GHN request payload
@@ -80,12 +83,8 @@ public class ShipmentService {
         HttpEntity<Map<String, Object>> entity = new HttpEntity<>(payload, headers);
         String url = ghnProperties.getBaseUrl() + "/shiip/public-api/v2/shipping-order/create";
 
-        ResponseEntity<GhnShipmentResponse> response = restTemplate.exchange(
-                url,
-                HttpMethod.POST,
-                entity,
-                GhnShipmentResponse.class
-        );
+        ResponseEntity<GhnShipmentResponse> response =
+                restTemplate.exchange(url, HttpMethod.POST, entity, GhnShipmentResponse.class);
 
         GhnShipmentResponse body = response.getBody();
         if (body == null || body.getCode() == null || body.getCode() != 200 || body.getData() == null) {

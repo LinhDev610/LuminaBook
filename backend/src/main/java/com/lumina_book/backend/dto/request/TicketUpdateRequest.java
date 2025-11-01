@@ -1,6 +1,5 @@
 package com.lumina_book.backend.dto.request;
 
-import jakarta.validation.constraints.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
@@ -11,6 +10,6 @@ import lombok.experimental.FieldDefaults;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class TicketUpdateRequest {
     String handlerNote;
-    String status; 
-    String assignedTo; 
+    String status;
+    String assignedTo;
 }

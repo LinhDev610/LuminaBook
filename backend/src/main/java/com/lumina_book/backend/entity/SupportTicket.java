@@ -3,11 +3,12 @@ package com.lumina_book.backend.entity;
 import java.time.LocalDateTime;
 
 import jakarta.persistence.*;
-import lombok.*;
-import lombok.experimental.FieldDefaults;
 
 import com.lumina_book.backend.enums.TicketAssignee;
 import com.lumina_book.backend.enums.TicketStatus;
+
+import lombok.*;
+import lombok.experimental.FieldDefaults;
 
 @Getter
 @Setter
@@ -31,7 +32,7 @@ public class SupportTicket {
     String phone;
 
     @Column(columnDefinition = "TEXT")
-    String content; 
+    String content;
 
     @Column(columnDefinition = "TEXT")
     String handlerNote; // CS/Admin handling notes

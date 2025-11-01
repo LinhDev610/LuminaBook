@@ -1,15 +1,15 @@
 package com.lumina_book.backend.entity;
 
-import com.lumina_book.backend.enums.PromotionStatus;
-import com.lumina_book.backend.enums.VoucherStatus;
-import jakarta.persistence.*;
-import lombok.*;
-import lombok.experimental.FieldDefaults;
-
 import java.time.LocalDate;
-
 import java.time.LocalDateTime;
 import java.util.List;
+
+import jakarta.persistence.*;
+
+import com.lumina_book.backend.enums.VoucherStatus;
+
+import lombok.*;
+import lombok.experimental.FieldDefaults;
 
 @Getter
 @Setter
@@ -25,10 +25,10 @@ public class Voucher {
 
     @Column(unique = true, nullable = false)
     String code;
-    
+
     String name;
     String discountType; // ap dung theo sach cu the hoac theo loai sach
-    
+
     Double minOrderValue;
     Double maxOrderValue;
     Double discountValue;

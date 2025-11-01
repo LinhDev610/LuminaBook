@@ -43,24 +43,28 @@ public class TicketService {
     }
 
     public List<TicketResponse> listAll() {
-        return supportTicketRepository.findAll().stream().map(ticketMapper::toResponse).toList();
+        return supportTicketRepository.findAll().stream()
+                .map(ticketMapper::toResponse)
+                .toList();
     }
 
     public List<TicketResponse> listByStatus(TicketStatus status) {
-        return supportTicketRepository.findByStatus(status).stream().map(ticketMapper::toResponse).toList();
+        return supportTicketRepository.findByStatus(status).stream()
+                .map(ticketMapper::toResponse)
+                .toList();
     }
 
     public TicketResponse getById(String id) {
-        SupportTicket ticket = supportTicketRepository.findById(id)
-                .orElseThrow(() -> new AppException(ErrorCode.TICKET_NOT_EXISTED));
+        SupportTicket ticket =
+                supportTicketRepository.findById(id).orElseThrow(() -> new AppException(ErrorCode.TICKET_NOT_EXISTED));
         return ticketMapper.toResponse(ticket);
     }
 
     @Transactional
     @PreAuthorize("hasAnyRole('ADMIN','STAFF')")
     public TicketResponse update(String id, TicketUpdateRequest request) {
-        SupportTicket ticket = supportTicketRepository.findById(id)
-                .orElseThrow(() -> new AppException(ErrorCode.TICKET_NOT_EXISTED));
+        SupportTicket ticket =
+                supportTicketRepository.findById(id).orElseThrow(() -> new AppException(ErrorCode.TICKET_NOT_EXISTED));
         if (request.getHandlerNote() != null) {
             ticket.setHandlerNote(request.getHandlerNote());
         }
@@ -71,15 +75,15 @@ public class TicketService {
             ticket.setAssignedTo(TicketAssignee.valueOf(request.getAssignedTo()));
         }
         ticket.setUpdatedAt(LocalDateTime.now());
-        
+
         return ticketMapper.toResponse(supportTicketRepository.save(ticket));
     }
 
     @Transactional
     @PreAuthorize("hasAnyRole('ADMIN','STAFF')")
     public TicketResponse escalate(String id) {
-        SupportTicket ticket = supportTicketRepository.findById(id)
-                .orElseThrow(() -> new AppException(ErrorCode.TICKET_NOT_EXISTED));
+        SupportTicket ticket =
+                supportTicketRepository.findById(id).orElseThrow(() -> new AppException(ErrorCode.TICKET_NOT_EXISTED));
         ticket.setAssignedTo(TicketAssignee.ADMIN);
         ticket.setStatus(TicketStatus.ESCALATED);
         ticket.setUpdatedAt(LocalDateTime.now());
@@ -89,8 +93,8 @@ public class TicketService {
     @Transactional
     @PreAuthorize("hasAnyRole('ADMIN','STAFF')")
     public TicketResponse resolve(String id, String handlerNote) {
-        SupportTicket ticket = supportTicketRepository.findById(id)
-                .orElseThrow(() -> new AppException(ErrorCode.TICKET_NOT_EXISTED));
+        SupportTicket ticket =
+                supportTicketRepository.findById(id).orElseThrow(() -> new AppException(ErrorCode.TICKET_NOT_EXISTED));
         if (handlerNote != null) {
             ticket.setHandlerNote(handlerNote);
         }

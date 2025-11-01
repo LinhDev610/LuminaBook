@@ -1,17 +1,19 @@
 package com.lumina_book.backend.entity;
 
-import com.lumina_book.backend.enums.ShipmentStatus;
-import com.lumina_book.backend.enums.ShipmentProvider;
+import java.time.LocalDate;
+import java.time.OffsetDateTime;
+
 import jakarta.persistence.*;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+
+import com.lumina_book.backend.enums.ShipmentProvider;
+import com.lumina_book.backend.enums.ShipmentStatus;
+
 import lombok.*;
 import lombok.experimental.FieldDefaults;
-
-import java.time.LocalDate;
-import java.time.OffsetDateTime;
 
 @Getter
 @Setter

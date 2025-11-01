@@ -45,8 +45,7 @@ public class FinancialService {
     public List<RevenuePoint> revenueByDay(LocalDate start, LocalDate end) {
         LocalDateTime s = start.atStartOfDay();
         LocalDateTime e = end.atTime(LocalTime.MAX);
-        return financialRecordRepository.revenueByDay(FinancialRecordType.ORDER_PAYMENT, s, e)
-                .stream()
+        return financialRecordRepository.revenueByDay(FinancialRecordType.ORDER_PAYMENT, s, e).stream()
                 .map(r -> new RevenuePoint((LocalDate) r[0], ((Number) r[1]).doubleValue()))
                 .toList();
     }
@@ -54,8 +53,7 @@ public class FinancialService {
     public List<ProductRevenue> revenueByProduct(LocalDate start, LocalDate end) {
         LocalDateTime s = start.atStartOfDay();
         LocalDateTime e = end.atTime(LocalTime.MAX);
-        return financialRecordRepository.revenueByProduct(FinancialRecordType.ORDER_PAYMENT, s, e)
-                .stream()
+        return financialRecordRepository.revenueByProduct(FinancialRecordType.ORDER_PAYMENT, s, e).stream()
                 .map(r -> new ProductRevenue((String) r[0], (String) r[1], ((Number) r[2]).doubleValue()))
                 .toList();
     }
@@ -63,11 +61,8 @@ public class FinancialService {
     public List<PaymentRevenue> revenueByPayment(LocalDate start, LocalDate end) {
         LocalDateTime s = start.atStartOfDay();
         LocalDateTime e = end.atTime(LocalTime.MAX);
-        return financialRecordRepository.revenueByPayment(FinancialRecordType.ORDER_PAYMENT, s, e)
-                .stream()
+        return financialRecordRepository.revenueByPayment(FinancialRecordType.ORDER_PAYMENT, s, e).stream()
                 .map(r -> new PaymentRevenue((PaymentMethod) r[0], ((Number) r[1]).doubleValue()))
                 .toList();
     }
 }
-
-

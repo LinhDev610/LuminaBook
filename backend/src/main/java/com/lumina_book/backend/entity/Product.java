@@ -57,7 +57,7 @@ public class Product {
 
     @Column(name = "discount_value")
     Double discountValue;
-    
+
     @Column(name = "price", nullable = false)
     Double price;
 

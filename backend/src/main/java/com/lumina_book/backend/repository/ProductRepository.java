@@ -15,6 +15,7 @@ public interface ProductRepository extends JpaRepository<Product, String> {
 
     // Tìm products theo category
     List<Product> findByCategoryId(String categoryId);
+
     List<Product> findByStatus(boolean status);
 
     // Tìm products theo name (case insensitive)

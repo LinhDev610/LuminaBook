@@ -1,13 +1,13 @@
 package com.lumina_book.backend.entity;
 
-import com.lumina_book.backend.enums.OrderStatus;
-import jakarta.validation.constraints.NotNull;
+import java.time.LocalDate;
+
 import jakarta.persistence.*;
+
+import com.lumina_book.backend.enums.OrderStatus;
+
 import lombok.*;
 import lombok.experimental.FieldDefaults;
-
-import java.time.LocalDate;
-import java.util.List;
 
 @Getter
 @Setter
@@ -22,7 +22,7 @@ public class Order {
     @GeneratedValue(strategy = GenerationType.UUID)
     String id;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = true)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
     User user;
 

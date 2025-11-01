@@ -2,17 +2,16 @@ package com.lumina_book.backend.controller;
 
 import java.util.List;
 
-import com.lumina_book.backend.dto.request.ApiResponse;
-import org.springframework.http.ResponseEntity;
+import jakarta.validation.Valid;
+
 import org.springframework.web.bind.annotation.*;
 
+import com.lumina_book.backend.dto.request.ApiResponse;
 import com.lumina_book.backend.dto.request.TicketCreationRequest;
 import com.lumina_book.backend.dto.request.TicketUpdateRequest;
 import com.lumina_book.backend.dto.response.TicketResponse;
-import com.lumina_book.backend.enums.TicketStatus;
 import com.lumina_book.backend.service.TicketService;
 
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 @RestController
@@ -64,12 +63,11 @@ public class TicketController {
 
     // CS/Admin: mark resolved
     @PostMapping("/{id}/resolve")
-    public ApiResponse<TicketResponse> resolve(@PathVariable String id, @RequestBody(required = false) TicketUpdateRequest request) {
+    public ApiResponse<TicketResponse> resolve(
+            @PathVariable String id, @RequestBody(required = false) TicketUpdateRequest request) {
         String note = request != null ? request.getHandlerNote() : null;
         return ApiResponse.<TicketResponse>builder()
                 .result(ticketService.resolve(id, note))
                 .build();
     }
 }
-
-

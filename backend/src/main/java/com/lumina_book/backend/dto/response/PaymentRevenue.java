@@ -1,6 +1,7 @@
 package com.lumina_book.backend.dto.response;
 
 import com.lumina_book.backend.enums.PaymentMethod;
+
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
@@ -13,5 +14,3 @@ public class PaymentRevenue {
     PaymentMethod paymentMethod;
     Double total;
 }
-
-

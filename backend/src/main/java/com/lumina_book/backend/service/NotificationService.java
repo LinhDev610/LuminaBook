@@ -10,7 +10,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.lumina_book.backend.entity.Notification;
-import com.lumina_book.backend.entity.Role;
 import com.lumina_book.backend.entity.User;
 import com.lumina_book.backend.mapper.NotificationMapper;
 import com.lumina_book.backend.repository.NotificationRepository;
@@ -52,5 +51,3 @@ public class NotificationService {
         return sendToUsers(title, message, type, ids);
     }
 }
-
-

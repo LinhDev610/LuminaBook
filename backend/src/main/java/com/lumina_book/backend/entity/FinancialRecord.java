@@ -3,11 +3,12 @@ package com.lumina_book.backend.entity;
 import java.time.LocalDateTime;
 
 import jakarta.persistence.*;
-import lombok.*;
-import lombok.experimental.FieldDefaults;
 
 import com.lumina_book.backend.enums.FinancialRecordType;
 import com.lumina_book.backend.enums.PaymentMethod;
+
+import lombok.*;
+import lombok.experimental.FieldDefaults;
 
 @Getter
 @Setter

@@ -34,7 +34,7 @@ public enum ErrorCode {
     VOUCHER_NOT_PENDING(3003, "Khuyến mãi không ở trạng thái chờ duyệt", HttpStatus.BAD_REQUEST),
     VOUCHER_EXPIRED(3004, "Voucher đã hết hạn sử dụng", HttpStatus.BAD_REQUEST),
     VOUCHER_SOLD_OUT(3005, "Voucher đã hết lượt sử dụng", HttpStatus.BAD_REQUEST),
-    INVALID_VOUCHER_MINIUM (3006, "Không thỏa mãn giá trị tối thiểu của voucher", HttpStatus.BAD_REQUEST),
+    INVALID_VOUCHER_MINIUM(3006, "Không thỏa mãn giá trị tối thiểu của voucher", HttpStatus.BAD_REQUEST),
 
     // Banner
     BANNER_NOT_EXISTED(4001, "Banner không tồn tại", HttpStatus.NOT_FOUND),
@@ -50,8 +50,7 @@ public enum ErrorCode {
     // ORDER - SHIPMENT - CART
     CART_ITEM_NOT_EXISTED(7001, "Không tồn tại sản phẩm trong giỏ hàng", HttpStatus.NOT_FOUND),
     ORDER_NOT_EXISTED(7002, "Đơn hàng không tồn tại", HttpStatus.NOT_FOUND),
-    EXTERNAL_SERVICE_ERROR(7003, "Lỗi kết nối dịch vụ vận chuyển", HttpStatus.BAD_GATEWAY)
-    ;
+    EXTERNAL_SERVICE_ERROR(7003, "Lỗi kết nối dịch vụ vận chuyển", HttpStatus.BAD_GATEWAY);
 
     ErrorCode(int code, String message, HttpStatusCode statusCode) {
         this.code = code;

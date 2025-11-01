@@ -49,7 +49,7 @@ public class Category {
     List<Product> products;
 
     // Promotions
-    @ManyToOne(fetch =  FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "promotion")
     Promotion promotionApply;
 }

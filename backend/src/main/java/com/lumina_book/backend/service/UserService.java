@@ -11,9 +11,9 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import com.lumina_book.backend.dto.request.StaffCreationRequest;
 import com.lumina_book.backend.dto.request.UserCreationRequest;
 import com.lumina_book.backend.dto.request.UserUpdateRequest;
-import com.lumina_book.backend.dto.request.StaffCreationRequest;
 import com.lumina_book.backend.dto.response.UserResponse;
 import com.lumina_book.backend.entity.Role;
 import com.lumina_book.backend.entity.User;
@@ -75,16 +75,16 @@ public class UserService {
     @PreAuthorize("hasRole('ADMIN')")
     public UserResponse createStaff(StaffCreationRequest request) {
         log.info("Creating staff account for email: {}", request.getEmail());
-        
+
         // Kiểm tra email đã tồn tại chưa
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new AppException(ErrorCode.USER_EXISTED);
         }
-        
+
         // Tạo mật khẩu tự động
         String generatedPassword = passwordGeneratorService.generateSecurePassword();
         log.info("Generated password for staff: {}", request.getEmail());
-        
+
         // Tạo user entity
         User user = User.builder()
                 .email(request.getEmail())
@@ -96,36 +96,32 @@ public class UserService {
                 .createAt(LocalDate.now())
                 .isActive(request.isActive())
                 .build();
-        
+
         // Lấy role
         Role role = roleRepository
                 .findById(request.getRoleName())
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
         user.setRole(role);
-        
+
         try {
             user = userRepository.save(user);
             log.info("Staff account created successfully with ID: {}", user.getId());
-            
+
             // Gửi email chứa mật khẩu
             try {
                 brevoEmailService.sendStaffPasswordEmail(
-                    request.getEmail(), 
-                    request.getFullName(), 
-                    generatedPassword, 
-                    role.getName()
-                );
+                        request.getEmail(), request.getFullName(), generatedPassword, role.getName());
                 log.info("Password email sent successfully to: {}", request.getEmail());
             } catch (Exception e) {
                 log.error("Failed to send password email to: {} - Error: {}", request.getEmail(), e.getMessage());
                 // Không throw exception vì tài khoản đã được tạo thành công
             }
-            
+
         } catch (DataIntegrityViolationException exception) {
             log.error("Data integrity violation when creating staff: {}", exception.getMessage());
             throw new AppException(ErrorCode.USER_EXISTED);
         }
-        
+
         return userMapper.toUserResponse(user);
     }
 

@@ -12,6 +12,7 @@ import com.lumina_book.backend.dto.request.ProductCreationRequest;
 import com.lumina_book.backend.dto.request.ProductUpdateRequest;
 import com.lumina_book.backend.dto.response.ProductResponse;
 import com.lumina_book.backend.entity.Category;
+import com.lumina_book.backend.entity.Inventory;
 import com.lumina_book.backend.entity.Product;
 import com.lumina_book.backend.entity.User;
 import com.lumina_book.backend.exception.AppException;
@@ -65,6 +66,68 @@ public class ProductService {
         return productMapper.toResponse(savedProduct);
     }
 
+    @Transactional
+    public ProductResponse updateProduct(String productId, ProductUpdateRequest request) {
+        // Get current user from security context
+        var context = SecurityContextHolder.getContext();
+        String userId = context.getAuthentication().getName();
+
+        Product product = productRepository
+                .findById(productId)
+                .orElseThrow(() -> new AppException(ErrorCode.PRODUCT_NOT_EXISTED));
+
+        // Check if user is the submitter or admin
+        boolean isAdmin = context.getAuthentication().getAuthorities().stream()
+                .anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN"));
+
+        if (!isAdmin && !product.getSubmittedBy().getId().equals(userId)) {
+            throw new AppException(ErrorCode.UNAUTHORIZED);
+        }
+
+        // Update product using mapper
+        productMapper.updateProduct(product, request);
+        product.setUpdatedAt(LocalDateTime.now());
+
+        // Update category if provided
+        if (request.getCategoryId() != null && !request.getCategoryId().isEmpty()) {
+            Category category = categoryRepository
+                    .findById(request.getCategoryId())
+                    .orElseThrow(() -> new AppException(ErrorCode.CATEGORY_NOT_EXISTED));
+            product.setCategory(category);
+        }
+
+        // Update inventory stock quantity if provided
+        if (request.getStockQuantity() != null) {
+            if (product.getInventory() == null) {
+                Inventory inventory = Inventory.builder()
+                        .stockQuantity(request.getStockQuantity())
+                        .lastUpdated(java.time.LocalDate.now())
+                        .product(product)
+                        .build();
+                product.setInventory(inventory);
+            } else {
+                product.getInventory().setStockQuantity(request.getStockQuantity());
+                product.getInventory().setLastUpdated(java.time.LocalDate.now());
+            }
+        }
+
+        Product savedProduct = productRepository.save(product);
+        log.info("Product updated: {} by user: {}", productId, userId);
+
+        return productMapper.toResponse(savedProduct);
+    }
+
+    @Transactional
+    @PreAuthorize("hasRole('ADMIN')")
+    public void deleteProduct(String productId) {
+        Product product = productRepository
+                .findById(productId)
+                .orElseThrow(() -> new AppException(ErrorCode.PRODUCT_NOT_EXISTED));
+
+        productRepository.delete(product);
+        log.info("Product deleted: {}", productId);
+    }
+
     public ProductResponse getProductById(String productId) {
         Product product = productRepository
                 .findById(productId)
@@ -113,52 +176,5 @@ public class ProductService {
         List<Product> products = productRepository.findBySubmittedBy(user);
 
         return products.stream().map(productMapper::toResponse).toList();
-    }
-
-    @Transactional
-    public ProductResponse updateProduct(String productId, ProductUpdateRequest request) {
-        // Get current user from security context
-        var context = SecurityContextHolder.getContext();
-        String userId = context.getAuthentication().getName();
-
-        Product product = productRepository
-                .findById(productId)
-                .orElseThrow(() -> new AppException(ErrorCode.PRODUCT_NOT_EXISTED));
-
-        // Check if user is the submitter or admin
-        boolean isAdmin = context.getAuthentication().getAuthorities().stream()
-                .anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN"));
-
-        if (!isAdmin && !product.getSubmittedBy().getId().equals(userId)) {
-            throw new AppException(ErrorCode.UNAUTHORIZED);
-        }
-
-        // Update product using mapper
-        productMapper.updateProduct(product, request);
-        product.setUpdatedAt(LocalDateTime.now());
-
-        // Update category if provided
-        if (request.getCategoryId() != null && !request.getCategoryId().isEmpty()) {
-            Category category = categoryRepository
-                    .findById(request.getCategoryId())
-                    .orElseThrow(() -> new AppException(ErrorCode.CATEGORY_NOT_EXISTED));
-            product.setCategory(category);
-        }
-
-        Product savedProduct = productRepository.save(product);
-        log.info("Product updated: {} by user: {}", productId, userId);
-
-        return productMapper.toResponse(savedProduct);
-    }
-
-    @Transactional
-    @PreAuthorize("hasRole('ADMIN')")
-    public void deleteProduct(String productId) {
-        Product product = productRepository
-                .findById(productId)
-                .orElseThrow(() -> new AppException(ErrorCode.PRODUCT_NOT_EXISTED));
-
-        productRepository.delete(product);
-        log.info("Product deleted: {}", productId);
     }
 }

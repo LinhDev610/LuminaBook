@@ -21,8 +21,8 @@ public interface PromotionMapper {
     // Entity to Response
     @Mapping(target = "submittedBy", source = "submittedBy.id")
     @Mapping(target = "approvedBy", source = "approvedBy.id")
-    @Mapping(target = "categoryIds", source = "categoryApply", qualifiedByName = "mapCategoriesToIds")
-    @Mapping(target = "productIds", source = "productApply", qualifiedByName = "mapProductsToIds")
+    @Mapping(target = "categoryIds", source = "categoryApply", qualifiedByName = "mapCategoryListToIds")
+    @Mapping(target = "productIds", source = "productApply", qualifiedByName = "mapProductListToIds")
     PromotionResponse toResponse(Promotion promotion);
 
     // Request to Entity
@@ -42,14 +42,14 @@ public interface PromotionMapper {
     @Mapping(target = "productApply", ignore = true)
     void updatePromotion(@MappingTarget Promotion promotion, PromotionUpdateRequest request);
 
-    @Named("mapCategoriesToIds")
-    default Set<String> mapCategoriesToIds(Set<Category> categories) {
+    @Named("mapCategoryListToIds")
+    default Set<String> mapCategoryListToIds(Set<Category> categories) {
         if (categories == null) return null;
         return categories.stream().map(Category::getId).collect(Collectors.toSet());
     }
 
-    @Named("mapProductsToIds")
-    default Set<String> mapProductsToIds(Set<Product> products) {
+    @Named("mapProductListToIds")
+    default Set<String> mapProductListToIds(Set<Product> products) {
         if (products == null) return null;
         return products.stream().map(Product::getId).collect(Collectors.toSet());
     }

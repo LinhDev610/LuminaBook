@@ -40,14 +40,26 @@ public class Product {
     @Column(name = "weight")
     Double weight;
 
-    @Column(name = "price", nullable = false)
-    Double price;
+    @Column(name = "length")
+    Integer length;
+
+    @Column(name = "width")
+    Integer width;
+
+    @Column(name = "height")
+    Integer height;
 
     @Column(name = "tax")
     Double tax;
 
+    @Column(name = "unit_price", nullable = false)
+    Double unitPrice;
+
     @Column(name = "discount_value")
     Double discountValue;
+
+    @Column(name = "price", nullable = false)
+    Double price;
 
     @Column(name = "quantity_sold")
     Integer quantitySold;
@@ -88,10 +100,15 @@ public class Product {
     List<Review> reviews;
 
     // Inventory
-    @OneToOne(mappedBy = "product", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToOne(mappedBy = "product", cascade = CascadeType.ALL)
     Inventory inventory;
 
     // Banners
     @ManyToMany(mappedBy = "products")
     List<Banner> banners;
+
+    // Promotion
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "promotion")
+    Promotion promotionApply;
 }

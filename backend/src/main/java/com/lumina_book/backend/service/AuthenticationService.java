@@ -119,11 +119,11 @@ public class AuthenticationService {
         // Thời điểm hết hạn
         Date expiryTime = (isRefresh)
                 ? new Date(signedJWT
-                .getJWTClaimsSet()
-                .getIssueTime()
-                .toInstant()
-                .plus(REFRESHABLE_DURATION, ChronoUnit.SECONDS)
-                .toEpochMilli()) // thời điểm cần login lại
+                        .getJWTClaimsSet()
+                        .getIssueTime()
+                        .toInstant()
+                        .plus(REFRESHABLE_DURATION, ChronoUnit.SECONDS)
+                        .toEpochMilli()) // thời điểm cần login lại
                 : signedJWT.getJWTClaimsSet().getExpirationTime(); // Thời điểm refresh tiếp theo
 
         // Kiểm tra hết hạn token

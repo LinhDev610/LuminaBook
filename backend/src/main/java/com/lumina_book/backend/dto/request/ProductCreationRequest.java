@@ -34,6 +34,15 @@ public class ProductCreationRequest {
     @DecimalMin(value = "0.0", message = "Trọng lượng phải lớn hơn hoặc bằng 0")
     Double weight;
 
+    @Min(value = 1, message = "Chiều dài phải lớn hơn hoặc bằng 1")
+    Integer length;
+
+    @Min(value = 1, message = "Chiều rộng phải lớn hơn hoặc bằng 1")
+    Integer width;
+
+    @Min(value = 1, message = "Chiều cao phải lớn hơn hoặc bằng 1")
+    Integer height;
+
     @NotNull(message = "Giá sản phẩm không được để trống")
     @DecimalMin(value = "0.0", message = "Giá sản phẩm phải lớn hơn hoặc bằng 0")
     Double price;

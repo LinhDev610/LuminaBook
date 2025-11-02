@@ -123,7 +123,8 @@ public class BrevoEmailService {
             }
 
         } catch (Exception e) {
-            log.error("Failed to send staff password email via Brevo API to: {} - Error: {}", toEmail, e.getMessage(), e);
+            log.error(
+                    "Failed to send staff password email via Brevo API to: {} - Error: {}", toEmail, e.getMessage(), e);
             throw new AppException(ErrorCode.EMAIL_SEND_FAILED);
         }
     }

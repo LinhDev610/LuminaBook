@@ -21,6 +21,9 @@ public class ProductResponse {
     String author;
     String publisher;
     Double weight;
+    Integer length;
+    Integer width;
+    Integer height;
     Double price;
     Double tax;
     Double discountValue;

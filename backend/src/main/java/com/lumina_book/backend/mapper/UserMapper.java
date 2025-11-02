@@ -11,7 +11,7 @@ import com.lumina_book.backend.entity.User;
 
 @Mapper(componentModel = "spring")
 public interface UserMapper {
-    
+
     // Request to Entity
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "password", ignore = true)

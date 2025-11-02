@@ -1,0 +1,151 @@
+.wrap {
+    padding: 24px;
+    background: #f2ebdd; /* Light beige background */
+    min-height: calc(100vh - 60px);
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.title {
+    font-size: 24px;
+    font-weight: 700;
+    color: #1b2b34; /* Dark gray */
+    margin: 0;
+}
+
+.dashboard-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 40px;
+    padding: 0 16px;
+    border-radius: 10px;
+    border: none;
+    background: #13324a; /* Dark blue */
+    color: #fff;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.icon-left {
+    display: inline-flex;
+}
+
+.dashboard-btn:hover {
+    opacity: 0.9;
+}
+
+.table-container {
+    background: #fff;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.content-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.content-table thead {
+    background: #f8f9fa;
+}
+
+.content-table th {
+    padding: 14px 16px;
+    text-align: left;
+    font-size: 14px;
+    font-weight: 600;
+    color: #1b2b34;
+    border-bottom: 2px solid #e5e5e5;
+}
+
+.content-table tbody tr {
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.content-table tbody tr:nth-child(even) {
+    background: #fafafa; /* Very light gray for alternating rows */
+}
+
+.content-table tbody tr:hover {
+    background: #f5f5f5;
+}
+
+.content-table td {
+    padding: 14px 16px;
+    font-size: 14px;
+    color: #333;
+}
+
+.title-cell {
+    font-weight: 500;
+    color: #1b2b34;
+}
+
+.date-cell {
+    text-align: center;
+    color: #666;
+}
+
+.status-cell {
+    text-align: center;
+}
+
+.status-badge {
+    display: inline-block;
+    padding: 6px 14px;
+    border-radius: 16px;
+    font-size: 12px;
+    font-weight: 600;
+    text-align: center;
+}
+
+.status-badge.pending {
+    background: #fbbf24; /* Orange-yellow */
+    color: #78350f;
+}
+
+.status-badge.approved {
+    background: #10b981; /* Green */
+    color: #064e3b;
+}
+
+.creator-cell {
+    color: #666;
+}
+
+.action-cell {
+    text-align: center;
+}
+
+.btn-detail {
+    height: 36px;
+    padding: 0 16px;
+    border: none;
+    border-radius: 8px;
+    background: #13324a; /* Dark blue */
+    color: #fff;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.btn-detail:hover {
+    opacity: 0.9;
+}
+
+.empty-cell {
+    text-align: center;
+    padding: 40px 16px !important;
+    color: #666;
+    font-style: italic;
+}
+
+

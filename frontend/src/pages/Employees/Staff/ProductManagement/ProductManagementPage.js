@@ -3,6 +3,7 @@ import styles from './ProductManagementPage.scss';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import bookPlaceholder from '../../../../assets/images/img_sach.png';
+import { useSearchAndFilter } from '../../../../hooks';
 
 const cx = classNames.bind(styles);
 
@@ -31,14 +32,18 @@ export default function ProductManagementPage() {
     const [date, setDate] = useState('');
     const [tab, setTab] = useState('all');
 
-    const filtered = mockProducts.filter((p) => {
-        const byTab =
-            tab === 'all' ||
-            (tab === 'pending' && p.status === 'Chờ duyệt') ||
-            (tab === 'approved' && p.status === 'Đã duyệt') ||
-            (tab === 'rejected' && p.status === 'Từ chối');
-        const byKeyword = !keyword || p.name.toLowerCase().includes(keyword.toLowerCase());
-        return byTab && byKeyword;
+    // Sử dụng hook dùng chung để filter
+    const filtered = useSearchAndFilter(mockProducts, {
+        searchQuery: keyword,
+        statusFilter: tab,
+        dateFilter: date,
+        searchFields: ['name', 'id'], // Tìm kiếm theo name và id
+        statusField: 'status',
+        statusMap: {
+            pending: 'Chờ duyệt',
+            approved: 'Đã duyệt',
+            rejected: 'Từ chối',
+        },
     });
 
     return (

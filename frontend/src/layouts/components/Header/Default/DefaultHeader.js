@@ -84,6 +84,8 @@ function DefaultHeader() {
         removeDisplayName();
         // Clear sessionStorage
         sessionStorage.removeItem('token');
+        // Xóa flag checking role để tránh nháy
+        sessionStorage.removeItem('_checking_role');
         // Don't remove savedEmail - keep it for next login
         setMenuOpen(false);
         // Always go back to home after logout

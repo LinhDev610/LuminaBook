@@ -1,5 +1,7 @@
 import classNames from 'classnames/bind';
 import { Link } from 'react-router-dom';
+import { useState, useEffect, useLayoutEffect } from 'react';
+import useLocalStorage from '../../hooks/useLocalStorage';
 import AdminRedirectHandler from '../../components/AdminRedirectHandler';
 
 
@@ -98,10 +100,89 @@ const mockProducts = [
 ];
 
 function Home() {
+    const [token] = useLocalStorage('token', null);
+    const sessionToken = sessionStorage.getItem('token');
+    const hasToken = token || sessionToken;
+    
+    // Luôn bắt đầu với checking nếu có token để tránh flash
+    const [isChecking, setIsChecking] = useState(() => {
+        const tokenCheck = token || sessionStorage.getItem('token');
+        return !!tokenCheck;
+    });
+
+    useLayoutEffect(() => {
+        // Sync check ngay trước khi paint
+        if (!hasToken) {
+            // Không có token, đảm bảo xóa flag và không check
+            sessionStorage.removeItem('_checking_role');
+            setIsChecking(false);
+            return;
+        }
+
+        // Đợi AdminRedirectHandler set flag (có thể mất vài ms)
+        const initialCheck = sessionStorage.getItem('_checking_role') === '1';
+        if (initialCheck) {
+            setIsChecking(true);
+        }
+    }, [hasToken, token, sessionToken]);
+
+    useEffect(() => {
+        if (!hasToken) {
+            // Không có token, reset checking ngay
+            setIsChecking(false);
+            sessionStorage.removeItem('_checking_role');
+            return;
+        }
+
+        // Monitor flag cho đến khi check xong
+        let mounted = true;
+        const checkInterval = setInterval(() => {
+            if (!mounted) return;
+            
+            // Kiểm tra lại token mỗi lần (để phát hiện logout)
+            const currentToken = token || sessionStorage.getItem('token');
+            if (!currentToken) {
+                // Token đã bị xóa (logout), reset ngay
+                sessionStorage.removeItem('_checking_role');
+                setIsChecking(false);
+                clearInterval(checkInterval);
+                return;
+            }
+            
+            const checking = sessionStorage.getItem('_checking_role') === '1';
+            if (checking) {
+                setIsChecking(true);
+            } else {
+                // Flag đã xóa, check xong - đợi một chút để đảm bảo redirect đã xảy ra
+                setTimeout(() => {
+                    if (mounted) {
+                        setIsChecking(false);
+                        clearInterval(checkInterval);
+                    }
+                }, 150);
+            }
+        }, 20); // Check rất nhanh
+
+        // Safety timeout
+        const timeout = setTimeout(() => {
+            if (mounted) {
+                setIsChecking(false);
+                clearInterval(checkInterval);
+            }
+        }, 800);
+
+        return () => {
+            mounted = false;
+            clearInterval(checkInterval);
+            clearTimeout(timeout);
+        };
+    }, [hasToken, token]);
+
     return (
         <div className={cx('home-wrapper')}>
             <AdminRedirectHandler />
-            <main className={cx('home-content')}>
+            {!isChecking && (
+                <main className={cx('home-content')}>
                 {/* Main Content Area - 2 columns layout */}
                 <Banner1
                     heroImage={heroImage}
@@ -240,7 +321,8 @@ function Home() {
 
                 {/* Solid blue bar like header (no content) */}
                 <div className={cx('home-bottom-bar')}></div>
-            </main>
+                </main>
+            )}
         </div>
     );
 }

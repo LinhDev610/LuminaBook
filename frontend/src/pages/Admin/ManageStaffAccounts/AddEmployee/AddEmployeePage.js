@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import classNames from 'classnames/bind';
 import styles from './AddEmployeePage.module.scss';
+import { useAuth } from '../../../../contexts/AuthContext';
 
 const cx = classNames.bind(styles);
 
@@ -9,6 +10,7 @@ const API_BASE_URL = 'http://localhost:8080/lumina_book';
 
 function AddEmployeePage() {
     const navigate = useNavigate();
+    const { openLoginModal } = useAuth();
     const [formData, setFormData] = useState({
         fullName: '',
         roleName: '',
@@ -19,6 +21,21 @@ function AddEmployeePage() {
 
     const [errors, setErrors] = useState({});
     const [isLoading, setIsLoading] = useState(false);
+    // Đọc token/refreshToken từ storage và chuẩn hóa (vì useLocalStorage lưu JSON.stringify)
+    const getStoredToken = (key) => {
+        try {
+            const raw = localStorage.getItem(key);
+            if (!raw) return null;
+            // Nếu giá trị được stringify, parse ra; nếu không, dùng trực tiếp
+            if ((raw.startsWith('"') && raw.endsWith('"')) || raw.startsWith('{') || raw.startsWith('[')) {
+                return JSON.parse(raw);
+            }
+            return raw;
+        } catch (_) {
+            return null;
+        }
+    };
+
 
     // Định nghĩa các vai trò có sẵn
     const availableRoles = [
@@ -66,12 +83,36 @@ function AddEmployeePage() {
         return Object.keys(newErrors).length === 0;
     };
 
+    const refreshTokenIfNeeded = async () => {
+        const refreshToken = getStoredToken('refreshToken');
+        if (!refreshToken) return null;
+        try {
+            const resp = await fetch(`${API_BASE_URL}/auth/refresh`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token: refreshToken })
+            });
+            const data = await resp.json().catch(() => ({}));
+            if (resp.ok && data?.result?.token) {
+                localStorage.setItem('token', data.result.token);
+                localStorage.setItem('refreshToken', data.result.token);
+                return data.result.token;
+            }
+        } catch (_) {}
+        return null;
+    };
+
     const handleSave = async () => {
         if (validateForm()) {
             setIsLoading(true);
             try {
-                const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-                const response = await fetch(`${API_BASE_URL}/users/staff`, {
+                let token = getStoredToken('token') || sessionStorage.getItem('token');
+                if (!token) {
+                    alert('Thiếu token xác thực. Vui lòng đăng nhập lại bằng tài khoản admin.');
+                    setIsLoading(false);
+                    return;
+                }
+                let response = await fetch(`${API_BASE_URL}/users/staff`, {
                     method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${token}`,
@@ -80,14 +121,52 @@ function AddEmployeePage() {
                     body: JSON.stringify(formData),
                 });
 
-                const data = await response.json();
+                let data = {};
+                try {
+                    data = await response.json();
+                } catch (_) {}
                 
+                // Nếu hết hạn -> thử refresh và gọi lại 1 lần
+                if (response.status === 401) {
+                    const newToken = await refreshTokenIfNeeded();
+                    if (newToken) {
+                        token = newToken;
+                        response = await fetch(`${API_BASE_URL}/users/staff`, {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${token}`,
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify(formData),
+                        });
+                        try { data = await response.json(); } catch (_) {}
+                    } else {
+                        // Không có refreshToken (user không tick Ghi nhớ) -> buộc đăng nhập lại
+                        localStorage.removeItem('token');
+                        localStorage.removeItem('refreshToken');
+                        sessionStorage.removeItem('token');
+                        alert('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+                        navigate('/', { replace: true });
+                        // Mở modal đăng nhập nếu có sẵn context
+                        try { openLoginModal?.(); } catch (_) {}
+                        return;
+                    }
+                }
+
                 if (response.ok) {
                     alert('Tạo tài khoản nhân viên thành công! Mật khẩu đã được gửi qua email.');
                     navigate('/admin');
                 } else {
-                    const errorMessage = data.message || 'Có lỗi xảy ra khi tạo tài khoản nhân viên';
-                    alert(errorMessage);
+                    const serverMsg = data?.message || data?.error || data?.result || '';
+                    if (response.status === 403) {
+                        alert('Bạn không có quyền thực hiện hành động này. Vui lòng đăng nhập bằng tài khoản ADMIN.');
+                    } else if (response.status === 401) {
+                        alert('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+                    } else if (response.status === 400) {
+                        alert(`Dữ liệu không hợp lệ: ${serverMsg || 'Vui lòng kiểm tra lại thông tin.'}`);
+                    } else {
+                        alert(`Lỗi tạo tài khoản (HTTP ${response.status}): ${serverMsg || 'Không rõ nguyên nhân'}`);
+                    }
                 }
             } catch (error) {
                 console.error('Error creating staff:', error);

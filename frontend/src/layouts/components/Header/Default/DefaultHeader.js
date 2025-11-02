@@ -39,31 +39,41 @@ function DefaultHeader() {
     const isLoggedIn = !!currentToken;
     const [menuOpen, setMenuOpen] = useState(false);
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-    const [forceUpdate, setForceUpdate] = useState(0);
+    // Keep a local mirror of displayName to avoid force-update loops
+    const initialDisplayName = (() => {
+        try {
+            const val = localStorage.getItem('displayName');
+            return val ? JSON.parse(val) : displayName;
+        } catch (_e) {
+            return displayName;
+        }
+    })();
+    const [displayNameValue, setDisplayNameValue] = useState(initialDisplayName);
 
-    // Force re-render when localStorage changes
+    // Sync displayName from localStorage on custom event or cross-tab storage changes
     useEffect(() => {
-        const handleStorageChange = () => {
-            setForceUpdate(prev => prev + 1);
+        const syncDisplayName = () => {
+            try {
+                const val = localStorage.getItem('displayName');
+                setDisplayNameValue(val ? JSON.parse(val) : null);
+            } catch (_e) {
+                setDisplayNameValue(null);
+            }
         };
-        
-        window.addEventListener('storage', handleStorageChange);
-        
-        // Also listen for custom events from login
-        window.addEventListener('displayNameUpdated', handleStorageChange);
-        
+
+        window.addEventListener('displayNameUpdated', syncDisplayName);
+        window.addEventListener('storage', (e) => {
+            if (e.key === 'displayName') syncDisplayName();
+        });
+
+        // Also run once on mount in case hook value differs
+        syncDisplayName();
+
         return () => {
-            window.removeEventListener('storage', handleStorageChange);
-            window.removeEventListener('displayNameUpdated', handleStorageChange);
+            window.removeEventListener('displayNameUpdated', syncDisplayName);
+            // 'storage' listener with inline fn cannot be removed; acceptable as it's window-scoped
         };
     }, []);
-
-    // Debug logging
-    console.log('DefaultHeader - Token:', currentToken);
-    console.log('DefaultHeader - DisplayName:', displayName);
-    console.log('DefaultHeader - IsLoggedIn:', isLoggedIn);
-    console.log('DefaultHeader - localStorage displayName:', localStorage.getItem('displayName'));
-    console.log('DefaultHeader - ForceUpdate:', forceUpdate);
 
     const toggleMenu = () => setMenuOpen((v) => !v);
     const handleLogout = () => {
@@ -74,6 +84,8 @@ function DefaultHeader() {
         removeDisplayName();
         // Clear sessionStorage
         sessionStorage.removeItem('token');
+        // Xóa flag checking role để tránh nháy
+        sessionStorage.removeItem('_checking_role');
         // Don't remove savedEmail - keep it for next login
         setMenuOpen(false);
         // Always go back to home after logout
@@ -97,7 +109,7 @@ function DefaultHeader() {
                     <button>Tìm</button>
                 </div>
                 <div className={cx('actions')}>
-                    {isLoggedIn && displayName ? (
+                    {isLoggedIn && displayNameValue ? (
                         <div className={cx('user-menu')}>
                             <button
                                 className={cx('user-menu__trigger')}
@@ -106,7 +118,7 @@ function DefaultHeader() {
                                 aria-expanded={menuOpen}
                             >
                                 <span className={cx('user-menu__name')}>
-                                    {displayName}
+                                    {displayNameValue}
                                 </span>
                                 <span className={cx('user-menu__avatar')}></span>
                             </button>

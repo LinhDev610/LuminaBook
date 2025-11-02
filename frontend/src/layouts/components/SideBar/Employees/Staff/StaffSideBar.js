@@ -13,7 +13,23 @@ export default function StaffSideBar() {
     const location = useLocation();
     const [displayName] = useLocalStorage('displayName', null);
     const [tokenLS] = useLocalStorage('token', null);
-    const token = useMemo(() => tokenLS || sessionStorage.getItem('token'), [tokenLS]);
+    const sessionToken = sessionStorage.getItem('token');
+    const token = useMemo(() => {
+        // Ưu tiên sessionToken (không bị stringify)
+        if (sessionToken) return sessionToken;
+        // Nếu dùng localStorage, parse nếu bị stringify
+        if (tokenLS) {
+            try {
+                const raw = localStorage.getItem('token');
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    return typeof parsed === 'string' ? parsed : tokenLS;
+                }
+            } catch (_) {}
+            return tokenLS;
+        }
+        return null;
+    }, [tokenLS, sessionToken]);
     const [profile, setProfile] = useState({ name: displayName || 'Người dùng', role: '' });
 
     useEffect(() => {
@@ -21,9 +37,15 @@ export default function StaffSideBar() {
         const fetchMe = async () => {
             if (!token) return;
             try {
+                // Đảm bảo token là string
+                let tokenToUse = token;
+                if (typeof tokenToUse !== 'string') {
+                    tokenToUse = String(tokenToUse);
+                }
+                
                 const resp = await fetch(`${API_BASE_URL}/users/my-info`, {
                     headers: {
-                        Authorization: `Bearer ${token}`,
+                        Authorization: `Bearer ${tokenToUse}`,
                         'Content-Type': 'application/json',
                     },
                 });

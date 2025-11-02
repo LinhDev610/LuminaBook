@@ -20,14 +20,17 @@ function AdminHeader() {
         'displayName',
         null,
     );
+    const [refreshToken, setRefreshToken, removeRefreshToken] = useLocalStorage('refreshToken', null);
 
     const toggleMenu = () => setMenuOpen((v) => !v);
     const handleLogout = () => {
         // Close confirm modal immediately so it disappears before navigation
         setShowLogoutConfirm(false);
         removeToken();
+        removeRefreshToken();
         removeDisplayName();
         setMenuOpen(false);
+        sessionStorage.removeItem('token');
         // Always go back to home after logout
         navigate('/', { replace: true });
     };

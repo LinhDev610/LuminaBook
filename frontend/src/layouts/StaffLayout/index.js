@@ -3,7 +3,10 @@ import StaffSideBar from '../components/SideBar/Employees/Staff';
 
 function StaffLayout({ children }) {
     return (
-        <div className="container" style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: 16 }}>
+        <div
+            className="container"
+            style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: 16 }}
+        >
             <aside>
                 <StaffSideBar />
             </aside>
@@ -16,5 +19,3 @@ function StaffLayout({ children }) {
 }
 
 export default StaffLayout;
-
-

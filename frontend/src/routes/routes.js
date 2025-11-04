@@ -24,6 +24,7 @@ import StaffAddProductPage from '../pages/Employees/Staff/ProductManagement/AddP
 import ContentManagementPage from '../pages/Employees/Staff/ContentManagement';
 import BannerDetailPage from '../pages/Employees/Staff/ContentManagement/BannerDetail';
 import VouchersPromotionsPage from '../pages/Employees/Staff/VouchersPromotionsPage';
+import AddVoucherPage from '../pages/Employees/Staff/VouchersPromotionsPage/Voucher/AddVoucher';
 
 // Public routes
 const publicRoutes = [
@@ -62,6 +63,7 @@ const privateRoutes = [
     { path: '/staff/content', component: ContentManagementPage, layout: StaffLayout },
     { path: '/staff/content/:id', component: BannerDetailPage, layout: StaffLayout },
     { path: '/staff/vouchers', component: VouchersPromotionsPage, layout: StaffLayout },
+    { path: '/staff/vouchers/add-voucher', component: AddVoucherPage, layout: StaffLayout },
 ];
 
 export { publicRoutes, privateRoutes };

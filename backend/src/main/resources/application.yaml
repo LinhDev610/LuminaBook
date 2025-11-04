@@ -40,8 +40,8 @@ app:
 
 # GHN configuration
 ghn:
-  token: ${GHN_TOKEN}
-  shop-id: ${GHN_SHOP_ID}
+  token: ${GHN_TOKEN:}
+  shop-id: ${GHN_SHOP_ID:0}
   base-url: https://online-gateway.ghn.vn
 
 # Layer1 - Controller: Quan ly cac mapping, endpoint

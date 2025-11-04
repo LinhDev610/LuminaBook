@@ -5,7 +5,6 @@ import java.util.List;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.security.access.prepost.PostAuthorize;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -136,22 +135,36 @@ public class UserService {
         return userMapper.toUserResponse(user);
     }
 
-    // User chỉ có thể lấy được thông tin của chính mình, không thể lấy được thông tin của người khác
-    @PostAuthorize("returnObject.email == authentication.name")
+    // User có thể update chính mình, hoặc ADMIN có thể update bất kỳ user nào
     public UserResponse updateUser(String userId, UserUpdateRequest request) {
         User user = userRepository.findById(userId).orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
-
-        userMapper.updateUser(user, request);
 
         // Check current user is ADMIN
         var context = SecurityContextHolder.getContext();
         String currentEmail = context.getAuthentication().getName();
+        
+        // Check ADMIN từ SecurityContext authorities trước
+        var authorities = context.getAuthentication().getAuthorities();
+        boolean isAdminFromAuthorities = authorities.stream()
+                .anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN"));
+        
+        // Load user với role (có thể cần fetch role vì lazy loading)
         User currentUser = userRepository
                 .findByEmail(currentEmail)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+        
+        boolean isAdminFromRole = currentUser.getRole() != null && 
+                currentUser.getRole().getName().equals("ADMIN");
+        
+        boolean isAdmin = isAdminFromAuthorities || isAdminFromRole;
+        
+        // Nếu không phải ADMIN và không phải update chính mình → từ chối
+        if (!isAdmin && !user.getEmail().equals(currentEmail)) {
+            log.warn("Access denied: User {} attempted to update user {}", currentEmail, userId);
+            throw new AppException(ErrorCode.UNAUTHORIZED);
+        }
 
-        boolean isAdmin =
-                currentUser.getRole() != null && currentUser.getRole().getName().equals("ADMIN");
+        userMapper.updateUser(user, request);
 
         if (request.getPassword() != null && !request.getPassword().isEmpty()) {
             user.setPassword(passwordEncoder.encode(request.getPassword()));
@@ -198,14 +211,22 @@ public class UserService {
             }
         }
 
-        // isActive
-        if (isAdmin) {
-            user.setActive(request.getIsActive());
-        } else {
-            throw new AppException(ErrorCode.UNAUTHORIZED);
+        // isActive - chỉ cập nhật nếu isActive có trong request và user là ADMIN
+        if (request.getIsActive() != null) {
+            if (isAdmin) {
+                boolean newIsActiveValue = request.getIsActive();
+                user.setActive(newIsActiveValue);
+            } else {
+                // Nếu không phải ADMIN mà cố gắng thay đổi isActive → từ chối
+                log.warn("Non-admin user {} attempted to change isActive for user {}", currentEmail, userId);
+                throw new AppException(ErrorCode.UNAUTHORIZED);
+            }
         }
 
-        return userMapper.toUserResponse(userRepository.save(user));
+        // Save user vào database
+        User savedUser = userRepository.save(user);
+        
+        return userMapper.toUserResponse(savedUser);
     }
 
     @PreAuthorize("hasRole('ADMIN')")

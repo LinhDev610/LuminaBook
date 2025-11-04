@@ -17,6 +17,9 @@ import com.lumina_book.backend.dto.request.IntrospectRequest;
 import com.lumina_book.backend.service.AuthenticationService;
 import com.nimbusds.jose.JOSEException;
 
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 @Component
 public class CustomJwtDecoder implements JwtDecoder {
     @Value("${jwt.signerKey}")
@@ -29,14 +32,19 @@ public class CustomJwtDecoder implements JwtDecoder {
 
     @Override
     public Jwt decode(String token) throws JwtException {
-
+        log.debug("🔐 Decoding JWT token...");
         try {
             // Check token còn hiệu lực không, nếu không -> Exception
             var response = authenticationService.introspect(
                     IntrospectRequest.builder().token(token).build());
 
-            if (!response.isValid()) throw new JwtException("Token invalid");
+            if (!response.isValid()) {
+                log.warn("❌ Token invalid or expired");
+                throw new JwtException("Token invalid");
+            }
+            log.debug("✅ Token is valid");
         } catch (JOSEException | ParseException e) {
+            log.error("❌ Error introspecting token: {}", e.getMessage());
             throw new JwtException(e.getMessage());
         }
 

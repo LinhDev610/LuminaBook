@@ -29,6 +29,7 @@ public interface UserMapper {
 
     // Entity to Response
     @Mapping(target = "role", source = "role")
+    @Mapping(target = "active", expression = "java(user.isActive())") // Map from User.isActive() to UserResponse.active
     UserResponse toUserResponse(User user);
 
     // Update Entity

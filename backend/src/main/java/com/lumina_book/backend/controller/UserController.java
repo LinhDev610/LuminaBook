@@ -86,9 +86,15 @@ class UserController {
 
     @PutMapping("{userId}")
     ApiResponse<UserResponse> updateUser(@PathVariable String userId, @RequestBody UserUpdateRequest request) {
-        return ApiResponse.<UserResponse>builder()
-                .result(userService.updateUser(userId, request))
-                .build();
+        try {
+            UserResponse result = userService.updateUser(userId, request);
+            return ApiResponse.<UserResponse>builder()
+                    .result(result)
+                    .build();
+        } catch (Exception e) {
+            log.error("Controller: updateUser failed - userId: {}, error: {}", userId, e.getMessage(), e);
+            throw e;
+        }
     }
 
     @GetMapping("/roles")

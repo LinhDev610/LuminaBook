@@ -16,11 +16,16 @@ import com.lumina_book.backend.exception.ErrorCode;
 
 // Gọi API mà không có JWT token, hoặc token sau/hết hạn -> Spring tự động nhảy vào đây AuthenticationEntryPoint
 // -> Class này giúp API trả về lỗi 401 dưới dạng JSON chuẩn, thay vì response HTML mặc định.
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
     @Override
     public void commence(
             HttpServletRequest request, HttpServletResponse response, AuthenticationException authException)
             throws IOException, ServletException {
+        log.error("🚫 JWT Authentication failed: method={}, uri={}, error={}", 
+                request.getMethod(), request.getRequestURI(), authException.getMessage());
         ErrorCode errorCode = ErrorCode.UNAUTHENTICATED;
 
         response.setStatus(errorCode.getStatusCode().value());

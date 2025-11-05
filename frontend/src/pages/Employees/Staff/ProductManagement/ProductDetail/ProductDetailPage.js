@@ -19,8 +19,6 @@ function ProductDetailPage() {
     const [product, setProduct] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
-    const [showDeleteModal, setShowDeleteModal] = useState(false);
-    const [processing, setProcessing] = useState(false);
 
     // Fetch product detail
     useEffect(() => {
@@ -58,33 +56,6 @@ function ProductDetailPage() {
         }
     }, [id, API_BASE_URL]);
 
-    // Handle delete product
-    const handleDelete = async () => {
-        try {
-            setProcessing(true);
-            const token = getStoredToken('token');
-            const resp = await fetch(`${API_BASE_URL}/products/${id}`, {
-                method: 'DELETE',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-                },
-            });
-
-            if (!resp.ok) {
-                const text = await resp.text().catch(() => '');
-                throw new Error(text || `HTTP ${resp.status}`);
-            }
-
-            setShowDeleteModal(false);
-            alert('Sản phẩm đã được xóa thành công!');
-            navigate('/staff/products');
-        } catch (e) {
-            alert('Lỗi: ' + (e?.message || 'Không thể xóa sản phẩm'));
-        } finally {
-            setProcessing(false);
-        }
-    };
 
     const handleBack = () => {
         navigate('/staff/products');
@@ -203,17 +174,119 @@ function ProductDetailPage() {
                                 </span>
                             </div>
                             <div className={cx('info-row')}>
-                                <span className={cx('info-label')}>Giá:</span>
+                                <span className={cx('info-label')}>Tác giả:</span>
+                                <span className={cx('info-value')}>
+                                    {product.author || '-'}
+                                </span>
+                            </div>
+                            <div className={cx('info-row')}>
+                                <span className={cx('info-label')}>Nhà xuất bản:</span>
+                                <span className={cx('info-value')}>
+                                    {product.publisher || '-'}
+                                </span>
+                            </div>
+                            <div className={cx('info-row')}>
+                                <span className={cx('info-label')}>Giá niêm yết:</span>
                                 <span className={cx('info-value')}>
                                     {formatPrice(product.price || 0)}
                                 </span>
                             </div>
+                            {product.tax !== undefined && product.tax !== null && (
+                                <div className={cx('info-row')}>
+                                    <span className={cx('info-label')}>Thuế:</span>
+                                    <span className={cx('info-value')}>
+                                        {Math.round(product.tax * 100)}%
+                                    </span>
+                                </div>
+                            )}
+                            {product.discountValue !== undefined && product.discountValue !== null && product.discountValue > 0 && (
+                                <div className={cx('info-row')}>
+                                    <span className={cx('info-label')}>Giảm giá:</span>
+                                    <span className={cx('info-value')}>
+                                        {formatPrice(product.discountValue)}
+                                    </span>
+                                </div>
+                            )}
+                            {product.publicationDate && (
+                                <div className={cx('info-row')}>
+                                    <span className={cx('info-label')}>Ngày xuất bản:</span>
+                                    <span className={cx('info-value')}>
+                                        {new Date(product.publicationDate).toLocaleDateString('vi-VN')}
+                                    </span>
+                                </div>
+                            )}
+                            {(product.length || product.width || product.height) && (
+                                <div className={cx('info-row')}>
+                                    <span className={cx('info-label')}>Kích thước (cm):</span>
+                                    <span className={cx('info-value')}>
+                                        {[product.length, product.width, product.height]
+                                            .filter(Boolean)
+                                            .join(' × ') || '-'}
+                                    </span>
+                                </div>
+                            )}
+                            {product.weight !== undefined && product.weight !== null && (
+                                <div className={cx('info-row')}>
+                                    <span className={cx('info-label')}>Trọng lượng:</span>
+                                    <span className={cx('info-value')}>
+                                        {product.weight} g
+                                    </span>
+                                </div>
+                            )}
+                            {product.availableQuantity !== undefined && product.availableQuantity !== null && (
+                                <div className={cx('info-row')}>
+                                    <span className={cx('info-label')}>Số lượng tồn kho:</span>
+                                    <span className={cx('info-value')}>
+                                        {product.availableQuantity}
+                                    </span>
+                                </div>
+                            )}
+                            {product.quantitySold !== undefined && product.quantitySold !== null && (
+                                <div className={cx('info-row')}>
+                                    <span className={cx('info-label')}>Số lượng đã bán:</span>
+                                    <span className={cx('info-value')}>
+                                        {product.quantitySold}
+                                    </span>
+                                </div>
+                            )}
+                            {product.submittedByName && (
+                                <div className={cx('info-row')}>
+                                    <span className={cx('info-label')}>Người gửi:</span>
+                                    <span className={cx('info-value')}>
+                                        {product.submittedByName}
+                                    </span>
+                                </div>
+                            )}
+                            {product.approvedByName && (
+                                <div className={cx('info-row')}>
+                                    <span className={cx('info-label')}>Người duyệt:</span>
+                                    <span className={cx('info-value')}>
+                                        {product.approvedByName}
+                                    </span>
+                                </div>
+                            )}
+                            {product.status === 'Đã duyệt' && product.approvedAt && (
+                                <div className={cx('info-row')}>
+                                    <span className={cx('info-label')}>Ngày duyệt:</span>
+                                    <span className={cx('info-value')}>
+                                        {formatDateTime(product.approvedAt)}
+                                    </span>
+                                </div>
+                            )}
                             <div className={cx('info-row')}>
                                 <span className={cx('info-label')}>Ngày tạo:</span>
                                 <span className={cx('info-value')}>
                                     {formatDateTime(product.createdAt)}
                                 </span>
                             </div>
+                            {product.updatedAt && product.updatedAt !== product.createdAt && (
+                                <div className={cx('info-row')}>
+                                    <span className={cx('info-label')}>Ngày cập nhật:</span>
+                                    <span className={cx('info-value')}>
+                                        {formatDateTime(product.updatedAt)}
+                                    </span>
+                                </div>
+                            )}
                             <div className={cx('info-row')}>
                                 <span className={cx('info-label')}>Trạng thái:</span>
                                 <span className={cx('status-badge', statusClass)}>
@@ -228,6 +301,19 @@ function ProductDetailPage() {
                                     </span>
                                 </div>
                             )}
+                            {((product.averageRating !== undefined && product.averageRating !== null) || (product.reviewCount !== undefined && product.reviewCount !== null && product.reviewCount > 0)) && (
+                                <div className={cx('info-row')}>
+                                    <span className={cx('info-label')}>Đánh giá:</span>
+                                    <span className={cx('info-value')}>
+                                        {product.averageRating !== undefined && product.averageRating !== null
+                                            ? `${product.averageRating.toFixed(1)}/5.0`
+                                            : '-'}
+                                        {product.reviewCount !== undefined && product.reviewCount !== null && product.reviewCount > 0
+                                            ? ` (${product.reviewCount} đánh giá)`
+                                            : ''}
+                                    </span>
+                                </div>
+                            )}
                             <div className={cx('info-row', 'description-row')}>
                                 <span className={cx('info-label')}>Mô tả:</span>
                                 <span className={cx('info-value', 'description')}>
@@ -238,65 +324,21 @@ function ProductDetailPage() {
 
                         {/* Action Buttons */}
                         <div className={cx('action-buttons')}>
-                            {/* Staff: Chờ duyệt -> Xóa bài gửi */}
-                            {product.status === 'Chờ duyệt' && (
-                                <button
-                                    className={cx('btn', 'btn-delete')}
-                                    onClick={() => setShowDeleteModal(true)}
-                                    disabled={processing}
-                                >
-                                    Xóa bài gửi
-                                </button>
-                            )}
-
-                            {/* Staff: Từ chối -> Sửa lại */}
+                            {/* Staff: Chỉ hiển thị nút "Sửa lại" khi sản phẩm bị từ chối */}
                             {product.status === 'Từ chối' && (
                                 <button
                                     className={cx('btn', 'btn-edit')}
                                     onClick={() => {
-                                        // Navigate đến trang update product
                                         navigate(`/staff/products/${id}/update`);
                                     }}
-                                    disabled={processing}
                                 >
                                     Sửa lại
                                 </button>
                             )}
-
-                            {/* Staff: Đã duyệt -> Nothing (không hiển thị nút) */}
                         </div>
                     </div>
                 </div>
             </div>
-
-            {/* Delete Modal */}
-            {showDeleteModal && (
-                <div className={cx('modal-overlay')} onClick={() => setShowDeleteModal(false)}>
-                    <div className={cx('modal')} onClick={(e) => e.stopPropagation()}>
-                        <h2 className={cx('modal-title')}>Xác nhận xóa sản phẩm</h2>
-                        <p className={cx('modal-message')}>
-                            Bạn có chắc chắn muốn xóa sản phẩm này không?
-                        </p>
-                        <p className={cx('modal-warning')}>Hành động này không thể hoàn tác.</p>
-                        <div className={cx('modal-actions')}>
-                            <button
-                                className={cx('btn', 'btn-cancel')}
-                                onClick={() => setShowDeleteModal(false)}
-                                disabled={processing}
-                            >
-                                Hủy
-                            </button>
-                            <button
-                                className={cx('btn', 'btn-confirm-delete')}
-                                onClick={handleDelete}
-                                disabled={processing}
-                            >
-                                {processing ? 'Đang xử lý...' : 'Xóa'}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
         </div>
     );
 }

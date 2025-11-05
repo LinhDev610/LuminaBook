@@ -146,12 +146,20 @@ public class ProductService {
     @Transactional
     @PreAuthorize("hasRole('ADMIN')")
     public void deleteProduct(String productId) {
+        var context = SecurityContextHolder.getContext();
+        String userEmail = context.getAuthentication().getName();
+        User user = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+
         Product product = productRepository
                 .findById(productId)
                 .orElseThrow(() -> new AppException(ErrorCode.PRODUCT_NOT_EXISTED));
 
+        // Xóa file media vật lý trong thư mục uploads (nếu có)
+        deleteMediaFilesIfExists(product);
+
         productRepository.delete(product);
-        log.info("Product deleted: {}", productId);
+        log.info("Product deleted: {} by user: {}", productId, user.getEmail());
     }
 
     // ========== READ OPERATIONS ==========
@@ -236,8 +244,9 @@ public class ProductService {
             log.info("Product approved: {} by admin: {}", product.getId(), adminEmail);
         } else if ("REJECT".equals(request.getAction())) {
             product.setStatus(ProductStatus.REJECTED);
-            product.setApprovedBy(admin);
-            product.setApprovedAt(LocalDateTime.now());
+            // Không thiết lập thời gian duyệt khi từ chối
+            product.setApprovedBy(null);
+            product.setApprovedAt(null);
             product.setRejectionReason(request.getReason());
             product.setUpdatedAt(LocalDateTime.now());
             log.info("Product rejected: {} by admin: {}", product.getId(), adminEmail);
@@ -301,6 +310,59 @@ public class ProductService {
                 defaultMedia.setDefault(true);
             }
             product.setDefaultMedia(defaultMedia);
+        }
+    }
+
+    private void deleteMediaFilesIfExists(Product product) {
+        try {
+            if (product.getMediaList() != null) {
+                for (ProductMedia media : product.getMediaList()) {
+                    deletePhysicalFileByUrl(media.getMediaUrl());
+                }
+            }
+            if (product.getDefaultMedia() != null) {
+                deletePhysicalFileByUrl(product.getDefaultMedia().getMediaUrl());
+            }
+        } catch (Exception e) {
+            log.warn("Failed to delete media files for product {}: {}", product.getId(), e.getMessage());
+        }
+    }
+
+    private void deletePhysicalFileByUrl(String url) {
+        if (url == null || url.isBlank()) return;
+        try {
+            String filename = null;
+            try {
+                java.net.URI uri = java.net.URI.create(url);
+                String path = uri.getPath();
+                if (path != null && !path.isBlank()) {
+                    int lastSlash = path.lastIndexOf('/');
+                    if (lastSlash >= 0 && lastSlash < path.length() - 1) {
+                        filename = path.substring(lastSlash + 1);
+                    }
+                }
+            } catch (IllegalArgumentException ignored) { }
+
+            if (filename == null) {
+                String path = url;
+                if (path.startsWith("/")) path = path.substring(1);
+                if (path.startsWith("uploads/")) {
+                    filename = path.substring("uploads/".length());
+                }
+            }
+
+            if (filename == null && !url.contains("/")) {
+                filename = url;
+            }
+
+            if (filename == null || filename.isBlank()) return;
+
+            java.nio.file.Path uploadDir = java.nio.file.Paths.get("uploads");
+            java.nio.file.Path filePath = uploadDir.resolve(filename);
+            java.nio.file.Files.deleteIfExists(filePath);
+            log.info("Deleted media file: {}", filePath.toAbsolutePath());
+        } catch (Exception e) {
+            log.warn("Could not delete media file for url {}: {}", url, e.getMessage());
         }
     }
 }

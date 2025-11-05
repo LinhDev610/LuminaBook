@@ -279,23 +279,146 @@ function ProductDetailPage() {
                                 </span>
                             </div>
                             <div className={cx('info-row')}>
-                                <span className={cx('info-label')}>Giá:</span>
+                                <span className={cx('info-label')}>Tác giả:</span>
+                                <span className={cx('info-value')}>
+                                    {product.author || '-'}
+                                </span>
+                            </div>
+                            <div className={cx('info-row')}>
+                                <span className={cx('info-label')}>Nhà xuất bản:</span>
+                                <span className={cx('info-value')}>
+                                    {product.publisher || '-'}
+                                </span>
+                            </div>
+                            <div className={cx('info-row')}>
+                                <span className={cx('info-label')}>Giá niêm yết:</span>
                                 <span className={cx('info-value')}>
                                     {formatPrice(product.price || 0)}
                                 </span>
                             </div>
+                            {product.tax !== undefined && product.tax !== null && (
+                                <div className={cx('info-row')}>
+                                    <span className={cx('info-label')}>Thuế:</span>
+                                    <span className={cx('info-value')}>
+                                        {Math.round(product.tax * 100)}%
+                                    </span>
+                                </div>
+                            )}
+                            {product.discountValue !== undefined && product.discountValue !== null && product.discountValue > 0 && (
+                                <div className={cx('info-row')}>
+                                    <span className={cx('info-label')}>Giảm giá:</span>
+                                    <span className={cx('info-value')}>
+                                        {formatPrice(product.discountValue)}
+                                    </span>
+                                </div>
+                            )}
+                            {product.publicationDate && (
+                                <div className={cx('info-row')}>
+                                    <span className={cx('info-label')}>Ngày xuất bản:</span>
+                                    <span className={cx('info-value')}>
+                                        {new Date(product.publicationDate).toLocaleDateString('vi-VN')}
+                                    </span>
+                                </div>
+                            )}
+                            {(product.length || product.width || product.height) && (
+                                <div className={cx('info-row')}>
+                                    <span className={cx('info-label')}>Kích thước (cm):</span>
+                                    <span className={cx('info-value')}>
+                                        {[product.length, product.width, product.height]
+                                            .filter(Boolean)
+                                            .join(' × ') || '-'}
+                                    </span>
+                                </div>
+                            )}
+                            {product.weight !== undefined && product.weight !== null && (
+                                <div className={cx('info-row')}>
+                                    <span className={cx('info-label')}>Trọng lượng:</span>
+                                    <span className={cx('info-value')}>
+                                        {product.weight} g
+                                    </span>
+                                </div>
+                            )}
+                            {product.availableQuantity !== undefined && product.availableQuantity !== null && (
+                                <div className={cx('info-row')}>
+                                    <span className={cx('info-label')}>Số lượng tồn kho:</span>
+                                    <span className={cx('info-value')}>
+                                        {product.availableQuantity}
+                                    </span>
+                                </div>
+                            )}
+                            {product.quantitySold !== undefined && product.quantitySold !== null && (
+                                <div className={cx('info-row')}>
+                                    <span className={cx('info-label')}>Số lượng đã bán:</span>
+                                    <span className={cx('info-value')}>
+                                        {product.quantitySold}
+                                    </span>
+                                </div>
+                            )}
+                            {product.submittedByName && (
+                                <div className={cx('info-row')}>
+                                    <span className={cx('info-label')}>Người gửi:</span>
+                                    <span className={cx('info-value')}>
+                                        {product.submittedByName}
+                                    </span>
+                                </div>
+                            )}
+                            {product.approvedByName && (
+                                <div className={cx('info-row')}>
+                                    <span className={cx('info-label')}>Người duyệt:</span>
+                                    <span className={cx('info-value')}>
+                                        {product.approvedByName}
+                                    </span>
+                                </div>
+                            )}
+                            {product.status === 'Đã duyệt' && product.approvedAt && (
+                                <div className={cx('info-row')}>
+                                    <span className={cx('info-label')}>Ngày duyệt:</span>
+                                    <span className={cx('info-value')}>
+                                        {formatDateTime(product.approvedAt)}
+                                    </span>
+                                </div>
+                            )}
                             <div className={cx('info-row')}>
                                 <span className={cx('info-label')}>Ngày tạo:</span>
                                 <span className={cx('info-value')}>
                                     {formatDateTime(product.createdAt)}
                                 </span>
                             </div>
+                            {product.updatedAt && product.updatedAt !== product.createdAt && (
+                                <div className={cx('info-row')}>
+                                    <span className={cx('info-label')}>Ngày cập nhật:</span>
+                                    <span className={cx('info-value')}>
+                                        {formatDateTime(product.updatedAt)}
+                                    </span>
+                                </div>
+                            )}
                             <div className={cx('info-row')}>
                                 <span className={cx('info-label')}>Trạng thái:</span>
                                 <span className={cx('status-badge', statusClass)}>
                                     {product.status || 'Chờ duyệt'}
                                 </span>
                             </div>
+                            {product.rejectionReason && (
+                                <div className={cx('info-row')}>
+                                    <span className={cx('info-label')}>Lý do từ chối:</span>
+                                    <span className={cx('info-value', 'rejection-reason')}>
+                                        {product.rejectionReason}
+                                    </span>
+                                </div>
+                            )}
+                            {((product.averageRating !== undefined && product.averageRating !== null) || (product.reviewCount !== undefined && product.reviewCount !== null && product.reviewCount > 0)) && (
+                                <div className={cx('info-row')}>
+                                    <span className={cx('info-label')}>Đánh giá:</span>
+                                    <span className={cx('info-value')}>
+                                        {product.averageRating !== undefined && product.averageRating !== null
+                                            ? `${product.averageRating.toFixed(1)}/5.0`
+                                            : '-'}
+                                        {product.reviewCount !== undefined && product.reviewCount !== null && product.reviewCount > 0
+                                            ? ` (${product.reviewCount} đánh giá)`
+                                            : ''}
+                                    </span>
+                                </div>
+                            )}
                             <div className={cx('info-row', 'description-row')}>
                                 <span className={cx('info-label')}>Mô tả:</span>
                                 <span className={cx('info-value', 'description')}>

@@ -12,6 +12,9 @@ import lombok.experimental.FieldDefaults;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class CategoryCreationRequest {
 
+    @NotBlank(message = "Mã danh mục không được để trống")
+    String id;
+
     @NotBlank(message = "Tên danh mục không được để trống")
     @Size(max = 255, message = "Tên danh mục không được vượt quá 255 ký tự")
     String name;
@@ -19,8 +22,6 @@ public class CategoryCreationRequest {
     @Size(max = 1000, message = "Mô tả không được vượt quá 1000 ký tự")
     String description;
 
-    @Builder.Default
-    Boolean status = true;
-
+    Boolean status;
     String parentId;
 }

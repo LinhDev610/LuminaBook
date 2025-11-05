@@ -27,7 +27,7 @@ export default function RegisterModal({ open = false, onClose }) {
     const [isLoading, setIsLoading] = useState(false);
 
     // register state
-    const [username, setUsername] = useState('');
+    const [fullName, setFullName] = useState('');
     const [password, setPassword] = useState('');
     const [confirm, setConfirm] = useState('');
     const [agree, setAgree] = useState(false);
@@ -53,7 +53,7 @@ export default function RegisterModal({ open = false, onClose }) {
         
         setError('');
         setIsLoading(false);
-        setUsername('');
+        setFullName('');
         setPassword('');
         setConfirm('');
         setAgree(false);
@@ -78,7 +78,7 @@ export default function RegisterModal({ open = false, onClose }) {
         return () => {
             document.removeEventListener('keydown', handleKeyPress);
         };
-    }, [open, registerStep, email, username, password, confirm]);
+    }, [open, registerStep, email, fullName, password, confirm]);
 
     if (!open) return null;
 
@@ -141,7 +141,7 @@ export default function RegisterModal({ open = false, onClose }) {
             const payload = {
                 email: (email || '').trim(),
                 password,
-                fullName: (username || '').trim(),
+                fullName: (fullName || '').trim(),
             };
             const resp = await fetch(`${API_BASE_URL}/users`, {
                 method: 'POST',
@@ -149,7 +149,7 @@ export default function RegisterModal({ open = false, onClose }) {
                 body: JSON.stringify(payload),
             });
             const data = await resp.json().catch(() => ({}));
-            if (resp.ok && (data?.result || data?.code === 200)) {
+            if (resp.ok && (data?.result || data?.code === 1000)) {
                 try {
                     const loginResp = await fetch(
                         `${API_BASE_URL}/auth/token`,
@@ -166,7 +166,7 @@ export default function RegisterModal({ open = false, onClose }) {
                     if (loginResp.ok && loginData?.result?.token) {
                         setToken(loginData.result.token);
                         setDisplayName(
-                            (username || '').trim() || (email || '').trim(),
+                            (fullName || '').trim() || (email || '').trim(),
                         );
                         onClose?.();
                         navigate(0);
@@ -241,8 +241,8 @@ export default function RegisterModal({ open = false, onClose }) {
                             <div className={cx('standalone-form-group')}>
                                 <label className={cx('standalone-label')}>Tên đăng nhập</label>
                                 <input
-                                    value={username}
-                                    onChange={(e) => setUsername(e.target.value)}
+                                    value={fullName}
+                                    onChange={(e) => setFullName(e.target.value)}
                                     placeholder="Tên đăng nhập"
                                     className={cx('standalone-input')}
                                 />
@@ -371,8 +371,8 @@ export default function RegisterModal({ open = false, onClose }) {
                     <div className={cx('form-group')}>
                         <label className={cx('form-label')}>Tên hiển thị</label>
                         <input
-                            value={username}
-                            onChange={(e) => setUsername(e.target.value)}
+                            value={fullName}
+                            onChange={(e) => setFullName(e.target.value)}
                             placeholder="Tên hiển thị"
                             className={cx('form-input')}
                         />

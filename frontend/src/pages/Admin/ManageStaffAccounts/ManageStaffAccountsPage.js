@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import classNames from 'classnames/bind';
 import styles from './ManageStaffAccountsPage.module.scss';
@@ -24,7 +24,7 @@ function ManageStaffAccountsPage() {
     const handleSearchChange = (e) => {
         const newSearchTerm = e.target.value;
         setSearchTerm(newSearchTerm);
-        
+
         // Apply filters immediately when search term changes
         applyFilters(newSearchTerm, sortBy);
     };
@@ -32,29 +32,29 @@ function ManageStaffAccountsPage() {
     const handleSort = (e) => {
         const newSortBy = e.target.value;
         setSortBy(newSortBy);
-        
+
         // Apply filters immediately when status changes
         applyFilters(searchTerm, newSortBy);
     };
 
     const applyFilters = (search, status) => {
         let filtered = allEmployees;
-        
+
         // Filter by search term (name, email, phone)
         if (search && search.trim()) {
             const searchLower = search.toLowerCase().trim();
-            filtered = filtered.filter(employee => 
+            filtered = filtered.filter(employee =>
                 employee.name.toLowerCase().includes(searchLower) ||
                 employee.email.toLowerCase().includes(searchLower) ||
                 employee.phone.includes(search.trim())
             );
         }
-        
+
         // Filter by status - only if not "all"
         if (status !== 'all') {
             filtered = filtered.filter(employee => employee.status === status);
         }
-        
+
         setFilteredEmployees(filtered);
     };
 
@@ -94,7 +94,7 @@ function ManageStaffAccountsPage() {
     return (
         <div className={cx('admin-page')}>
             <h1 className={cx('page-title')}>Quản lý tài khoản nhân viên</h1>
-            
+
             <SearchAndSort
                 searchPlaceholder={staffSearchPlaceholder}
                 searchValue={searchTerm}
@@ -106,7 +106,7 @@ function ManageStaffAccountsPage() {
                 onSortChange={handleSort}
                 additionalButtons={additionalButtons}
             />
-            
+
             <div className={cx('table-container')}>
                 <table className={cx('data-table')}>
                     <thead>

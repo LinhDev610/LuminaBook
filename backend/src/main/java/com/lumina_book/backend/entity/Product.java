@@ -6,6 +6,8 @@ import java.util.List;
 
 import jakarta.persistence.*;
 
+import com.lumina_book.backend.enums.ProductStatus;
+
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
@@ -19,7 +21,6 @@ import lombok.experimental.FieldDefaults;
 @Table(name = "products")
 public class Product {
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
     String id;
 
     @Column(name = "name", nullable = false)
@@ -64,8 +65,9 @@ public class Product {
     @Column(name = "quantity_sold")
     Integer quantitySold;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
-    Boolean status;
+    ProductStatus status;
 
     @Column(name = "publication_date")
     LocalDate publicationDate;
@@ -80,6 +82,17 @@ public class Product {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "submitted_by")
     User submittedBy;
+
+    // Approval info
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "approved_by")
+    User approvedBy;
+
+    @Column(name = "approved_at")
+    LocalDateTime approvedAt;
+
+    @Column(name = "rejection_reason", columnDefinition = "TEXT")
+    String rejectionReason;
 
     // Category relationship
     @ManyToOne(fetch = FetchType.LAZY)

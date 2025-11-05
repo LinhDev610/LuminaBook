@@ -1,0 +1,363 @@
+.wrap {
+    padding: 24px;
+    background: #f8f9fa;
+    min-height: 100vh;
+}
+
+.loading,
+.error {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 400px;
+    gap: 16px;
+}
+
+.error {
+    p {
+        color: #ef4444;
+        font-size: 16px;
+        margin-bottom: 16px;
+    }
+}
+
+.header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.back-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    color: #333;
+    border-radius: 8px;
+    transition: background-color 0.2s ease;
+
+    &:hover {
+        background: #e5e7eb;
+    }
+
+    svg {
+        width: 20px;
+        height: 20px;
+    }
+}
+
+.title {
+    font-size: 24px;
+    font-weight: 600;
+    color: #333;
+    margin: 0;
+}
+
+.detail-card {
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    padding: 32px;
+}
+
+.product-content {
+    display: grid;
+    grid-template-columns: 250px 1fr;
+    gap: 32px;
+
+    @media (max-width: 768px) {
+        grid-template-columns: 1fr;
+    }
+}
+
+.product-image-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.product-image {
+    width: 100%;
+    max-width: 250px;
+    height: auto;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    object-fit: cover;
+}
+
+.product-image-placeholder {
+    width: 100%;
+    max-width: 250px;
+    height: 350px;
+    background: #e5e7eb;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #9ca3af;
+    font-size: 14px;
+}
+
+.product-info-section {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.info-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.info-row {
+    display: grid;
+    grid-template-columns: 150px 1fr;
+    gap: 16px;
+    align-items: start;
+
+    &.description-row {
+        grid-template-columns: 150px 1fr;
+        align-items: start;
+    }
+
+    @media (max-width: 768px) {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+}
+
+.info-label {
+    font-weight: 600;
+    color: #333;
+    font-size: 14px;
+}
+
+.info-value {
+    color: #666;
+    font-size: 14px;
+    word-break: break-word;
+
+    &.product-name {
+        font-weight: 500;
+        color: #333;
+        font-size: 16px;
+    }
+
+    &.description {
+        line-height: 1.6;
+        color: #555;
+    }
+}
+
+.status-badge {
+    display: inline-block;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+
+    &.pending {
+        background: #fef3c7;
+        color: #92400e;
+    }
+
+    &.approved {
+        background: #d1fae5;
+        color: #065f46;
+    }
+
+    &.rejected {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    &.disabled {
+        background: #e5e7eb;
+        color: #6b7280;
+    }
+}
+
+.action-buttons {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+}
+
+.btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+
+    &:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+    &.btn-approve {
+        background: #3b82f6;
+        color: #ffffff;
+
+        &:hover:not(:disabled) {
+            background: #2563eb;
+        }
+    }
+
+    &.btn-reject {
+        background: #ffffff;
+        color: #333;
+        border: 1px solid #d1d5db;
+
+        &:hover:not(:disabled) {
+            background: #f9fafb;
+        }
+    }
+
+    &.btn-delete {
+        background: #ef4444;
+        color: #ffffff;
+
+        &:hover:not(:disabled) {
+            background: #dc2626;
+        }
+    }
+
+    &.btn-back {
+        background: #6b7280;
+        color: #ffffff;
+
+        &:hover:not(:disabled) {
+            background: #4b5563;
+        }
+    }
+}
+
+// Modal Styles
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 20px;
+}
+
+.modal {
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 24px;
+    max-width: 500px;
+    width: 100%;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+}
+
+.modal-title {
+    font-size: 20px;
+    font-weight: 600;
+    color: #333;
+    margin: 0 0 16px 0;
+}
+
+.modal-message {
+    font-size: 14px;
+    color: #666;
+    margin: 0 0 16px 0;
+    line-height: 1.6;
+}
+
+.modal-warning {
+    font-size: 13px;
+    color: #ef4444;
+    margin: 0 0 16px 0;
+    font-weight: 500;
+}
+
+.modal-input-section {
+    margin: 16px 0;
+}
+
+.modal-label {
+    display: block;
+    font-size: 14px;
+    font-weight: 500;
+    color: #333;
+    margin-bottom: 8px;
+}
+
+.modal-textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: inherit;
+    resize: vertical;
+    min-height: 80px;
+
+    &:focus {
+        outline: none;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+}
+
+.modal-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    margin-top: 24px;
+}
+
+.btn-cancel {
+    background: #e5e7eb;
+    color: #333;
+
+    &:hover:not(:disabled) {
+        background: #d1d5db;
+    }
+}
+
+.btn-confirm-approve {
+    background: #3b82f6;
+    color: #ffffff;
+
+    &:hover:not(:disabled) {
+        background: #2563eb;
+    }
+}
+
+.btn-confirm-reject {
+    background: #ef4444;
+    color: #ffffff;
+
+    &:hover:not(:disabled) {
+        background: #dc2626;
+    }
+}
+
+.btn-confirm-delete {
+    background: #ef4444;
+    color: #ffffff;
+
+    &:hover:not(:disabled) {
+        background: #dc2626;
+    }
+}
+

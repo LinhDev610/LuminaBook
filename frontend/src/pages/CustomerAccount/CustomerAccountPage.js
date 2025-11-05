@@ -18,7 +18,7 @@ function CustomerAccountPage() {
     );
     const [email, setEmail, removeEmail] = useLocalStorage('email', 'user123@gmail.com');
     const [token, setToken, removeToken] = useLocalStorage('token', null);
-    
+
     // Check if user is logged in
     const isLoggedIn = !!token;
     const [userAvatar, setUserAvatar] = useLocalStorage('userAvatar', null);
@@ -54,16 +54,19 @@ function CustomerAccountPage() {
             return setChangePwdMsg('Mật khẩu xác nhận không khớp');
         }
         try {
-            const resp = await fetch(`http://localhost:8080/lumina_book/auth/change-password`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: token ? `Bearer ${token}` : ''
+            const resp = await fetch(
+                `http://localhost:8080/lumina_book/auth/change-password`,
+                {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: token ? `Bearer ${token}` : '',
+                    },
+                    body: JSON.stringify({ currentPassword, newPassword }),
                 },
-                body: JSON.stringify({ currentPassword, newPassword })
-            });
+            );
             const data = await resp.json();
-            if (resp.ok && data?.code === 200) {
+            if (resp.ok && data?.code === 1000) {
                 setChangePwdMsg('Đổi mật khẩu thành công');
                 setCurrentPassword('');
                 setNewPassword('');
@@ -83,25 +86,28 @@ function CustomerAccountPage() {
                     <div className={cx('side-profile')}>
                         <div className={cx('side-avatar')}>
                             {!isLoggedIn || !userAvatar ? (
-                                <img 
-                                    src={guestImgIcon} 
-                                    alt="Guest Avatar" 
+                                <img
+                                    src={guestImgIcon}
+                                    alt="Guest Avatar"
                                     className={cx('avatar-image')}
                                 />
                             ) : (
-                                <img 
-                                    src={userAvatar} 
-                                    alt="User Avatar" 
+                                <img
+                                    src={userAvatar}
+                                    alt="User Avatar"
                                     className={cx('avatar-image')}
                                 />
                             )}
                         </div>
-                        <div className={cx('side-name')}>
-                            {displayName || 'Khách'}
-                        </div>
+                        <div className={cx('side-name')}>{displayName || 'Khách'}</div>
                     </div>
                     <ul className={cx('side-menu')}>
-                        <li className={cx('menu-item', { active: activeTab === 'profile' })} onClick={() => setActiveTab('profile')}>
+                        <li
+                            className={cx('menu-item', {
+                                active: activeTab === 'profile',
+                            })}
+                            onClick={() => setActiveTab('profile')}
+                        >
                             <img
                                 className={cx('mi')}
                                 src={require('../../assets/icons/icon_user.png')}
@@ -125,7 +131,12 @@ function CustomerAccountPage() {
                             />
                             <span>Voucher và khuyến mãi</span>
                         </li>
-                        <li className={cx('menu-item', { active: activeTab === 'password' })} onClick={() => setActiveTab('password')}>
+                        <li
+                            className={cx('menu-item', {
+                                active: activeTab === 'password',
+                            })}
+                            onClick={() => setActiveTab('password')}
+                        >
                             <img
                                 className={cx('mi')}
                                 src={require('../../assets/icons/icon_lock.png')}
@@ -133,7 +144,10 @@ function CustomerAccountPage() {
                             />
                             <span>Đổi mật khẩu</span>
                         </li>
-                        <li className={cx('menu-item')} onClick={() => setShowLogoutConfirm(true)}>
+                        <li
+                            className={cx('menu-item')}
+                            onClick={() => setShowLogoutConfirm(true)}
+                        >
                             <img
                                 className={cx('mi')}
                                 src={require('../../assets/icons/icon_logout.png')}
@@ -145,100 +159,124 @@ function CustomerAccountPage() {
                 </aside>
                 <main className={cx('account-main')}>
                     {activeTab === 'profile' && (
-                    <section className={cx('panel')}>
-                        <h3 className={cx('menu-item')}>
-                            <img
-                                className={cx('mi-large')}
-                                src={require('../../assets/icons/icon_user.png')}
-                                alt="user"
-                            />
-                            <span className={cx('menu-item')} /> Thông tin cá nhân
-                        </h3>
-                        <div className={cx('form-row')}>
-                            <div className={cx('form-group')}>
-                                <label>Họ và tên</label>
-                                <input defaultValue={displayName || 'Khách'} />
+                        <section className={cx('panel')}>
+                            <h3 className={cx('menu-item')}>
+                                <img
+                                    className={cx('mi-large')}
+                                    src={require('../../assets/icons/icon_user.png')}
+                                    alt="user"
+                                />
+                                <span className={cx('menu-item')} /> Thông tin cá nhân
+                            </h3>
+                            <div className={cx('form-row')}>
+                                <div className={cx('form-group')}>
+                                    <label>Họ và tên</label>
+                                    <input defaultValue={displayName || 'Khách'} />
+                                </div>
+                                <div className={cx('form-group')}>
+                                    <label>Gmail</label>
+                                    <input defaultValue={email} />
+                                </div>
                             </div>
-                            <div className={cx('form-group')}>
-                                <label>Gmail</label>
-                                <input defaultValue={email} />
+                            <div className={cx('form-row')}>
+                                <div className={cx('form-group')}>
+                                    <label>Số điện thoại</label>
+                                    <input defaultValue="0123456789" />
+                                </div>
+                                <div className={cx('form-group')}>
+                                    <label>Địa chỉ</label>
+                                    <input defaultValue="123 Đường ABC, phường Thanh Xuân, Hà Nội" />
+                                </div>
                             </div>
-                        </div>
-                        <div className={cx('form-row')}>
-                            <div className={cx('form-group')}>
-                                <label>Số điện thoại</label>
-                                <input defaultValue="0123456789" />
+                            <div className={cx('form-actions')}>
+                                <button className={cx('primary')}>Lưu thay đổi</button>
                             </div>
-                            <div className={cx('form-group')}>
-                                <label>Địa chỉ</label>
-                                <input defaultValue="123 Đường ABC, phường Thanh Xuân, Hà Nội" />
-                            </div>
-                        </div>
-                        <div className={cx('form-actions')}>
-                            <button className={cx('primary')}>Lưu thay đổi</button>
-                        </div>
-                    </section>
+                        </section>
                     )}
 
                     {/* Đổi mật khẩu */}
                     {activeTab === 'password' && (
-                    <section className={cx('panel')} style={{ marginTop: 20 }}>
-                        <h3 className={cx('menu-item')}>
-                            <img
-                                className={cx('mi-large')}
-                                src={require('../../assets/icons/icon_lock.png')}
-                                alt="lock"
-                            />
-                            <span className={cx('menu-item')} /> Đổi mật khẩu
-                        </h3>
-                        <form onSubmit={handleChangePassword}>
-                            <div className={cx('form-group')}>
-                                <label>Mật khẩu hiện tại</label>
-                                <input
-                                    type="password"
-                                    value={currentPassword}
-                                    onChange={(e) => setCurrentPassword(e.target.value)}
-                                    placeholder="********"
+                        <section className={cx('panel')} style={{ marginTop: 20 }}>
+                            <h3 className={cx('menu-item')}>
+                                <img
+                                    className={cx('mi-large')}
+                                    src={require('../../assets/icons/icon_lock.png')}
+                                    alt="lock"
                                 />
-                            </div>
-                            <div className={cx('form-group')}>
-                                <label>Mật khẩu mới</label>
-                                <input
-                                    type="password"
-                                    value={newPassword}
-                                    onChange={(e) => setNewPassword(e.target.value)}
-                                    placeholder="********"
-                                />
-                            </div>
-                            <div className={cx('form-group')}>
-                                <label>Xác nhận mật khẩu mới</label>
-                                <input
-                                    type="password"
-                                    value={confirmPassword}
-                                    onChange={(e) => setConfirmPassword(e.target.value)}
-                                    placeholder="********"
-                                />
-                            </div>
-                            {changePwdMsg && (
-                                <div className={cx('form-hint')} style={{ color: '#1a3c5a', marginBottom: 8 }}>
-                                    {changePwdMsg}
+                                <span className={cx('menu-item')} /> Đổi mật khẩu
+                            </h3>
+                            <form onSubmit={handleChangePassword}>
+                                <div className={cx('form-group')}>
+                                    <label>Mật khẩu hiện tại</label>
+                                    <input
+                                        type="password"
+                                        value={currentPassword}
+                                        onChange={(e) =>
+                                            setCurrentPassword(e.target.value)
+                                        }
+                                        placeholder="********"
+                                    />
                                 </div>
-                            )}
-                            <div className={cx('form-actions')}>
-                                <button className={cx('primary')} disabled={!isLoggedIn}>Cập nhật mật khẩu</button>
-                            </div>
-                        </form>
-                    </section>
+                                <div className={cx('form-group')}>
+                                    <label>Mật khẩu mới</label>
+                                    <input
+                                        type="password"
+                                        value={newPassword}
+                                        onChange={(e) => setNewPassword(e.target.value)}
+                                        placeholder="********"
+                                    />
+                                </div>
+                                <div className={cx('form-group')}>
+                                    <label>Xác nhận mật khẩu mới</label>
+                                    <input
+                                        type="password"
+                                        value={confirmPassword}
+                                        onChange={(e) =>
+                                            setConfirmPassword(e.target.value)
+                                        }
+                                        placeholder="********"
+                                    />
+                                </div>
+                                {changePwdMsg && (
+                                    <div
+                                        className={cx('form-hint')}
+                                        style={{ color: '#1a3c5a', marginBottom: 8 }}
+                                    >
+                                        {changePwdMsg}
+                                    </div>
+                                )}
+                                <div className={cx('form-actions')}>
+                                    <button
+                                        className={cx('primary')}
+                                        disabled={!isLoggedIn}
+                                    >
+                                        Cập nhật mật khẩu
+                                    </button>
+                                </div>
+                            </form>
+                        </section>
                     )}
                 </main>
                 {showLogoutConfirm && (
                     <div className={cx('modal-overlay')} role="dialog" aria-modal="true">
                         <div className={cx('modal')}>
                             <h3 className={cx('modal-title')}>Đăng xuất tài khoản?</h3>
-                            <p className={cx('modal-desc')}>Bạn có chắc chắn muốn đăng xuất khỏi hệ thống không?</p>
+                            <p className={cx('modal-desc')}>
+                                Bạn có chắc chắn muốn đăng xuất khỏi hệ thống không?
+                            </p>
                             <div className={cx('modal-actions')}>
-                                <button className={cx('btn', 'btn-muted')} onClick={() => setShowLogoutConfirm(false)}>Hủy</button>
-                                <button className={cx('btn', 'btn-primary')} onClick={handleLogout}>Đăng xuất</button>
+                                <button
+                                    className={cx('btn', 'btn-muted')}
+                                    onClick={() => setShowLogoutConfirm(false)}
+                                >
+                                    Hủy
+                                </button>
+                                <button
+                                    className={cx('btn', 'btn-primary')}
+                                    onClick={handleLogout}
+                                >
+                                    Đăng xuất
+                                </button>
                             </div>
                         </div>
                     </div>

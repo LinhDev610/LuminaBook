@@ -2,6 +2,7 @@ package com.lumina_book.backend.dto.request;
 
 import java.time.LocalDate;
 
+import com.lumina_book.backend.enums.ProductStatus;
 import jakarta.validation.constraints.*;
 
 import lombok.*;
@@ -53,7 +54,7 @@ public class ProductUpdateRequest {
 
     String categoryId;
 
-    Boolean status;
+    ProductStatus status;
 
     @Min(value = 0, message = "Số lượng tồn kho phải >= 0")
     Integer stockQuantity;

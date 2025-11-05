@@ -9,6 +9,7 @@ import org.springframework.stereotype.Repository;
 
 import com.lumina_book.backend.entity.Product;
 import com.lumina_book.backend.entity.User;
+import com.lumina_book.backend.enums.ProductStatus;
 
 @Repository
 public interface ProductRepository extends JpaRepository<Product, String> {
@@ -16,7 +17,7 @@ public interface ProductRepository extends JpaRepository<Product, String> {
     // Tìm products theo category
     List<Product> findByCategoryId(String categoryId);
 
-    List<Product> findByStatus(boolean status);
+    List<Product> findByStatus(ProductStatus status);
 
     // Tìm products theo name (case insensitive)
     List<Product> findByNameContainingIgnoreCase(String name);
@@ -58,25 +59,25 @@ public interface ProductRepository extends JpaRepository<Product, String> {
     List<Product> findByDiscountValueGreaterThan(double discountValue);
 
     // Tìm products ordered by price ascending
-    List<Product> findByStatusOrderByPriceAsc(boolean status);
+    List<Product> findByStatusOrderByPriceAsc(ProductStatus status);
 
     // Tìm products ordered by price descending
-    List<Product> findByStatusOrderByPriceDesc(boolean status);
+    List<Product> findByStatusOrderByPriceDesc(ProductStatus status);
 
     // Tìm products ordered by creation date
-    List<Product> findByStatusOrderByCreatedAtDesc(boolean status);
+    List<Product> findByStatusOrderByCreatedAtDesc(ProductStatus status);
 
     // Tìm products ordered by update date
-    List<Product> findByStatusOrderByUpdatedAtDesc(boolean status);
+    List<Product> findByStatusOrderByUpdatedAtDesc(ProductStatus status);
 
     // Tìm products ordered by quantity sold
-    List<Product> findByStatusOrderByQuantitySoldDesc(boolean status);
+    List<Product> findByStatusOrderByQuantitySoldDesc(ProductStatus status);
 
     // Tính số lượng products theo category
     long countByCategoryId(String categoryId);
 
     // Tính số lượng products theo status
-    long countByStatus(boolean status);
+    long countByStatus(ProductStatus status);
 
     // Tính số lượng products submitted bởi user cụ thể
     long countBySubmittedBy(User submittedBy);

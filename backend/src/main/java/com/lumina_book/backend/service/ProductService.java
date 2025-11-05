@@ -1,20 +1,21 @@
 package com.lumina_book.backend.service;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
+import com.lumina_book.backend.entity.*;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.lumina_book.backend.dto.request.ApproveProductRequest;
 import com.lumina_book.backend.dto.request.ProductCreationRequest;
 import com.lumina_book.backend.dto.request.ProductUpdateRequest;
 import com.lumina_book.backend.dto.response.ProductResponse;
-import com.lumina_book.backend.entity.Category;
-import com.lumina_book.backend.entity.Inventory;
-import com.lumina_book.backend.entity.Product;
-import com.lumina_book.backend.entity.User;
+import com.lumina_book.backend.enums.ProductStatus;
 import com.lumina_book.backend.exception.AppException;
 import com.lumina_book.backend.exception.ErrorCode;
 import com.lumina_book.backend.mapper.ProductMapper;
@@ -38,57 +39,82 @@ public class ProductService {
     UserRepository userRepository;
     ProductMapper productMapper;
 
+    // ========== CREATE OPERATIONS ==========
     @Transactional
+    @PreAuthorize("hasRole('STAFF')")
     public ProductResponse createProduct(ProductCreationRequest request) {
-        // Get current user from security context
         var context = SecurityContextHolder.getContext();
-        String userId = context.getAuthentication().getName();
+        String userEmail = context.getAuthentication().getName();
+        User user = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
 
-        // Get user
-        User user = userRepository.findById(userId).orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
-
-        // Get category
+        // Validate và lấy category
         Category category = categoryRepository
                 .findById(request.getCategoryId())
                 .orElseThrow(() -> new AppException(ErrorCode.CATEGORY_NOT_EXISTED));
 
-        // Create product entity using mapper
+        // Tạo product entity từ request
         Product product = productMapper.toProduct(request);
+        product.setId(request.getId());
         product.setSubmittedBy(user);
         product.setCategory(category);
         product.setCreatedAt(LocalDateTime.now());
         product.setUpdatedAt(LocalDateTime.now());
         product.setQuantitySold(0);
+        product.setStatus(ProductStatus.PENDING);
 
-        Product savedProduct = productRepository.save(product);
-        log.info("Product created with ID: {} by user: {}", savedProduct.getId(), userId);
+        // Tính toán giá sản phẩm
+        if (request.getPrice() == null || request.getPrice() < 0) {
+            throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION);
+        }
+        product.setUnitPrice(request.getPrice());
+        product.setPrice(computeFinalPrice(request.getPrice(), request.getTax(), request.getDiscountValue()));
 
-        return productMapper.toResponse(savedProduct);
+        // Gắn media (ảnh/video) từ request
+        attachMediaFromRequest(product, request);
+
+        // Lưu sản phẩm
+        try {
+            Product savedProduct = productRepository.save(product);
+            log.info("Product created with ID: {} by user: {}", savedProduct.getId(), user.getId());
+            return productMapper.toResponse(savedProduct);
+        } catch (DataIntegrityViolationException e) {
+            log.error("Data integrity violation when creating product", e);
+            throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION);
+        }
     }
 
+    // ========== UPDATE OPERATIONS ==========
+
+    /**
+     * Cập nhật thông tin sản phẩm
+     * Staff chỉ có thể cập nhật sản phẩm của chính họ
+     * Admin có thể cập nhật bất kỳ sản phẩm nào
+     */
     @Transactional
     public ProductResponse updateProduct(String productId, ProductUpdateRequest request) {
-        // Get current user from security context
         var context = SecurityContextHolder.getContext();
-        String userId = context.getAuthentication().getName();
+        String userEmail = context.getAuthentication().getName();
+        User user = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
 
         Product product = productRepository
                 .findById(productId)
                 .orElseThrow(() -> new AppException(ErrorCode.PRODUCT_NOT_EXISTED));
 
-        // Check if user is the submitter or admin
+        // Kiểm tra quyền: Admin hoặc chủ sở hữu sản phẩm
         boolean isAdmin = context.getAuthentication().getAuthorities().stream()
                 .anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN"));
 
-        if (!isAdmin && !product.getSubmittedBy().getId().equals(userId)) {
+        if (!isAdmin && !product.getSubmittedBy().getId().equals(user.getId())) {
             throw new AppException(ErrorCode.UNAUTHORIZED);
         }
 
-        // Update product using mapper
+        // Cập nhật thông tin sản phẩm
         productMapper.updateProduct(product, request);
         product.setUpdatedAt(LocalDateTime.now());
 
-        // Update category if provided
+        // Cập nhật category nếu có
         if (request.getCategoryId() != null && !request.getCategoryId().isEmpty()) {
             Category category = categoryRepository
                     .findById(request.getCategoryId())
@@ -96,7 +122,7 @@ public class ProductService {
             product.setCategory(category);
         }
 
-        // Update inventory stock quantity if provided
+        // Cập nhật inventory nếu có
         if (request.getStockQuantity() != null) {
             if (product.getInventory() == null) {
                 Inventory inventory = Inventory.builder()
@@ -112,11 +138,11 @@ public class ProductService {
         }
 
         Product savedProduct = productRepository.save(product);
-        log.info("Product updated: {} by user: {}", productId, userId);
-
+        log.info("Product updated: {} by user: {}", productId, user.getEmail());
         return productMapper.toResponse(savedProduct);
     }
 
+    // ========== DELETE OPERATIONS ==========
     @Transactional
     @PreAuthorize("hasRole('ADMIN')")
     public void deleteProduct(String productId) {
@@ -128,53 +154,153 @@ public class ProductService {
         log.info("Product deleted: {}", productId);
     }
 
+    // ========== READ OPERATIONS ==========
     public ProductResponse getProductById(String productId) {
         Product product = productRepository
                 .findById(productId)
                 .orElseThrow(() -> new AppException(ErrorCode.PRODUCT_NOT_EXISTED));
-
         return productMapper.toResponse(product);
     }
 
     public List<ProductResponse> getAllProducts() {
         List<Product> products = productRepository.findAll();
-
         return products.stream().map(productMapper::toResponse).toList();
     }
 
     public List<ProductResponse> getActiveProducts() {
-        List<Product> products = productRepository.findByStatus(true);
-
+        List<Product> products = productRepository.findByStatus(ProductStatus.APPROVED);
         return products.stream().map(productMapper::toResponse).toList();
     }
 
     public List<ProductResponse> getProductsByCategory(String categoryId) {
         List<Product> products = productRepository.findByCategoryId(categoryId);
-
-        return products.stream().map(productMapper::toResponse).toList();
+        return products.stream()
+                .filter(p -> p.getStatus() == ProductStatus.APPROVED)
+                .map(productMapper::toResponse)
+                .toList();
     }
 
     public List<ProductResponse> searchProducts(String keyword) {
         List<Product> products = productRepository.findByKeyword(keyword);
-
-        return products.stream().map(productMapper::toResponse).toList();
+        return products.stream()
+                .filter(p -> p.getStatus() == ProductStatus.APPROVED)
+                .map(productMapper::toResponse)
+                .toList();
     }
 
     public List<ProductResponse> getProductsByPriceRange(Double minPrice, Double maxPrice) {
         List<Product> products = productRepository.findByPriceRange(minPrice, maxPrice);
-
-        return products.stream().map(productMapper::toResponse).toList();
+        return products.stream()
+                .filter(p -> p.getStatus() == ProductStatus.APPROVED)
+                .map(productMapper::toResponse)
+                .toList();
     }
 
     public List<ProductResponse> getMyProducts() {
-        // Get current user from security context
         var context = SecurityContextHolder.getContext();
-        String userId = context.getAuthentication().getName();
-
-        User user = userRepository.findById(userId).orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+        String userEmail = context.getAuthentication().getName();
+        User user = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
 
         List<Product> products = productRepository.findBySubmittedBy(user);
-
         return products.stream().map(productMapper::toResponse).toList();
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    public List<ProductResponse> getPendingProducts() {
+        List<Product> products = productRepository.findByStatus(ProductStatus.PENDING);
+        return products.stream().map(productMapper::toResponse).toList();
+    }
+
+    // ========== APPROVAL OPERATIONS ==========
+
+    @Transactional
+    @PreAuthorize("hasRole('ADMIN')")
+    public ProductResponse approveProduct(ApproveProductRequest request) {
+        var context = SecurityContextHolder.getContext();
+        String adminEmail = context.getAuthentication().getName();
+        User admin = userRepository.findByEmail(adminEmail)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+
+        Product product = productRepository
+                .findById(request.getProductId())
+                .orElseThrow(() -> new AppException(ErrorCode.PRODUCT_NOT_EXISTED));
+
+        // Xử lý approve hoặc reject
+        if ("APPROVE".equals(request.getAction())) {
+            product.setStatus(ProductStatus.APPROVED);
+            product.setApprovedBy(admin);
+            product.setApprovedAt(LocalDateTime.now());
+            product.setRejectionReason(null);
+            product.setUpdatedAt(LocalDateTime.now());
+            log.info("Product approved: {} by admin: {}", product.getId(), adminEmail);
+        } else if ("REJECT".equals(request.getAction())) {
+            product.setStatus(ProductStatus.REJECTED);
+            product.setApprovedBy(admin);
+            product.setApprovedAt(LocalDateTime.now());
+            product.setRejectionReason(request.getReason());
+            product.setUpdatedAt(LocalDateTime.now());
+            log.info("Product rejected: {} by admin: {}", product.getId(), adminEmail);
+        }
+
+        Product savedProduct = productRepository.save(product);
+        return productMapper.toResponse(savedProduct);
+    }
+
+    // ========== PRIVATE HELPER METHODS ==========
+    private Double computeFinalPrice(Double unitPrice, Double taxNullable, Double discountNullable) {
+        double tax = (taxNullable != null && taxNullable >= 0) ? taxNullable : 0.0;
+        double discount = (discountNullable != null && discountNullable >= 0) ? discountNullable : 0.0;
+        double finalPrice = unitPrice * (1 + tax) - discount;
+        return Math.max(0, finalPrice); // Đảm bảo giá không âm
+    }
+
+    private void attachMediaFromRequest(Product product, ProductCreationRequest request) {
+        List<ProductMedia> mediaEntities = new ArrayList<>();
+        ProductMedia defaultMedia = null;
+        int displayOrder = 0;
+
+        // Xử lý ảnh
+        if (request.getImageUrls() != null) {
+            for (String url : request.getImageUrls()) {
+                if (url == null || url.isBlank()) continue;
+                ProductMedia media = ProductMedia.builder()
+                        .mediaUrl(url)
+                        .mediaType("IMAGE")
+                        .isDefault(url.equals(request.getDefaultMediaUrl()))
+                        .displayOrder(displayOrder++)
+                        .product(product)
+                        .build();
+                if (media.isDefault()) defaultMedia = media;
+                mediaEntities.add(media);
+            }
+        }
+
+        // Xử lý video
+        if (request.getVideoUrls() != null) {
+            for (String url : request.getVideoUrls()) {
+                if (url == null || url.isBlank()) continue;
+                ProductMedia media = ProductMedia.builder()
+                        .mediaUrl(url)
+                        .mediaType("VIDEO")
+                        .isDefault(url.equals(request.getDefaultMediaUrl()))
+                        .displayOrder(displayOrder++)
+                        .product(product)
+                        .build();
+                if (media.isDefault()) defaultMedia = media;
+                mediaEntities.add(media);
+            }
+        }
+
+        // Gắn media vào product
+        if (!mediaEntities.isEmpty()) {
+            product.setMediaList(mediaEntities);
+            // Nếu không có media nào được đánh dấu là default, chọn media đầu tiên
+            if (defaultMedia == null) {
+                defaultMedia = mediaEntities.get(0);
+                defaultMedia.setDefault(true);
+            }
+            product.setDefaultMedia(defaultMedia);
+        }
     }
 }

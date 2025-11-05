@@ -163,7 +163,7 @@ export default function ProductManagementPage() {
         return filtered;
     }, [allProducts, tab, keyword, date]);
 
-    const filtered = getFilteredProducts();
+    const filtered = getFilteredProducts().sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0));
 
     // ========== Render States ==========
 

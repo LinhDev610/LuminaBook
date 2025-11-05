@@ -62,9 +62,12 @@ function ManageProductsPage() {
                 price: p.price || 0,
                 status: p.status || 'Chờ duyệt',
                 createdAt: p.createdAt || p.updatedAt,
+                updatedAt: p.updatedAt || p.createdAt,
             }));
-            setAllProducts(mapped);
-            applyFiltersWithSource(mapped, searchTerm, categoryFilter, statusFilter);
+            // sort by updatedAt desc by default
+            const sorted = [...mapped].sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0));
+            setAllProducts(sorted);
+            applyFiltersWithSource(sorted, searchTerm, categoryFilter, statusFilter);
         } catch (e) {
             setAllProducts([]);
             setFilteredProducts([]);
@@ -158,7 +161,9 @@ function ManageProductsPage() {
             filtered = filtered.filter((product) => product.status === status);
         }
 
-        setFilteredProducts(filtered);
+        // Sort by updatedAt desc
+        const sorted = [...filtered].sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0));
+        setFilteredProducts(sorted);
     };
 
     // Áp dụng filter lên danh sách sản phẩm hiện tại
@@ -299,7 +304,7 @@ function ManageProductsPage() {
                                     >
                                         {product.status}
                                     </td>
-                                    <td>{formatDateTime(product.createdAt)}</td>
+                                    <td>{formatDateTime(product.updatedAt || product.createdAt)}</td>
                                     <td className={cx('actions')}>
                                         <button
                                             className={cx('btn', 'view-btn')}

@@ -165,6 +165,30 @@ export default function AddProductPage() {
 
     // ========== Event Handlers ==========
 
+    const handleReset = () => {
+        try {
+            formRef.current?.reset();
+        } catch (_) { }
+        setProductId('');
+        setName('');
+        setDescription('');
+        setAuthor('');
+        setPublisher('');
+        setWeight(0.0);
+        setLength(1);
+        setWidth(1);
+        setHeight(1);
+        setPrice(0.0);
+        setTaxPercent('0');
+        setDiscountValue(0.0);
+        setCategoryId('');
+        setPublicationDate('');
+        setMediaFiles([]);
+        setDefaultMediaUrl('');
+        setErrors({});
+        setError('');
+    };
+
     /**
      * Xử lý submit form
      * 1. Validate form
@@ -708,13 +732,7 @@ export default function AddProductPage() {
                         </div>
                     </div>
                     <div className={cx('actions')}>
-                        <button
-                            type="button"
-                            className={cx('btn', 'muted')}
-                            onClick={() => formRef.current?.reset()}
-                        >
-                            Reset
-                        </button>
+                        <button type="button" className={cx('btn', 'muted')} onClick={handleReset}>Reset</button>
                         <button
                             type="submit"
                             className={cx('btn', 'primary')}

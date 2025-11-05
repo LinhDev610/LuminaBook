@@ -115,6 +115,16 @@ public class ProductController {
                 .build();
     }
 
+    // Set default media by URL
+    @PostMapping("/{productId}/default-media")
+    ApiResponse<ProductResponse> setDefaultMedia(
+            @PathVariable String productId,
+            @RequestParam("mediaUrl") String mediaUrl) {
+        return ApiResponse.<ProductResponse>builder()
+                .result(productService.setDefaultMedia(productId, mediaUrl))
+                .build();
+    }
+
     // ========== DELETE ENDPOINTS ==========
     @DeleteMapping("/{productId}")
     ApiResponse<String> deleteProduct(@PathVariable String productId) {

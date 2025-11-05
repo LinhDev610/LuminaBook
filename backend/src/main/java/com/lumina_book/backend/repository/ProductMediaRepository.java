@@ -20,10 +20,8 @@ public interface ProductMediaRepository extends JpaRepository<ProductMedia, Stri
     // Lấy tất cả media của product, sắp xếp theo displayOrder
     List<ProductMedia> findByProductIdOrderByDisplayOrderAsc(String productId);
 
-    // Bỏ isDefault của tất cả media của product
-    @Modifying
-    @Query("UPDATE ProductMedia pm SET pm.isDefault = false WHERE pm.product.id = :productId")
-    void clearDefaultForProduct(@Param("productId") String productId);
+    // Tìm media theo productId và mediaUrl
+    Optional<ProductMedia> findByProductIdAndMediaUrl(String productId, String mediaUrl);
 
     // Đếm số media của product
     long countByProductId(String productId);

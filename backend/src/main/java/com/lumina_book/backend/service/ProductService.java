@@ -4,12 +4,13 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.lumina_book.backend.entity.*;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import com.lumina_book.backend.entity.*;
 
 import com.lumina_book.backend.dto.request.ApproveProductRequest;
 import com.lumina_book.backend.dto.request.ProductCreationRequest;
@@ -19,6 +20,7 @@ import com.lumina_book.backend.enums.ProductStatus;
 import com.lumina_book.backend.exception.AppException;
 import com.lumina_book.backend.exception.ErrorCode;
 import com.lumina_book.backend.mapper.ProductMapper;
+import com.lumina_book.backend.repository.ProductMediaRepository;
 import com.lumina_book.backend.repository.CategoryRepository;
 import com.lumina_book.backend.repository.ProductRepository;
 import com.lumina_book.backend.repository.UserRepository;
@@ -37,6 +39,7 @@ public class ProductService {
     ProductRepository productRepository;
     CategoryRepository categoryRepository;
     UserRepository userRepository;
+    ProductMediaRepository productMediaRepository;
     ProductMapper productMapper;
 
     // ========== CREATE OPERATIONS ==========
@@ -254,6 +257,50 @@ public class ProductService {
 
         Product savedProduct = productRepository.save(product);
         return productMapper.toResponse(savedProduct);
+    }
+
+    // ========== MEDIA OPERATIONS ==========
+    @Transactional
+    public ProductResponse setDefaultMedia(String productId, String mediaUrl) {
+        var context = SecurityContextHolder.getContext();
+        String userEmail = context.getAuthentication().getName();
+        User user = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+
+        Product product = productRepository
+                .findById(productId)
+                .orElseThrow(() -> new AppException(ErrorCode.PRODUCT_NOT_EXISTED));
+
+        boolean isAdmin = context.getAuthentication().getAuthorities().stream()
+                .anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN"));
+        if (!isAdmin && !product.getSubmittedBy().getId().equals(user.getId())) {
+            throw new AppException(ErrorCode.UNAUTHORIZED);
+        }
+
+        var mediaOpt = productMediaRepository.findByProductIdAndMediaUrl(productId, mediaUrl);
+        if (mediaOpt.isEmpty()) {
+            throw new AppException(ErrorCode.PRODUCT_NOT_EXISTED);
+        }
+        var media = mediaOpt.get();
+
+        // Reorder displayOrder so that selected media is first (0) and others shift down
+        List<ProductMedia> medias = productMediaRepository.findByProductIdOrderByDisplayOrderAsc(productId);
+        int order = 1; // start from 1 for non-default
+        for (ProductMedia m : medias) {
+            if (m.getId().equals(media.getId())) {
+                m.setDisplayOrder(0);
+                m.setDefault(true);
+            } else {
+                m.setDisplayOrder(order++);
+                m.setDefault(false);
+            }
+            productMediaRepository.save(m);
+        }
+
+        // Update product defaultMedia reference
+        product.setDefaultMedia(media);
+        Product saved = productRepository.save(product);
+        return productMapper.toResponse(saved);
     }
 
     // ========== PRIVATE HELPER METHODS ==========

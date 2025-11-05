@@ -42,13 +42,13 @@ public class Product {
     Double weight;
 
     @Column(name = "length")
-    Integer length;
+    Double length;
 
     @Column(name = "width")
-    Integer width;
+    Double width;
 
     @Column(name = "height")
-    Integer height;
+    Double height;
 
     @Column(name = "tax")
     Double tax;
@@ -101,6 +101,7 @@ public class Product {
 
     // Product media
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @OrderBy("displayOrder ASC")
     List<ProductMedia> mediaList;
 
     // Default media

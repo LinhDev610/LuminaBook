@@ -17,6 +17,8 @@ function ProductDetailPage() {
     const navigate = useNavigate();
     const { id } = useParams();
     const [product, setProduct] = useState(null);
+    const [lightboxOpen, setLightboxOpen] = useState(false);
+    const [lightboxIndex, setLightboxIndex] = useState(0);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
@@ -150,6 +152,25 @@ function ProductDetailPage() {
                         ) : (
                             <div className={cx('product-image-placeholder')}>
                                 <span>Không có hình ảnh</span>
+                            </div>
+                        )}
+
+                        {Array.isArray(product.mediaUrls) && product.mediaUrls.length > 0 && (
+                            <div className={cx('media-thumbs')}>
+                                {product.mediaUrls.map((mUrl, idx) => {
+                                    const nUrl = normalizeMediaUrl(mUrl, API_BASE_URL);
+                                    const isImg = /\.(jpg|jpeg|png|gif|webp)$/i.test(mUrl);
+                                    const isActive = product.defaultMediaUrl === mUrl;
+                                    return (
+                                        <div key={idx} className={cx('thumb', { 'thumb-active': isActive })} onClick={() => { setLightboxIndex(idx); setLightboxOpen(true); }}>
+                                            {isImg ? (
+                                                <img src={nUrl} alt={`thumb-${idx}`} />
+                                            ) : (
+                                                <video src={nUrl} />
+                                            )}
+                                        </div>
+                                    );
+                                })}
                             </div>
                         )}
                     </div>
@@ -339,6 +360,40 @@ function ProductDetailPage() {
                     </div>
                 </div>
             </div>
+            {lightboxOpen && (
+                <div className={cx('modal-overlay')} onClick={() => setLightboxOpen(false)}>
+                    <div className={cx('modal')} onClick={(e) => e.stopPropagation()}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                            <h2 className={cx('modal-title')}>{product.name}</h2>
+                            <button className={cx('btn', 'btn-cancel')} onClick={() => setLightboxOpen(false)}>Đóng</button>
+                        </div>
+                        <div style={{ textAlign: 'center' }}>
+                            {(() => {
+                                const mUrl = product.mediaUrls[lightboxIndex];
+                                const nUrl = normalizeMediaUrl(mUrl, API_BASE_URL);
+                                const isImg = /\.(jpg|jpeg|png|gif|webp)$/i.test(mUrl);
+                                return isImg ? (
+                                    <img src={nUrl} alt="preview-large" style={{ maxWidth: '100%', maxHeight: '70vh', borderRadius: 8 }} />
+                                ) : (
+                                    <video src={nUrl} style={{ maxWidth: '100%', maxHeight: '70vh', borderRadius: 8 }} controls autoPlay />
+                                );
+                            })()}
+                        </div>
+                        <div className={cx('media-thumbs')} style={{ marginTop: 12 }}>
+                            {product.mediaUrls.map((mUrl, idx) => {
+                                const nUrl = normalizeMediaUrl(mUrl, API_BASE_URL);
+                                const isImg = /\.(jpg|jpeg|png|gif|webp)$/i.test(mUrl);
+                                const active = idx === lightboxIndex;
+                                return (
+                                    <div key={idx} className={cx('thumb', { 'thumb-active': active })} onClick={() => setLightboxIndex(idx)}>
+                                        {isImg ? <img src={nUrl} alt={`lb-${idx}`} /> : <video src={nUrl} />}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

@@ -503,44 +503,63 @@ export default function UpdateProductPage() {
                         <label>Kích thước (cm) & Trọng lượng</label>
                         <div className={cx('grid4')}>
                             <input
+                                type="number"
+                                inputMode="decimal"
+                                step="0.01"
                                 placeholder="Dài (cm)"
                                 value={length}
-                                onChange={(e) =>
-                                    setLength(
-                                        Number(e.target.value.replace(/[^0-9.]/g, '')) ||
-                                        0,
-                                    )
-                                }
+                                onChange={(e) => {
+                                    const raw = (e.target.value || '').replace(',', '.');
+                                    const cleaned = raw.replace(/[^0-9.]/g, '');
+                                    if (cleaned === '') { setLength(''); return; }
+                                    const n = Number(cleaned);
+                                    setLength(Number.isNaN(n) ? 0 : n);
+                                }}
                             />
                             <input
+                                type="number"
+                                inputMode="decimal"
+                                step="0.01"
                                 placeholder="Rộng (cm)"
                                 value={width}
-                                onChange={(e) =>
-                                    setWidth(
-                                        Number(e.target.value.replace(/[^0-9.]/g, '')) ||
-                                        0,
-                                    )
-                                }
+                                onChange={(e) => {
+                                    const raw = (e.target.value || '').replace(',', '.');
+                                    const cleaned = raw.replace(/[^0-9.]/g, '');
+                                    if (cleaned === '') { setWidth(''); return; }
+                                    const n = Number(cleaned);
+                                    setWidth(Number.isNaN(n) ? 0 : n);
+                                }}
                             />
                             <input
+                                type="number"
+                                inputMode="decimal"
+                                step="0.01"
                                 placeholder="Cao (cm)"
                                 value={height}
-                                onChange={(e) =>
-                                    setHeight(
-                                        Number(e.target.value.replace(/[^0-9.]/g, '')) ||
-                                        0,
-                                    )
-                                }
+                                onChange={(e) => {
+                                    const raw = (e.target.value || '').replace(',', '.');
+                                    const cleaned = raw.replace(/[^0-9.]/g, '');
+                                    if (cleaned === '') { setHeight(''); return; }
+                                    const n = Number(cleaned);
+                                    setHeight(Number.isNaN(n) ? 0 : n);
+                                }}
                             />
                             <input
+                                type="number"
+                                inputMode="decimal"
+                                step="0.01"
                                 placeholder="Trọng lượng (g)"
                                 value={weight}
-                                onChange={(e) =>
-                                    setWeight(
-                                        Number(e.target.value.replace(/[^0-9.]/g, '')) ||
-                                        0,
-                                    )
-                                }
+                                onChange={(e) => {
+                                    const raw = (e.target.value || '').replace(',', '.');
+                                    const cleaned = raw.replace(/[^0-9.]/g, '');
+                                    if (cleaned === '') {
+                                        setWeight('');
+                                        return;
+                                    }
+                                    const n = Number(cleaned);
+                                    setWeight(Number.isNaN(n) ? 0 : n);
+                                }}
                             />
                         </div>
                         <div className={cx('grid4')}>
@@ -613,8 +632,17 @@ export default function UpdateProductPage() {
                                                             type="radio"
                                                             name="defaultMedia"
                                                             checked={defaultMediaUrl === url}
-                                                            onChange={() => {
-                                                                setDefaultMediaUrl(url);
+                                                            onChange={async () => {
+                                                                try {
+                                                                    setDefaultMediaUrl(url);
+                                                                    const token = getStoredToken('token');
+                                                                    await fetch(`${API_BASE_URL}/products/${id}/default-media?mediaUrl=${encodeURIComponent(url)}`, {
+                                                                        method: 'POST',
+                                                                        headers: {
+                                                                            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                                                                        },
+                                                                    });
+                                                                } catch (_) { }
                                                             }}
                                                         />
                                                         Mặc định

@@ -4,7 +4,10 @@ import styles from './AddProductPage.module.scss';
 import { useNavigate } from 'react-router-dom';
 import backIcon from '../../../../../assets/icons/icon_back.png';
 import Notification from '../../../../../components/Common/Notification';
-import { getApiBaseUrl, getStoredToken as getStoredTokenUtil } from '../../../../../services/productUtils';
+import {
+    getApiBaseUrl,
+    getStoredToken as getStoredTokenUtil,
+} from '../../../../../services/productUtils';
 
 const cx = classNames.bind(styles);
 
@@ -148,7 +151,7 @@ export default function AddProductPage() {
             const resp = await fetch(`${API_BASE_URL}/auth/refresh`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ token: refreshToken })
+                body: JSON.stringify({ token: refreshToken }),
             });
             const data = await resp.json().catch(() => ({}));
             if (resp.ok && data?.result?.token) {
@@ -196,7 +199,7 @@ export default function AddProductPage() {
             let defaultUrlForPayload = (defaultMediaUrl || '').trim();
             if (mediaFiles.length > 0) {
                 const formData = new FormData();
-                mediaFiles.forEach(m => formData.append('files', m.file));
+                mediaFiles.forEach((m) => formData.append('files', m.file));
                 const uploadResp = await fetch(`${API_BASE_URL}/media/upload`, {
                     method: 'POST',
                     headers: {
@@ -208,10 +211,19 @@ export default function AddProductPage() {
                 const urls = Array.isArray(uploadData?.result) ? uploadData.result : [];
                 // Map back uploaded urls to type order
                 let idx = 0;
-                const mapped = mediaFiles.map((m) => ({ ...m, uploadedUrl: urls[idx++] }));
-                imageUrls = mapped.filter(m => m.type === 'IMAGE').map(m => m.uploadedUrl).filter(Boolean);
-                videoUrls = mapped.filter(m => m.type === 'VIDEO').map(m => m.uploadedUrl).filter(Boolean);
-                const defaultItem = mapped.find(m => m.isDefault) || mapped[0];
+                const mapped = mediaFiles.map((m) => ({
+                    ...m,
+                    uploadedUrl: urls[idx++],
+                }));
+                imageUrls = mapped
+                    .filter((m) => m.type === 'IMAGE')
+                    .map((m) => m.uploadedUrl)
+                    .filter(Boolean);
+                videoUrls = mapped
+                    .filter((m) => m.type === 'VIDEO')
+                    .map((m) => m.uploadedUrl)
+                    .filter(Boolean);
+                const defaultItem = mapped.find((m) => m.isDefault) || mapped[0];
                 if (defaultItem && defaultItem.uploadedUrl) {
                     defaultUrlForPayload = defaultItem.uploadedUrl;
                 }
@@ -222,13 +234,16 @@ export default function AddProductPage() {
                 description: (description || '').trim() || null,
                 author: (author || '').trim(),
                 publisher: (publisher || '').trim(),
-                weight: (weight && Number(weight) > 0) ? Number(weight) : null,
-                length: (length && Number(length) >= 1) ? Number(length) : null,
-                width: (width && Number(width) >= 1) ? Number(width) : null,
-                height: (height && Number(height) >= 1) ? Number(height) : null,
+                weight: weight && Number(weight) > 0 ? Number(weight) : null,
+                length: length && Number(length) >= 1 ? Number(length) : null,
+                width: width && Number(width) >= 1 ? Number(width) : null,
+                height: height && Number(height) >= 1 ? Number(height) : null,
                 price: Number(price) || 0, // required field, must have value
                 tax: taxDecimal || 0, // decimal form e.g. 0.05
-                discountValue: (discountValue && Number(discountValue) > 0) ? Number(discountValue) : null,
+                discountValue:
+                    discountValue && Number(discountValue) > 0
+                        ? Number(discountValue)
+                        : null,
                 categoryId: (categoryId || '').trim(),
                 publicationDate: publicationDate || new Date().toISOString().slice(0, 10),
                 imageUrls: imageUrls.length ? imageUrls : undefined,
@@ -318,10 +333,11 @@ export default function AddProductPage() {
                     status: response.status,
                     code: errorCode,
                     message: serverMsg,
-                    fullData: data
+                    fullData: data,
                 });
 
-                let errorMessage = serverMsg || 'Thêm sản phẩm thất bại. Vui lòng thử lại.';
+                let errorMessage =
+                    serverMsg || 'Thêm sản phẩm thất bại. Vui lòng thử lại.';
 
                 if (response.status === 403) {
                     errorMessage = 'Bạn không có quyền thực hiện hành động này.';
@@ -331,7 +347,8 @@ export default function AddProductPage() {
                     if (serverMsg) {
                         errorMessage = `Dữ liệu không hợp lệ: ${serverMsg}`;
                     } else {
-                        errorMessage = 'Dữ liệu không hợp lệ. Vui lòng kiểm tra lại thông tin.';
+                        errorMessage =
+                            'Dữ liệu không hợp lệ. Vui lòng kiểm tra lại thông tin.';
                     }
                 } else if (response.status >= 500) {
                     errorMessage = 'Lỗi máy chủ. Vui lòng thử lại sau.';
@@ -374,9 +391,7 @@ export default function AddProductPage() {
                             value={productId}
                             onChange={(e) => setProductId(e.target.value)}
                         />
-                        {errors.id && (
-                            <div className={cx('errorText')}>{errors.id}</div>
-                        )}
+                        {errors.id && <div className={cx('errorText')}>{errors.id}</div>}
                     </div>
                     <div className={cx('row')}>
                         <label>Tên sản phẩm</label>
@@ -496,44 +511,74 @@ export default function AddProductPage() {
                         <label>Kích thước (cm) & Trọng lượng</label>
                         <div className={cx('grid4')}>
                             <input
+                                type="number"
+                                inputMode="decimal"
+                                step="0.01"
                                 placeholder="Dài (cm)"
                                 value={length}
-                                onChange={(e) =>
-                                    setLength(
-                                        Number(e.target.value.replace(/[^0-9.]/g, '')) ||
-                                        0,
-                                    )
-                                }
+                                onChange={(e) => {
+                                    const raw = (e.target.value || '').replace(',', '.');
+                                    // loại bỏ ký tự không hợp lệ (khoảng trắng, chữ cái, ký hiệu) trước khi chuyển sang số thập phân.
+                                    const cleaned = raw.replace(/[^0-9.]/g, '');
+                                    if (cleaned === '') {
+                                        setLength('');
+                                        return;
+                                    }
+                                    const n = Number(cleaned); // Chuỗi số -> số thực
+                                    setLength(Number.isNaN(n) ? 0 : n); // Đổi thất bại gán 0
+                                }}
                             />
                             <input
+                                type="number"
+                                inputMode="decimal"
+                                step="0.01"
                                 placeholder="Rộng (cm)"
                                 value={width}
-                                onChange={(e) =>
-                                    setWidth(
-                                        Number(e.target.value.replace(/[^0-9.]/g, '')) ||
-                                        0,
-                                    )
-                                }
+                                onChange={(e) => {
+                                    const raw = (e.target.value || '').replace(',', '.');
+                                    const cleaned = raw.replace(/[^0-9.]/g, '');
+                                    if (cleaned === '') {
+                                        setWidth('');
+                                        return;
+                                    }
+                                    const n = Number(cleaned);
+                                    setWidth(Number.isNaN(n) ? 0 : n);
+                                }}
                             />
                             <input
+                                type="number"
+                                inputMode="decimal"
+                                step="0.01"
                                 placeholder="Cao (cm)"
                                 value={height}
-                                onChange={(e) =>
-                                    setHeight(
-                                        Number(e.target.value.replace(/[^0-9.]/g, '')) ||
-                                        0,
-                                    )
-                                }
+                                onChange={(e) => {
+                                    const raw = (e.target.value || '').replace(',', '.');
+                                    const cleaned = raw.replace(/[^0-9.]/g, '');
+                                    if (cleaned === '') {
+                                        setHeight('');
+                                        return;
+                                    }
+                                    const n = Number(cleaned);
+                                    setHeight(Number.isNaN(n) ? 0 : n);
+                                }}
                             />
                             <input
+                                type="number"
+                                inputMode="decimal"
+                                step="0.01"
                                 placeholder="Trọng lượng (g)"
                                 value={weight}
-                                onChange={(e) =>
-                                    setWeight(
-                                        Number(e.target.value.replace(/[^0-9.]/g, '')) ||
-                                        0,
-                                    )
-                                }
+                                onChange={(e) => {
+                                    const raw = (e.target.value || '').replace(',', '.');
+                                    const cleaned = raw.replace(/[^0-9.]/g, '');
+                                    // Cho phép chuỗi rỗng để người dùng tiếp tục nhập
+                                    if (cleaned === '') {
+                                        setWeight('');
+                                        return;
+                                    }
+                                    const n = Number(cleaned);
+                                    setWeight(Number.isNaN(n) ? 0 : n);
+                                }}
                             />
                         </div>
                         <div className={cx('grid4')}>
@@ -578,7 +623,10 @@ export default function AddProductPage() {
                                 }));
                                 setMediaFiles((prev) => {
                                     const next = [...prev, ...mapped];
-                                    if (next.length > 0 && !next.some(m => m.isDefault)) {
+                                    if (
+                                        next.length > 0 &&
+                                        !next.some((m) => m.isDefault)
+                                    ) {
                                         next[0].isDefault = true;
                                     }
                                     return next;
@@ -590,9 +638,17 @@ export default function AddProductPage() {
                                 {mediaFiles.map((m, idx) => (
                                     <div key={idx} className={cx('mediaItem')}>
                                         {m.type === 'IMAGE' ? (
-                                            <img src={m.preview} alt="preview" className={cx('mediaPreview')} />
+                                            <img
+                                                src={m.preview}
+                                                alt="preview"
+                                                className={cx('mediaPreview')}
+                                            />
                                         ) : (
-                                            <video src={m.preview} className={cx('mediaPreview')} controls />
+                                            <video
+                                                src={m.preview}
+                                                className={cx('mediaPreview')}
+                                                controls
+                                            />
                                         )}
                                         <div className={cx('mediaActions')}>
                                             <label className={cx('defaultToggle')}>
@@ -601,7 +657,12 @@ export default function AddProductPage() {
                                                     name="defaultMedia"
                                                     checked={m.isDefault}
                                                     onChange={() => {
-                                                        setMediaFiles((prev) => prev.map((x, i) => ({ ...x, isDefault: i === idx })));
+                                                        setMediaFiles((prev) =>
+                                                            prev.map((x, i) => ({
+                                                                ...x,
+                                                                isDefault: i === idx,
+                                                            })),
+                                                        );
                                                     }}
                                                 />
                                                 Mặc định
@@ -611,8 +672,13 @@ export default function AddProductPage() {
                                                 className={cx('btn', 'muted')}
                                                 onClick={() => {
                                                     setMediaFiles((prev) => {
-                                                        const next = prev.filter((_, i) => i !== idx);
-                                                        if (next.length > 0 && !next.some(n => n.isDefault)) {
+                                                        const next = prev.filter(
+                                                            (_, i) => i !== idx,
+                                                        );
+                                                        if (
+                                                            next.length > 0 &&
+                                                            !next.some((n) => n.isDefault)
+                                                        ) {
                                                             next[0].isDefault = true;
                                                         }
                                                         return next;

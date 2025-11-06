@@ -66,4 +66,8 @@ public interface PromotionRepository extends JpaRepository<Promotion, String> {
             + "WHERE c.id = :categoryId AND p.status = 'APPROVED' AND p.isActive = true "
             + "AND (p.expiryDate IS NULL OR p.expiryDate >= :today)")
     List<Promotion> findActiveByCategoryId(@Param("categoryId") String categoryId, @Param("today") LocalDate today);
+
+    // Tìm các promotion đã hết hạn nhưng chưa được chuyển vào bảng hết hạn
+    @Query("SELECT p FROM Promotion p WHERE p.expiryDate < :today AND p.status != :expiredStatus")
+    List<Promotion> findExpiredPromotions(@Param("today") LocalDate today, @Param("expiredStatus") PromotionStatus expiredStatus);
 }

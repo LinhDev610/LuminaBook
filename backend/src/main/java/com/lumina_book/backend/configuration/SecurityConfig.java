@@ -41,8 +41,11 @@ public class SecurityConfig {
     // Cấu hình security: Quản lý quyền truy cập endpoint
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity httpSecurity) throws Exception {
-        httpSecurity.authorizeHttpRequests(request -> request.requestMatchers(HttpMethod.POST, PUBLIC_ENDPOINTS)
-                .permitAll() // Các endpoint trong PUBLIC_ENDPOINT khi gọi bằng POST sẽ không cần token
+        httpSecurity.authorizeHttpRequests(request -> request
+                // Cho phép truy cập file tĩnh (ảnh upload) không cần token
+                .requestMatchers(HttpMethod.GET, "/uploads/**").permitAll()
+                // Các endpoint public theo danh sách (POST)
+                .requestMatchers(HttpMethod.POST, PUBLIC_ENDPOINTS).permitAll()
                 .anyRequest()
                 .authenticated()); // Tất cả request khác đề buộc phải có JWT hợp lệ
 
@@ -62,8 +65,9 @@ public class SecurityConfig {
         return httpSecurity.build();
     }
 
+    // Cấu hình CORS cho API
     @Bean
-    public CorsFilter corsFilter() {
+    public CorsFilter corsFilter() { 
         CorsConfiguration corsConfiguration = new CorsConfiguration();
 
         // Cấu hình core

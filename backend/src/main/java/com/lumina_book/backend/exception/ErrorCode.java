@@ -45,6 +45,7 @@ public enum ErrorCode {
     // PRODUCT
     PRODUCT_NOT_EXISTED(6001, "Product không tồn tại", HttpStatus.NOT_FOUND),
     CATEGORY_NOT_EXISTED(6004, "Danh mục không tồn tại", HttpStatus.NOT_FOUND),
+    CATEGORY_ALREADY_EXISTS(6005, "Mã danh mục hoặc tên danh mục đã tồn tại", HttpStatus.BAD_REQUEST),
     OUT_OF_STOCK(6002, "Hết hàng", HttpStatus.BAD_REQUEST),
 
     // ORDER - SHIPMENT - CART

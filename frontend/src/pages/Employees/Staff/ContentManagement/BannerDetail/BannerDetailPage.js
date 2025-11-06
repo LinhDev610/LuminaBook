@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
 import classNames from 'classnames/bind';
 import styles from './BannerDetailPage.module.scss';
-
+import { useEffect, useState, useMemo } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import {
+    getApiBaseUrl,
+} from '../../../../../services/productUtils';
 const cx = classNames.bind(styles);
-
-const API_BASE_URL = 'http://localhost:8080/lumina_book';
 
 // Dữ liệu mẫu - sau này sẽ thay bằng API
 const mockBannerDetail = {
@@ -18,6 +18,7 @@ const mockBannerDetail = {
 };
 
 export default function BannerDetailPage() {
+    const API_BASE_URL = useMemo(() => getApiBaseUrl(), []);
     const navigate = useNavigate();
     const { id } = useParams();
     const [banner, setBanner] = useState(mockBannerDetail);

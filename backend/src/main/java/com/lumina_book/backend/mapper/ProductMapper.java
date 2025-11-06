@@ -6,6 +6,7 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
 import org.mapstruct.Named;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import com.lumina_book.backend.dto.request.ProductCreationRequest;
 import com.lumina_book.backend.dto.request.ProductUpdateRequest;
@@ -20,10 +21,12 @@ public interface ProductMapper {
     // Entity to Response
     @Mapping(target = "submittedBy", source = "submittedBy.id")
     @Mapping(target = "submittedByName", source = "submittedBy.fullName")
+    @Mapping(target = "approvedBy", source = "approvedBy.id")
+    @Mapping(target = "approvedByName", source = "approvedBy.fullName")
     @Mapping(target = "categoryId", source = "category.id")
     @Mapping(target = "categoryName", source = "category.name")
     @Mapping(target = "mediaUrls", source = "mediaList", qualifiedByName = "mapMediaUrls")
-    @Mapping(target = "defaultMediaUrl", source = "defaultMedia.mediaUrl")
+    @Mapping(target = "defaultMediaUrl", source = "defaultMedia.mediaUrl", qualifiedByName = "normalizeUrl")
     @Mapping(target = "reviewCount", source = "reviews", qualifiedByName = "mapReviewCount")
     @Mapping(target = "averageRating", source = "reviews", qualifiedByName = "mapAverageRating")
     @Mapping(target = "availableQuantity", source = "inventory.stockQuantity")
@@ -60,7 +63,26 @@ public interface ProductMapper {
     @Named("mapMediaUrls")
     default List<String> mapMediaUrls(List<ProductMedia> mediaList) {
         if (mediaList == null) return null;
-        return mediaList.stream().map(ProductMedia::getMediaUrl).toList();
+        return mediaList.stream().map(pm -> normalizeUrl(pm.getMediaUrl())).toList();
+    }
+
+    @Named("normalizeUrl")
+    default String normalizeUrl(String url) {
+        if (url == null || url.isBlank()) return url;
+        // Nếu URL đã là absolute, thì không cần thiết phải thêm thông tin context path.
+        String lower = url.toLowerCase();
+        if (lower.startsWith("http://") || lower.startsWith("https://")) {
+            return url;
+        }
+        // Nếu URL bắt đầu với /uploads, thì thêm thông tin context path (ví dụ: /lumina_book)
+        if (url.startsWith("/uploads")) {
+            String base = ServletUriComponentsBuilder.fromCurrentContextPath().build().toUriString();
+            return base + url;
+        }
+        // Nếu URL không phải là absolute và không bắt đầu với /uploads, thì coi như là tên file hoặc relative và mount dưới /uploads/
+        String base = ServletUriComponentsBuilder.fromCurrentContextPath().path("/uploads/").build().toUriString();
+        if (base.endsWith("/")) return base + url;
+        return base + "/" + url;
     }
 
     @Named("mapReviewCount")

@@ -4,6 +4,8 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import com.lumina_book.backend.enums.ProductStatus;
+
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
@@ -21,14 +23,14 @@ public class ProductResponse {
     String author;
     String publisher;
     Double weight;
-    Integer length;
-    Integer width;
-    Integer height;
+    Double length;
+    Double width;
+    Double height;
     Double price;
     Double tax;
     Double discountValue;
     Integer quantitySold;
-    Boolean status;
+    ProductStatus status;
     LocalDate publicationDate;
     LocalDateTime createdAt;
     LocalDateTime updatedAt;
@@ -36,6 +38,12 @@ public class ProductResponse {
     // Submitted by user info
     String submittedBy;
     String submittedByName;
+
+    // Approval info
+    String approvedBy;
+    String approvedByName;
+    LocalDateTime approvedAt;
+    String rejectionReason;
 
     // Category info
     String categoryId;

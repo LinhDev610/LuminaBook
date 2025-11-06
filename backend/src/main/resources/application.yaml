@@ -4,6 +4,8 @@ server:
   port: 8080
   servlet:
     context-path: /lumina_book
+  tomcat:
+    max-swallow-size: 100MB
 
 #  Config cau hinh database
 spring:
@@ -20,6 +22,10 @@ spring:
     database-platform: org.hibernate.dialect.MySQLDialect
   # validate: Hibernate chi kiem tra cac bang, cot, kieu du lieu trong DB co phu hop voi entity trong code hay không. Neu khong khop → bao loi, khong tu sua.
   # update : Hibernate so sanh entity va DB → tu dong them hoac chinh sua bang/cot de khop. Tuy nhien, no khong xoa cac cot cu.
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 100MB
 
 #  Brevo Email Configuration
 brevo:

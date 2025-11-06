@@ -35,15 +35,7 @@ export default function AdminSideBar() {
             <div className={cx('side')}>
                 <div className={cx('panel-title')}>ADMIN PANEL</div>
                 <ul className={cx('menu')}>
-                    <li>
-                        <NavLink 
-                            to="/admin" 
-                            end 
-                            className={({ isActive }) => cx('link', { active: isActive || isStaffManagementActive })}
-                        >
-                            QL Tài khoản nhân viên
-                        </NavLink>
-                    </li>
+                    <li><NavLink to="/admin" end className={({ isActive }) => cx('link', { active: isActive || isStaffManagementActive })}>QL Tài khoản nhân viên</NavLink></li>
                     <li><NavLink to="/admin/customer-accounts" className={({ isActive }) => cx('link', { active: isActive })}>QL Tài khoản khách hàng</NavLink></li>
                     <li><NavLink to="/admin/products" className={({ isActive }) => cx('link', { active: isActive })}>QL Sản phẩm</NavLink></li>
                     <li><NavLink to="/admin/categories" className={({ isActive }) => cx('link', { active: isActive })}>QL Danh mục</NavLink></li>

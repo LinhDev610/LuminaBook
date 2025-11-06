@@ -6,6 +6,8 @@ import java.util.List;
 
 import jakarta.persistence.*;
 
+import com.lumina_book.backend.enums.ProductStatus;
+
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
@@ -19,7 +21,6 @@ import lombok.experimental.FieldDefaults;
 @Table(name = "products")
 public class Product {
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
     String id;
 
     @Column(name = "name", nullable = false)
@@ -41,13 +42,13 @@ public class Product {
     Double weight;
 
     @Column(name = "length")
-    Integer length;
+    Double length;
 
     @Column(name = "width")
-    Integer width;
+    Double width;
 
     @Column(name = "height")
-    Integer height;
+    Double height;
 
     @Column(name = "tax")
     Double tax;
@@ -64,8 +65,9 @@ public class Product {
     @Column(name = "quantity_sold")
     Integer quantitySold;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
-    Boolean status;
+    ProductStatus status;
 
     @Column(name = "publication_date")
     LocalDate publicationDate;
@@ -81,6 +83,17 @@ public class Product {
     @JoinColumn(name = "submitted_by")
     User submittedBy;
 
+    // Approval info
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "approved_by")
+    User approvedBy;
+
+    @Column(name = "approved_at")
+    LocalDateTime approvedAt;
+
+    @Column(name = "rejection_reason", columnDefinition = "TEXT")
+    String rejectionReason;
+
     // Category relationship
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id")
@@ -88,6 +101,7 @@ public class Product {
 
     // Product media
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @OrderBy("displayOrder ASC")
     List<ProductMedia> mediaList;
 
     // Default media

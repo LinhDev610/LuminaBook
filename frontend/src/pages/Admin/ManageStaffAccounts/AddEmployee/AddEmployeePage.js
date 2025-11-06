@@ -36,7 +36,6 @@ function AddEmployeePage() {
         }
     };
 
-
     // Định nghĩa các vai trò có sẵn
     const availableRoles = [
         { name: 'STAFF', description: 'Nhân viên' },
@@ -49,7 +48,7 @@ function AddEmployeePage() {
             [field]: value
         }));
         
-        // Clear error when user starts typing
+        // xóa error khi người dùng nhập
         if (errors[field]) {
             setErrors(prev => ({
                 ...prev,

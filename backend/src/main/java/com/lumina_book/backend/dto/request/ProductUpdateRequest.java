@@ -2,6 +2,7 @@ package com.lumina_book.backend.dto.request;
 
 import java.time.LocalDate;
 
+import com.lumina_book.backend.enums.ProductStatus;
 import jakarta.validation.constraints.*;
 
 import lombok.*;
@@ -32,13 +33,13 @@ public class ProductUpdateRequest {
     Double weight;
 
     @Min(value = 1, message = "Chiều dài phải lớn hơn hoặc bằng 1")
-    Integer length;
+    Double length;
 
     @Min(value = 1, message = "Chiều rộng phải lớn hơn hoặc bằng 1")
-    Integer width;
+    Double width;
 
     @Min(value = 1, message = "Chiều cao phải lớn hơn hoặc bằng 1")
-    Integer height;
+    Double height;
 
     @DecimalMin(value = "0.0", message = "Giá sản phẩm phải lớn hơn hoặc bằng 0")
     Double price;
@@ -53,7 +54,7 @@ public class ProductUpdateRequest {
 
     String categoryId;
 
-    Boolean status;
+    ProductStatus status;
 
     @Min(value = 0, message = "Số lượng tồn kho phải >= 0")
     Integer stockQuantity;

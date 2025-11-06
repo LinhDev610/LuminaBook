@@ -16,20 +16,26 @@ export default function CustomerChangePasswordPage() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setMessage('');
-        if (newPassword !== confirmPassword) return setMessage('Mật khẩu xác nhận không khớp');
+        if (newPassword !== confirmPassword)
+            return setMessage('Mật khẩu xác nhận không khớp');
         try {
-            const resp = await fetch(`${process.env.REACT_APP_API_BASE_URL || ''}/auth/change-password`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: token ? `Bearer ${token}` : ''
+            const resp = await fetch(
+                `${process.env.REACT_APP_API_BASE_URL || ''}/auth/change-password`,
+                {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: token ? `Bearer ${token}` : '',
+                    },
+                    body: JSON.stringify({ currentPassword, newPassword }),
                 },
-                body: JSON.stringify({ currentPassword, newPassword })
-            });
+            );
             const data = await resp.json();
-            if (resp.ok && data?.code === 200) {
+            if (resp.ok && data?.code === 1000) {
                 setMessage('Đổi mật khẩu thành công');
-                setCurrentPassword(''); setNewPassword(''); setConfirmPassword('');
+                setCurrentPassword('');
+                setNewPassword('');
+                setConfirmPassword('');
             } else {
                 setMessage(data?.message || 'Đổi mật khẩu thất bại');
             }
@@ -83,5 +89,3 @@ export default function CustomerChangePasswordPage() {
         </section>
     );
 }
-
-

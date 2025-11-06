@@ -74,13 +74,13 @@ public interface ProductMapper {
         if (lower.startsWith("http://") || lower.startsWith("https://")) {
             return url;
         }
-        // Nếu URL bắt đầu với /uploads, thì thêm thông tin context path (ví dụ: /lumina_book)
-        if (url.startsWith("/uploads")) {
+        // Nếu URL bắt đầu với /product_media, thì thêm thông tin context path (ví dụ: /lumina_book)
+        if (url.startsWith("/product_media")) {
             String base = ServletUriComponentsBuilder.fromCurrentContextPath().build().toUriString();
             return base + url;
         }
-        // Nếu URL không phải là absolute và không bắt đầu với /uploads, thì coi như là tên file hoặc relative và mount dưới /uploads/
-        String base = ServletUriComponentsBuilder.fromCurrentContextPath().path("/uploads/").build().toUriString();
+        // Nếu URL không phải là absolute và không bắt đầu với /product_media, thì coi như là tên file hoặc relative và mount dưới /product_media/
+        String base = ServletUriComponentsBuilder.fromCurrentContextPath().path("/product_media/").build().toUriString();
         if (base.endsWith("/")) return base + url;
         return base + "/" + url;
     }

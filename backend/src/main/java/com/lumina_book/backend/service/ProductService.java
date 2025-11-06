@@ -158,7 +158,7 @@ public class ProductService {
                 .findById(productId)
                 .orElseThrow(() -> new AppException(ErrorCode.PRODUCT_NOT_EXISTED));
 
-        // Xóa file media vật lý trong thư mục uploads (nếu có)
+        // Xóa file media vật lý trong thư mục product_media (nếu có)
         deleteMediaFilesIfExists(product);
 
         productRepository.delete(product);
@@ -393,8 +393,8 @@ public class ProductService {
             if (filename == null) {
                 String path = url;
                 if (path.startsWith("/")) path = path.substring(1);
-                if (path.startsWith("uploads/")) {
-                    filename = path.substring("uploads/".length());
+                if (path.startsWith("product_media/")) {
+                    filename = path.substring("product_media/".length());
                 }
             }
 
@@ -404,8 +404,9 @@ public class ProductService {
 
             if (filename == null || filename.isBlank()) return;
 
-            java.nio.file.Path uploadDir = java.nio.file.Paths.get("uploads");
-            java.nio.file.Path filePath = uploadDir.resolve(filename);
+            // Xác định thư mục dựa trên URL (mặc định là product_media)
+            java.nio.file.Path targetDir = java.nio.file.Paths.get("product_media");
+            java.nio.file.Path filePath = targetDir.resolve(filename);
             java.nio.file.Files.deleteIfExists(filePath);
             log.info("Deleted media file: {}", filePath.toAbsolutePath());
         } catch (Exception e) {

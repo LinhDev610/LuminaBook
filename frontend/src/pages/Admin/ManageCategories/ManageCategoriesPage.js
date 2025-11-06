@@ -28,6 +28,13 @@ function ManageCategoriesPage() {
     // Dùng utils để đọc token thống nhất với các trang chi tiết
     const readToken = () => getStoredToken('token') || token;
 
+    // Chuẩn hóa id danh mục từ object trả về API (hỗ trợ nhiều schema)
+    const resolveCategoryId = useCallback((category) => {
+        if (!category) return '';
+        const idCandidate = category.categoryId ?? category.id ?? category.code ?? '';
+        return String(idCandidate).trim();
+    }, []);
+
     // ========== Data Fetching ==========
     // Fetch categories from API
     useEffect(() => {
@@ -146,7 +153,24 @@ function ManageCategoriesPage() {
         if (!window.confirm('Bạn có chắc chắn muốn xóa danh mục này?')) return;
         try {
             const tokenToUse = readToken();
-            const resp = await fetch(`${API_BASE_URL}/categories/${id}`, {
+            // Resolve real backend identifier before delete
+            let resolvedId = String(id).trim();
+            try {
+                const probe = await fetch(`${API_BASE_URL}/categories/${resolvedId}`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${tokenToUse}`,
+                    },
+                });
+                if (probe.ok) {
+                    const probeData = await probe.json().catch(() => ({}));
+                    const cat = probeData?.result || probeData || {};
+                    resolvedId = resolveCategoryId(cat) || resolvedId;
+                }
+            } catch (_) { }
+
+            const resp = await fetch(`${API_BASE_URL}/categories/${resolvedId}`, {
                 method: 'DELETE',
                 headers: {
                     'Content-Type': 'application/json',
@@ -154,11 +178,20 @@ function ManageCategoriesPage() {
                 },
             });
             if (!resp.ok) {
-                const text = await resp.text().catch(() => '');
-                throw new Error(text || `HTTP ${resp.status}`);
+                // Parse error response từ backend
+                let errorMessage = 'Không thể xóa danh mục';
+                try {
+                    const errorData = await resp.json().catch(() => ({}));
+                    // Backend trả về message trong errorData.message hoặc errorData.result
+                    errorMessage = errorData?.message || errorData?.result || errorMessage;
+                } catch (_) {
+                    const text = await resp.text().catch(() => '');
+                    errorMessage = text || errorMessage;
+                }
+                throw new Error(errorMessage);
             }
             // Cập nhật danh sách local
-            const next = allCategories.filter((c) => String(c.id) !== String(id));
+            const next = allCategories.filter((c) => resolveCategoryId(c) !== String(resolvedId));
             setAllCategories(next);
             applyFilters(searchTerm, sortBy);
             success('Xóa danh mục thành công');
@@ -213,7 +246,7 @@ function ManageCategoriesPage() {
         try {
             const updated = await updateCategoryStatus(id, false);
             const next = allCategories.map((c) =>
-                String(c.id) === String(id) ? { ...c, status: false } : c,
+                resolveCategoryId(c) === String(id) ? { ...c, status: false } : c,
             );
             setAllCategories(next);
             applyFilters(searchTerm, sortBy);
@@ -228,7 +261,7 @@ function ManageCategoriesPage() {
         try {
             const updated = await updateCategoryStatus(id, true);
             const next = allCategories.map((c) =>
-                String(c.id) === String(id) ? { ...c, status: true } : c,
+                resolveCategoryId(c) === String(id) ? { ...c, status: true } : c,
             );
             setAllCategories(next);
             applyFilters(searchTerm, sortBy);
@@ -332,17 +365,17 @@ function ManageCategoriesPage() {
                                         <button
                                             className={cx('btn', 'edit-btn')}
                                             onClick={() =>
-                                                handleEditCategory(category.id)
+                                                handleEditCategory(resolveCategoryId(category))
                                             }
                                         >
                                             Sửa
                                         </button>
                                         {category.status === true ||
-                                        category.status === 'active' ? (
+                                            category.status === 'active' ? (
                                             <button
                                                 className={cx('btn', 'lock-btn')}
                                                 onClick={() =>
-                                                    handleLockCategory(category.id)
+                                                    handleLockCategory(resolveCategoryId(category))
                                                 }
                                             >
                                                 Khóa
@@ -351,7 +384,7 @@ function ManageCategoriesPage() {
                                             <button
                                                 className={cx('btn', 'unlock-btn')}
                                                 onClick={() =>
-                                                    handleUnlockCategory(category.id)
+                                                    handleUnlockCategory(resolveCategoryId(category))
                                                 }
                                             >
                                                 Mở khóa
@@ -360,7 +393,7 @@ function ManageCategoriesPage() {
                                         <button
                                             className={cx('btn', 'delete-btn')}
                                             onClick={() =>
-                                                handleDeleteCategory(category.id)
+                                                handleDeleteCategory(resolveCategoryId(category))
                                             }
                                         >
                                             Xóa

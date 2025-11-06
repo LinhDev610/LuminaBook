@@ -13,42 +13,75 @@ export function getProductImageUrl(product) {
     return byObject || byField || byList || null;
 }
 
+/**
+ * Chuyển đổi URL media thành URL đầy đủ để hiển thị
+ * 
+ * Ví dụ:
+ * - Input: "/product_media/abc123.jpg"
+ * - Output: "http://localhost:8080/lumina_book/product_media/abc123.jpg"
+ * 
+ * @param {string} url - URL cần chuẩn hóa (có thể là relative hoặc absolute)
+ * @param {string} apiBaseUrl - Base URL của backend (optional)
+ * @returns {string|null} URL đầy đủ hoặc null nếu không hợp lệ
+ */
 export function normalizeMediaUrl(url, apiBaseUrl) {
-    // Kiểm tra giá trị đầu vào
+    // Kiểm tra đầu vào
     if (!url) return null;
+
+    // Nếu đã là URL đầy đủ (http:// hoặc https://) thì trả về luôn
     const lower = String(url).toLowerCase();
+    if (lower.startsWith('http://') || lower.startsWith('https://')) {
+        return url;
+    }
 
-    // Đường dẫn tuyệt đối không xử lý
-    if (lower.startsWith('http://') || lower.startsWith('https://')) return url;
+    // Lấy thông tin backend
+    const base = apiBaseUrl || getApiBaseUrl();
 
-    const base = apiBaseUrl || getApiBaseUrl(); // Lấy base URL của backend
-
-    // Phân tách base URL thành origin và pathname
+    // Tách URL thành 2 phần:
+    // - backendOrigin: domain + port (ví dụ: "http://localhost:8080")
+    // - ctx: context path (ví dụ: "/lumina_book")
     let backendOrigin = base;
-    let ctx = '';
+    let contextPath = '';
     try {
-        const u = new URL(base); // tách origin và path
-        backendOrigin = u.origin; // http://localhost:8080/lumina_book
-        ctx = u.pathname.replace(/\/?$/, '');
+        const urlObj = new URL(base);
+        backendOrigin = urlObj.origin; // "http://localhost:8080"
+        contextPath = urlObj.pathname.replace(/\/?$/, ''); // "/lumina_book"
     } catch (_) {
+        // Nếu parse lỗi, dùng giá trị mặc định
         backendOrigin = window.location.origin;
-        ctx = '/lumina_book';
+        contextPath = '/lumina_book';
     }
 
-    // TH1: URL này đã bao gồm /api/, nghĩa là nó đã chỉ đến đúng đường dẫn upload của backend rồi. → Ta chỉ cần nối thêm domain thôi.
-    if (url.startsWith(ctx + '/')) {
-        return (backendOrigin + url).replace(/([^:]\/)\/+/, '$1'); // regex xóa bớt dấu / dư thừa.
+    // Hàm helper: ghép URL và xóa dấu / dư thừa
+    const joinUrl = (...parts) => {
+        return parts.join('').replace(/([^:]\/)\/+/, '$1');
+    };
+
+    // Xử lý các trường hợp URL khác nhau
+
+    // Trường hợp 1: URL đã có context path ở đầu
+    // Ví dụ: "/lumina_book/product_media/abc123.jpg"
+    // → Chỉ cần thêm domain vào đầu
+    if (url.startsWith(contextPath + '/')) {
+        return joinUrl(backendOrigin, url);
     }
 
-    // TH2: File nằm trong thư mục uploads, nhưng thiếu /api ở đầu. Nên ta phải thêm /api (ctx) vào giữa.
-    if (url.startsWith('/uploads/')) {
-        return (backendOrigin + ctx + url).replace(/([^:]\/)\/+/, '$1');
+    // Trường hợp 2: URL bắt đầu bằng "/product_media/"
+    // Ví dụ: "/product_media/abc123.jpg"
+    // → Cần thêm context path vào giữa: domain + context + url
+    if (url.startsWith('/product_media/')) {
+        return joinUrl(backendOrigin, contextPath, url);
     }
 
-    // TH3: Đây là đường dẫn tương đối, không có dấu / ở đầu. Tức là chỉ có tên file, chưa biết ở thư mục nào. Hệ thống sẽ mặc định nó nằm trong /uploads/.
+    // Trường hợp 3: Chỉ có tên file (không có dấu / ở đầu)
+    // Ví dụ: "abc123.jpg"
+    // → Mặc định file nằm trong /product_media/
     if (!url.startsWith('/')) {
-        return (backendOrigin + ctx + '/uploads/' + url).replace(/([^:]\/)\/+/, '$1');
+        return joinUrl(backendOrigin, contextPath, '/product_media/', url);
     }
-    // TH4: Không bắt đầu bằng /api, không phải /uploads/, không phải file trơ tên. Thì cứ ghép thẳng domain vào.
-    return (backendOrigin + url).replace(/([^:]\/)\/+/, '$1');
+
+    // Trường hợp 4: URL bắt đầu bằng "/" nhưng không phải /product_media/
+    // Ví dụ: "/some/path/file.jpg"
+    // → Ghép thẳng domain vào đầu
+    return joinUrl(backendOrigin, url);
 }

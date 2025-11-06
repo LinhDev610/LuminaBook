@@ -14,9 +14,34 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class FileStorageService {
 
-    private static final String UPLOAD_DIR = "uploads"; // relative to project root (working dir)
+    private static final String PRODUCT_MEDIA_DIR = "product_media"; // relative to project root (working dir)
 
+    /**
+     * Lưu file vào thư mục product_media/
+     * @param file File cần lưu
+     * @return URL của file đã lưu
+     */
     public String storeFile(MultipartFile file) {
+        return storeFile(file, PRODUCT_MEDIA_DIR, "/product_media/");
+    }
+
+    /**
+     * Lưu file media của product vào thư mục product_media/
+     * @param file File cần lưu
+     * @return URL của file đã lưu
+     */
+    public String storeProductMedia(MultipartFile file) {
+        return storeFile(file, PRODUCT_MEDIA_DIR, "/product_media/");
+    }
+
+    /**
+     * Lưu file vào thư mục chỉ định
+     * @param file File cần lưu
+     * @param directory Thư mục đích
+     * @param urlPath Đường dẫn URL để truy cập file
+     * @return URL của file đã lưu
+     */
+    private String storeFile(MultipartFile file, String directory, String urlPath) {
         try {
             String original = file.getOriginalFilename();
             String ext = "";
@@ -24,7 +49,7 @@ public class FileStorageService {
                 ext = original.substring(original.lastIndexOf('.'));
             }
             String filename = UUID.randomUUID() + ext;
-            Path uploadPath = Paths.get(UPLOAD_DIR);
+            Path uploadPath = Paths.get(directory);
             if (!Files.exists(uploadPath)) {
                 Files.createDirectories(uploadPath);
             }
@@ -33,7 +58,7 @@ public class FileStorageService {
 
             String url = ServletUriComponentsBuilder
                     .fromCurrentContextPath()
-                    .path("/uploads/")
+                    .path(urlPath)
                     .path(filename)
                     .build()
                     .toUriString();

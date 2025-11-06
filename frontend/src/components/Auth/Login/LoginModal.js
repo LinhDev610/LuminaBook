@@ -7,6 +7,7 @@ import '../Auth.module.scss';
 import visibleIcon from '../../../assets/icons/icon-visible.png';
 import invisibleIcon from '../../../assets/icons/icon-invisible.png';
 import Button from '../../Common/Button';
+import Notification from '../../Common/Notification/Notification';
 import classNames from 'classnames/bind';
 import styles from './LoginModal.module.scss';
 
@@ -32,6 +33,7 @@ export default function LoginModal({ open = false, onClose }) {
     const [showPassword, setShowPassword] = useState(false);
     const [rememberMe, setRememberMe] = useState(!!savedEmail);
     const [error, setError] = useState('');
+    const [notif, setNotif] = useState({ open: false, type: 'error', title: '', message: '', duration: 3000 });
     const [isLoading, setIsLoading] = useState(false);
 
     // Function to refresh token using backend endpoint
@@ -117,19 +119,6 @@ export default function LoginModal({ open = false, onClose }) {
             console.log('Login response data:', data);
             
             if (resp.ok && data?.result?.token) {
-                // Handle Remember Me
-                if (rememberMe) {
-                    setToken(data.result.token);
-                    setRefreshToken(data.result.token);
-                    setSavedEmail(email.trim());
-                } else {
-                    sessionStorage.setItem('token', data.result.token);
-                    removeSavedEmail();
-                    removeRefreshToken();
-                }
-                // Notify app about token change so headers can re-render immediately
-                window.dispatchEvent(new Event('tokenUpdated'));
-
                 try {
                     console.log('Calling /users/my-info with token:', data.result.token);
                     const me = await fetch(`${API_BASE_URL}/users/my-info`, {
@@ -145,6 +134,36 @@ export default function LoginModal({ open = false, onClose }) {
                     console.log('API Response:', meData);
                     console.log('API Response Status:', me.status);
                     
+                    // Check account active status
+                    const rawActive = meData?.result?.isActive ?? meData?.result?.active ?? meData?.isActive ?? meData?.active;
+                    let isActive = false;
+                    if (typeof rawActive === 'boolean') isActive = rawActive;
+                    else if (typeof rawActive === 'number') isActive = rawActive === 1;
+                    else if (typeof rawActive === 'string') isActive = ['true', '1'].includes(rawActive.toLowerCase());
+
+                    if (!isActive) {
+                        // Locked account: do not persist token, show popup, keep modal open
+                        localStorage.removeItem('token');
+                        sessionStorage.removeItem('token');
+                        removeRefreshToken();
+                        setNotif({ open: true, type: 'error', title: 'Tài khoản bị khóa', message: 'Tài khoản của bạn đã bị khóa. Vui lòng liên hệ hỗ trợ.', duration: 4000 });
+                        setIsLoading(false);
+                        return;
+                    }
+
+                    // Persist token only after confirming the account is active
+                    if (rememberMe) {
+                        setToken(data.result.token);
+                        setRefreshToken(data.result.token);
+                        setSavedEmail(email.trim());
+                    } else {
+                        sessionStorage.setItem('token', data.result.token);
+                        removeSavedEmail();
+                        removeRefreshToken();
+                    }
+                    // Notify app about token change so headers can re-render immediately
+                    window.dispatchEvent(new Event('tokenUpdated'));
+
                     // Thử nhiều cách để lấy displayName
                     const displayNameValue =
                         meData?.result?.fullName ||
@@ -285,6 +304,14 @@ export default function LoginModal({ open = false, onClose }) {
                     {isLoading ? 'Đang đăng nhập...' : 'Đăng nhập'}
                 </Button>
             </form>
+            <Notification
+                open={notif.open}
+                type={notif.type}
+                title={notif.title}
+                message={notif.message}
+                duration={notif.duration}
+                onClose={() => setNotif((n) => ({ ...n, open: false }))}
+            />
         </div>
     );
 }

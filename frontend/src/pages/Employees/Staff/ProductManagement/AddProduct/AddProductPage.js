@@ -7,7 +7,7 @@ import Notification from '../../../../../components/Common/Notification';
 import {
     getApiBaseUrl,
     getStoredToken as getStoredTokenUtil,
-} from '../../../../../services/productUtils';
+} from '../../../../../services/utils';
 
 const cx = classNames.bind(styles);
 
@@ -159,7 +159,7 @@ export default function AddProductPage() {
                 localStorage.setItem('refreshToken', data.result.token);
                 return data.result.token;
             }
-        } catch (_) { }
+        } catch (_) {}
         return null;
     };
 
@@ -168,7 +168,7 @@ export default function AddProductPage() {
     const handleReset = () => {
         try {
             formRef.current?.reset();
-        } catch (_) { }
+        } catch (_) {}
         setProductId('');
         setName('');
         setDescription('');
@@ -315,7 +315,7 @@ export default function AddProductPage() {
                     try {
                         data = await response.json();
                         console.log('Retry response:', JSON.stringify(data, null, 2));
-                    } catch (_) { }
+                    } catch (_) {}
                 } else {
                     setIsLoading(false);
                     setNotifyType('error');
@@ -730,7 +730,13 @@ export default function AddProductPage() {
                         </div>
                     </div>
                     <div className={cx('actions')}>
-                        <button type="button" className={cx('btn', 'muted')} onClick={handleReset}>Reset</button>
+                        <button
+                            type="button"
+                            className={cx('btn', 'muted')}
+                            onClick={handleReset}
+                        >
+                            Reset
+                        </button>
                         <button
                             type="submit"
                             className={cx('btn', 'primary')}
@@ -748,8 +754,8 @@ export default function AddProductPage() {
                     notifyType === 'success'
                         ? 'Thành công'
                         : notifyType === 'error'
-                            ? 'Lỗi'
-                            : 'Thông báo'
+                        ? 'Lỗi'
+                        : 'Thông báo'
                 }
                 message={notifyMsg}
                 onClose={() => setNotifyOpen(false)}

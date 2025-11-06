@@ -2,13 +2,16 @@ import React, { useEffect, useState } from 'react';
 import classNames from 'classnames/bind';
 import styles from './ProfileStaffPage.scss';
 import { useNavigate } from 'react-router-dom';
+import { getApiBaseUrl, getStoredToken } from '../../../../services/utils';
+import { useNotification } from '../../../../components/Common/Notification';
 
 const cx = classNames.bind(styles);
 
-const API_BASE_URL = 'http://localhost:8080/lumina_book';
+const API_BASE_URL = getApiBaseUrl();
 
 function ProfileStaffPage() {
     const navigate = useNavigate();
+    const { success, error, notify } = useNotification();
 
     const [profile, setProfile] = useState({
         fullName: '',
@@ -21,19 +24,6 @@ function ProfileStaffPage() {
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [forceChange, setForceChange] = useState(false);
-
-    const getStoredToken = (key) => {
-        try {
-            const raw = localStorage.getItem(key);
-            if (!raw) return null;
-            if ((raw.startsWith('"') && raw.endsWith('"')) || raw.startsWith('{') || raw.startsWith('[')) {
-                return JSON.parse(raw);
-            }
-            return raw;
-        } catch (_) {
-            return null;
-        }
-    };
 
     const token = getStoredToken('token') || sessionStorage.getItem('token');
 
@@ -62,7 +52,7 @@ function ProfileStaffPage() {
                 // If backend sends a flag for first login, respect it.
                 // Temporary: infer first-login if password must be changed (backend may send p.mustChangePassword)
                 if (p.mustChangePassword) setForceChange(true);
-            } catch (_) {}
+            } catch (_) { }
         })();
     }, [token, navigate]);
 
@@ -82,13 +72,13 @@ function ProfileStaffPage() {
                 }),
             });
             if (resp.ok) {
-                alert('Lưu thay đổi thành công');
+                success('Lưu thay đổi thành công');
             } else {
                 const data = await resp.json().catch(() => ({}));
-                alert(`Lỗi lưu hồ sơ: ${data?.message || resp.status}`);
+                error(`Lỗi lưu hồ sơ: ${data?.message || resp.status}`);
             }
         } catch (e) {
-            alert('Không thể kết nối máy chủ.');
+            notify('error', 'Không thể kết nối máy chủ.');
         } finally {
             setIsSaving(false);
         }
@@ -96,7 +86,7 @@ function ProfileStaffPage() {
 
     const handleChangePassword = async () => {
         if (!newPassword || newPassword !== confirmPassword) {
-            alert('Mật khẩu mới không khớp');
+            notify('error', 'Mật khẩu mới không khớp');
             return;
         }
         try {
@@ -109,17 +99,17 @@ function ProfileStaffPage() {
                 body: JSON.stringify({ oldPassword, newPassword }),
             });
             if (resp.ok) {
-                alert('Cập nhật mật khẩu thành công');
+                success('Cập nhật mật khẩu thành công');
                 setOldPassword('');
                 setNewPassword('');
                 setConfirmPassword('');
                 setForceChange(false);
             } else {
                 const data = await resp.json().catch(() => ({}));
-                alert(`Đổi mật khẩu thất bại: ${data?.message || resp.status}`);
+                error(`Đổi mật khẩu thất bại: ${data?.message || resp.status}`);
             }
         } catch (_) {
-            alert('Không thể kết nối máy chủ.');
+            notify('error', 'Không thể kết nối máy chủ.');
         }
     };
 
@@ -130,7 +120,7 @@ function ProfileStaffPage() {
                 <button className={cx('dashboard-btn')} onClick={() => navigate('/staff')}>
                     <span className={cx('icon-left')}>
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                            <path d="M15 18L9 12L15 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            <path d="M15 18L9 12L15 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
                     </span>
                     Dashboard

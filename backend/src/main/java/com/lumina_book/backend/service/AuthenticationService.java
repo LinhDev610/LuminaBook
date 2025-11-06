@@ -110,7 +110,7 @@ public class AuthenticationService {
     }
 
     private SignedJWT verifyToken(String token, boolean isRefresh) throws JOSEException, ParseException {
-        JWSVerifier verifier = new MACVerifier(SIGNER_KEY.getBytes()); // Create format verify token by signer_key
+        JWSVerifier verifier = new MACVerifier(getSignerKeyBytes()); // Create format verify token by signer_key
 
         SignedJWT signedJWT = SignedJWT.parse(token); // token: String -> SignedJWT
 
@@ -163,13 +163,18 @@ public class AuthenticationService {
         // Dùng 1 key 32 bit làm khóa (key random trên mạng)
         try {
             jwsObject.sign(new MACSigner(
-                    SIGNER_KEY.getBytes())); // symmetric signer: khóa bí mật để ký và khóa giải mãi cùng 1 khóa
+                    getSignerKeyBytes())); // symmetric signer: khóa bí mật để ký và khóa giải mãi cùng 1 khóa
             return jwsObject.serialize(); // Biến đối tượng JWSObject thành chuỗi String token (thường ở dạng
             // header.payload.signature, base64-encoded).
         } catch (JOSEException e) {
             log.error("Cannot create token", e);
             throw new RuntimeException(e);
         }
+    }
+
+    private byte[] getSignerKeyBytes() {
+        String sanitized = (SIGNER_KEY == null) ? "" : SIGNER_KEY.replaceAll("\\s", "");  // xóa khoảng trắng
+        return sanitized.getBytes();
     }
 
     public AuthenticationResponse refreshToken(RefreshRequest request) throws ParseException, JOSEException {

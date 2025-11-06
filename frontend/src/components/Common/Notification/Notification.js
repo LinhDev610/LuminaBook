@@ -1,8 +1,12 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import classNames from 'classnames/bind';
 import styles from './Notification.module.scss';
 
 const cx = classNames.bind(styles);
+
+// ========== Constants ==========
+const DEFAULT_DURATION = 7000;
+const NOTIFICATION_TYPES = ['success', 'error', 'info', 'warning'];
 
 const ICONS = {
     success: (
@@ -34,38 +38,160 @@ const ICONS = {
     ),
 };
 
-export default function Notification({
-    open,
-    type = 'info',
-    title,
-    message,
-    duration = 5000,
-    onClose,
-}) {
+// ========== Context ==========
+const NotificationContext = createContext({
+    notify: () => { },
+    success: () => { },
+    error: () => { },
+    info: () => { },
+    warning: () => { },
+});
+
+// ========== Hook ==========
+/**
+ * Hook để sử dụng notification trong component
+ * @returns {Object} Object chứa các methods: notify, success, error, info, warning
+ * 
+ * @example
+ * const { success, error } = Notification.useNotification();
+ * success('Thao tác thành công!');
+ * error('Có lỗi xảy ra!');
+ */
+function useNotification() {
+    return useContext(NotificationContext);
+}
+
+// ========== Components ==========
+/**
+ * Component hiển thị một toast notification
+ * @param {string} type - Loại notification: 'success' | 'error' | 'info' | 'warning'
+ * @param {string} title - Tiêu đề notification (optional)
+ * @param {string} message - Nội dung notification
+ * @param {Function} onClose - Callback khi đóng notification
+ * @param {number} duration - Thời gian hiển thị (ms), mặc định 7000ms
+ */
+function Toast({ type, title, message, onClose, duration = DEFAULT_DURATION }) {
     const icon = useMemo(() => ICONS[type] || ICONS.info, [type]);
 
+    // Tự động đóng sau duration
     useEffect(() => {
-        if (!open) return;
-        if (duration === 0) return; 
-        const t = setTimeout(() => onClose?.(), duration);
-        return () => clearTimeout(t);
-    }, [open, duration, onClose]);
-
-    if (!open) return null;
+        if (duration <= 0) return;
+        const timer = setTimeout(() => {
+            onClose?.();
+        }, duration);
+        return () => clearTimeout(timer);
+    }, [duration, onClose]);
 
     return (
-        <div className={cx('container')} role="status" aria-live="polite">
-            <div className={cx('notification', type, 'enter')}>
-                {icon}
-                <div className={cx('content')}>
-                    {title ? <div className={cx('title')}>{title}</div> : null}
-                    {message ? <div className={cx('message')}>{message}</div> : null}
-                </div>
-                <button className={cx('closeBtn')} aria-label="Đóng" onClick={onClose}>
-                    ✕
-                </button>
+        <div className={cx('notification', type, 'enter')} role="alert" aria-live="polite">
+            {icon}
+            <div className={cx('content')}>
+                {title && <div className={cx('title')}>{title}</div>}
+                {message && <div className={cx('message')}>{message}</div>}
             </div>
+            <button
+                className={cx('closeBtn')}
+                aria-label="Đóng thông báo"
+                onClick={onClose}
+                type="button"
+            >
+                ✕
+            </button>
         </div>
     );
 }
 
+// ========== Provider ==========
+/**
+ * Provider component để quản lý notifications trong app
+ * Bọc app với component này để sử dụng notification
+ */
+function NotificationProvider({ children }) {
+    const [items, setItems] = useState([]);
+
+    /**
+     * Tạo notification mới
+     * @param {string} type - Loại notification
+     * @param {string} message - Nội dung thông báo
+     * @param {Object} options - Tùy chọn: { title, duration }
+     * @returns {string} ID của notification để có thể đóng thủ công nếu cần
+     */
+    const notify = useCallback((type, message, options = {}) => {
+        if (!message) {
+            console.warn('Notification: message is required');
+            return null;
+        }
+
+        // Validate type
+        const validType = NOTIFICATION_TYPES.includes(type) ? type : 'info';
+
+        // Tạo unique ID
+        const id = `notification_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+
+        // Tạo entry
+        const entry = {
+            id,
+            type: validType,
+            title: options.title || '',
+            message: String(message),
+            duration: options.duration ?? DEFAULT_DURATION,
+        };
+
+        // Thêm vào danh sách
+        setItems((prev) => [...prev, entry]);
+
+        return id;
+    }, []);
+
+    // Xóa notification theo ID
+    const remove = useCallback((id) => {
+        setItems((prev) => prev.filter((item) => item.id !== id));
+    }, []);
+
+    // Tạo các helper methods cho từng loại notification
+    // Sử dụng useMemo để tạo methods một lần và chỉ tái tạo khi notify thay đổi
+    const notificationMethods = useMemo(() => {
+        const methods = {};
+        NOTIFICATION_TYPES.forEach((type) => {
+            methods[type] = (message, options = {}) => {
+                return notify(type, message, options);
+            };
+        });
+        return methods;
+    }, [notify]);
+
+    // Context value bao gồm notify chung và các methods riêng
+    // useMemo giúp tránh tạo object mới mỗi lần render, chỉ tạo lại khi dependencies thay đổi
+    const contextValue = useMemo(
+        () => ({
+            notify,
+            ...notificationMethods,
+        }),
+        [notify, notificationMethods],
+    );
+
+    return (
+        <NotificationContext.Provider value={contextValue}>
+            {children}
+            <div className={cx('container')}>
+                {items.map((item) => (
+                    <Toast
+                        key={item.id}
+                        type={item.type}
+                        title={item.title}
+                        message={item.message}
+                        duration={item.duration}
+                        onClose={() => remove(item.id)}
+                    />
+                ))}
+            </div>
+        </NotificationContext.Provider>
+    );
+}
+
+// ========== Export ==========
+// Export default là Provider component
+export default NotificationProvider;
+
+// Export named để có thể import useNotification trực tiếp
+export { useNotification };

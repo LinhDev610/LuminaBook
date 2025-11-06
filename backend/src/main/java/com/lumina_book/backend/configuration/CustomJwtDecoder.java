@@ -42,12 +42,17 @@ public class CustomJwtDecoder implements JwtDecoder {
 
         // Nếu token còn hiệu lực
         if (Objects.isNull(nimbusJwtDecoder)) {
-            SecretKeySpec secretKeySpec = new SecretKeySpec(signerKey.getBytes(), "HS512");
+            SecretKeySpec secretKeySpec = new SecretKeySpec(getSignerKeyBytes(), "HS512");
             nimbusJwtDecoder = NimbusJwtDecoder.withSecretKey(secretKeySpec)
                     .macAlgorithm(MacAlgorithm.HS512)
                     .build();
         }
 
         return nimbusJwtDecoder.decode(token);
+    }
+
+    private byte[] getSignerKeyBytes() {
+        String sanitized = (signerKey == null) ? "" : signerKey.replaceAll("\\s", "");  // xóa khoảng trắng
+        return sanitized.getBytes();
     }
 }

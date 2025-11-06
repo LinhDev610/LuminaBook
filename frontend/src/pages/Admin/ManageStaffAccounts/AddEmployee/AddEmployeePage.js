@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import classNames from 'classnames/bind';
 import styles from './AddEmployeePage.module.scss';
 import { useAuth } from '../../../../contexts/AuthContext';
+import { useNotification } from '../../../../components/Common/Notification';
 
 const cx = classNames.bind(styles);
 
@@ -11,6 +12,7 @@ const API_BASE_URL = 'http://localhost:8080/lumina_book';
 function AddEmployeePage() {
     const navigate = useNavigate();
     const { openLoginModal } = useAuth();
+    const { success, error, notify } = useNotification();
     const [formData, setFormData] = useState({
         fullName: '',
         roleName: '',
@@ -47,7 +49,7 @@ function AddEmployeePage() {
             ...prev,
             [field]: value
         }));
-        
+
         // xóa error khi người dùng nhập
         if (errors[field]) {
             setErrors(prev => ({
@@ -97,7 +99,7 @@ function AddEmployeePage() {
                 localStorage.setItem('refreshToken', data.result.token);
                 return data.result.token;
             }
-        } catch (_) {}
+        } catch (_) { }
         return null;
     };
 
@@ -107,7 +109,7 @@ function AddEmployeePage() {
             try {
                 let token = getStoredToken('token') || sessionStorage.getItem('token');
                 if (!token) {
-                    alert('Thiếu token xác thực. Vui lòng đăng nhập lại bằng tài khoản admin.');
+                    error('Thiếu token xác thực. Vui lòng đăng nhập lại bằng tài khoản admin.');
                     setIsLoading(false);
                     return;
                 }
@@ -123,8 +125,8 @@ function AddEmployeePage() {
                 let data = {};
                 try {
                     data = await response.json();
-                } catch (_) {}
-                
+                } catch (_) { }
+
                 // Nếu hết hạn -> thử refresh và gọi lại 1 lần
                 if (response.status === 401) {
                     const newToken = await refreshTokenIfNeeded();
@@ -138,38 +140,38 @@ function AddEmployeePage() {
                             },
                             body: JSON.stringify(formData),
                         });
-                        try { data = await response.json(); } catch (_) {}
+                        try { data = await response.json(); } catch (_) { }
                     } else {
                         // Không có refreshToken (user không tick Ghi nhớ) -> buộc đăng nhập lại
                         localStorage.removeItem('token');
                         localStorage.removeItem('refreshToken');
                         sessionStorage.removeItem('token');
-                        alert('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+                        error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
                         navigate('/', { replace: true });
                         // Mở modal đăng nhập nếu có sẵn context
-                        try { openLoginModal?.(); } catch (_) {}
+                        try { openLoginModal?.(); } catch (_) { }
                         return;
                     }
                 }
 
                 if (response.ok) {
-                    alert('Tạo tài khoản nhân viên thành công! Mật khẩu đã được gửi qua email.');
+                    success('Tạo tài khoản nhân viên thành công! Mật khẩu đã được gửi qua email.');
                     navigate('/admin');
                 } else {
                     const serverMsg = data?.message || data?.error || data?.result || '';
                     if (response.status === 403) {
-                        alert('Bạn không có quyền thực hiện hành động này. Vui lòng đăng nhập bằng tài khoản ADMIN.');
+                        error('Bạn không có quyền thực hiện hành động này. Vui lòng đăng nhập bằng tài khoản ADMIN.');
                     } else if (response.status === 401) {
-                        alert('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+                        error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
                     } else if (response.status === 400) {
-                        alert(`Dữ liệu không hợp lệ: ${serverMsg || 'Vui lòng kiểm tra lại thông tin.'}`);
+                        error(`Dữ liệu không hợp lệ: ${serverMsg || 'Vui lòng kiểm tra lại thông tin.'}`);
                     } else {
-                        alert(`Lỗi tạo tài khoản (HTTP ${response.status}): ${serverMsg || 'Không rõ nguyên nhân'}`);
+                        error(`Lỗi tạo tài khoản (HTTP ${response.status}): ${serverMsg || 'Không rõ nguyên nhân'}`);
                     }
                 }
             } catch (error) {
                 console.error('Error creating staff:', error);
-                alert('Không thể kết nối máy chủ. Vui lòng thử lại.');
+                notify('error', 'Không thể kết nối máy chủ. Vui lòng thử lại.');
             } finally {
                 setIsLoading(false);
             }
@@ -186,7 +188,7 @@ function AddEmployeePage() {
             <div className={cx('page-header')}>
                 <button className={cx('back-btn')} onClick={handleCancel}>
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                        <path d="M15 18L9 12L15 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M15 18L9 12L15 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
                 </button>
                 <h1 className={cx('page-title')}>Thêm tài khoản nhân viên</h1>
@@ -265,8 +267,8 @@ function AddEmployeePage() {
                         <button className={cx('btn', 'cancel-btn')} onClick={handleCancel}>
                             Hủy
                         </button>
-                        <button 
-                            className={cx('btn', 'save-btn')} 
+                        <button
+                            className={cx('btn', 'save-btn')}
                             onClick={handleSave}
                             disabled={isLoading}
                         >

@@ -1,0 +1,93 @@
+ .wrap {
+     padding: 12px 8px 24px;
+     background: #f2ebdd;
+     min-height: calc(100vh - 60px);
+ }
+
+ .header {
+     display: flex;
+     align-items: center;
+     justify-content: space-between;
+     margin-bottom: 12px;
+ }
+
+ .back-btn {
+     background: #fff;
+     border: 1px solid #e5e7eb;
+     width: 36px;
+     height: 36px;
+     border-radius: 8px;
+     display: inline-flex;
+     align-items: center;
+     justify-content: center;
+     cursor: pointer;
+ }
+
+ .title {
+     font-size: 24px;
+     font-weight: 800;
+     color: #1b2b34;
+     margin: 0 12px;
+ }
+
+ .actions {
+     display: flex;
+     gap: 8px;
+ }
+
+ .btn {
+     border: none;
+     border-radius: 8px;
+     padding: 10px 16px;
+     font-size: 14px;
+     cursor: pointer;
+ }
+ .btn.primary { background: #173a55; color: #fff; }
+ .btn.muted { background: #e5e7eb; color: #1f2937; }
+ .btn-back { background: #173a55; color: #fff; }
+
+ .card {
+     background: #fff;
+     border: 1px solid #e5e7eb;
+     border-radius: 10px;
+     box-shadow: 0 2px 0 rgba(0,0,0,.08), 0 1px 3px rgba(0,0,0,.08);
+     padding: 12px 16px;
+     margin-bottom: 12px;
+ }
+
+ .section-title {
+     font-weight: 800;
+     margin-bottom: 8px;
+     color: #1b2b34;
+ }
+
+ .info-grid { display: grid; gap: 10px; }
+ .info-row { display: grid; grid-template-columns: 160px 1fr; gap: 8px; align-items: start; }
+ .label { color: #6b7b85; font-weight: 600; }
+ .value { color: #1b2b34; }
+
+ .input, .textarea, .select {
+     width: 100%;
+     border: 1px solid #d1d5db;
+     border-radius: 8px;
+     padding: 10px 12px;
+     font-size: 14px;
+ }
+
+ .badge {
+     display: inline-block;
+     padding: 4px 8px;
+     border-radius: 999px;
+     font-size: 12px;
+     font-weight: 700;
+ }
+ .badge.active { background: #ecfdf5; color: #065f46; }
+ .badge.locked { background: #fef2f2; color: #991b1b; }
+
+ .table-wrap { overflow-x: auto; }
+ .table { width: 100%; border-collapse: collapse; }
+ .table thead th { padding: 10px 12px; text-align: left; background: #173a55; color: #fff; }
+ .table tbody td { padding: 10px 12px; border-top: 1px solid #eef2f4; }
+
+ .loading, .error { padding: 20px; }
+

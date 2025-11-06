@@ -1,20 +1,21 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import classNames from 'classnames/bind';
 import styles from './ProductDetailPage.module.scss';
+import { getProductImageUrl, normalizeMediaUrl } from '../../../../services/productUtils';
 import {
     getApiBaseUrl,
     getStoredToken,
     formatDateTime,
-    getProductImageUrl,
-    normalizeMediaUrl,
-} from '../../../../services/productUtils';
+} from '../../../../services/utils';
+import { useNotification } from '../../../../components/Common/Notification';
 
 const cx = classNames.bind(styles);
 
 function ProductDetailPage() {
     const API_BASE_URL = useMemo(() => getApiBaseUrl(), []);
     const navigate = useNavigate();
+    const { success, error: notifyError } = useNotification();
     const { id } = useParams();
     const [product, setProduct] = useState(null);
     const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -63,7 +64,6 @@ function ProductDetailPage() {
         }
     }, [id, API_BASE_URL]);
 
-    // Handle approve product
     const handleApprove = async () => {
         try {
             setProcessing(true);
@@ -88,18 +88,17 @@ function ProductDetailPage() {
             const data = await resp.json().catch(() => ({}));
             setProduct(data?.result || data);
             setShowApproveModal(false);
-            alert('Sản phẩm đã được duyệt thành công!');
+            success('Sản phẩm đã được duyệt thành công!');
         } catch (e) {
-            alert('Lỗi: ' + (e?.message || 'Không thể duyệt sản phẩm'));
+            notifyError('Lỗi: ' + (e?.message || 'Không thể duyệt sản phẩm'));
         } finally {
             setProcessing(false);
         }
     };
 
-    // Handle reject product
     const handleReject = async () => {
         if (!rejectReason.trim()) {
-            alert('Vui lòng nhập lý do từ chối');
+            notifyError('Vui lòng nhập lý do từ chối');
             return;
         }
 
@@ -128,15 +127,14 @@ function ProductDetailPage() {
             setProduct(data?.result || data);
             setShowRejectModal(false);
             setRejectReason('');
-            alert('Sản phẩm đã bị từ chối!');
+            success('Sản phẩm đã bị từ chối!');
         } catch (e) {
-            alert('Lỗi: ' + (e?.message || 'Không thể từ chối sản phẩm'));
+            notifyError('Lỗi: ' + (e?.message || 'Không thể từ chối sản phẩm'));
         } finally {
             setProcessing(false);
         }
     };
 
-    // Handle delete product
     const handleDelete = async () => {
         try {
             setProcessing(true);
@@ -155,10 +153,10 @@ function ProductDetailPage() {
             }
 
             setShowDeleteModal(false);
-            alert('Sản phẩm đã được xóa thành công!');
+            success('Sản phẩm đã được xóa thành công!');
             navigate('/admin/products');
         } catch (e) {
-            alert('Lỗi: ' + (e?.message || 'Không thể xóa sản phẩm'));
+            notifyError('Lỗi: ' + (e?.message || 'Không thể xóa sản phẩm'));
         } finally {
             setProcessing(false);
         }
@@ -251,7 +249,8 @@ function ProductDetailPage() {
                                 alt={product.name}
                                 className={cx('product-image')}
                                 onError={(e) => {
-                                    e.target.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="300" viewBox="0 0 200 300"><rect width="200" height="300" fill="%23e5e7eb"/><text x="50%25" y="50%25" text-anchor="middle" fill="%239ca3af" font-size="14">Không có hình ảnh</text></svg>';
+                                    e.target.src =
+                                        'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="300" viewBox="0 0 200 300"><rect width="200" height="300" fill="%23e5e7eb"/><text x="50%25" y="50%25" text-anchor="middle" fill="%239ca3af" font-size="14">Không có hình ảnh</text></svg>';
                                 }}
                             />
                         ) : (
@@ -260,24 +259,42 @@ function ProductDetailPage() {
                             </div>
                         )}
 
-                        {Array.isArray(product.mediaUrls) && product.mediaUrls.length > 0 && (
-                            <div className={cx('media-thumbs')}>
-                                {product.mediaUrls.map((mUrl, idx) => {
-                                    const nUrl = normalizeMediaUrl(mUrl, API_BASE_URL);
-                                    const isImg = /\.(jpg|jpeg|png|gif|webp)$/i.test(mUrl);
-                                    const isActive = product.defaultMediaUrl === mUrl;
-                                    return (
-                                        <div key={idx} className={cx('thumb', { 'thumb-active': isActive })} onClick={() => { setLightboxIndex(idx); setLightboxOpen(true); }}>
-                                            {isImg ? (
-                                                <img src={nUrl} alt={`thumb-${idx}`} />
-                                            ) : (
-                                                <video src={nUrl} />
-                                            )}
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        )}
+                        {Array.isArray(product.mediaUrls) &&
+                            product.mediaUrls.length > 0 && (
+                                <div className={cx('media-thumbs')}>
+                                    {product.mediaUrls.map((mUrl, idx) => {
+                                        const nUrl = normalizeMediaUrl(
+                                            mUrl,
+                                            API_BASE_URL,
+                                        );
+                                        const isImg = /\.(jpg|jpeg|png|gif|webp)$/i.test(
+                                            mUrl,
+                                        );
+                                        const isActive = product.defaultMediaUrl === mUrl;
+                                        return (
+                                            <div
+                                                key={idx}
+                                                className={cx('thumb', {
+                                                    'thumb-active': isActive,
+                                                })}
+                                                onClick={() => {
+                                                    setLightboxIndex(idx);
+                                                    setLightboxOpen(true);
+                                                }}
+                                            >
+                                                {isImg ? (
+                                                    <img
+                                                        src={nUrl}
+                                                        alt={`thumb-${idx}`}
+                                                    />
+                                                ) : (
+                                                    <video src={nUrl} />
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
                     </div>
 
                     {/* Product Info */}
@@ -285,7 +302,9 @@ function ProductDetailPage() {
                         <div className={cx('info-grid')}>
                             <div className={cx('info-row')}>
                                 <span className={cx('info-label')}>Mã sản phẩm:</span>
-                                <span className={cx('info-value')}>{product.id || '-'}</span>
+                                <span className={cx('info-value')}>
+                                    {product.id || '-'}
+                                </span>
                             </div>
                             <div className={cx('info-row')}>
                                 <span className={cx('info-label')}>Tên sản phẩm:</span>
@@ -325,25 +344,35 @@ function ProductDetailPage() {
                                     </span>
                                 </div>
                             )}
-                            {product.discountValue !== undefined && product.discountValue !== null && product.discountValue > 0 && (
-                                <div className={cx('info-row')}>
-                                    <span className={cx('info-label')}>Giảm giá:</span>
-                                    <span className={cx('info-value')}>
-                                        {formatPrice(product.discountValue)}
-                                    </span>
-                                </div>
-                            )}
+                            {product.discountValue !== undefined &&
+                                product.discountValue !== null &&
+                                product.discountValue > 0 && (
+                                    <div className={cx('info-row')}>
+                                        <span className={cx('info-label')}>
+                                            Giảm giá:
+                                        </span>
+                                        <span className={cx('info-value')}>
+                                            {formatPrice(product.discountValue)}
+                                        </span>
+                                    </div>
+                                )}
                             {product.publicationDate && (
                                 <div className={cx('info-row')}>
-                                    <span className={cx('info-label')}>Ngày xuất bản:</span>
+                                    <span className={cx('info-label')}>
+                                        Ngày xuất bản:
+                                    </span>
                                     <span className={cx('info-value')}>
-                                        {new Date(product.publicationDate).toLocaleDateString('vi-VN')}
+                                        {new Date(
+                                            product.publicationDate,
+                                        ).toLocaleDateString('vi-VN')}
                                     </span>
                                 </div>
                             )}
                             {(product.length || product.width || product.height) && (
                                 <div className={cx('info-row')}>
-                                    <span className={cx('info-label')}>Kích thước (cm):</span>
+                                    <span className={cx('info-label')}>
+                                        Kích thước (cm):
+                                    </span>
                                     <span className={cx('info-value')}>
                                         {[product.length, product.width, product.height]
                                             .filter(Boolean)
@@ -359,22 +388,28 @@ function ProductDetailPage() {
                                     </span>
                                 </div>
                             )}
-                            {product.availableQuantity !== undefined && product.availableQuantity !== null && (
-                                <div className={cx('info-row')}>
-                                    <span className={cx('info-label')}>Số lượng tồn kho:</span>
-                                    <span className={cx('info-value')}>
-                                        {product.availableQuantity}
-                                    </span>
-                                </div>
-                            )}
-                            {product.quantitySold !== undefined && product.quantitySold !== null && (
-                                <div className={cx('info-row')}>
-                                    <span className={cx('info-label')}>Số lượng đã bán:</span>
-                                    <span className={cx('info-value')}>
-                                        {product.quantitySold}
-                                    </span>
-                                </div>
-                            )}
+                            {product.availableQuantity !== undefined &&
+                                product.availableQuantity !== null && (
+                                    <div className={cx('info-row')}>
+                                        <span className={cx('info-label')}>
+                                            Số lượng tồn kho:
+                                        </span>
+                                        <span className={cx('info-value')}>
+                                            {product.availableQuantity}
+                                        </span>
+                                    </div>
+                                )}
+                            {product.quantitySold !== undefined &&
+                                product.quantitySold !== null && (
+                                    <div className={cx('info-row')}>
+                                        <span className={cx('info-label')}>
+                                            Số lượng đã bán:
+                                        </span>
+                                        <span className={cx('info-value')}>
+                                            {product.quantitySold}
+                                        </span>
+                                    </div>
+                                )}
                             {product.submittedByName && (
                                 <div className={cx('info-row')}>
                                     <span className={cx('info-label')}>Người gửi:</span>
@@ -405,14 +440,17 @@ function ProductDetailPage() {
                                     {formatDateTime(product.createdAt)}
                                 </span>
                             </div>
-                            {product.updatedAt && product.updatedAt !== product.createdAt && (
-                                <div className={cx('info-row')}>
-                                    <span className={cx('info-label')}>Ngày cập nhật:</span>
-                                    <span className={cx('info-value')}>
-                                        {formatDateTime(product.updatedAt)}
-                                    </span>
-                                </div>
-                            )}
+                            {product.updatedAt &&
+                                product.updatedAt !== product.createdAt && (
+                                    <div className={cx('info-row')}>
+                                        <span className={cx('info-label')}>
+                                            Ngày cập nhật:
+                                        </span>
+                                        <span className={cx('info-value')}>
+                                            {formatDateTime(product.updatedAt)}
+                                        </span>
+                                    </div>
+                                )}
                             <div className={cx('info-row')}>
                                 <span className={cx('info-label')}>Trạng thái:</span>
                                 <span className={cx('status-badge', statusClass)}>
@@ -421,20 +459,31 @@ function ProductDetailPage() {
                             </div>
                             {product.rejectionReason && (
                                 <div className={cx('info-row')}>
-                                    <span className={cx('info-label')}>Lý do từ chối:</span>
-                                    <span className={cx('info-value', 'rejection-reason')}>
+                                    <span className={cx('info-label')}>
+                                        Lý do từ chối:
+                                    </span>
+                                    <span
+                                        className={cx('info-value', 'rejection-reason')}
+                                    >
                                         {product.rejectionReason}
                                     </span>
                                 </div>
                             )}
-                            {((product.averageRating !== undefined && product.averageRating !== null) || (product.reviewCount !== undefined && product.reviewCount !== null && product.reviewCount > 0)) && (
+                            {((product.averageRating !== undefined &&
+                                product.averageRating !== null) ||
+                                (product.reviewCount !== undefined &&
+                                    product.reviewCount !== null &&
+                                    product.reviewCount > 0)) && (
                                 <div className={cx('info-row')}>
                                     <span className={cx('info-label')}>Đánh giá:</span>
                                     <span className={cx('info-value')}>
-                                        {product.averageRating !== undefined && product.averageRating !== null
+                                        {product.averageRating !== undefined &&
+                                        product.averageRating !== null
                                             ? `${product.averageRating.toFixed(1)}/5.0`
                                             : '-'}
-                                        {product.reviewCount !== undefined && product.reviewCount !== null && product.reviewCount > 0
+                                        {product.reviewCount !== undefined &&
+                                        product.reviewCount !== null &&
+                                        product.reviewCount > 0
                                             ? ` (${product.reviewCount} đánh giá)`
                                             : ''}
                                     </span>
@@ -482,7 +531,10 @@ function ProductDetailPage() {
 
             {/* Approve Modal */}
             {showApproveModal && (
-                <div className={cx('modal-overlay')} onClick={() => setShowApproveModal(false)}>
+                <div
+                    className={cx('modal-overlay')}
+                    onClick={() => setShowApproveModal(false)}
+                >
                     <div className={cx('modal')} onClick={(e) => e.stopPropagation()}>
                         <h2 className={cx('modal-title')}>Xác nhận duyệt</h2>
                         <p className={cx('modal-message')}>
@@ -510,7 +562,10 @@ function ProductDetailPage() {
 
             {/* Reject Modal */}
             {showRejectModal && (
-                <div className={cx('modal-overlay')} onClick={() => setShowRejectModal(false)}>
+                <div
+                    className={cx('modal-overlay')}
+                    onClick={() => setShowRejectModal(false)}
+                >
                     <div className={cx('modal')} onClick={(e) => e.stopPropagation()}>
                         <h2 className={cx('modal-title')}>Xác nhận từ chối</h2>
                         <p className={cx('modal-message')}>
@@ -551,13 +606,18 @@ function ProductDetailPage() {
 
             {/* Delete Modal */}
             {showDeleteModal && (
-                <div className={cx('modal-overlay')} onClick={() => setShowDeleteModal(false)}>
+                <div
+                    className={cx('modal-overlay')}
+                    onClick={() => setShowDeleteModal(false)}
+                >
                     <div className={cx('modal')} onClick={(e) => e.stopPropagation()}>
                         <h2 className={cx('modal-title')}>Xác nhận xóa sản phẩm</h2>
                         <p className={cx('modal-message')}>
                             Bạn có chắc chắn muốn xóa sản phẩm này không?
                         </p>
-                        <p className={cx('modal-warning')}>Hành động này không thể hoàn tác.</p>
+                        <p className={cx('modal-warning')}>
+                            Hành động này không thể hoàn tác.
+                        </p>
                         <div className={cx('modal-actions')}>
                             <button
                                 className={cx('btn', 'btn-cancel')}
@@ -578,11 +638,26 @@ function ProductDetailPage() {
                 </div>
             )}
             {lightboxOpen && (
-                <div className={cx('modal-overlay')} onClick={() => setLightboxOpen(false)}>
+                <div
+                    className={cx('modal-overlay')}
+                    onClick={() => setLightboxOpen(false)}
+                >
                     <div className={cx('modal')} onClick={(e) => e.stopPropagation()}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                        <div
+                            style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                marginBottom: 12,
+                            }}
+                        >
                             <h2 className={cx('modal-title')}>{product.name}</h2>
-                            <button className={cx('btn', 'btn-cancel')} onClick={() => setLightboxOpen(false)}>Đóng</button>
+                            <button
+                                className={cx('btn', 'btn-cancel')}
+                                onClick={() => setLightboxOpen(false)}
+                            >
+                                Đóng
+                            </button>
                         </div>
                         <div style={{ textAlign: 'center' }}>
                             {(() => {
@@ -590,9 +665,26 @@ function ProductDetailPage() {
                                 const nUrl = normalizeMediaUrl(mUrl, API_BASE_URL);
                                 const isImg = /\.(jpg|jpeg|png|gif|webp)$/i.test(mUrl);
                                 return isImg ? (
-                                    <img src={nUrl} alt="preview-large" style={{ maxWidth: '100%', maxHeight: '70vh', borderRadius: 8 }} />
+                                    <img
+                                        src={nUrl}
+                                        alt="preview-large"
+                                        style={{
+                                            maxWidth: '100%',
+                                            maxHeight: '70vh',
+                                            borderRadius: 8,
+                                        }}
+                                    />
                                 ) : (
-                                    <video src={nUrl} style={{ maxWidth: '100%', maxHeight: '70vh', borderRadius: 8 }} controls autoPlay />
+                                    <video
+                                        src={nUrl}
+                                        style={{
+                                            maxWidth: '100%',
+                                            maxHeight: '70vh',
+                                            borderRadius: 8,
+                                        }}
+                                        controls
+                                        autoPlay
+                                    />
                                 );
                             })()}
                         </div>
@@ -602,8 +694,18 @@ function ProductDetailPage() {
                                 const isImg = /\.(jpg|jpeg|png|gif|webp)$/i.test(mUrl);
                                 const active = idx === lightboxIndex;
                                 return (
-                                    <div key={idx} className={cx('thumb', { 'thumb-active': active })} onClick={() => setLightboxIndex(idx)}>
-                                        {isImg ? <img src={nUrl} alt={`lb-${idx}`} /> : <video src={nUrl} />}
+                                    <div
+                                        key={idx}
+                                        className={cx('thumb', {
+                                            'thumb-active': active,
+                                        })}
+                                        onClick={() => setLightboxIndex(idx)}
+                                    >
+                                        {isImg ? (
+                                            <img src={nUrl} alt={`lb-${idx}`} />
+                                        ) : (
+                                            <video src={nUrl} />
+                                        )}
                                     </div>
                                 );
                             })}

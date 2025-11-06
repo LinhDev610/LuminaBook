@@ -31,6 +31,7 @@ import StaffUpdateProductPage from '../pages/Employees/Staff/ProductManagement/U
 import ContentManagementPage from '../pages/Employees/Staff/ContentManagement';
 import BannerDetailPage from '../pages/Employees/Staff/ContentManagement/BannerDetail';
 import VouchersPromotionsPage from '../pages/Employees/Staff/VouchersPromotionsPage';
+import CategoryDetailPage from '../pages/Admin/ManageCategories/CategoryDetail';
 
 // Public routes
 const publicRoutes = [
@@ -59,7 +60,8 @@ const privateRoutes = [
     { path: '/admin/products', component: ManageProductsPage, layout: AdminLayout },
     { path: '/admin/products/:id', component: AdminProductDetailPage, layout: AdminLayout },
     { path: '/admin/categories', component: ManageCategoriesPage, layout: AdminLayout },
-    { path: '/admin/add-category', component: AddCategoryPage, layout: AdminLayout },
+    { path: '/admin/categories/:id', component: CategoryDetailPage, layout: AdminLayout},
+    { path: '/admin/categories/new', component: AddCategoryPage, layout: AdminLayout },
     { path: '/admin/orders', component: ManageStaffAccountsPage, layout: AdminLayout },
     { path: '/admin/vouchers', component: ManageStaffAccountsPage, layout: AdminLayout },
     { path: '/admin/complaints', component: ManageStaffAccountsPage, layout: AdminLayout },

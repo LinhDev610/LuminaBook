@@ -477,7 +477,7 @@ export default function AddProductPage() {
                             <div className={cx('errorText')}>{errors.price}</div>
                         )}
                     </div>
-                    <div className={cx('grid2')}>
+                    <div className={cx('grid3')}>
                         <div className={cx('row')}>
                             <label>Danh mục sách</label>
                             <select
@@ -510,8 +510,6 @@ export default function AddProductPage() {
                                 <span className={cx('suffix')}>%</span>
                             </div>
                         </div>
-                    </div>
-                    <div className={cx('grid2')}>
                         <div className={cx('row')}>
                             <label>Ngày xuất bản</label>
                             <input
@@ -525,8 +523,8 @@ export default function AddProductPage() {
                                 </div>
                             )}
                         </div>
-                        <div className={cx('row')}></div>
                     </div>
+
                     <div className={cx('row')}>
                         <label>Giá cuối cùng (đã gồm thuế)</label>
                         <input placeholder="Tự động tính" value={finalPrice} readOnly />

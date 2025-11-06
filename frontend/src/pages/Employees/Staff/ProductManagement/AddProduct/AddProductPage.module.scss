@@ -63,15 +63,24 @@
 .example { margin-top: 10px; color: #374151; }
 
 /* Input with suffix, e.g., % */
-.inputSuffix { position: relative; }
-.inputSuffix input { padding-right: 38px; }
+.inputSuffix {
+    position: relative;
+    display: block;
+    width: 100%;
+}
+.inputSuffix input {
+    padding-right: 38px;
+    width: 100%;
+}
 .suffix {
     position: absolute;
-    right: 10px;
+    right: 12px;
     top: 50%;
     transform: translateY(-50%);
     color: #64748b;
     font-size: 14px;
+    pointer-events: none;
+    z-index: 1;
 }
 
 .errorText {

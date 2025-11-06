@@ -26,6 +26,7 @@ export default function UpdateProductPage() {
     const [notifyMsg, setNotifyMsg] = useState('');
 
     // Form fields state
+    const [productId, setProductId] = useState('');
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
     const [author, setAuthor] = useState('');
@@ -75,6 +76,7 @@ export default function UpdateProductPage() {
                 const product = data?.result || data;
 
                 // Fill form with product data
+                setProductId(product.id || id || '');
                 setName(product.name || '');
                 setDescription(product.description || '');
                 setAuthor(product.author || '');
@@ -386,6 +388,15 @@ export default function UpdateProductPage() {
                 <div className={cx('card-header')}>Cập nhật sản phẩm</div>
                 <form ref={formRef} className={cx('form')} onSubmit={handleSubmit}>
                     <div className={cx('row')}>
+                        <label>Mã sản phẩm</label>
+                        <input
+                            placeholder="VD: BK001"
+                            value={productId}
+                            readOnly
+                            style={{ backgroundColor: '#f3f4f6', cursor: 'not-allowed' }}
+                        />
+                    </div>
+                    <div className={cx('row')}>
                         <label>Tên sản phẩm</label>
                         <input
                             placeholder="VD: Sách lập trình C++"
@@ -445,7 +456,7 @@ export default function UpdateProductPage() {
                             <div className={cx('errorText')}>{errors.price}</div>
                         )}
                     </div>
-                    <div className={cx('grid2')}>
+                    <div className={cx('grid3')}>
                         <div className={cx('row')}>
                             <label>Danh mục sách</label>
                             <select
@@ -478,8 +489,6 @@ export default function UpdateProductPage() {
                                 <span className={cx('suffix')}>%</span>
                             </div>
                         </div>
-                    </div>
-                    <div className={cx('grid2')}>
                         <div className={cx('row')}>
                             <label>Ngày xuất bản</label>
                             <input
@@ -493,7 +502,6 @@ export default function UpdateProductPage() {
                                 </div>
                             )}
                         </div>
-                        <div className={cx('row')}></div>
                     </div>
                     <div className={cx('row')}>
                         <label>Giá cuối cùng (đã gồm thuế)</label>

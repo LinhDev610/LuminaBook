@@ -16,6 +16,7 @@ import AdminLayout from '../layouts/AdminLayout';
 import StaffLayout from '../layouts/StaffLayout';
 import ManageStaffAccountsPage from '../pages/Admin/ManageStaffAccounts';
 import ManageCustomerAccountsPage from '../pages/Admin/ManageCustomerAccounts';
+import CustomerDetailPage from '../pages/Admin/ManageCustomerAccounts/CustomerDetail';
 import ManageCategoriesPage from '../pages/Admin/ManageCategories/ManageCategoriesPage';
 import AddCategoryPage from '../pages/Admin/ManageCategories/AddCategory/AddCategoryPage';
 import ManageProductsPage from '../pages/Admin/ManageProduct';
@@ -56,6 +57,7 @@ const privateRoutes = [
     { path: '/admin', component: ManageStaffAccountsPage, layout: AdminLayout },
     { path: '/admin/add-employee', component: AddEmployeePage, layout: AdminLayout },
     { path: '/admin/customer-accounts', component: ManageCustomerAccountsPage, layout: AdminLayout },
+    { path: '/admin/customers/:id', component: CustomerDetailPage, layout: AdminLayout },
     { path: '/admin/products', component: ManageProductsPage, layout: AdminLayout },
     { path: '/admin/products/:id', component: AdminProductDetailPage, layout: AdminLayout },
     { path: '/admin/categories', component: ManageCategoriesPage, layout: AdminLayout },

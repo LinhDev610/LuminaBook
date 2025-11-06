@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import classNames from 'classnames/bind';
 import styles from './ManageCustomerAccountsPage.module.scss';
 import SearchAndSort from '../../../components/Common/SearchAndSort';
@@ -8,6 +9,7 @@ const cx = classNames.bind(styles);
 const API_BASE_URL = 'http://localhost:8080/lumina_book';
 
 function ManageCustomerAccountsPage() {
+    const navigate = useNavigate();
     const [searchTerm, setSearchTerm] = useState('');
     const [sortBy, setSortBy] = useState('all');
     const [allCustomers, setAllCustomers] = useState([]);
@@ -296,6 +298,10 @@ function ManageCustomerAccountsPage() {
         }
     };
 
+    const handleViewDetails = (customerId) => {
+        navigate(`/admin/customers/${customerId}`);
+    };
+
     const additionalButtons = [];
 
     return (
@@ -334,12 +340,13 @@ function ManageCustomerAccountsPage() {
                                 <th>SĐT</th>
                                 <th>Trạng thái</th>
                                 <th>Hành động</th>
+                                <th>Chi tiết khách hàng</th>
                             </tr>
                         </thead>
                         <tbody>
                             {filteredCustomers.length === 0 ? (
                                 <tr>
-                                    <td colSpan="6" style={{ textAlign: 'center', padding: '20px' }}>
+                                    <td colSpan="7" style={{ textAlign: 'center', padding: '20px' }}>
                                         Không có dữ liệu khách hàng
                                     </td>
                                 </tr>
@@ -354,7 +361,12 @@ function ManageCustomerAccountsPage() {
                                             {getStatusText(customer.status)}
                                         </td>
                                         <td className={cx('actions')}>
-                                            <button className={cx('btn', 'edit-btn')}>Sửa</button>
+                                            <button 
+                                                className={cx('btn', 'edit-btn')}
+                                                onClick={() => navigate(`/admin/customers/${customer.id}`)}
+                                            >
+                                                Sửa
+                                            </button>
                                             {customer.status === 'active' ? (
                                                 <button 
                                                     className={cx('btn', 'lock-btn')}
@@ -377,6 +389,14 @@ function ManageCustomerAccountsPage() {
                                                 Xóa
                                             </button>
                                         </td>
+                                    <td>
+                                        <button 
+                                            className={cx('btn', 'detail-btn')}
+                                            onClick={() => handleViewDetails(customer.id)}
+                                        >
+                                            Xem chi tiết
+                                        </button>
+                                    </td>
                                     </tr>
                                 ))
                             )}

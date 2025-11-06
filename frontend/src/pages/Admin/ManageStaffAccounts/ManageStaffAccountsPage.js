@@ -71,6 +71,10 @@ function ManageStaffAccountsPage() {
         navigate('/admin/add-employee');
     };
 
+    const handleViewDetails = (employeeId) => {
+        navigate(`/admin/staff/${employeeId}`);
+    };
+
     const handleSearchClick = () => {
         applyFilters(searchTerm, sortBy);
     };
@@ -117,6 +121,7 @@ function ManageStaffAccountsPage() {
                             <th>SĐT</th>
                             <th>Trạng thái</th>
                             <th>Hành động</th>
+                            <th>Chi tiết nhân viên</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -137,6 +142,14 @@ function ManageStaffAccountsPage() {
                                         <button className={cx('btn', 'unlock-btn')}>Mở khóa</button>
                                     )}
                                     <button className={cx('btn', 'delete-btn')}>Xóa</button>
+                                </td>
+                                <td>
+                                    <button 
+                                        className={cx('btn', 'detail-btn')}
+                                        onClick={() => handleViewDetails(employee.id)}
+                                    >
+                                        Xem chi tiết
+                                    </button>
                                 </td>
                             </tr>
                         ))}

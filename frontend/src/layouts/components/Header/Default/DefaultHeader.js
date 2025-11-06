@@ -34,10 +34,26 @@ function DefaultHeader() {
         null,
     );
 
-    // Check for token in both localStorage and sessionStorage
-    const currentToken = token || sessionStorage.getItem('token');
+    // Read token from both storages every render (handles same-tab updates)
+    const getStoredToken = () => {
+        const read = (get) => {
+            try {
+                const raw = get('token');
+                if (!raw) return null;
+                if ((raw.startsWith('"') && raw.endsWith('"')) || raw.startsWith('{') || raw.startsWith('[')) {
+                    return JSON.parse(raw);
+                }
+                return raw;
+            } catch (_e) {
+                return get('token');
+            }
+        };
+        return token || read(localStorage.getItem.bind(localStorage)) || read(sessionStorage.getItem.bind(sessionStorage));
+    };
+    const currentToken = getStoredToken();
     const isLoggedIn = !!currentToken;
     const [menuOpen, setMenuOpen] = useState(false);
+    const [authVersion, setAuthVersion] = useState(0);
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
     // Keep a local mirror of displayName to avoid force-update loops
     const initialDisplayName = (() => {
@@ -75,6 +91,18 @@ function DefaultHeader() {
         };
     }, []);
 
+    // Re-render when token is updated anywhere in the app
+    useEffect(() => {
+        const bump = () => setAuthVersion((v) => v + 1);
+        window.addEventListener('tokenUpdated', bump);
+        window.addEventListener('storage', (e) => {
+            if (e.key === 'token') bump();
+        });
+        return () => {
+            window.removeEventListener('tokenUpdated', bump);
+        };
+    }, []);
+
     const toggleMenu = () => setMenuOpen((v) => !v);
     const handleLogout = () => {
         // Close confirm modal immediately so it disappears before navigation
@@ -88,6 +116,9 @@ function DefaultHeader() {
         sessionStorage.removeItem('_checking_role');
         // Don't remove savedEmail - keep it for next login
         setMenuOpen(false);
+        // Notify others and go back to home after logout
+        window.dispatchEvent(new Event('tokenUpdated'));
+        window.dispatchEvent(new CustomEvent('displayNameUpdated'));
         // Always go back to home after logout
         navigate('/');
     };

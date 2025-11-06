@@ -127,6 +127,8 @@ export default function LoginModal({ open = false, onClose }) {
                     removeSavedEmail();
                     removeRefreshToken();
                 }
+                // Notify app about token change so headers can re-render immediately
+                window.dispatchEvent(new Event('tokenUpdated'));
 
                 try {
                     console.log('Calling /users/my-info with token:', data.result.token);

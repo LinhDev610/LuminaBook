@@ -1,9 +1,11 @@
 import { useNavigate } from 'react-router-dom';
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import useLocalStorage from '../../hooks/useLocalStorage';
+import Notification from '../../components/Common/Notification/Notification';
 import guestImgIcon from '../../assets/icons/icon_img_guest.png';
 
 import styles from './CustomerAccountPage.module.scss';
+import CustomerChangePasswordPage from './CustomerChangePassword/CustomerChangePasswordPage';
 import classNames from 'classnames/bind';
 
 // Thông tin tài khoản, lịch sử đơn hàng, đổi mật khẩu
@@ -15,14 +17,36 @@ function CustomerAccountPage() {
     const [displayName, setDisplayName, removeDisplayName] = useLocalStorage(
         'displayName',
         null,
-    );
-    const [email, setEmail, removeEmail] = useLocalStorage('email', 'user123@gmail.com');
+);
+    const [email, setEmail, removeEmail] = useLocalStorage('email', '');
     const [token, setToken, removeToken] = useLocalStorage('token', null);
 
+    // Helper to read token from both storages
+    const getStoredToken = useMemo(() => () => {
+        try {
+            const raw = localStorage.getItem('token');
+            if (!raw) return sessionStorage.getItem('token');
+            if ((raw.startsWith('"') && raw.endsWith('"')) || raw.startsWith('{') || raw.startsWith('[')) {
+                return JSON.parse(raw);
+            }
+            return raw;
+        } catch (_e) {
+            return sessionStorage.getItem('token');
+        }
+    }, []);
+
     // Check if user is logged in
-    const isLoggedIn = !!token;
-    const [userAvatar, setUserAvatar] = useLocalStorage('userAvatar', null);
+    const isLoggedIn = !!(token || getStoredToken());
+    const [userAvatar, setUserAvatar, removeUserAvatar] = useLocalStorage('userAvatar', null);
+    const [pendingAvatarDataUrl, setPendingAvatarDataUrl] = useState(null);
+    const [uploadingAvatar, setUploadingAvatar] = useState(false);
     const [activeTab, setActiveTab] = useState('profile'); // 'profile' | 'password'
+
+    const [user, setUser] = useState(null);
+    const [originalUser, setOriginalUser] = useState(null);
+    const [loading, setLoading] = useState(false);
+    const [profileMsg, setProfileMsg] = useState('');
+    const [notif, setNotif] = useState({ open: false, type: 'success', title: '', message: '', duration: 3000 });
 
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
@@ -34,9 +58,50 @@ function CustomerAccountPage() {
         removeEmail();
         // Clear sessionStorage token to ensure Navbar reflects logged-out state
         sessionStorage.removeItem('token');
+        // Clear any cached avatar preview
+        removeUserAvatar();
         // Always redirect to home and hard reload to ensure header/navbar state sync
         window.location.href = '/';
     };
+
+    // Fetch current user info
+    useEffect(() => {
+        const fetchMe = async () => {
+            if (!isLoggedIn) return;
+            setLoading(true);
+            setProfileMsg('');
+            try {
+                const tk = getStoredToken();
+                if (!tk) return;
+                const resp = await fetch('http://localhost:8080/lumina_book/users/my-info', {
+                    headers: {
+                        Authorization: `Bearer ${tk}`,
+                        'Content-Type': 'application/json',
+                    },
+                });
+                const data = await resp.json().catch(() => ({}));
+                if (resp.ok && data?.result) {
+                    const u = data.result;
+                    setUser(u);
+                    // Deep clone to ensure cancel restores immutable snapshot
+                    try {
+                        setOriginalUser(JSON.parse(JSON.stringify(u)));
+                    } catch (_e) {
+                        setOriginalUser(u);
+                    }
+                    setDisplayName(u.fullName || displayName || '');
+                    setEmail(u.email || '');
+                    setUserAvatar(u.avatarUrl || null);
+                }
+            } catch (_e) {
+                // ignore for now
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchMe();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     // Change password form state
     const [currentPassword, setCurrentPassword] = useState('');
@@ -84,20 +149,72 @@ function CustomerAccountPage() {
             <div className={cx('account-content')}>
                 <aside className={cx('account-side')}>
                     <div className={cx('side-profile')}>
-                        <div className={cx('side-avatar')}>
-                            {!isLoggedIn || !userAvatar ? (
-                                <img
-                                    src={guestImgIcon}
-                                    alt="Guest Avatar"
-                                    className={cx('avatar-image')}
-                                />
-                            ) : (
-                                <img
-                                    src={userAvatar}
-                                    alt="User Avatar"
-                                    className={cx('avatar-image')}
-                                />
-                            )}
+                        <div className={cx('side-avatar')} onClick={() => document.getElementById('avatar-file-input')?.click()} role="button" aria-label="Chọn ảnh đại diện">
+                            <img
+                                src={(user && user.avatarUrl) || userAvatar || guestImgIcon}
+                                onError={(e) => { e.currentTarget.src = guestImgIcon; }}
+                                alt="User Avatar"
+                                className={cx('avatar-image')}
+                            />
+                            <input id="avatar-file-input" type="file" accept="image/*" style={{ display: 'none' }} onChange={async (e) => {
+                                const file = e.target.files?.[0];
+                                if (!file) return;
+                                try {
+                                    // Local instant preview
+                                    const previewUrl = URL.createObjectURL(file);
+                                    setUserAvatar(previewUrl);
+                                    setPendingAvatarDataUrl(previewUrl);
+
+                                    // Upload to server to obtain persistent URL
+                                    setUploadingAvatar(true);
+                                    const form = new FormData();
+                                    form.append('files', file);
+                                    const tk = getStoredToken();
+                                    const resp = await fetch('http://localhost:8080/lumina_book/media/upload', {
+                                        method: 'POST',
+                                        headers: tk ? { Authorization: `Bearer ${tk}` } : undefined,
+                                        body: form,
+                                    });
+                                    const data = await resp.json().catch(() => ({}));
+                                    if (resp.ok && Array.isArray(data?.result) && data.result[0]) {
+                                        const url = data.result[0];
+                                        setUser((prev) => ({ ...(prev || {}), avatarUrl: url }));
+                                        setUserAvatar(url);
+                                        setPendingAvatarDataUrl(null);
+                                        // Auto-save avatar to user profile
+                                        try {
+                                            if (user?.id) {
+                                                const tk2 = getStoredToken();
+                                                const updateResp = await fetch(`http://localhost:8080/lumina_book/users/${user.id}`, {
+                                                    method: 'PUT',
+                                                    headers: {
+                                                        'Content-Type': 'application/json',
+                                                        Authorization: `Bearer ${tk2}`,
+                                                    },
+                                                    body: JSON.stringify({ avatarUrl: url }),
+                                                });
+                                                const updateData = await updateResp.json().catch(() => ({}));
+                                                if (updateResp.ok && updateData?.result) {
+                                                    // Refresh original snapshot and notify
+                                                    try {
+                                                        setOriginalUser(JSON.parse(JSON.stringify(updateData.result)));
+                                                    } catch (_e) {
+                                                        setOriginalUser(updateData.result);
+                                                    }
+                                                    setNotif({ open: true, type: 'success', title: 'Đã lưu ảnh đại diện', message: 'Ảnh đại diện đã được cập nhật', duration: 2500 });
+                                                } else {
+                                                    setNotif({ open: true, type: 'warning', title: 'Không lưu được ảnh', message: updateData?.message || 'Không thể lưu avatar, thử lại sau', duration: 3500 });
+                                                }
+                                            }
+                                        } catch (_e) {
+                                            setNotif({ open: true, type: 'error', title: 'Lỗi', message: 'Không thể lưu avatar, vui lòng thử lại', duration: 3000 });
+                                        }
+                                    } else {
+                                        setNotif({ open: true, type: 'error', title: 'Upload thất bại', message: 'Không thể tải ảnh lên máy chủ', duration: 3000 });
+                                    }
+                                } catch (_) {}
+                                finally { setUploadingAvatar(false); }
+                            }} />
                         </div>
                         <div className={cx('side-name')}>{displayName || 'Khách'}</div>
                     </div>
@@ -171,90 +288,130 @@ function CustomerAccountPage() {
                             <div className={cx('form-row')}>
                                 <div className={cx('form-group')}>
                                     <label>Họ và tên</label>
-                                    <input defaultValue={displayName || 'Khách'} />
+                                    <input
+                                        value={user?.fullName ?? ''}
+                                        onChange={(e) => setUser((prev) => ({ ...(prev || {}), fullName: e.target.value }))}
+                                        disabled={!isLoggedIn}
+                                    />
                                 </div>
                                 <div className={cx('form-group')}>
-                                    <label>Gmail</label>
-                                    <input defaultValue={email} />
+                                    <label>Email</label>
+                                    <input value={user?.email ?? ''} readOnly disabled />
                                 </div>
                             </div>
                             <div className={cx('form-row')}>
                                 <div className={cx('form-group')}>
                                     <label>Số điện thoại</label>
-                                    <input defaultValue="0123456789" />
+                                    <input
+                                        value={user?.phoneNumber ?? ''}
+                                        onChange={(e) => setUser((prev) => ({ ...(prev || {}), phoneNumber: e.target.value }))}
+                                        disabled={!isLoggedIn}
+                                    />
                                 </div>
                                 <div className={cx('form-group')}>
                                     <label>Địa chỉ</label>
-                                    <input defaultValue="123 Đường ABC, phường Thanh Xuân, Hà Nội" />
+                                    <input
+                                        value={user?.address ?? ''}
+                                        onChange={(e) => setUser((prev) => ({ ...(prev || {}), address: e.target.value }))}
+                                        disabled={!isLoggedIn}
+                                    />
                                 </div>
                             </div>
                             <div className={cx('form-actions')}>
-                                <button className={cx('primary')}>Lưu thay đổi</button>
+                                <button
+                                    className={cx('secondary')}
+                                    disabled={!isLoggedIn || loading}
+                                    onClick={() => {
+                                        if (originalUser) {
+                                            try {
+                                            setUser(JSON.parse(JSON.stringify(originalUser)));
+                                            } catch (_e) {
+                                            setUser(originalUser);
+                                            }
+                                            setPendingAvatarDataUrl(null);
+                                            if (originalUser.avatarUrl) {
+                                                setUserAvatar(originalUser.avatarUrl);
+                                            } else {
+                                                setUserAvatar(null);
+                                            }
+                                        }
+                                    }}
+                                >
+                                    Hủy
+                                </button>
+                                <button
+                                    className={cx('primary')}
+                                    disabled={!isLoggedIn || loading}
+                                    onClick={async () => {
+                                        if (!user?.id) return;
+                                        setProfileMsg('');
+                                        try {
+                                            const tk = getStoredToken();
+                                            const body = {
+                                                fullName: user.fullName ?? '',
+                                                phoneNumber: user.phoneNumber ?? '',
+                                                address: user.address ?? '',
+                                                avatarUrl: (user?.avatarUrl ?? '').trim(),
+                                            };
+                                            const resp = await fetch(`http://localhost:8080/lumina_book/users/${user.id}`, {
+                                                method: 'PUT',
+                                                headers: {
+                                                    'Content-Type': 'application/json',
+                                                    Authorization: `Bearer ${tk}`,
+                                                },
+                                                body: JSON.stringify(body),
+                                            });
+                                            const data = await resp.json().catch(() => ({}));
+                                            if (resp.ok) {
+                                                // Refetch user to ensure data persisted and sync local state
+                                                try {
+                                                    const confirmResp = await fetch('http://localhost:8080/lumina_book/users/my-info', {
+                                                        headers: {
+                                                            Authorization: `Bearer ${tk}`,
+                                                            'Content-Type': 'application/json',
+                                                        },
+                                                    });
+                                                    const confirmData = await confirmResp.json().catch(() => ({}));
+                                                    if (confirmResp.ok && confirmData?.result) {
+                                                        setUser(confirmData.result);
+                                                        // Refresh original snapshot after successful save
+                                                        try {
+                                                            setOriginalUser(JSON.parse(JSON.stringify(confirmData.result)));
+                                                        } catch (_e) {
+                                                            setOriginalUser(confirmData.result);
+                                                        }
+                                                        setPendingAvatarDataUrl(null);
+                                                        if (confirmData.result?.avatarUrl) {
+                                                            setUserAvatar(confirmData.result.avatarUrl);
+                                                        } else {
+                                                            setUserAvatar(null);
+                                                        }
+                                                    } else {
+                                                        setOriginalUser({ ...(originalUser || {}), ...body });
+                                                    }
+                                                } catch (_) {
+                                                    setOriginalUser({ ...(originalUser || {}), ...body });
+                                                }
+                                                setNotif({ open: true, type: 'success', title: 'Thành công', message: 'Cập nhật thông tin thành công', duration: 2500 });
+                                                setDisplayName(body.fullName || displayName);
+                                                window.dispatchEvent(new CustomEvent('displayNameUpdated'));
+                                            } else {
+                                                setNotif({ open: true, type: 'error', title: 'Thất bại', message: data?.message || 'Cập nhật thông tin thất bại', duration: 3000 });
+                                            }
+                                        } catch (_e) {
+                                            setNotif({ open: true, type: 'error', title: 'Lỗi', message: 'Có lỗi xảy ra, vui lòng thử lại', duration: 3000 });
+                                        }
+                                    }}
+                                >
+                                    Lưu thay đổi
+                                </button>
                             </div>
                         </section>
                     )}
 
                     {/* Đổi mật khẩu */}
                     {activeTab === 'password' && (
-                        <section className={cx('panel')} style={{ marginTop: 20 }}>
-                            <h3 className={cx('menu-item')}>
-                                <img
-                                    className={cx('mi-large')}
-                                    src={require('../../assets/icons/icon_lock.png')}
-                                    alt="lock"
-                                />
-                                <span className={cx('menu-item')} /> Đổi mật khẩu
-                            </h3>
-                            <form onSubmit={handleChangePassword}>
-                                <div className={cx('form-group')}>
-                                    <label>Mật khẩu hiện tại</label>
-                                    <input
-                                        type="password"
-                                        value={currentPassword}
-                                        onChange={(e) =>
-                                            setCurrentPassword(e.target.value)
-                                        }
-                                        placeholder="********"
-                                    />
-                                </div>
-                                <div className={cx('form-group')}>
-                                    <label>Mật khẩu mới</label>
-                                    <input
-                                        type="password"
-                                        value={newPassword}
-                                        onChange={(e) => setNewPassword(e.target.value)}
-                                        placeholder="********"
-                                    />
-                                </div>
-                                <div className={cx('form-group')}>
-                                    <label>Xác nhận mật khẩu mới</label>
-                                    <input
-                                        type="password"
-                                        value={confirmPassword}
-                                        onChange={(e) =>
-                                            setConfirmPassword(e.target.value)
-                                        }
-                                        placeholder="********"
-                                    />
-                                </div>
-                                {changePwdMsg && (
-                                    <div
-                                        className={cx('form-hint')}
-                                        style={{ color: '#1a3c5a', marginBottom: 8 }}
-                                    >
-                                        {changePwdMsg}
-                                    </div>
-                                )}
-                                <div className={cx('form-actions')}>
-                                    <button
-                                        className={cx('primary')}
-                                        disabled={!isLoggedIn}
-                                    >
-                                        Cập nhật mật khẩu
-                                    </button>
-                                </div>
-                            </form>
-                        </section>
+                        <CustomerChangePasswordPage />
                     )}
                 </main>
                 {showLogoutConfirm && (
@@ -282,8 +439,19 @@ function CustomerAccountPage() {
                     </div>
                 )}
             </div>
+            <Notification
+                open={notif.open}
+                type={notif.type}
+                title={notif.title}
+                message={notif.message}
+                duration={notif.duration}
+                onClose={() => setNotif((n) => ({ ...n, open: false }))}
+            />
         </div>
     );
 }
 
 export default CustomerAccountPage;
+
+//
+

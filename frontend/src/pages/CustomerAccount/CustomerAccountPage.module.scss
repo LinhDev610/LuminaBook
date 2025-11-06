@@ -176,16 +176,27 @@
 .form-actions {
     display: flex;
     justify-content: flex-end;
+    gap: 16px;
 }
 
 .primary {
-    background: #1a3c5a;
+    background: #13354c; /* navy like screenshot */
     color: #fff;
     border: none;
-    padding: 8px 18px;
-    border-radius: 8px;
-    height: 34px;
-    font-weight: 600;
+    padding: 12px 24px;
+    border-radius: 10px;
+    height: auto;
+    font-weight: 700;
+    min-width: 260px; /* make it about 2x the cancel button */
+}
+
+.secondary {
+    background: transparent;
+    color: #13354c;
+    border: 2px solid #13354c;
+    padding: 12px 20px;
+    border-radius: 10px;
+    font-weight: 700;
 }
 
 /* Logout confirm modal (reuse style similar to header modal) */

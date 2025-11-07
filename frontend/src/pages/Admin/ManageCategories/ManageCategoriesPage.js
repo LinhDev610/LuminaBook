@@ -168,7 +168,7 @@ function ManageCategoriesPage() {
                     const cat = probeData?.result || probeData || {};
                     resolvedId = resolveCategoryId(cat) || resolvedId;
                 }
-            } catch (_) { }
+            } catch (_) {}
 
             const resp = await fetch(`${API_BASE_URL}/categories/${resolvedId}`, {
                 method: 'DELETE',
@@ -183,7 +183,8 @@ function ManageCategoriesPage() {
                 try {
                     const errorData = await resp.json().catch(() => ({}));
                     // Backend trả về message trong errorData.message hoặc errorData.result
-                    errorMessage = errorData?.message || errorData?.result || errorMessage;
+                    errorMessage =
+                        errorData?.message || errorData?.result || errorMessage;
                 } catch (_) {
                     const text = await resp.text().catch(() => '');
                     errorMessage = text || errorMessage;
@@ -191,7 +192,9 @@ function ManageCategoriesPage() {
                 throw new Error(errorMessage);
             }
             // Cập nhật danh sách local
-            const next = allCategories.filter((c) => resolveCategoryId(c) !== String(resolvedId));
+            const next = allCategories.filter(
+                (c) => resolveCategoryId(c) !== String(resolvedId),
+            );
             setAllCategories(next);
             applyFilters(searchTerm, sortBy);
             success('Xóa danh mục thành công');
@@ -365,17 +368,21 @@ function ManageCategoriesPage() {
                                         <button
                                             className={cx('btn', 'edit-btn')}
                                             onClick={() =>
-                                                handleEditCategory(resolveCategoryId(category))
+                                                handleEditCategory(
+                                                    resolveCategoryId(category),
+                                                )
                                             }
                                         >
-                                            Sửa
+                                            Chi tiết
                                         </button>
                                         {category.status === true ||
-                                            category.status === 'active' ? (
+                                        category.status === 'active' ? (
                                             <button
                                                 className={cx('btn', 'lock-btn')}
                                                 onClick={() =>
-                                                    handleLockCategory(resolveCategoryId(category))
+                                                    handleLockCategory(
+                                                        resolveCategoryId(category),
+                                                    )
                                                 }
                                             >
                                                 Khóa
@@ -384,7 +391,9 @@ function ManageCategoriesPage() {
                                             <button
                                                 className={cx('btn', 'unlock-btn')}
                                                 onClick={() =>
-                                                    handleUnlockCategory(resolveCategoryId(category))
+                                                    handleUnlockCategory(
+                                                        resolveCategoryId(category),
+                                                    )
                                                 }
                                             >
                                                 Mở khóa
@@ -393,7 +402,9 @@ function ManageCategoriesPage() {
                                         <button
                                             className={cx('btn', 'delete-btn')}
                                             onClick={() =>
-                                                handleDeleteCategory(resolveCategoryId(category))
+                                                handleDeleteCategory(
+                                                    resolveCategoryId(category),
+                                                )
                                             }
                                         >
                                             Xóa

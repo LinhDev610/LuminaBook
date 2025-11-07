@@ -139,12 +139,12 @@ public class CategoryService {
 
         // Check if category has sub-categories
         if (categoryRepository.countSubCategoriesByCategoryId(categoryId) > 0) {
-            throw new AppException(ErrorCode.CATEGORY_NOT_EXISTED); // You might want to create a new error code
+            throw new AppException(ErrorCode.CATEGORY_HAS_SUBCATEGORIES);
         }
 
         // Check if category has products
         if (categoryRepository.countProductsByCategoryId(categoryId) > 0) {
-            throw new AppException(ErrorCode.CATEGORY_NOT_EXISTED); // You might want to create a new error code
+            throw new AppException(ErrorCode.CATEGORY_HAS_PRODUCTS);
         }
 
         categoryRepository.delete(category);

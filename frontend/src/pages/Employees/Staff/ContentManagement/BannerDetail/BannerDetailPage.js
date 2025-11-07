@@ -2,9 +2,7 @@ import classNames from 'classnames/bind';
 import styles from './BannerDetailPage.module.scss';
 import { useEffect, useState, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import {
-    getApiBaseUrl,
-} from '../../../../../services/productUtils';
+import { getApiBaseUrl } from '../../../../../services/utils';
 const cx = classNames.bind(styles);
 
 // Dữ liệu mẫu - sau này sẽ thay bằng API
@@ -77,7 +75,10 @@ export default function BannerDetailPage() {
                     </button>
                     <h1 className={cx('title')}>Quản lý nội dung</h1>
                 </div>
-                <button className={cx('dashboard-btn')} onClick={() => navigate('/staff')}>
+                <button
+                    className={cx('dashboard-btn')}
+                    onClick={() => navigate('/staff')}
+                >
                     <span className={cx('icon-left')}>
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
                             <path
@@ -100,12 +101,16 @@ export default function BannerDetailPage() {
                     <div className={cx('detail-section')}>
                         <div className={cx('detail-row')}>
                             <span className={cx('detail-label')}>Tiêu đề:</span>
-                            <span className={cx('detail-value', 'title-value')}>{banner.title}</span>
+                            <span className={cx('detail-value', 'title-value')}>
+                                {banner.title}
+                            </span>
                         </div>
 
                         <div className={cx('detail-row')}>
                             <span className={cx('detail-label')}>Mô tả:</span>
-                            <span className={cx('detail-value')}>{banner.description}</span>
+                            <span className={cx('detail-value')}>
+                                {banner.description}
+                            </span>
                         </div>
 
                         <div className={cx('detail-row')}>
@@ -128,7 +133,10 @@ export default function BannerDetailPage() {
                         {banner.books && banner.books.length > 0 && (
                             <div className={cx('detail-row')}>
                                 <span className={cx('detail-label')}></span>
-                                <button className={cx('link-btn')} onClick={handleViewBooks}>
+                                <button
+                                    className={cx('link-btn')}
+                                    onClick={handleViewBooks}
+                                >
                                     Xem danh sách sách
                                 </button>
                             </div>
@@ -145,4 +153,3 @@ export default function BannerDetailPage() {
         </div>
     );
 }
-

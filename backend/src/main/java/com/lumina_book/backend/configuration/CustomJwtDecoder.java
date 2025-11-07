@@ -17,9 +17,6 @@ import com.lumina_book.backend.dto.request.IntrospectRequest;
 import com.lumina_book.backend.service.AuthenticationService;
 import com.nimbusds.jose.JOSEException;
 
-import lombok.extern.slf4j.Slf4j;
-
-@Slf4j
 @Component
 public class CustomJwtDecoder implements JwtDecoder {
     @Value("${jwt.signerKey}")
@@ -32,30 +29,30 @@ public class CustomJwtDecoder implements JwtDecoder {
 
     @Override
     public Jwt decode(String token) throws JwtException {
-        log.debug("🔐 Decoding JWT token...");
+
         try {
             // Check token còn hiệu lực không, nếu không -> Exception
             var response = authenticationService.introspect(
                     IntrospectRequest.builder().token(token).build());
 
-            if (!response.isValid()) {
-                log.warn("❌ Token invalid or expired");
-                throw new JwtException("Token invalid");
-            }
-            log.debug("✅ Token is valid");
+            if (!response.isValid()) throw new JwtException("Token invalid");
         } catch (JOSEException | ParseException e) {
-            log.error("❌ Error introspecting token: {}", e.getMessage());
             throw new JwtException(e.getMessage());
         }
 
         // Nếu token còn hiệu lực
         if (Objects.isNull(nimbusJwtDecoder)) {
-            SecretKeySpec secretKeySpec = new SecretKeySpec(signerKey.getBytes(), "HS512");
+            SecretKeySpec secretKeySpec = new SecretKeySpec(getSignerKeyBytes(), "HS512");
             nimbusJwtDecoder = NimbusJwtDecoder.withSecretKey(secretKeySpec)
                     .macAlgorithm(MacAlgorithm.HS512)
                     .build();
         }
 
         return nimbusJwtDecoder.decode(token);
+    }
+
+    private byte[] getSignerKeyBytes() {
+        String sanitized = (signerKey == null) ? "" : signerKey.replaceAll("\\s", "");  // xóa khoảng trắng
+        return sanitized.getBytes();
     }
 }

@@ -3,14 +3,19 @@ import { useNavigate } from 'react-router-dom';
 import classNames from 'classnames/bind';
 import styles from './AddCategoryPage.module.scss';
 import { useAuth } from '../../../../contexts/AuthContext';
+import { useNotification } from '../../../../components/Common/Notification';
+import { getApiBaseUrl, getStoredToken } from '../../../../services/utils';
 
 const cx = classNames.bind(styles);
 
-const API_BASE_URL = 'http://localhost:8080/lumina_book';
+// ========== Constants ==========
+const API_BASE_URL = getApiBaseUrl();
 
 function AddCategoryPage() {
+    // ========== State Management ==========
     const navigate = useNavigate();
     const { openLoginModal } = useAuth();
+    const { success, error } = useNotification();
     const [formData, setFormData] = useState({
         id: '',
         name: '',
@@ -24,27 +29,15 @@ function AddCategoryPage() {
     const [rootCategories, setRootCategories] = useState([]);
     const [loadingCategories, setLoadingCategories] = useState(false);
 
-    // Đọc token/refreshToken từ storage và chuẩn hóa (vì useLocalStorage lưu JSON.stringify)
-    const getStoredToken = (key) => {
-        try {
-            const raw = localStorage.getItem(key);
-            if (!raw) return null;
-            // Nếu giá trị được stringify, parse ra; nếu không, dùng trực tiếp
-            if ((raw.startsWith('"') && raw.endsWith('"')) || raw.startsWith('{') || raw.startsWith('[')) {
-                return JSON.parse(raw);
-            }
-            return raw;
-        } catch (_) {
-            return null;
-        }
-    };
+    // ========== Helper Functions ==========
+    const readToken = (key = 'token') => getStoredToken(key);
 
     // Fetch root categories for parent category dropdown
     useEffect(() => {
         const fetchRootCategories = async () => {
             setLoadingCategories(true);
             try {
-                let token = getStoredToken('token') || sessionStorage.getItem('token');
+                let token = readToken('token') || sessionStorage.getItem('token');
                 const resp = await fetch(`${API_BASE_URL}/categories/root`, {
                     method: 'GET',
                     headers: {
@@ -122,7 +115,7 @@ function AddCategoryPage() {
             try {
                 let token = getStoredToken('token') || sessionStorage.getItem('token');
                 if (!token) {
-                    alert('Thiếu token xác thực. Vui lòng đăng nhập lại bằng tài khoản admin.');
+                    error('Thiếu token xác thực. Vui lòng đăng nhập lại bằng tài khoản admin.');
                     setIsLoading(false);
                     return;
                 }
@@ -136,8 +129,6 @@ function AddCategoryPage() {
                     parentId: (formData.parentId && formData.parentId.trim()) || null
                 };
 
-                console.log('Request data:', JSON.stringify(requestData, null, 2));
-
                 let response = await fetch(`${API_BASE_URL}/categories`, {
                     method: 'POST',
                     headers: {
@@ -148,17 +139,7 @@ function AddCategoryPage() {
                 });
 
                 let data = {};
-                try {
-                    data = await response.json();
-                    console.log('Response data:', JSON.stringify(data, null, 2));
-                    console.log('Response status:', response.status);
-                    console.log('Error code:', data?.code);
-                    console.log('Error message:', data?.message);
-                } catch (err) {
-                    console.error('Error parsing response:', err);
-                    const text = await response.text();
-                    console.log('Response text:', text);
-                }
+                try { data = await response.json(); } catch (_) { }
 
                 // Nếu hết hạn -> thử refresh và gọi lại 1 lần
                 if (response.status === 401) {
@@ -179,7 +160,7 @@ function AddCategoryPage() {
                         localStorage.removeItem('token');
                         localStorage.removeItem('refreshToken');
                         sessionStorage.removeItem('token');
-                        alert('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+                        error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
                         navigate('/', { replace: true });
                         // Mở modal đăng nhập nếu có sẵn context
                         try { openLoginModal?.(); } catch (_) { }
@@ -188,24 +169,17 @@ function AddCategoryPage() {
                 }
 
                 if (response.ok) {
-                    alert('Tạo danh mục thành công!');
+                    success('Tạo danh mục thành công!');
                     navigate('/admin/categories');
                 } else {
                     // Extract error message from response
                     const serverMsg = data?.message || data?.error || data?.result || '';
                     const errorCode = data?.code;
 
-                    console.log('Error details:', {
-                        status: response.status,
-                        code: errorCode,
-                        message: serverMsg,
-                        fullData: data
-                    });
-
                     if (response.status === 403) {
-                        alert('Bạn không có quyền thực hiện hành động này. Vui lòng đăng nhập bằng tài khoản ADMIN.');
+                        error('Bạn không có quyền thực hiện hành động này. Vui lòng đăng nhập bằng tài khoản ADMIN.');
                     } else if (response.status === 401) {
-                        alert('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+                        error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
                     } else if (response.status === 400) {
                         // More specific error messages
                         let errorAlert = '';
@@ -219,19 +193,19 @@ function AddCategoryPage() {
 
                         // Show specific messages for common errors
                         if (serverMsg && (serverMsg.includes('existed') || serverMsg.includes('tồn tại'))) {
-                            alert(`Danh mục đã tồn tại: ${serverMsg}`);
+                            error(`Danh mục đã tồn tại: ${serverMsg}`);
                         } else if (serverMsg && (serverMsg.includes('không được để trống') || serverMsg.includes('không hợp lệ') || serverMsg.includes('vượt quá'))) {
-                            alert(`Dữ liệu không hợp lệ: ${serverMsg}`);
+                            error(`Dữ liệu không hợp lệ: ${serverMsg}`);
                         } else {
-                            alert(`Dữ liệu không hợp lệ: ${errorAlert}`);
+                            error(`Dữ liệu không hợp lệ: ${errorAlert}`);
                         }
                     } else {
-                        alert(`Lỗi tạo danh mục (HTTP ${response.status}): ${serverMsg || 'Không rõ nguyên nhân'}`);
+                        error(`Lỗi tạo danh mục (HTTP ${response.status}): ${serverMsg || 'Không rõ nguyên nhân'}`);
                     }
                 }
             } catch (error) {
                 console.error('Error creating category:', error);
-                alert('Không thể kết nối máy chủ. Vui lòng thử lại.');
+                error('Không thể kết nối máy chủ. Vui lòng thử lại.');
             } finally {
                 setIsLoading(false);
             }

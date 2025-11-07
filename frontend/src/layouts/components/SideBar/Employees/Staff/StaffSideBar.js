@@ -3,11 +3,12 @@ import { NavLink, useLocation } from 'react-router-dom';
 import classNames from 'classnames/bind';
 import styles from './StaffSideBar.module.scss';
 import useLocalStorage from '../../../../../hooks/useLocalStorage';
+import { getApiBaseUrl, getUserRole } from '../../../../../services/utils';
 import avatarFallback from '../../../../../assets/icons/icon_img_guest.png';
 
 const cx = classNames.bind(styles);
 
-const API_BASE_URL = 'http://localhost:8080/lumina_book';
+const API_BASE_URL = getApiBaseUrl();
 
 export default function StaffSideBar() {
     const location = useLocation();
@@ -25,7 +26,7 @@ export default function StaffSideBar() {
                     const parsed = JSON.parse(raw);
                     return typeof parsed === 'string' ? parsed : tokenLS;
                 }
-            } catch (_) {}
+            } catch (_) { }
             return tokenLS;
         }
         return null;
@@ -42,7 +43,7 @@ export default function StaffSideBar() {
                 if (typeof tokenToUse !== 'string') {
                     tokenToUse = String(tokenToUse);
                 }
-                
+
                 const resp = await fetch(`${API_BASE_URL}/users/my-info`, {
                     headers: {
                         Authorization: `Bearer ${tokenToUse}`,
@@ -58,14 +59,7 @@ export default function StaffSideBar() {
                     data?.result?.username ||
                     data?.username ||
                     'Người dùng';
-                const rawRole =
-                    data?.result?.role?.name ||
-                    data?.result?.role ||
-                    data?.role?.name ||
-                    data?.role ||
-                    data?.result?.authorities?.[0]?.authority ||
-                    data?.authorities?.[0]?.authority ||
-                    '';
+                const rawRole = await getUserRole(API_BASE_URL, tokenToUse);
                 const role = rawRole === 'CUSTOMER_SUPPORT' ? 'Chăm sóc khách hàng' : 'Nhân viên';
                 setProfile({ name, role });
             } catch (_e) {

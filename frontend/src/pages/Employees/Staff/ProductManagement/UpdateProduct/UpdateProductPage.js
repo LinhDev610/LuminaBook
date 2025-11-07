@@ -1,17 +1,18 @@
+import { getApiBaseUrl, getStoredToken as getStoredTokenUtil } from '../../../../../services/utils';
+import { normalizeMediaUrl } from '../../../../../services/productUtils';
 import { useMemo, useRef, useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import classNames from 'classnames/bind';
 import styles from './UpdateProductPage.module.scss';
-import { useNavigate, useParams } from 'react-router-dom';
 import backIcon from '../../../../../assets/icons/icon_back.png';
 import Notification from '../../../../../components/Common/Notification';
-import { getApiBaseUrl, getStoredToken as getStoredTokenUtil, normalizeMediaUrl } from '../../../../../services/productUtils';
 
 const cx = classNames.bind(styles);
 
 // ========== Constants ==========
 const API_BASE_URL = getApiBaseUrl();
 
-export default function UpdateProductPage() {
+function UpdateProductPage() {
     // ========== State Management ==========
     const navigate = useNavigate();
     const { id } = useParams();
@@ -253,9 +254,8 @@ export default function UpdateProductPage() {
                 return;
             }
 
-            // Note: ProductUpdateRequest doesn't support media URLs, so we only update product fields
-            // Media will remain as-is. If new media needs to be added, it would require backend changes.
-
+            // Note: ProductUpdateRequest không hỗ trợ các URL media, vì vậy chỉ cập nhật các trường của sản phẩm
+            // Media sẽ được giữ nguyên. Nếu cần thêm media mới, sẽ cần thay đổi ở backend.
             const payload = {
                 name: (name || '').trim(),
                 description: (description || '').trim() || null,
@@ -740,3 +740,5 @@ export default function UpdateProductPage() {
         </div>
     );
 }
+
+export default UpdateProductPage;

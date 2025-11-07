@@ -3,12 +3,14 @@ import { useNavigate, useParams } from 'react-router-dom';
 import classNames from 'classnames/bind';
 import styles from './ProductDetailPage.module.scss';
 import {
-    getApiBaseUrl,
-    getStoredToken,
-    formatDateTime,
     getProductImageUrl,
     normalizeMediaUrl,
 } from '../../../../../services/productUtils';
+import {
+    getApiBaseUrl,
+    getStoredToken,
+    formatDateTime,
+} from '../../../../../services/utils';
 
 const cx = classNames.bind(styles);
 
@@ -57,7 +59,6 @@ function ProductDetailPage() {
             fetchProduct();
         }
     }, [id, API_BASE_URL]);
-
 
     const handleBack = () => {
         navigate('/staff/products');
@@ -146,7 +147,8 @@ function ProductDetailPage() {
                                 alt={product.name}
                                 className={cx('product-image')}
                                 onError={(e) => {
-                                    e.target.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="300" viewBox="0 0 200 300"><rect width="200" height="300" fill="%23e5e7eb"/><text x="50%25" y="50%25" text-anchor="middle" fill="%239ca3af" font-size="14">Không có hình ảnh</text></svg>';
+                                    e.target.src =
+                                        'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="300" viewBox="0 0 200 300"><rect width="200" height="300" fill="%23e5e7eb"/><text x="50%25" y="50%25" text-anchor="middle" fill="%239ca3af" font-size="14">Không có hình ảnh</text></svg>';
                                 }}
                             />
                         ) : (
@@ -155,24 +157,42 @@ function ProductDetailPage() {
                             </div>
                         )}
 
-                        {Array.isArray(product.mediaUrls) && product.mediaUrls.length > 0 && (
-                            <div className={cx('media-thumbs')}>
-                                {product.mediaUrls.map((mUrl, idx) => {
-                                    const nUrl = normalizeMediaUrl(mUrl, API_BASE_URL);
-                                    const isImg = /\.(jpg|jpeg|png|gif|webp)$/i.test(mUrl);
-                                    const isActive = product.defaultMediaUrl === mUrl;
-                                    return (
-                                        <div key={idx} className={cx('thumb', { 'thumb-active': isActive })} onClick={() => { setLightboxIndex(idx); setLightboxOpen(true); }}>
-                                            {isImg ? (
-                                                <img src={nUrl} alt={`thumb-${idx}`} />
-                                            ) : (
-                                                <video src={nUrl} />
-                                            )}
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        )}
+                        {Array.isArray(product.mediaUrls) &&
+                            product.mediaUrls.length > 0 && (
+                                <div className={cx('media-thumbs')}>
+                                    {product.mediaUrls.map((mUrl, idx) => {
+                                        const nUrl = normalizeMediaUrl(
+                                            mUrl,
+                                            API_BASE_URL,
+                                        );
+                                        const isImg = /\.(jpg|jpeg|png|gif|webp)$/i.test(
+                                            mUrl,
+                                        );
+                                        const isActive = product.defaultMediaUrl === mUrl;
+                                        return (
+                                            <div
+                                                key={idx}
+                                                className={cx('thumb', {
+                                                    'thumb-active': isActive,
+                                                })}
+                                                onClick={() => {
+                                                    setLightboxIndex(idx);
+                                                    setLightboxOpen(true);
+                                                }}
+                                            >
+                                                {isImg ? (
+                                                    <img
+                                                        src={nUrl}
+                                                        alt={`thumb-${idx}`}
+                                                    />
+                                                ) : (
+                                                    <video src={nUrl} />
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
                     </div>
 
                     {/* Product Info */}
@@ -180,7 +200,9 @@ function ProductDetailPage() {
                         <div className={cx('info-grid')}>
                             <div className={cx('info-row')}>
                                 <span className={cx('info-label')}>Mã sản phẩm:</span>
-                                <span className={cx('info-value')}>{product.id || '-'}</span>
+                                <span className={cx('info-value')}>
+                                    {product.id || '-'}
+                                </span>
                             </div>
                             <div className={cx('info-row')}>
                                 <span className={cx('info-label')}>Tên sản phẩm:</span>
@@ -220,25 +242,35 @@ function ProductDetailPage() {
                                     </span>
                                 </div>
                             )}
-                            {product.discountValue !== undefined && product.discountValue !== null && product.discountValue > 0 && (
-                                <div className={cx('info-row')}>
-                                    <span className={cx('info-label')}>Giảm giá:</span>
-                                    <span className={cx('info-value')}>
-                                        {formatPrice(product.discountValue)}
-                                    </span>
-                                </div>
-                            )}
+                            {product.discountValue !== undefined &&
+                                product.discountValue !== null &&
+                                product.discountValue > 0 && (
+                                    <div className={cx('info-row')}>
+                                        <span className={cx('info-label')}>
+                                            Giảm giá:
+                                        </span>
+                                        <span className={cx('info-value')}>
+                                            {formatPrice(product.discountValue)}
+                                        </span>
+                                    </div>
+                                )}
                             {product.publicationDate && (
                                 <div className={cx('info-row')}>
-                                    <span className={cx('info-label')}>Ngày xuất bản:</span>
+                                    <span className={cx('info-label')}>
+                                        Ngày xuất bản:
+                                    </span>
                                     <span className={cx('info-value')}>
-                                        {new Date(product.publicationDate).toLocaleDateString('vi-VN')}
+                                        {new Date(
+                                            product.publicationDate,
+                                        ).toLocaleDateString('vi-VN')}
                                     </span>
                                 </div>
                             )}
                             {(product.length || product.width || product.height) && (
                                 <div className={cx('info-row')}>
-                                    <span className={cx('info-label')}>Kích thước (cm):</span>
+                                    <span className={cx('info-label')}>
+                                        Kích thước (cm):
+                                    </span>
                                     <span className={cx('info-value')}>
                                         {[product.length, product.width, product.height]
                                             .filter(Boolean)
@@ -254,22 +286,28 @@ function ProductDetailPage() {
                                     </span>
                                 </div>
                             )}
-                            {product.availableQuantity !== undefined && product.availableQuantity !== null && (
-                                <div className={cx('info-row')}>
-                                    <span className={cx('info-label')}>Số lượng tồn kho:</span>
-                                    <span className={cx('info-value')}>
-                                        {product.availableQuantity}
-                                    </span>
-                                </div>
-                            )}
-                            {product.quantitySold !== undefined && product.quantitySold !== null && (
-                                <div className={cx('info-row')}>
-                                    <span className={cx('info-label')}>Số lượng đã bán:</span>
-                                    <span className={cx('info-value')}>
-                                        {product.quantitySold}
-                                    </span>
-                                </div>
-                            )}
+                            {product.availableQuantity !== undefined &&
+                                product.availableQuantity !== null && (
+                                    <div className={cx('info-row')}>
+                                        <span className={cx('info-label')}>
+                                            Số lượng tồn kho:
+                                        </span>
+                                        <span className={cx('info-value')}>
+                                            {product.availableQuantity}
+                                        </span>
+                                    </div>
+                                )}
+                            {product.quantitySold !== undefined &&
+                                product.quantitySold !== null && (
+                                    <div className={cx('info-row')}>
+                                        <span className={cx('info-label')}>
+                                            Số lượng đã bán:
+                                        </span>
+                                        <span className={cx('info-value')}>
+                                            {product.quantitySold}
+                                        </span>
+                                    </div>
+                                )}
                             {product.submittedByName && (
                                 <div className={cx('info-row')}>
                                     <span className={cx('info-label')}>Người gửi:</span>
@@ -300,14 +338,17 @@ function ProductDetailPage() {
                                     {formatDateTime(product.createdAt)}
                                 </span>
                             </div>
-                            {product.updatedAt && product.updatedAt !== product.createdAt && (
-                                <div className={cx('info-row')}>
-                                    <span className={cx('info-label')}>Ngày cập nhật:</span>
-                                    <span className={cx('info-value')}>
-                                        {formatDateTime(product.updatedAt)}
-                                    </span>
-                                </div>
-                            )}
+                            {product.updatedAt &&
+                                product.updatedAt !== product.createdAt && (
+                                    <div className={cx('info-row')}>
+                                        <span className={cx('info-label')}>
+                                            Ngày cập nhật:
+                                        </span>
+                                        <span className={cx('info-value')}>
+                                            {formatDateTime(product.updatedAt)}
+                                        </span>
+                                    </div>
+                                )}
                             <div className={cx('info-row')}>
                                 <span className={cx('info-label')}>Trạng thái:</span>
                                 <span className={cx('status-badge', statusClass)}>
@@ -316,25 +357,36 @@ function ProductDetailPage() {
                             </div>
                             {product.rejectionReason && (
                                 <div className={cx('info-row')}>
-                                    <span className={cx('info-label')}>Lý do admin gửi lại:</span>
-                                    <span className={cx('info-value', 'rejection-reason')}>
+                                    <span className={cx('info-label')}>
+                                        Lý do admin gửi lại:
+                                    </span>
+                                    <span
+                                        className={cx('info-value', 'rejection-reason')}
+                                    >
                                         {product.rejectionReason}
                                     </span>
                                 </div>
                             )}
-                            {((product.averageRating !== undefined && product.averageRating !== null) || (product.reviewCount !== undefined && product.reviewCount !== null && product.reviewCount > 0)) && (
-                                <div className={cx('info-row')}>
-                                    <span className={cx('info-label')}>Đánh giá:</span>
-                                    <span className={cx('info-value')}>
-                                        {product.averageRating !== undefined && product.averageRating !== null
-                                            ? `${product.averageRating.toFixed(1)}/5.0`
-                                            : '-'}
-                                        {product.reviewCount !== undefined && product.reviewCount !== null && product.reviewCount > 0
-                                            ? ` (${product.reviewCount} đánh giá)`
-                                            : ''}
-                                    </span>
-                                </div>
-                            )}
+                            {((product.averageRating !== undefined &&
+                                product.averageRating !== null) ||
+                                (product.reviewCount !== undefined &&
+                                    product.reviewCount !== null &&
+                                    product.reviewCount > 0)) && (
+                                    <div className={cx('info-row')}>
+                                        <span className={cx('info-label')}>Đánh giá:</span>
+                                        <span className={cx('info-value')}>
+                                            {product.averageRating !== undefined &&
+                                                product.averageRating !== null
+                                                ? `${product.averageRating.toFixed(1)}/5.0`
+                                                : '-'}
+                                            {product.reviewCount !== undefined &&
+                                                product.reviewCount !== null &&
+                                                product.reviewCount > 0
+                                                ? ` (${product.reviewCount} đánh giá)`
+                                                : ''}
+                                        </span>
+                                    </div>
+                                )}
                             <div className={cx('info-row', 'description-row')}>
                                 <span className={cx('info-label')}>Mô tả:</span>
                                 <span className={cx('info-value', 'description')}>
@@ -361,11 +413,26 @@ function ProductDetailPage() {
                 </div>
             </div>
             {lightboxOpen && (
-                <div className={cx('modal-overlay')} onClick={() => setLightboxOpen(false)}>
+                <div
+                    className={cx('modal-overlay')}
+                    onClick={() => setLightboxOpen(false)}
+                >
                     <div className={cx('modal')} onClick={(e) => e.stopPropagation()}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                        <div
+                            style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                marginBottom: 12,
+                            }}
+                        >
                             <h2 className={cx('modal-title')}>{product.name}</h2>
-                            <button className={cx('btn', 'btn-cancel')} onClick={() => setLightboxOpen(false)}>Đóng</button>
+                            <button
+                                className={cx('btn', 'btn-cancel')}
+                                onClick={() => setLightboxOpen(false)}
+                            >
+                                Đóng
+                            </button>
                         </div>
                         <div style={{ textAlign: 'center' }}>
                             {(() => {
@@ -373,9 +440,26 @@ function ProductDetailPage() {
                                 const nUrl = normalizeMediaUrl(mUrl, API_BASE_URL);
                                 const isImg = /\.(jpg|jpeg|png|gif|webp)$/i.test(mUrl);
                                 return isImg ? (
-                                    <img src={nUrl} alt="preview-large" style={{ maxWidth: '100%', maxHeight: '70vh', borderRadius: 8 }} />
+                                    <img
+                                        src={nUrl}
+                                        alt="preview-large"
+                                        style={{
+                                            maxWidth: '100%',
+                                            maxHeight: '70vh',
+                                            borderRadius: 8,
+                                        }}
+                                    />
                                 ) : (
-                                    <video src={nUrl} style={{ maxWidth: '100%', maxHeight: '70vh', borderRadius: 8 }} controls autoPlay />
+                                    <video
+                                        src={nUrl}
+                                        style={{
+                                            maxWidth: '100%',
+                                            maxHeight: '70vh',
+                                            borderRadius: 8,
+                                        }}
+                                        controls
+                                        autoPlay
+                                    />
                                 );
                             })()}
                         </div>
@@ -385,8 +469,18 @@ function ProductDetailPage() {
                                 const isImg = /\.(jpg|jpeg|png|gif|webp)$/i.test(mUrl);
                                 const active = idx === lightboxIndex;
                                 return (
-                                    <div key={idx} className={cx('thumb', { 'thumb-active': active })} onClick={() => setLightboxIndex(idx)}>
-                                        {isImg ? <img src={nUrl} alt={`lb-${idx}`} /> : <video src={nUrl} />}
+                                    <div
+                                        key={idx}
+                                        className={cx('thumb', {
+                                            'thumb-active': active,
+                                        })}
+                                        onClick={() => setLightboxIndex(idx)}
+                                    >
+                                        {isImg ? (
+                                            <img src={nUrl} alt={`lb-${idx}`} />
+                                        ) : (
+                                            <video src={nUrl} />
+                                        )}
                                     </div>
                                 );
                             })}

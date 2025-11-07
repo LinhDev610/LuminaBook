@@ -6,13 +6,16 @@ import iconVisible from '../../../../assets/icons/icon-visible.png';
 import iconInvisible from '../../../../assets/icons/icon-invisible.png';
 import Notification from '../../../../components/Common/Notification/Notification';
 import useLocalStorage from '../../../../hooks/useLocalStorage';
+import { getApiBaseUrl, getStoredToken } from '../../../../services/utils';
+import { useNotification } from '../../../../components/Common/Notification';
 
 const cx = classNames.bind(styles);
 
-const API_BASE_URL = 'http://localhost:8080/lumina_book';
+const API_BASE_URL = getApiBaseUrl();
 
 function ProfileStaffPage() {
     const navigate = useNavigate();
+    const { success, error, notify } = useNotification();
 
     const [profile, setProfile] = useState({
         id: null,
@@ -33,19 +36,6 @@ function ProfileStaffPage() {
     const [showForceConfirmPassword, setShowForceConfirmPassword] = useState(false);
     const [notif, setNotif] = useState({ open: false, type: 'success', title: '', message: '', duration: 3000 });
     const [, setStoredDisplayName] = useLocalStorage('displayName', null);
-
-    const getStoredToken = (key) => {
-        try {
-            const raw = localStorage.getItem(key);
-            if (!raw) return null;
-            if ((raw.startsWith('"') && raw.endsWith('"')) || raw.startsWith('{') || raw.startsWith('[')) {
-                return JSON.parse(raw);
-            }
-            return raw;
-        } catch (_) {
-            return null;
-        }
-    };
 
     const token = getStoredToken('token') || sessionStorage.getItem('token');
 
@@ -75,7 +65,7 @@ function ProfileStaffPage() {
                 // If backend sends a flag for first login, respect it.
                 // Temporary: infer first-login if password must be changed (backend may send p.mustChangePassword)
                 if (p.mustChangePassword) setForceChange(true);
-            } catch (_) {}
+            } catch (_) { }
         })();
     }, [token, navigate]);
 
@@ -133,12 +123,13 @@ function ProfileStaffPage() {
                 }
 
                 setNotif({ open: true, type: 'success', title: 'Thành công', message: 'Đã lưu thay đổi hồ sơ', duration: 2500 });
+                success('Lưu thay đổi thành công');
             } else {
                 const data = await resp.json().catch(() => ({}));
-                setNotif({ open: true, type: 'error', title: 'Lỗi', message: data?.message || `Không thể lưu hồ sơ (mã ${resp.status})`, duration: 3500 });
+                error(`Lỗi lưu hồ sơ: ${data?.message || resp.status}`);
             }
         } catch (e) {
-            setNotif({ open: true, type: 'error', title: 'Lỗi', message: 'Không thể kết nối máy chủ', duration: 3500 });
+            notify('error', 'Không thể kết nối máy chủ.');
         } finally {
             setIsSaving(false);
         }
@@ -146,7 +137,7 @@ function ProfileStaffPage() {
 
     const handleChangePassword = async () => {
         if (!newPassword || newPassword !== confirmPassword) {
-            setNotif({ open: true, type: 'error', title: 'Không khớp', message: 'Mật khẩu mới và xác nhận không trùng khớp', duration: 3000 });
+            notify('error', 'Mật khẩu mới không khớp');
             return;
         }
         try {
@@ -158,9 +149,8 @@ function ProfileStaffPage() {
                 },
                 body: JSON.stringify({ currentPassword: oldPassword, newPassword }),
             });
-            const data = await resp.json().catch(() => ({}));
-            if (resp.ok && (data?.code === 200 || data?.code === 1000)) {
-                setNotif({ open: true, type: 'success', title: 'Thành công', message: 'Đổi mật khẩu thành công', duration: 2500 });
+            if (resp.ok) {
+                success('Cập nhật mật khẩu thành công');
                 setOldPassword('');
                 setNewPassword('');
                 setConfirmPassword('');
@@ -171,9 +161,11 @@ function ProfileStaffPage() {
                 setShowForceNewPassword(false);
                 setShowForceConfirmPassword(false);
             } else {
-                setNotif({ open: true, type: 'error', title: 'Thất bại', message: data?.message || `Đổi mật khẩu thất bại (mã ${resp.status})`, duration: 3500 });
+                const data = await resp.json().catch(() => ({}));
+                error(`Đổi mật khẩu thất bại: ${data?.message || resp.status}`);
             }
         } catch (_) {
+
             setNotif({ open: true, type: 'error', title: 'Lỗi', message: 'Không thể kết nối máy chủ', duration: 3500 });
         }
     };
@@ -186,7 +178,7 @@ function ProfileStaffPage() {
                 <button className={cx('dashboard-btn')} onClick={() => navigate('/staff')}>
                     <span className={cx('icon-left')}>
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                            <path d="M15 18L9 12L15 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            <path d="M15 18L9 12L15 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
                     </span>
                     Dashboard
@@ -223,7 +215,7 @@ function ProfileStaffPage() {
                             onChange={(e) => setProfile({ ...profile, phoneNumber: e.target.value })}
                         />
                     </div>
-                    
+
                     <div className={cx('actions')}>
                         <button className={cx('btn', 'btn-muted')} onClick={() => window.history.back()}>Hủy</button>
                         <button className={cx('btn', 'btn-primary')} onClick={handleSaveProfile} disabled={isSaving}>

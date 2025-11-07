@@ -1,9 +1,10 @@
 import { useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import useLocalStorage from '../hooks/useLocalStorage';
+import { getApiBaseUrl, getUserRole } from '../services/utils';
 
 // Component để xử lý redirect admin một cách mượt mà
-const API_BASE_URL = 'http://localhost:8080/lumina_book';
+const API_BASE_URL = getApiBaseUrl();
 
 function AdminRedirectHandler() {
     const navigate = useNavigate();
@@ -18,27 +19,27 @@ function AdminRedirectHandler() {
     useEffect(() => {
         const hasToken = token || sessionToken;
         const currentPath = location.pathname;
-        
+
         // Reset check khi pathname thay đổi (F5 trên route khác)
         if (lastPathnameRef.current !== currentPath) {
             checkedRoleRef.current = false;
             lastPathnameRef.current = currentPath;
         }
-        
+
         // Set flag NGAY LẬP TỨC nếu có token và đang ở trang public (trước khi async check)
         if (hasToken && (currentPath === '/' || (!currentPath.startsWith('/admin') && !currentPath.startsWith('/staff')))) {
             sessionStorage.setItem('_checking_role', '1');
         }
-        
+
         // Chỉ check role 1 lần cho mỗi pathname, khi có token
         if (hasToken && !checkedRoleRef.current) {
             checkedRoleRef.current = true;
-            
+
             (async () => {
                 try {
                     // Đọc trực tiếp từ storage và parse để tránh vấn đề JSON.stringify
                     let tokenToUse = sessionToken; // sessionStorage không bị stringify
-                    
+
                     // Nếu không có trong sessionStorage, đọc từ localStorage và parse
                     if (!tokenToUse) {
                         try {
@@ -52,29 +53,17 @@ function AdminRedirectHandler() {
                             tokenToUse = token;
                         }
                     }
-                    
+
                     if (!tokenToUse) {
                         return;
                     }
-                    
+
                     // Đảm bảo token là string (không phải object)
                     if (typeof tokenToUse !== 'string') {
                         tokenToUse = String(tokenToUse);
                     }
-                    
-                    const me = await fetch(`${API_BASE_URL}/users/my-info`, {
-                        headers: {
-                            Authorization: `Bearer ${tokenToUse}`,
-                            'Content-Type': 'application/json',
-                        },
-                    });
-                    const meData = await me.json().catch(() => ({}));
-                    const userRole = meData?.result?.role?.name ||
-                        meData?.result?.role ||
-                        meData?.role?.name ||
-                        meData?.role ||
-                        meData?.result?.authorities?.[0]?.authority ||
-                        meData?.authorities?.[0]?.authority;
+
+                    const userRole = await getUserRole(API_BASE_URL, tokenToUse);
 
                     // Redirect dựa trên role và route hiện tại
                     if (userRole === 'ADMIN') {

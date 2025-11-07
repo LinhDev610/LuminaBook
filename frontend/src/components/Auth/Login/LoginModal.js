@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useLocalStorage from '../../../hooks/useLocalStorage';
 import { useAuth } from '../../../contexts/AuthContext';
-import { isValidEmail } from '../../../services/utils';
+import { isValidEmail, getApiBaseUrl, getUserRole } from '../../../services/utils';
 import '../Auth.module.scss';
 import visibleIcon from '../../../assets/icons/icon-visible.png';
 import invisibleIcon from '../../../assets/icons/icon-invisible.png';
@@ -13,7 +13,7 @@ import styles from './LoginModal.module.scss';
 
 const cx = classNames.bind(styles);
 
-const API_BASE_URL = 'http://localhost:8080/lumina_book';
+const API_BASE_URL = getApiBaseUrl();
 
 export default function LoginModal({ open = false, onClose }) {
     const navigate = useNavigate();
@@ -87,38 +87,49 @@ export default function LoginModal({ open = false, onClose }) {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        
+
         // Validation bình thường cho tất cả tài khoản
         if (!email || email.trim() === '') {
             setError('Vui lòng nhập địa chỉ email');
             return;
         }
-        
+
         console.log('Email validation check:', { email: email.trim(), isValid: isValidEmail(email) });
-        
+
         if (!isValidEmail(email)) {
             setError('Email sai định dạng');
             return;
         }
-        
+
         setError('');
         setIsLoading(true);
-        
+
         try {
             const payload = { email: email.trim(), password };
             console.log('Login attempt with:', { email: email.trim(), password: password ? '***' : 'empty' });
-            
+
             const resp = await fetch(`${API_BASE_URL}/auth/token`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload),
             });
-            
+
             console.log('Login response status:', resp.status);
             const data = await resp.json().catch(() => ({}));
             console.log('Login response data:', data);
-            
+
             if (resp.ok && data?.result?.token) {
+                // Handle Remember Me
+                if (rememberMe) {
+                    setToken(data.result.token);
+                    setRefreshToken(data.result.token);
+                    setSavedEmail(email.trim());
+                } else {
+                    sessionStorage.setItem('token', data.result.token);
+                    removeSavedEmail();
+                    removeRefreshToken();
+                }
+
                 try {
                     console.log('Calling /users/my-info with token:', data.result.token);
                     const me = await fetch(`${API_BASE_URL}/users/my-info`, {
@@ -129,11 +140,11 @@ export default function LoginModal({ open = false, onClose }) {
                     });
                     console.log('API call status:', me.status);
                     const meData = await me.json().catch(() => ({}));
-                    
+
                     // Debug: Log API response để kiểm tra cấu trúc
                     console.log('API Response:', meData);
                     console.log('API Response Status:', me.status);
-                    
+
                     // Check account active status
                     const rawActive = meData?.result?.isActive ?? meData?.result?.active ?? meData?.isActive ?? meData?.active;
                     let isActive = false;
@@ -164,6 +175,7 @@ export default function LoginModal({ open = false, onClose }) {
                     // Notify app about token change so headers can re-render immediately
                     window.dispatchEvent(new Event('tokenUpdated'));
 
+
                     // Thử nhiều cách để lấy displayName
                     const displayNameValue =
                         meData?.result?.fullName ||
@@ -173,26 +185,21 @@ export default function LoginModal({ open = false, onClose }) {
                         meData?.username ||
                         meData?.displayName ||
                         email.trim();
-                    
+
                     console.log('Display Name Value:', displayNameValue);
                     console.log('Setting displayName to localStorage...');
                     setDisplayName(displayNameValue);
                     console.log('DisplayName set successfully');
-                    
+
                     // Dispatch custom event to notify header
                     window.dispatchEvent(new CustomEvent('displayNameUpdated'));
-                    
+
                     // Kiểm tra nếu là admin thì chuyển hướng đến trang admin
-                    const userRole = meData?.result?.role?.name || 
-                                   meData?.result?.role ||
-                                   meData?.result?.authorities?.[0]?.authority ||
-                                   meData?.role?.name ||
-                                   meData?.role ||
-                                   meData?.authorities?.[0]?.authority;
-                    
+                    const userRole = await getUserRole(API_BASE_URL, data.result.token);
+
                     console.log('User Role:', userRole);
                     console.log('Full meData structure:', JSON.stringify(meData, null, 2));
-                    
+
                     if (userRole === 'ADMIN') {
                         console.log('Admin detected, redirecting to /admin');
                         onClose?.();
@@ -212,7 +219,7 @@ export default function LoginModal({ open = false, onClose }) {
                     console.log('Error fetching user info:', error);
                     console.log('Setting fallback displayName to email:', email.trim());
                     setDisplayName(email.trim());
-                    
+
                     // Dispatch custom event to notify header
                     window.dispatchEvent(new CustomEvent('displayNameUpdated'));
                 }

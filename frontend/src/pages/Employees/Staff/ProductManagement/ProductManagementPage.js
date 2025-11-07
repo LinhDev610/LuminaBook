@@ -3,34 +3,33 @@ import styles from './ProductManagementPage.scss';
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useLocalStorage from '../../../../hooks/useLocalStorage';
+import { getProductImageUrl, normalizeMediaUrl } from '../../../../services/productUtils';
 import {
     getApiBaseUrl,
     getStoredToken as getStoredTokenUtil,
-    getProductImageUrl,
-    normalizeMediaUrl,
     formatDateTime,
-} from '../../../../services/productUtils';
+} from '../../../../services/utils';
 
 const cx = classNames.bind(styles);
 
 // ========== Constants ==========
 const API_BASE_URL = getApiBaseUrl();
-const FALLBACK_THUMB = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><rect width="40" height="40" fill="%23e5e7eb"/><path d="M8 28l6-7 5 6 4-5 9 10H8z" fill="%23cbd5e1"/><circle cx="14" cy="14" r="4" fill="%23cbd5e1"/></svg>';
+const FALLBACK_THUMB =
+    'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><rect width="40" height="40" fill="%23e5e7eb"/><path d="M8 28l6-7 5 6 4-5 9 10H8z" fill="%23cbd5e1"/><circle cx="14" cy="14" r="4" fill="%23cbd5e1"/></svg>';
 
-/**
- * Staff Product Management Page
- * Quản lý sản phẩm của staff (chỉ sản phẩm do staff này tạo)
- */
+// Quản lý sản phẩm của staff (chỉ sản phẩm do staff này tạo)
 export default function ProductManagementPage() {
     // ========== State Management ==========
     const navigate = useNavigate();
     const [token, setToken, removeToken] = useLocalStorage('token', null);
     const [keyword, setKeyword] = useState('');
-    const [date, setDate] = useState('');
     const [tab, setTab] = useState('all');
     const [allProducts, setAllProducts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [activeCategoryIdSet, setActiveCategoryIdSet] = useState(new Set());
+    const [activeCategoryNameSet, setActiveCategoryNameSet] = useState(new Set());
+    const [activeLoaded, setActiveLoaded] = useState(false);
 
     // ========== Helper Functions ==========
 
@@ -76,7 +75,10 @@ export default function ProductManagementPage() {
 
                 if (!resp.ok) {
                     const errorText = await resp.text().catch(() => '');
-                    throw new Error(`Failed to fetch products: ${resp.status} - ${errorText || resp.statusText}`);
+                    throw new Error(
+                        `Failed to fetch products: ${resp.status} - ${errorText || resp.statusText
+                        }`,
+                    );
                 }
 
                 const data = await resp.json().catch(() => ({}));
@@ -89,11 +91,15 @@ export default function ProductManagementPage() {
                 const mappedProducts = products.map((product) => {
                     try {
                         const imageUrl = getProductImageUrl(product);
-                        const imageUrlNormalized = normalizeMediaUrl(imageUrl, API_BASE_URL);
+                        const imageUrlNormalized = normalizeMediaUrl(
+                            imageUrl,
+                            API_BASE_URL,
+                        );
                         return {
                             id: product.id || '',
                             name: product.name || '',
                             category: product.categoryName || '-',
+                            categoryId: product.categoryId || product.category?.id || '',
                             price: product.price || 0,
                             status: product.status || 'Chờ duyệt',
                             updatedAt: product.updatedAt || product.createdAt,
@@ -129,19 +135,89 @@ export default function ProductManagementPage() {
         fetchProducts();
     }, [token]);
 
+    // Fetch danh sách danh mục active để ẩn sp thuộc danh mục bị khóa
+    useEffect(() => {
+        const fetchActiveCategories = async () => {
+            try {
+                const tokenToUse = getStoredToken();
+                const resp = await fetch(`${API_BASE_URL}/categories/active`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(tokenToUse ? { Authorization: `Bearer ${tokenToUse}` } : {}),
+                    },
+                });
+                const data = await resp.json().catch(() => ({}));
+                const list = Array.isArray(data?.result) ? data.result : Array.isArray(data) ? data : [];
+                const idSet = new Set(list.map((c) => String(c.id || c.categoryId)));
+                const nameSet = new Set(list.map((c) => String(c.name || '').toLowerCase()));
+                setActiveCategoryIdSet(idSet);
+                setActiveCategoryNameSet(nameSet);
+                setActiveLoaded(true);
+            } catch (_) {
+                setActiveCategoryIdSet(new Set());
+                setActiveCategoryNameSet(new Set());
+                setActiveLoaded(false);
+            }
+        };
+        fetchActiveCategories();
+    }, [token]);
+
+    // Lắng nghe sự kiện danh mục thay đổi để refresh tập active
+    useEffect(() => {
+        const onCategoriesUpdated = () => {
+            // refetch active categories
+            (async () => {
+                try {
+                    const tokenToUse = getStoredToken();
+                    const resp = await fetch(`${API_BASE_URL}/categories/active`, {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            ...(tokenToUse ? { Authorization: `Bearer ${tokenToUse}` } : {}),
+                        },
+                    });
+                    const data = await resp.json().catch(() => ({}));
+                    const list = Array.isArray(data?.result) ? data.result : Array.isArray(data) ? data : [];
+                    const idSet = new Set(list.map((c) => String(c.id || c.categoryId)));
+                    const nameSet = new Set(list.map((c) => String(c.name || '').toLowerCase()));
+                    setActiveCategoryIdSet(idSet);
+                    setActiveCategoryNameSet(nameSet);
+                    setActiveLoaded(true);
+                } catch (_) { }
+            })();
+            sessionStorage.removeItem('categories_dirty');
+        };
+        window.addEventListener('categories-updated', onCategoriesUpdated);
+        if (sessionStorage.getItem('categories_dirty') === '1') onCategoriesUpdated();
+        return () => window.removeEventListener('categories-updated', onCategoriesUpdated);
+    }, []);
+
     // ========== Filter Logic ==========
 
     // Filter sản phẩm theo tab (status) và keyword tìm kiếm
     const getFilteredProducts = useCallback(() => {
         let filtered = allProducts;
 
+        // Ẩn sản phẩm thuộc danh mục đã khóa (theo categoryId hoặc tên danh mục)
+        // Chỉ hiển thị sản phẩm thuộc danh mục đang hoạt động khi danh sách active đã được tải
+        if (activeLoaded) {
+            filtered = filtered.filter((p) => {
+                const pid = String(p.categoryId || '').trim();
+                const pname = String(p.category || '').toLowerCase().trim();
+                const idOk = pid && activeCategoryIdSet.has(pid);
+                const nameOk = pname && activeCategoryNameSet.has(pname);
+                return idOk || nameOk;
+            });
+        }
+
         // Filter by status tab
         if (tab !== 'all') {
             // Map tab value (tiếng Anh) sang status value (tiếng Việt)
             const tabToStatusMap = {
-                'pending': 'Chờ duyệt',
-                'approved': 'Đã duyệt',
-                'rejected': 'Từ chối',
+                pending: 'Chờ duyệt',
+                approved: 'Đã duyệt',
+                rejected: 'Từ chối',
             };
             const statusValue = tabToStatusMap[tab] || tab;
             filtered = filtered.filter((p) => p.status === statusValue);
@@ -153,17 +229,16 @@ export default function ProductManagementPage() {
             filtered = filtered.filter(
                 (p) =>
                     p.name?.toLowerCase().includes(searchLower) ||
-                    p.id?.toLowerCase().includes(searchLower)
+                    p.id?.toLowerCase().includes(searchLower),
             );
         }
 
-        // Filter theo ngày (phát triển sau này)
-        if (date) { }
-
         return filtered;
-    }, [allProducts, tab, keyword, date]);
+    }, [allProducts, tab, keyword, activeCategoryIdSet, activeCategoryNameSet, activeLoaded]);
 
-    const filtered = getFilteredProducts().sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0));
+    const filtered = getFilteredProducts().sort(
+        (a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0),
+    );
 
     // ========== Render States ==========
 
@@ -205,12 +280,6 @@ export default function ProductManagementPage() {
                     value={keyword}
                     onChange={(e) => setKeyword(e.target.value)}
                     placeholder="Tìm kiếm theo mã, tên sản phẩm,..."
-                />
-                <input
-                    type="date"
-                    className={cx('date-input')}
-                    value={date}
-                    onChange={(e) => setDate(e.target.value)}
                 />
                 <button className={cx('btn', 'secondary')}>Tìm kiếm</button>
             </div>
@@ -283,7 +352,8 @@ export default function ProductManagementPage() {
                                             className={cx('thumb')}
                                             onError={(e) => {
                                                 const img = e.currentTarget;
-                                                if (img.dataset.fallbackApplied === '1') return;
+                                                if (img.dataset.fallbackApplied === '1')
+                                                    return;
                                                 img.dataset.fallbackApplied = '1';
                                                 img.src = FALLBACK_THUMB;
                                             }}
@@ -306,7 +376,7 @@ export default function ProductManagementPage() {
                                                     ? 'approved'
                                                     : p.status === 'Từ chối'
                                                         ? 'rejected'
-                                                        : 'disabled'
+                                                        : 'disabled',
                                         )}
                                     >
                                         {p.status}
@@ -316,7 +386,9 @@ export default function ProductManagementPage() {
                                 <td>
                                     <button
                                         className={cx('btn', 'view-btn')}
-                                        onClick={() => navigate(`/staff/products/${p.id}`)}
+                                        onClick={() =>
+                                            navigate(`/staff/products/${p.id}`)
+                                        }
                                     >
                                         Xem chi tiết
                                     </button>

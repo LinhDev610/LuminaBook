@@ -3,11 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import classNames from 'classnames/bind';
 import styles from './ManageProductsPage.module.scss';
 import SearchAndSort from '../../../components/Common/SearchAndSort';
-import {
-    getApiBaseUrl,
-    getStoredToken,
-    formatDateTime,
-} from '../../../services/productUtils';
+import { getApiBaseUrl, getStoredToken, formatDateTime } from '../../../services/utils';
 
 const cx = classNames.bind(styles);
 
@@ -31,7 +27,12 @@ function ManageProductsPage() {
     const [filteredProducts, setFilteredProducts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
-    const [categories, setCategories] = useState([{ value: 'all', label: 'Tất cả danh mục' }]);
+    const [categories, setCategories] = useState([
+        { value: 'all', label: 'Tất cả danh mục' },
+    ]);
+    const [activeCategoryIdSet, setActiveCategoryIdSet] = useState(new Set());
+    const [activeCategoryNameSet, setActiveCategoryNameSet] = useState(new Set());
+    const [activeLoaded, setActiveLoaded] = useState(false);
 
     const categoryOptions = categories;
 
@@ -53,7 +54,11 @@ function ManageProductsPage() {
                 throw new Error(text || `HTTP ${resp.status}`);
             }
             const data = await resp.json().catch(() => ({}));
-            const list = Array.isArray(data?.result) ? data.result : (Array.isArray(data) ? data : []);
+            const list = Array.isArray(data?.result)
+                ? data.result
+                : Array.isArray(data)
+                    ? data
+                    : [];
             const mapped = list.map((p) => ({
                 id: p.id || '',
                 name: p.name || '',
@@ -65,9 +70,10 @@ function ManageProductsPage() {
                 updatedAt: p.updatedAt || p.createdAt,
             }));
             // sort by updatedAt desc by default
-            const sorted = [...mapped].sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0));
+            const sorted = [...mapped].sort(
+                (a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0),
+            );
             setAllProducts(sorted);
-            applyFiltersWithSource(sorted, searchTerm, categoryFilter, statusFilter);
         } catch (e) {
             setAllProducts([]);
             setFilteredProducts([]);
@@ -88,13 +94,25 @@ function ManageProductsPage() {
                 },
             });
             const data = await resp.json().catch(() => ({}));
-            const list = Array.isArray(data?.result) ? data.result : (Array.isArray(data) ? data : []);
+            const list = Array.isArray(data?.result)
+                ? data.result
+                : Array.isArray(data)
+                    ? data
+                    : [];
             const opts = [{ value: 'all', label: 'Tất cả danh mục' }].concat(
-                list.map(c => ({ value: c.id || c.categoryId, label: c.name }))
+                list.map((c) => ({ value: c.id || c.categoryId, label: c.name })),
             );
             setCategories(opts);
+            const idSet = new Set(list.map((c) => String(c.id || c.categoryId)));
+            const nameSet = new Set(list.map((c) => String(c.name || '').toLowerCase()));
+            setActiveCategoryIdSet(idSet);
+            setActiveCategoryNameSet(nameSet);
+            setActiveLoaded(true);
         } catch (_) {
             setCategories([{ value: 'all', label: 'Tất cả danh mục' }]);
+            setActiveCategoryIdSet(new Set());
+            setActiveCategoryNameSet(new Set());
+            setActiveLoaded(false);
         }
     };
 
@@ -103,6 +121,11 @@ function ManageProductsPage() {
         fetchCategories();
         fetchProducts();
     }, []);
+
+    // Re-apply filters when data or filters change
+    useEffect(() => {
+        applyFiltersWithSource(allProducts, searchTerm, categoryFilter, statusFilter);
+    }, [allProducts, searchTerm, categoryFilter, statusFilter, activeLoaded, activeCategoryIdSet, activeCategoryNameSet]);
 
     // ========== Event Handlers ==========
 
@@ -153,7 +176,20 @@ function ManageProductsPage() {
 
         // Filter by category ID
         if (categoryId && categoryId !== 'all') {
-            filtered = filtered.filter((product) => String(product.categoryId) === String(categoryId));
+            filtered = filtered.filter(
+                (product) => String(product.categoryId) === String(categoryId),
+            );
+        }
+
+        // Hide products of locked categories once active categories are loaded
+        if (activeLoaded) {
+            filtered = filtered.filter((p) => {
+                const pid = String(p.categoryId || '').trim();
+                const pname = String(p.category || '').toLowerCase().trim();
+                const idOk = pid && activeCategoryIdSet.has(pid);
+                const nameOk = pname && activeCategoryNameSet.has(pname);
+                return idOk || nameOk;
+            });
         }
 
         // Filter by status
@@ -162,7 +198,9 @@ function ManageProductsPage() {
         }
 
         // Sort by updatedAt desc
-        const sorted = [...filtered].sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0));
+        const sorted = [...filtered].sort(
+            (a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0),
+        );
         setFilteredProducts(sorted);
     };
 
@@ -283,7 +321,10 @@ function ManageProductsPage() {
                     <tbody>
                         {filteredProducts.length === 0 ? (
                             <tr>
-                                <td colSpan={7} style={{ textAlign: 'center', padding: '20px' }}>
+                                <td
+                                    colSpan={7}
+                                    style={{ textAlign: 'center', padding: '20px' }}
+                                >
                                     {allProducts.length === 0
                                         ? 'Không có sản phẩm nào.'
                                         : 'Không có sản phẩm phù hợp với bộ lọc.'}
@@ -304,11 +345,17 @@ function ManageProductsPage() {
                                     >
                                         {product.status}
                                     </td>
-                                    <td>{formatDateTime(product.updatedAt || product.createdAt)}</td>
+                                    <td>
+                                        {formatDateTime(
+                                            product.updatedAt || product.createdAt,
+                                        )}
+                                    </td>
                                     <td className={cx('actions')}>
                                         <button
                                             className={cx('btn', 'view-btn')}
-                                            onClick={() => navigate(`/admin/products/${product.id}`)}
+                                            onClick={() =>
+                                                navigate(`/admin/products/${product.id}`)
+                                            }
                                         >
                                             Xem chi tiết
                                         </button>

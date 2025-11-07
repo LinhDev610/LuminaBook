@@ -130,7 +130,7 @@ function ManageCategoriesPage() {
     };
 
     const getStatusText = (status) =>
-        status === true || status === 'active' ? 'Hoạt động' : 'Đã khóa';
+        status === true || status === 'active' ? 'Hiển thị' : 'Ẩn';
     const getStatusClass = (status) =>
         status === true || status === 'active' ? 'active' : 'locked';
 
@@ -168,7 +168,7 @@ function ManageCategoriesPage() {
                     const cat = probeData?.result || probeData || {};
                     resolvedId = resolveCategoryId(cat) || resolvedId;
                 }
-            } catch (_) {}
+            } catch (_) { }
 
             const resp = await fetch(`${API_BASE_URL}/categories/${resolvedId}`, {
                 method: 'DELETE',
@@ -356,13 +356,15 @@ function ManageCategoriesPage() {
                                     <td>{category.description || '-'}</td>
                                     <td>{category.parentName || '-'}</td>
                                     <td>{category.productCount || 0}</td>
-                                    <td
-                                        className={cx(
-                                            'status',
-                                            getStatusClass(category.status),
-                                        )}
-                                    >
-                                        {getStatusText(category.status)}
+                                    <td>
+                                        <span
+                                            className={cx(
+                                                'badge',
+                                                getStatusClass(category.status),
+                                            )}
+                                        >
+                                            {getStatusText(category.status)}
+                                        </span>
                                     </td>
                                     <td className={cx('actions')}>
                                         <button
@@ -375,30 +377,6 @@ function ManageCategoriesPage() {
                                         >
                                             Chi tiết
                                         </button>
-                                        {category.status === true ||
-                                        category.status === 'active' ? (
-                                            <button
-                                                className={cx('btn', 'lock-btn')}
-                                                onClick={() =>
-                                                    handleLockCategory(
-                                                        resolveCategoryId(category),
-                                                    )
-                                                }
-                                            >
-                                                Khóa
-                                            </button>
-                                        ) : (
-                                            <button
-                                                className={cx('btn', 'unlock-btn')}
-                                                onClick={() =>
-                                                    handleUnlockCategory(
-                                                        resolveCategoryId(category),
-                                                    )
-                                                }
-                                            >
-                                                Mở khóa
-                                            </button>
-                                        )}
                                         <button
                                             className={cx('btn', 'delete-btn')}
                                             onClick={() =>
@@ -409,6 +387,30 @@ function ManageCategoriesPage() {
                                         >
                                             Xóa
                                         </button>
+                                        {category.status === true ||
+                                            category.status === 'active' ? (
+                                            <button
+                                                className={cx('btn', 'lock-btn')}
+                                                onClick={() =>
+                                                    handleLockCategory(
+                                                        resolveCategoryId(category),
+                                                    )
+                                                }
+                                            >
+                                                Ẩn
+                                            </button>
+                                        ) : (
+                                            <button
+                                                className={cx('btn', 'unlock-btn')}
+                                                onClick={() =>
+                                                    handleUnlockCategory(
+                                                        resolveCategoryId(category),
+                                                    )
+                                                }
+                                            >
+                                                Hiển thị
+                                            </button>
+                                        )}
                                     </td>
                                 </tr>
                             ))

@@ -134,14 +134,21 @@
     color: #000;
 }
 
-.status.active {
-    color: #22C55E;
+.badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 12px;
     font-weight: 500;
+    color: #fff;
 }
 
-.status.locked {
-    color: #EF4444;
-    font-weight: 500;
+.badge.active {
+    background: #10b981;
+}
+
+.badge.locked {
+    background: #f59e0b;
 }
 
 .actions {
@@ -160,38 +167,38 @@
 }
 
 .edit-btn {
-    background: #3B82F6;
+    background: #1A3C5A;
     color: white;
 }
 
 .edit-btn:hover {
-    background: #2563eb;
+    background: #1A3C5A;
 }
 
 .lock-btn {
-    background: #3B82F6;
+    background: #009688;
     color: white;
 }
 
 .lock-btn:hover {
-    background: #2563eb;
+    background: #009688;
 }
 
 .unlock-btn {
-    background: #22C55E;
+    background: #009688;
     color: white;
 }
 
 .unlock-btn:hover {
-    background: #16a34a;
+    background: #009688;
 }
 
 .delete-btn {
-    background: #EF4444;
+    background: #D9534F;
     color: white;
 }
 
 .delete-btn:hover {
-    background: #dc2626;
+    background: #D9534F;
 }
 

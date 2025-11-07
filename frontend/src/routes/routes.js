@@ -84,6 +84,7 @@ const privateRoutes = [
     { path: '/staff/content', component: ContentManagementPage, layout: StaffLayout },
     { path: '/staff/content/:id', component: BannerDetailPage, layout: StaffLayout },
     { path: '/staff/vouchers', component: VouchersPromotionsPage, layout: StaffLayout },
+    { path: '/staff/orders', component: VouchersPromotionsPage, layout: StaffLayout },
     { path: '/staff/profile', component: ProfileStaffPage, layout: StaffLayout },
 ];
 

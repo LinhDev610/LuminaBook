@@ -78,9 +78,9 @@ const privateRoutes = [
     // Staff routes
     { path: '/staff', component: StaffMainPage, layout: StaffLayout },
     { path: '/staff/products', component: StaffProductsPage, layout: StaffLayout },
+    { path: '/staff/products/new', component: StaffAddProductPage, layout: StaffLayout },
     { path: '/staff/products/:id', component: StaffProductDetailPage, layout: StaffLayout },
     { path: '/staff/products/:id/update', component: StaffUpdateProductPage, layout: StaffLayout },
-    { path: '/staff/products/new', component: StaffAddProductPage, layout: StaffLayout },
     { path: '/staff/content', component: ContentManagementPage, layout: StaffLayout },
     { path: '/staff/content/:id', component: BannerDetailPage, layout: StaffLayout },
     { path: '/staff/vouchers', component: VouchersPromotionsPage, layout: StaffLayout },

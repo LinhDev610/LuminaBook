@@ -34,6 +34,30 @@
 .label { color: #666; }
 .value { color: #111; font-weight: 500; }
 
+.input,
+.textarea {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #d0d5dd;
+    border-radius: 8px;
+    font-size: 14px;
+    color: #111;
+    background: #fff;
+    transition: border-color 0.2s ease;
+}
+
+.input:focus,
+.textarea:focus {
+    outline: none;
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.1);
+}
+
+.textarea {
+    min-height: 64px;
+    resize: vertical;
+}
+
 .badge {
     padding: 4px 10px;
     border-radius: 8px;
@@ -50,10 +74,23 @@
     border: none;
     color: #fff;
     cursor: pointer;
+    transition: transform 0.15s ease;
 }
+
+.btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.btn:not(:disabled):active {
+    transform: scale(0.98);
+}
+
 .edit { background: #0d6efd; }
 .toggle { background: #6c757d; }
 .delete { background: #dc3545; }
+.save { background: #198754; }
+.cancel { background: #6c757d; }
 
 .orders { margin-top: 24px; background: #fff; padding: 16px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
 .orders-title { margin: 4px 0 12px 0; font-size: 18px; font-weight: 700; }

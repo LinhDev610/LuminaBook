@@ -2,6 +2,10 @@ import React, { useEffect, useState } from 'react';
 import classNames from 'classnames/bind';
 import styles from './ProfileStaffPage.scss';
 import { useNavigate } from 'react-router-dom';
+import iconVisible from '../../../../assets/icons/icon-visible.png';
+import iconInvisible from '../../../../assets/icons/icon-invisible.png';
+import Notification from '../../../../components/Common/Notification/Notification';
+import useLocalStorage from '../../../../hooks/useLocalStorage';
 
 const cx = classNames.bind(styles);
 
@@ -11,6 +15,7 @@ function ProfileStaffPage() {
     const navigate = useNavigate();
 
     const [profile, setProfile] = useState({
+        id: null,
         fullName: '',
         email: '',
         phoneNumber: '',
@@ -21,6 +26,13 @@ function ProfileStaffPage() {
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [forceChange, setForceChange] = useState(false);
+    const [showOldPassword, setShowOldPassword] = useState(false);
+    const [showNewPassword, setShowNewPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+    const [showForceNewPassword, setShowForceNewPassword] = useState(false);
+    const [showForceConfirmPassword, setShowForceConfirmPassword] = useState(false);
+    const [notif, setNotif] = useState({ open: false, type: 'success', title: '', message: '', duration: 3000 });
+    const [, setStoredDisplayName] = useLocalStorage('displayName', null);
 
     const getStoredToken = (key) => {
         try {
@@ -53,6 +65,7 @@ function ProfileStaffPage() {
                 const meData = await me.json().catch(() => ({}));
                 const p = meData?.result || meData || {};
                 setProfile({
+                    id: p.id ?? p.userId ?? null,
                     fullName: p.fullName || '',
                     email: p.email || '',
                     phoneNumber: p.phoneNumber || '',
@@ -67,9 +80,13 @@ function ProfileStaffPage() {
     }, [token, navigate]);
 
     const handleSaveProfile = async () => {
+        if (!profile.id) {
+            setNotif({ open: true, type: 'error', title: 'Lỗi', message: 'Không xác định được tài khoản. Vui lòng tải lại trang.', duration: 4000 });
+            return;
+        }
         setIsSaving(true);
         try {
-            const resp = await fetch(`${API_BASE_URL}/users`, {
+            const resp = await fetch(`${API_BASE_URL}/users/${profile.id}`, {
                 method: 'PUT',
                 headers: {
                     Authorization: `Bearer ${token}`,
@@ -82,13 +99,46 @@ function ProfileStaffPage() {
                 }),
             });
             if (resp.ok) {
-                alert('Lưu thay đổi thành công');
+                let updatedData = null;
+                try {
+                    const payload = await resp.json().catch(() => null);
+                    updatedData = payload?.result || payload || null;
+                } catch (_) {
+                    updatedData = null;
+                }
+
+                if (updatedData) {
+                    setProfile((prev) => ({
+                        ...prev,
+                        fullName: updatedData.fullName ?? prev.fullName,
+                        phoneNumber: updatedData.phoneNumber ?? prev.phoneNumber,
+                        address: updatedData.address ?? prev.address,
+                    }));
+                    if (updatedData.fullName) {
+                        setStoredDisplayName(updatedData.fullName);
+                        try {
+                            localStorage.setItem('displayName', updatedData.fullName);
+                        } catch (_) {}
+                        window.dispatchEvent(new CustomEvent('displayNameUpdated'));
+                    }
+                } else {
+                    // Không có payload nhưng vẫn cập nhật theo state hiện tại
+                    if (profile.fullName) {
+                        setStoredDisplayName(profile.fullName);
+                        try {
+                            localStorage.setItem('displayName', profile.fullName);
+                        } catch (_) {}
+                        window.dispatchEvent(new CustomEvent('displayNameUpdated'));
+                    }
+                }
+
+                setNotif({ open: true, type: 'success', title: 'Thành công', message: 'Đã lưu thay đổi hồ sơ', duration: 2500 });
             } else {
                 const data = await resp.json().catch(() => ({}));
-                alert(`Lỗi lưu hồ sơ: ${data?.message || resp.status}`);
+                setNotif({ open: true, type: 'error', title: 'Lỗi', message: data?.message || `Không thể lưu hồ sơ (mã ${resp.status})`, duration: 3500 });
             }
         } catch (e) {
-            alert('Không thể kết nối máy chủ.');
+            setNotif({ open: true, type: 'error', title: 'Lỗi', message: 'Không thể kết nối máy chủ', duration: 3500 });
         } finally {
             setIsSaving(false);
         }
@@ -96,34 +146,40 @@ function ProfileStaffPage() {
 
     const handleChangePassword = async () => {
         if (!newPassword || newPassword !== confirmPassword) {
-            alert('Mật khẩu mới không khớp');
+            setNotif({ open: true, type: 'error', title: 'Không khớp', message: 'Mật khẩu mới và xác nhận không trùng khớp', duration: 3000 });
             return;
         }
         try {
-            const resp = await fetch(`${API_BASE_URL}/users/change-password`, {
+            const resp = await fetch(`${API_BASE_URL}/auth/change-password`, {
                 method: 'POST',
                 headers: {
                     Authorization: `Bearer ${token}`,
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ oldPassword, newPassword }),
+                body: JSON.stringify({ currentPassword: oldPassword, newPassword }),
             });
-            if (resp.ok) {
-                alert('Cập nhật mật khẩu thành công');
+            const data = await resp.json().catch(() => ({}));
+            if (resp.ok && (data?.code === 200 || data?.code === 1000)) {
+                setNotif({ open: true, type: 'success', title: 'Thành công', message: 'Đổi mật khẩu thành công', duration: 2500 });
                 setOldPassword('');
                 setNewPassword('');
                 setConfirmPassword('');
                 setForceChange(false);
+                setShowOldPassword(false);
+                setShowNewPassword(false);
+                setShowConfirmPassword(false);
+                setShowForceNewPassword(false);
+                setShowForceConfirmPassword(false);
             } else {
-                const data = await resp.json().catch(() => ({}));
-                alert(`Đổi mật khẩu thất bại: ${data?.message || resp.status}`);
+                setNotif({ open: true, type: 'error', title: 'Thất bại', message: data?.message || `Đổi mật khẩu thất bại (mã ${resp.status})`, duration: 3500 });
             }
         } catch (_) {
-            alert('Không thể kết nối máy chủ.');
+            setNotif({ open: true, type: 'error', title: 'Lỗi', message: 'Không thể kết nối máy chủ', duration: 3500 });
         }
     };
 
     return (
+        <>
         <div className={cx('profile-staff-page')}>
             <div className={cx('page-header')}>
                 <h1 className={cx('page-title')}>Hồ sơ cá nhân</h1>
@@ -167,15 +223,7 @@ function ProfileStaffPage() {
                             onChange={(e) => setProfile({ ...profile, phoneNumber: e.target.value })}
                         />
                     </div>
-                    <div className={cx('form-group')}>
-                        <label>Địa chỉ</label>
-                        <input
-                            name="address"
-                            autoComplete="off"
-                            value={profile.address}
-                            onChange={(e) => setProfile({ ...profile, address: e.target.value })}
-                        />
-                    </div>
+                    
                     <div className={cx('actions')}>
                         <button className={cx('btn', 'btn-muted')} onClick={() => window.history.back()}>Hủy</button>
                         <button className={cx('btn', 'btn-primary')} onClick={handleSaveProfile} disabled={isSaving}>
@@ -192,33 +240,63 @@ function ProfileStaffPage() {
 
                         <div className={cx('form-group')}>
                             <label>Mật khẩu hiện tại</label>
-                            <input
-                                type="password"
-                                name="current_password_block_autofill"
-                                autoComplete="off"
-                                value={oldPassword}
-                                onChange={(e) => setOldPassword(e.target.value)}
-                            />
+                            <div className={cx('input-wrap')}>
+                                <input
+                                    type={showOldPassword ? 'text' : 'password'}
+                                    name="current_password_block_autofill"
+                                    autoComplete="off"
+                                    value={oldPassword}
+                                    onChange={(e) => setOldPassword(e.target.value)}
+                                />
+                                <button
+                                    type="button"
+                                    className={cx('toggle-visibility')}
+                                    onClick={() => setShowOldPassword((prev) => !prev)}
+                                    aria-label={showOldPassword ? 'Ẩn mật khẩu hiện tại' : 'Hiện mật khẩu hiện tại'}
+                                >
+                                    <img src={showOldPassword ? iconInvisible : iconVisible} alt={showOldPassword ? 'Ẩn' : 'Hiện'} />
+                                </button>
+                            </div>
                         </div>
                         <div className={cx('form-group')}>
                             <label>Mật khẩu mới</label>
-                            <input
-                                type="password"
-                                name="new_password"
-                                autoComplete="new-password"
-                                value={newPassword}
-                                onChange={(e) => setNewPassword(e.target.value)}
-                            />
+                            <div className={cx('input-wrap')}>
+                                <input
+                                    type={showNewPassword ? 'text' : 'password'}
+                                    name="new_password"
+                                    autoComplete="new-password"
+                                    value={newPassword}
+                                    onChange={(e) => setNewPassword(e.target.value)}
+                                />
+                                <button
+                                    type="button"
+                                    className={cx('toggle-visibility')}
+                                    onClick={() => setShowNewPassword((prev) => !prev)}
+                                    aria-label={showNewPassword ? 'Ẩn mật khẩu mới' : 'Hiện mật khẩu mới'}
+                                >
+                                    <img src={showNewPassword ? iconInvisible : iconVisible} alt={showNewPassword ? 'Ẩn' : 'Hiện'} />
+                                </button>
+                            </div>
                         </div>
                         <div className={cx('form-group')}>
                             <label>Nhập lại mật khẩu mới</label>
-                            <input
-                                type="password"
-                                name="confirm_new_password"
-                                autoComplete="new-password"
-                                value={confirmPassword}
-                                onChange={(e) => setConfirmPassword(e.target.value)}
-                            />
+                            <div className={cx('input-wrap')}>
+                                <input
+                                    type={showConfirmPassword ? 'text' : 'password'}
+                                    name="confirm_new_password"
+                                    autoComplete="new-password"
+                                    value={confirmPassword}
+                                    onChange={(e) => setConfirmPassword(e.target.value)}
+                                />
+                                <button
+                                    type="button"
+                                    className={cx('toggle-visibility')}
+                                    onClick={() => setShowConfirmPassword((prev) => !prev)}
+                                    aria-label={showConfirmPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                                >
+                                    <img src={showConfirmPassword ? iconInvisible : iconVisible} alt={showConfirmPassword ? 'Ẩn' : 'Hiện'} />
+                                </button>
+                            </div>
                         </div>
                         <div className={cx('actions')}>
                             <button type="submit" className={cx('btn', 'btn-primary')}>Cập nhật mật khẩu</button>
@@ -234,23 +312,43 @@ function ProfileStaffPage() {
                         <p className={cx('modal-desc')}>Vui lòng đặt mật khẩu mới để tiếp tục sử dụng hệ thống.</p>
                         <div className={cx('form-group')}>
                             <label>Mật khẩu mới</label>
-                            <input
-                                type="password"
-                                name="first-new-password"
-                                autoComplete="new-password"
-                                value={newPassword}
-                                onChange={(e) => setNewPassword(e.target.value)}
-                            />
+                            <div className={cx('input-wrap')}>
+                                <input
+                                    type={showForceNewPassword ? 'text' : 'password'}
+                                    name="first-new-password"
+                                    autoComplete="new-password"
+                                    value={newPassword}
+                                    onChange={(e) => setNewPassword(e.target.value)}
+                                />
+                                <button
+                                    type="button"
+                                    className={cx('toggle-visibility')}
+                                    onClick={() => setShowForceNewPassword((prev) => !prev)}
+                                    aria-label={showForceNewPassword ? 'Ẩn mật khẩu mới' : 'Hiện mật khẩu mới'}
+                                >
+                                    <img src={showForceNewPassword ? iconInvisible : iconVisible} alt={showForceNewPassword ? 'Ẩn' : 'Hiện'} />
+                                </button>
+                            </div>
                         </div>
                         <div className={cx('form-group')}>
                             <label>Nhập lại mật khẩu mới</label>
-                            <input
-                                type="password"
-                                name="first-confirm-new-password"
-                                autoComplete="new-password"
-                                value={confirmPassword}
-                                onChange={(e) => setConfirmPassword(e.target.value)}
-                            />
+                            <div className={cx('input-wrap')}>
+                                <input
+                                    type={showForceConfirmPassword ? 'text' : 'password'}
+                                    name="first-confirm-new-password"
+                                    autoComplete="new-password"
+                                    value={confirmPassword}
+                                    onChange={(e) => setConfirmPassword(e.target.value)}
+                                />
+                                <button
+                                    type="button"
+                                    className={cx('toggle-visibility')}
+                                    onClick={() => setShowForceConfirmPassword((prev) => !prev)}
+                                    aria-label={showForceConfirmPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                                >
+                                    <img src={showForceConfirmPassword ? iconInvisible : iconVisible} alt={showForceConfirmPassword ? 'Ẩn' : 'Hiện'} />
+                                </button>
+                            </div>
                         </div>
                         <div className={cx('modal-actions')}>
                             <button className={cx('btn', 'btn-primary')} onClick={handleChangePassword}>Đổi mật khẩu</button>
@@ -259,6 +357,15 @@ function ProfileStaffPage() {
                 </div>
             )}
         </div>
+        <Notification
+            open={notif.open}
+            type={notif.type}
+            title={notif.title}
+            message={notif.message}
+            duration={notif.duration}
+            onClose={() => setNotif((prev) => ({ ...prev, open: false }))}
+        />
+        </>
     );
 }
 

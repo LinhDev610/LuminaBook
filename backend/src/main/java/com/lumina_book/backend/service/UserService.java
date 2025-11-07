@@ -214,7 +214,34 @@ public class UserService {
         // isActive - chỉ cập nhật nếu isActive có trong request và user là ADMIN
         if (request.getIsActive() != null) {
             if (isAdmin) {
+                boolean oldIsActiveValue = user.isActive();
                 boolean newIsActiveValue = request.getIsActive();
+                
+                // Check if account is being locked (transition from active to inactive)
+                if (oldIsActiveValue && !newIsActiveValue) {
+                    // Account is being locked - send notification email
+                    String userRoleName = user.getRole() != null ? user.getRole().getName() : null;
+                    
+                    // Only send email for CUSTOMER, STAFF, and CUSTOMER_SUPPORT (not ADMIN)
+                    if (userRoleName != null && 
+                        (userRoleName.equals("CUSTOMER") || 
+                         userRoleName.equals("STAFF") || 
+                         userRoleName.equals("CUSTOMER_SUPPORT"))) {
+                        try {
+                            brevoEmailService.sendAccountLockedEmail(
+                                user.getEmail(),
+                                user.getFullName(),
+                                userRoleName
+                            );
+                            log.info("Account locked notification email sent to: {} (Role: {})", user.getEmail(), userRoleName);
+                        } catch (Exception e) {
+                            // Log error but don't fail the account lock operation
+                            log.error("Failed to send account locked email to: {} - Error: {}", 
+                                user.getEmail(), e.getMessage(), e);
+                        }
+                    }
+                }
+                
                 user.setActive(newIsActiveValue);
             } else {
                 // Nếu không phải ADMIN mà cố gắng thay đổi isActive → từ chối

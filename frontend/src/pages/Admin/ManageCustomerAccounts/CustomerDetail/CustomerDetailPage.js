@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import classNames from 'classnames/bind';
 import styles from './CustomerDetailPage.module.scss';
 import guestAvatar from '../../../../assets/icons/icon_img_guest.png';
+import Notification from '../../../../components/Common/Notification/Notification';
 
 const cx = classNames.bind(styles);
 const API_BASE_URL = 'http://localhost:8080/lumina_book';
@@ -16,6 +17,10 @@ function CustomerDetailPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [orders, setOrders] = useState([]);
+    const [isEditing, setIsEditing] = useState(false);
+    const [formData, setFormData] = useState({ fullName: '', phoneNumber: '', address: '' });
+    const [saving, setSaving] = useState(false);
+    const [notif, setNotif] = useState({ open: false, type: 'success', title: '', message: '', duration: 3000 });
 
     const getStoredToken = useMemo(() => () => {
         try {
@@ -56,7 +61,15 @@ function CustomerDetailPage() {
                 throw new Error(msg);
             }
             const data = await res.json();
-            setCustomer(data?.result || null);
+            const result = data?.result || null;
+            setCustomer(result);
+            if (result) {
+                setFormData({
+                    fullName: result.fullName || '',
+                    phoneNumber: result.phoneNumber || '',
+                    address: result.address || '',
+                });
+            }
         } catch (e) {
             setError(e.message || 'Không thể tải thông tin khách hàng');
         } finally {
@@ -143,6 +156,78 @@ function CustomerDetailPage() {
         }
     };
 
+    const handleStartEdit = () => {
+        if (!customer) return;
+        setFormData({
+            fullName: customer.fullName || '',
+            phoneNumber: customer.phoneNumber || '',
+            address: customer.address || '',
+        });
+        setIsEditing(true);
+    };
+
+    const handleCancelEdit = () => {
+        if (!customer) {
+            setIsEditing(false);
+            return;
+        }
+        setFormData({
+            fullName: customer.fullName || '',
+            phoneNumber: customer.phoneNumber || '',
+            address: customer.address || '',
+        });
+        setIsEditing(false);
+    };
+
+    const handleSaveChanges = async () => {
+        if (!customer) return;
+        setSaving(true);
+        try {
+            const token = getStoredToken();
+            if (!token) {
+                setNotif({ open: true, type: 'error', title: 'Lỗi', message: 'Vui lòng đăng nhập để tiếp tục', duration: 3500 });
+                setSaving(false);
+                return;
+            }
+
+            const payload = {
+                fullName: formData.fullName || '',
+                phoneNumber: formData.phoneNumber || '',
+                address: formData.address || '',
+            };
+
+            const res = await fetch(`${API_BASE_URL}/users/${customer.id}`, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(payload),
+            });
+
+            const data = await res.json().catch(() => ({}));
+
+            if (!res.ok) {
+                const msg = data?.message || `Không thể cập nhật thông tin (mã ${res.status})`;
+                throw new Error(msg);
+            }
+
+            const updated = data?.result || { ...customer, ...payload };
+            setCustomer(updated);
+            setFormData({
+                fullName: updated.fullName || '',
+                phoneNumber: updated.phoneNumber || '',
+                address: updated.address || '',
+            });
+            setIsEditing(false);
+            setNotif({ open: true, type: 'success', title: 'Thành công', message: 'Đã cập nhật thông tin khách hàng', duration: 2500 });
+        } catch (e) {
+            setNotif({ open: true, type: 'error', title: 'Lỗi', message: e.message || 'Không thể lưu thay đổi', duration: 4000 });
+        } finally {
+            setSaving(false);
+        }
+    };
+
     const getStatusText = (active) => (active ? 'Hoạt động' : 'Đã khóa');
 
     if (loading) {
@@ -184,7 +269,16 @@ function CustomerDetailPage() {
                     </div>
                     <div className={cx('info-row')}>
                         <span className={cx('label')}>Tên đăng nhập:</span>
-                        <span className={cx('value')}>{customer.fullName || ''}</span>
+                        {isEditing ? (
+                            <input
+                                className={cx('input')}
+                                value={formData.fullName}
+                                onChange={(e) => setFormData((prev) => ({ ...prev, fullName: e.target.value }))}
+                                placeholder="Nhập họ và tên"
+                            />
+                        ) : (
+                            <span className={cx('value')}>{customer.fullName || ''}</span>
+                        )}
                     </div>
                     <div className={cx('info-row')}>
                         <span className={cx('label')}>Email:</span>
@@ -192,11 +286,30 @@ function CustomerDetailPage() {
                     </div>
                     <div className={cx('info-row')}>
                         <span className={cx('label')}>Số điện thoại:</span>
-                        <span className={cx('value')}>{customer.phoneNumber || ''}</span>
+                        {isEditing ? (
+                            <input
+                                className={cx('input')}
+                                value={formData.phoneNumber}
+                                onChange={(e) => setFormData((prev) => ({ ...prev, phoneNumber: e.target.value }))}
+                                placeholder="Nhập số điện thoại"
+                            />
+                        ) : (
+                            <span className={cx('value')}>{customer.phoneNumber || ''}</span>
+                        )}
                     </div>
                     <div className={cx('info-row')}>
                         <span className={cx('label')}>Địa chỉ:</span>
-                        <span className={cx('value')}>{customer.address || ''}</span>
+                        {isEditing ? (
+                            <textarea
+                                className={cx('textarea')}
+                                value={formData.address}
+                                onChange={(e) => setFormData((prev) => ({ ...prev, address: e.target.value }))}
+                                placeholder="Nhập địa chỉ"
+                                rows={2}
+                            />
+                        ) : (
+                            <span className={cx('value')}>{customer.address || ''}</span>
+                        )}
                     </div>
                     <div className={cx('info-row')}>
                         <span className={cx('label')}>Trạng thái:</span>
@@ -208,9 +321,20 @@ function CustomerDetailPage() {
                     </div>
 
                     <div className={cx('actions')}>
-                        <button className={cx('btn', 'edit')} onClick={() => { /* stay on page */ }}>{'Chỉnh sửa'}</button>
-                        <button className={cx('btn', 'toggle')} onClick={handleToggleLock}>{isActiveResolved ? 'Khóa tài khoản' : 'Mở khóa'}</button>
-                        <button className={cx('btn', 'delete')} onClick={handleDelete}>Xóa</button>
+                        {isEditing ? (
+                            <>
+                                <button className={cx('btn', 'cancel')} onClick={handleCancelEdit} disabled={saving}>Hủy</button>
+                                <button className={cx('btn', 'save')} onClick={handleSaveChanges} disabled={saving}>
+                                    {saving ? 'Đang lưu...' : 'Lưu thay đổi'}
+                                </button>
+                            </>
+                        ) : (
+                            <>
+                                <button className={cx('btn', 'edit')} onClick={handleStartEdit}>Chỉnh sửa</button>
+                                <button className={cx('btn', 'toggle')} onClick={handleToggleLock}>{isActiveResolved ? 'Khóa tài khoản' : 'Mở khóa'}</button>
+                                <button className={cx('btn', 'delete')} onClick={handleDelete}>Xóa</button>
+                            </>
+                        )}
                     </div>
                 </div>
             </div>
@@ -244,6 +368,14 @@ function CustomerDetailPage() {
                     </tbody>
                 </table>
             </div>
+            <Notification
+                open={notif.open}
+                type={notif.type}
+                title={notif.title}
+                message={notif.message}
+                duration={notif.duration}
+                onClose={() => setNotif((prev) => ({ ...prev, open: false }))}
+            />
         </div>
     );
 }

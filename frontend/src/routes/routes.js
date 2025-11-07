@@ -15,8 +15,10 @@ import CustomerAccountLayout from '../layouts/CustomerAccountLayout';
 import AdminLayout from '../layouts/AdminLayout';
 import StaffLayout from '../layouts/StaffLayout';
 import ManageStaffAccountsPage from '../pages/Admin/ManageStaffAccounts';
+import StaffDetailPage from '../pages/Admin/ManageStaffAccounts/StaffDetail';
 import ManageCustomerAccountsPage from '../pages/Admin/ManageCustomerAccounts';
 import CustomerDetailPage from '../pages/Admin/ManageCustomerAccounts/CustomerDetail';
+import ProfileAdminPage from '../pages/Admin/ProfileAdmin';
 import ManageCategoriesPage from '../pages/Admin/ManageCategories/ManageCategoriesPage';
 import AddCategoryPage from '../pages/Admin/ManageCategories/AddCategory/AddCategoryPage';
 import ManageProductsPage from '../pages/Admin/ManageProduct';
@@ -56,6 +58,7 @@ const privateRoutes = [
     // Admin routes
     { path: '/admin', component: ManageStaffAccountsPage, layout: AdminLayout },
     { path: '/admin/add-employee', component: AddEmployeePage, layout: AdminLayout },
+    { path: '/admin/staff/:id', component: StaffDetailPage, layout: AdminLayout },
     { path: '/admin/customer-accounts', component: ManageCustomerAccountsPage, layout: AdminLayout },
     { path: '/admin/customers/:id', component: CustomerDetailPage, layout: AdminLayout },
     { path: '/admin/products', component: ManageProductsPage, layout: AdminLayout },
@@ -67,7 +70,7 @@ const privateRoutes = [
     { path: '/admin/complaints', component: ManageStaffAccountsPage, layout: AdminLayout },
     { path: '/admin/content', component: ManageStaffAccountsPage, layout: AdminLayout },
     { path: '/admin/reports', component: ManageStaffAccountsPage, layout: AdminLayout },
-    { path: '/admin/profile', component: ManageStaffAccountsPage, layout: AdminLayout },
+    { path: '/admin/profile', component: ProfileAdminPage, layout: AdminLayout },
     // Staff routes
     { path: '/staff', component: StaffMainPage, layout: StaffLayout },
     { path: '/staff/products', component: StaffProductsPage, layout: StaffLayout },

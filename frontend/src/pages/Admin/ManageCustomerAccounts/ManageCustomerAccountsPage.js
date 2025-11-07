@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import classNames from 'classnames/bind';
 import styles from './ManageCustomerAccountsPage.module.scss';
 import SearchAndSort from '../../../components/Common/SearchAndSort';
+import ConfirmDialog from '../../../layouts/components/ConfirmDialog';
+import Notification from '../../../components/Common/Notification/Notification';
 
 const cx = classNames.bind(styles);
 
@@ -16,6 +18,13 @@ function ManageCustomerAccountsPage() {
     const [filteredCustomers, setFilteredCustomers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [confirmDialog, setConfirmDialog] = useState({
+        open: false,
+        title: '',
+        message: '',
+        onConfirm: null,
+    });
+    const [notif, setNotif] = useState({ open: false, type: 'success', title: '', message: '', duration: 3000 });
 
     // Helper function to get token from storage
     const getStoredToken = () => {
@@ -190,15 +199,27 @@ function ManageCustomerAccountsPage() {
     };
 
     // Handle lock/unlock customer account
-    const handleToggleLock = async (customerId, currentStatus) => {
+    const handleToggleLock = (customerId, currentStatus) => {
         // Nếu đang active thì khóa (isActive = false), nếu đang locked thì mở khóa (isActive = true)
         const isCurrentlyActive = currentStatus === 'active';
-        const newIsActive = !isCurrentlyActive; // false khi khóa, true khi mở khóa
         const action = isCurrentlyActive ? 'khóa' : 'mở khóa';
+        const customer = allCustomers.find(c => c.id === customerId);
+        const customerName = customer?.fullName || customer?.email || `#${customerId}`;
         
-        if (!window.confirm(`Bạn có chắc chắn muốn ${action} tài khoản này?`)) {
-            return;
-        }
+        setConfirmDialog({
+            open: true,
+            title: 'Xác nhận hành động',
+            message: `Bạn có chắc chắn muốn ${action} tài khoản ${customerName}?`,
+            onConfirm: () => performToggleLock(customerId, currentStatus),
+        });
+    };
+
+    const performToggleLock = async (customerId, currentStatus) => {
+        setConfirmDialog({ open: false, title: '', message: '', onConfirm: null });
+        
+        const isCurrentlyActive = currentStatus === 'active';
+        const newIsActive = !isCurrentlyActive;
+        const action = isCurrentlyActive ? 'khóa' : 'mở khóa';
 
         try {
             const token = getStoredToken();
@@ -249,10 +270,22 @@ function ManageCustomerAccountsPage() {
                 )
             );
             
-            alert(`Đã ${action} tài khoản thành công`);
+            setNotif({ 
+                open: true, 
+                type: 'success', 
+                title: 'Thành công', 
+                message: `Đã ${action} tài khoản thành công`, 
+                duration: 3000 
+            });
         } catch (err) {
             console.error(`Error ${action} customer:`, err);
-            alert(`Không thể ${action} tài khoản: ${err.message || 'Vui lòng thử lại sau.'}`);
+            setNotif({ 
+                open: true, 
+                type: 'error', 
+                title: 'Thất bại', 
+                message: `Không thể ${action} tài khoản: ${err.message || 'Vui lòng thử lại sau.'}`, 
+                duration: 4000 
+            });
         }
     };
 
@@ -404,6 +437,21 @@ function ManageCustomerAccountsPage() {
                     </table>
                 </div>
             )}
+            <ConfirmDialog
+                open={confirmDialog.open}
+                title={confirmDialog.title}
+                message={confirmDialog.message}
+                onConfirm={confirmDialog.onConfirm || (() => {})}
+                onCancel={() => setConfirmDialog({ open: false, title: '', message: '', onConfirm: null })}
+            />
+            <Notification
+                open={notif.open}
+                type={notif.type}
+                title={notif.title}
+                message={notif.message}
+                duration={notif.duration}
+                onClose={() => setNotif((n) => ({ ...n, open: false }))}
+            />
         </div>
     );
 }

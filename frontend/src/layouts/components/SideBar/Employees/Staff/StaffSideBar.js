@@ -73,8 +73,17 @@ export default function StaffSideBar() {
             }
         };
         fetchMe();
+        const syncDisplayName = () => {
+            setProfile((prev) => ({
+                ...prev,
+                name: localStorage.getItem('displayName') || prev.name,
+            }));
+            fetchMe();
+        };
+        window.addEventListener('displayNameUpdated', syncDisplayName);
         return () => {
             isMounted = false;
+            window.removeEventListener('displayNameUpdated', syncDisplayName);
         };
     }, [token, displayName]);
 

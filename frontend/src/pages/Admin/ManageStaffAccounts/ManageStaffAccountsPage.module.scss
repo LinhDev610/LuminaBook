@@ -1,13 +1,13 @@
 .admin-page {
-    padding: 20px;
+    padding: 24px;
     background: #f8f9fa;
     min-height: 100vh;
 }
 
 .page-title {
-    font-size: 28px;
-    font-weight: bold;
-    color: #000;
+    font-size: 24px;
+    font-weight: 600;
+    color: #333;
     margin-bottom: 24px;
 }
 
@@ -97,10 +97,10 @@
 }
 
 .table-container {
-    background: white;
-    border-radius: 8px;
+    background: #ffffff;
+    border-radius: 12px;
     overflow: hidden;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .data-table {
@@ -110,87 +110,167 @@
 
 .table-header {
     background: #1A3C5A;
-    color: white;
+    color: #ffffff;
 }
 
 .table-header th {
-    padding: 16px 12px;
+    padding: 16px;
     text-align: left;
-    font-weight: bold;
+    font-weight: 600;
     font-size: 14px;
 }
 
 .table-row {
-    border-bottom: 1px solid #e5e7eb;
+    border-bottom: 1px solid #e9ecef;
+    transition: background 0.2s ease;
 }
 
-.table-row:last-child {
-    border-bottom: none;
+.table-row:hover {
+    background: #f8f9fa;
 }
 
 .table-row td {
-    padding: 16px 12px;
+    padding: 16px;
     font-size: 14px;
-    color: #000;
+    color: #333;
+}
+
+.status {
+    font-weight: 500;
 }
 
 .status.active {
-    color: #22C55E;
-    font-weight: 500;
+    color: #10B981;
 }
 
 .status.locked {
     color: #EF4444;
-    font-weight: 500;
 }
 
 .actions {
     display: flex;
     gap: 8px;
+    flex-wrap: wrap;
 }
 
 .btn {
-    padding: 6px 12px;
+    padding: 8px 16px;
     border: none;
-    border-radius: 4px;
+    border-radius: 6px;
     font-size: 12px;
     font-weight: 500;
     cursor: pointer;
     transition: all 0.2s ease;
+    white-space: nowrap;
 }
 
-.edit-btn {
+.btn.edit-btn {
     background: #3B82F6;
-    color: white;
+    color: #ffffff;
 }
 
-.edit-btn:hover {
-    background: #2563eb;
+.btn.edit-btn:hover {
+    background: #2563EB;
 }
 
-.lock-btn {
-    background: #3B82F6;
-    color: white;
+.btn.lock-btn {
+    background: #6B7280;
+    color: #ffffff;
 }
 
-.lock-btn:hover {
-    background: #2563eb;
+.btn.lock-btn:hover {
+    background: #4B5563;
 }
 
-.unlock-btn {
-    background: #22C55E;
-    color: white;
+.btn.unlock-btn {
+    background: #10B981;
+    color: #ffffff;
 }
 
-.unlock-btn:hover {
-    background: #16a34a;
+.btn.unlock-btn:hover {
+    background: #059669;
 }
 
-.delete-btn {
+.btn.delete-btn {
     background: #EF4444;
-    color: white;
+    color: #ffffff;
 }
 
-.delete-btn:hover {
-    background: #dc2626;
+.btn.delete-btn:hover {
+    background: #DC2626;
+}
+
+.loading-container {
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 40px;
+    text-align: center;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.loading-container p {
+    font-size: 16px;
+    color: #666;
+}
+
+.error-container {
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 40px;
+    text-align: center;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.error-container p {
+    font-size: 16px;
+    color: #EF4444;
+    margin-bottom: 16px;
+}
+
+.error-container button {
+    padding: 10px 20px;
+    background: #1A3C5A;
+    color: #ffffff;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.error-container button:hover {
+    background: #0f2a3f;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .admin-page {
+        padding: 16px;
+    }
+    
+    .page-title {
+        font-size: 20px;
+        margin-bottom: 16px;
+    }
+    
+    .table-container {
+        overflow-x: auto;
+    }
+    
+    .table-header th,
+    .table-row td {
+        padding: 12px 8px;
+        font-size: 12px;
+    }
+    
+    .actions {
+        flex-direction: column;
+        gap: 4px;
+    }
+    
+    .btn {
+        padding: 6px 12px;
+        font-size: 11px;
+    }
 }

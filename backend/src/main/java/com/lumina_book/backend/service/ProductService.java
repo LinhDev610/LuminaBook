@@ -1,5 +1,8 @@
 package com.lumina_book.backend.service;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -138,6 +141,21 @@ public class ProductService {
                 product.getInventory().setStockQuantity(request.getStockQuantity());
                 product.getInventory().setLastUpdated(java.time.LocalDate.now());
             }
+        }
+
+        // Cập nhật media nếu có
+        if (request.getImageUrls() != null || request.getVideoUrls() != null) {
+            // Xóa media cũ và file vật lý
+            if (product.getMediaList() != null && !product.getMediaList().isEmpty()) {
+                // Xóa file vật lý
+                for (ProductMedia oldMedia : product.getMediaList()) {
+                    deletePhysicalFileByUrl(oldMedia.getMediaUrl());
+                }
+                // Xóa media khỏi database
+                productMediaRepository.deleteAll(product.getMediaList());
+            }
+            // Gắn media mới từ request
+            attachMediaFromUpdateRequest(product, request);
         }
 
         Product savedProduct = productRepository.save(product);
@@ -360,6 +378,55 @@ public class ProductService {
         }
     }
 
+    private void attachMediaFromUpdateRequest(Product product, ProductUpdateRequest request) {
+        List<ProductMedia> mediaEntities = new ArrayList<>();
+        ProductMedia defaultMedia = null;
+        int displayOrder = 0;
+
+        // Xử lý ảnh
+        if (request.getImageUrls() != null) {
+            for (String url : request.getImageUrls()) {
+                if (url == null || url.isBlank()) continue;
+                ProductMedia media = ProductMedia.builder()
+                        .mediaUrl(url)
+                        .mediaType("IMAGE")
+                        .isDefault(url.equals(request.getDefaultMediaUrl()))
+                        .displayOrder(displayOrder++)
+                        .product(product)
+                        .build();
+                if (media.isDefault()) defaultMedia = media;
+                mediaEntities.add(media);
+            }
+        }
+
+        // Xử lý video
+        if (request.getVideoUrls() != null) {
+            for (String url : request.getVideoUrls()) {
+                if (url == null || url.isBlank()) continue;
+                ProductMedia media = ProductMedia.builder()
+                        .mediaUrl(url)
+                        .mediaType("VIDEO")
+                        .isDefault(url.equals(request.getDefaultMediaUrl()))
+                        .displayOrder(displayOrder++)
+                        .product(product)
+                        .build();
+                if (media.isDefault()) defaultMedia = media;
+                mediaEntities.add(media);
+            }
+        }
+
+        // Gắn media vào product
+        if (!mediaEntities.isEmpty()) {
+            product.setMediaList(mediaEntities);
+            // Nếu không có media nào được đánh dấu là default, chọn media đầu tiên
+            if (defaultMedia == null) {
+                defaultMedia = mediaEntities.get(0);
+                defaultMedia.setDefault(true);
+            }
+            product.setDefaultMedia(defaultMedia);
+        }
+    }
+
     private void deleteMediaFilesIfExists(Product product) {
         try {
             if (product.getMediaList() != null) {
@@ -393,7 +460,9 @@ public class ProductService {
             if (filename == null) {
                 String path = url;
                 if (path.startsWith("/")) path = path.substring(1);
-                if (path.startsWith("product_media/")) {
+                if (path.startsWith("uploads/product_media/")) {
+                    filename = path.substring("uploads/product_media/".length());
+                } else if (path.startsWith("product_media/")) {
                     filename = path.substring("product_media/".length());
                 }
             }
@@ -404,11 +473,21 @@ public class ProductService {
 
             if (filename == null || filename.isBlank()) return;
 
-            // Xác định thư mục dựa trên URL (mặc định là product_media)
-            java.nio.file.Path targetDir = java.nio.file.Paths.get("product_media");
-            java.nio.file.Path filePath = targetDir.resolve(filename);
-            java.nio.file.Files.deleteIfExists(filePath);
-            log.info("Deleted media file: {}", filePath.toAbsolutePath());
+            // Xác định thư mục dựa trên URL (mặc định là uploads/product_media)
+            Path targetDir = Paths.get("uploads", "product_media");
+            Path filePath = targetDir.resolve(filename);
+            boolean deleted = Files.deleteIfExists(filePath);
+
+            if (!deleted) {
+                Path legacyDir = Paths.get("product_media");
+                Path legacyPath = legacyDir.resolve(filename);
+                deleted = Files.deleteIfExists(legacyPath);
+                if (deleted) {
+                    log.info("Deleted media file from legacy folder: {}", legacyPath.toAbsolutePath());
+                }
+            } else {
+                log.info("Deleted media file: {}", filePath.toAbsolutePath());
+            }
         } catch (Exception e) {
             log.warn("Could not delete media file for url {}: {}", url, e.getMessage());
         }

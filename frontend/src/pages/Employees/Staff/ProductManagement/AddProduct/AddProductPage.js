@@ -1,55 +1,96 @@
-import { useMemo, useRef, useState, useEffect } from 'react';
+import { useMemo, useRef, useState, useEffect, useCallback } from 'react';
 import classNames from 'classnames/bind';
 import styles from './AddProductPage.module.scss';
 import { useNavigate } from 'react-router-dom';
 import backIcon from '../../../../../assets/icons/icon_back.png';
-import Notification from '../../../../../components/Common/Notification';
 import {
     getApiBaseUrl,
     getStoredToken as getStoredTokenUtil,
 } from '../../../../../services/utils';
+import { useNotification } from '../../../../../components/Common/Notification';
 
 const cx = classNames.bind(styles);
 
 // ========== Constants ==========
 const API_BASE_URL = getApiBaseUrl();
 
+// ========== Initial Form State ==========
+const INITIAL_FORM_STATE = {
+    productId: '',
+    name: '',
+    description: '',
+    author: '',
+    publisher: '',
+    weight: 0.0,
+    length: 1,
+    width: 1,
+    height: 1,
+    price: 0.0,
+    taxPercent: '0',
+    discountValue: 0.0,
+    categoryId: '',
+    publicationDate: '',
+    stockQuantity: '',
+    mediaFiles: [],
+    defaultMediaUrl: '',
+    errors: {},
+};
+
 export default function AddProductPage() {
     // ========== State Management ==========
     const navigate = useNavigate();
     const formRef = useRef(null);
-    const [error, setError] = useState('');
+    const { success, error: notifyError } = useNotification();
     const [isLoading, setIsLoading] = useState(false);
 
-    // Notification state
-    const [notifyOpen, setNotifyOpen] = useState(false);
-    const [notifyType, setNotifyType] = useState('info');
-    const [notifyMsg, setNotifyMsg] = useState('');
-
     // Form fields state
-    const [productId, setProductId] = useState('');
-    const [name, setName] = useState('');
-    const [description, setDescription] = useState('');
-    const [author, setAuthor] = useState('');
-    const [publisher, setPublisher] = useState('');
-    const [weight, setWeight] = useState(0.0);
-    const [length, setLength] = useState(1);
-    const [width, setWidth] = useState(1);
-    const [height, setHeight] = useState(1);
-    const [price, setPrice] = useState(0.0);
-    const [taxPercent, setTaxPercent] = useState('0');
-    const [discountValue, setDiscountValue] = useState(0.0);
-    const [categoryId, setCategoryId] = useState('');
+    const [productId, setProductId] = useState(INITIAL_FORM_STATE.productId);
+    const [name, setName] = useState(INITIAL_FORM_STATE.name);
+    const [description, setDescription] = useState(INITIAL_FORM_STATE.description);
+    const [author, setAuthor] = useState(INITIAL_FORM_STATE.author);
+    const [publisher, setPublisher] = useState(INITIAL_FORM_STATE.publisher);
+    const [weight, setWeight] = useState(INITIAL_FORM_STATE.weight);
+    const [length, setLength] = useState(INITIAL_FORM_STATE.length);
+    const [width, setWidth] = useState(INITIAL_FORM_STATE.width);
+    const [height, setHeight] = useState(INITIAL_FORM_STATE.height);
+    const [price, setPrice] = useState(INITIAL_FORM_STATE.price);
+    const [taxPercent, setTaxPercent] = useState(INITIAL_FORM_STATE.taxPercent);
+    const [discountValue, setDiscountValue] = useState(INITIAL_FORM_STATE.discountValue);
+    const [categoryId, setCategoryId] = useState(INITIAL_FORM_STATE.categoryId);
     const [categories, setCategories] = useState([]);
-    const [publicationDate, setPublicationDate] = useState('');
-    const [errors, setErrors] = useState({});
+    const [publicationDate, setPublicationDate] = useState(INITIAL_FORM_STATE.publicationDate);
+    const [stockQuantity, setStockQuantity] = useState(INITIAL_FORM_STATE.stockQuantity);
+    const [errors, setErrors] = useState(INITIAL_FORM_STATE.errors);
 
     // Media state (local files)
-    const [mediaFiles, setMediaFiles] = useState([]); // [{file, type, preview, isDefault}]
-    const [defaultMediaUrl, setDefaultMediaUrl] = useState('');
+    const [mediaFiles, setMediaFiles] = useState(INITIAL_FORM_STATE.mediaFiles);
 
     // ========== Helper Functions ==========
-    const getStoredToken = (key) => getStoredTokenUtil(key);
+    const getStoredToken = useCallback((key) => getStoredTokenUtil(key), []);
+
+    // Reset form to initial state
+    const resetForm = useCallback(() => {
+        try {
+            formRef.current?.reset();
+        } catch (_) { }
+        setProductId(INITIAL_FORM_STATE.productId);
+        setName(INITIAL_FORM_STATE.name);
+        setDescription(INITIAL_FORM_STATE.description);
+        setAuthor(INITIAL_FORM_STATE.author);
+        setPublisher(INITIAL_FORM_STATE.publisher);
+        setWeight(INITIAL_FORM_STATE.weight);
+        setLength(INITIAL_FORM_STATE.length);
+        setWidth(INITIAL_FORM_STATE.width);
+        setHeight(INITIAL_FORM_STATE.height);
+        setPrice(INITIAL_FORM_STATE.price);
+        setTaxPercent(INITIAL_FORM_STATE.taxPercent);
+        setDiscountValue(INITIAL_FORM_STATE.discountValue);
+        setCategoryId(INITIAL_FORM_STATE.categoryId);
+        setPublicationDate(INITIAL_FORM_STATE.publicationDate);
+        setStockQuantity(INITIAL_FORM_STATE.stockQuantity);
+        setMediaFiles(INITIAL_FORM_STATE.mediaFiles);
+        setErrors(INITIAL_FORM_STATE.errors);
+    }, []);
 
     // ========== Data Fetching ==========
 
@@ -117,6 +158,12 @@ export default function AddProductPage() {
                 newErrors.weight = 'Trọng lượng tối thiểu là 0.';
             }
         }
+        if (stockQuantity !== undefined && stockQuantity !== null && stockQuantity !== '') {
+            const stockNum = Number(stockQuantity);
+            if (Number.isNaN(stockNum) || stockNum < 0) {
+                newErrors.stockQuantity = 'Số lượng tồn kho tối thiểu là 0.';
+            }
+        }
 
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
@@ -144,7 +191,7 @@ export default function AddProductPage() {
     // ========== API Helpers ==========
 
     // Refresh token nếu cần (khi token hết hạn)
-    const refreshTokenIfNeeded = async () => {
+    const refreshTokenIfNeeded = useCallback(async () => {
         const refreshToken = getStoredToken('refreshToken');
         if (!refreshToken) return null;
         try {
@@ -161,33 +208,126 @@ export default function AddProductPage() {
             }
         } catch (_) { }
         return null;
-    };
+    }, [getStoredToken]);
+
+    // Upload media files
+    const uploadMediaFiles = useCallback(async (files, token) => {
+        if (!files || files.length === 0) {
+            return { imageUrls: [], videoUrls: [], defaultUrl: '' };
+        }
+
+        try {
+            const formData = new FormData();
+            files.forEach((m) => formData.append('files', m.file));
+
+            const uploadResp = await fetch(`${API_BASE_URL}/media/upload-product`, {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+                body: formData,
+            });
+
+            if (!uploadResp.ok) {
+                throw new Error('Upload media thất bại');
+            }
+
+            const uploadData = await uploadResp.json().catch(() => ({}));
+            const urls = Array.isArray(uploadData?.result) ? uploadData.result : [];
+
+            // Map uploaded URLs back to media files
+            let idx = 0;
+            const mapped = files.map((m) => ({
+                ...m,
+                uploadedUrl: urls[idx++],
+            }));
+
+            const imageUrls = mapped
+                .filter((m) => m.type === 'IMAGE')
+                .map((m) => m.uploadedUrl)
+                .filter(Boolean);
+            const videoUrls = mapped
+                .filter((m) => m.type === 'VIDEO')
+                .map((m) => m.uploadedUrl)
+                .filter(Boolean);
+
+            const defaultItem = mapped.find((m) => m.isDefault) || mapped[0];
+            const defaultUrl = defaultItem?.uploadedUrl || '';
+
+            return { imageUrls, videoUrls, defaultUrl };
+        } catch (error) {
+            console.error('Error uploading media:', error);
+            throw error;
+        }
+    }, []);
+
+    // Build product payload
+    const buildProductPayload = useCallback(
+        (imageUrls, videoUrls, defaultUrl) => ({
+            id: (productId || '').trim(),
+            name: (name || '').trim(),
+            description: (description || '').trim() || null,
+            author: (author || '').trim(),
+            publisher: (publisher || '').trim(),
+            weight: weight && Number(weight) > 0 ? Number(weight) : null,
+            length: length && Number(length) >= 1 ? Number(length) : null,
+            width: width && Number(width) >= 1 ? Number(width) : null,
+            height: height && Number(height) >= 1 ? Number(height) : null,
+            price: Number(price) || 0,
+            tax: taxDecimal || 0,
+            discountValue:
+                discountValue && Number(discountValue) > 0 ? Number(discountValue) : null,
+            categoryId: (categoryId || '').trim(),
+            publicationDate: publicationDate || new Date().toISOString().slice(0, 10),
+            imageUrls: imageUrls.length ? imageUrls : undefined,
+            videoUrls: videoUrls.length ? videoUrls : undefined,
+            defaultMediaUrl: defaultUrl || undefined,
+            stockQuantity:
+                stockQuantity !== undefined && stockQuantity !== null && stockQuantity !== ''
+                    ? Number(stockQuantity)
+                    : undefined,
+        }),
+        [
+            productId,
+            name,
+            description,
+            author,
+            publisher,
+            weight,
+            length,
+            width,
+            height,
+            price,
+            taxDecimal,
+            discountValue,
+            categoryId,
+            publicationDate,
+            stockQuantity,
+        ],
+    );
+
+    // Handle API error response
+    const handleApiError = useCallback((response, data) => {
+        const serverMsg = data?.message || data?.error || data?.result || '';
+        let errorMessage = serverMsg || 'Thêm sản phẩm thất bại. Vui lòng thử lại.';
+
+        if (response.status === 403) {
+            errorMessage = 'Bạn không có quyền thực hiện hành động này.';
+        } else if (response.status === 401) {
+            errorMessage = 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.';
+        } else if (response.status === 400) {
+            errorMessage = serverMsg
+                ? `Dữ liệu không hợp lệ: ${serverMsg}`
+                : 'Dữ liệu không hợp lệ. Vui lòng kiểm tra lại thông tin.';
+        } else if (response.status >= 500) {
+            errorMessage = 'Lỗi máy chủ. Vui lòng thử lại sau.';
+        }
+
+        return errorMessage;
+    }, []);
 
     // ========== Event Handlers ==========
-
-    const handleReset = () => {
-        try {
-            formRef.current?.reset();
-        } catch (_) { }
-        setProductId('');
-        setName('');
-        setDescription('');
-        setAuthor('');
-        setPublisher('');
-        setWeight(0.0);
-        setLength(1);
-        setWidth(1);
-        setHeight(1);
-        setPrice(0.0);
-        setTaxPercent('0');
-        setDiscountValue(0.0);
-        setCategoryId('');
-        setPublicationDate('');
-        setMediaFiles([]);
-        setDefaultMediaUrl('');
-        setErrors({});
-        setError('');
-    };
+    const handleReset = resetForm;
 
     /**
      * Xử lý submit form
@@ -199,84 +339,30 @@ export default function AddProductPage() {
         e.preventDefault();
 
         setIsLoading(true);
-        setError('');
         if (!validate()) {
             setIsLoading(false);
-            setNotifyType('error');
-            setNotifyMsg('Vui lòng điền đầy đủ thông tin bắt buộc.');
-            setNotifyOpen(true);
+            notifyError('Vui lòng điền đầy đủ thông tin bắt buộc.');
             return;
         }
+
         try {
             let token = getStoredToken('token');
             if (!token) {
                 setIsLoading(false);
-                setNotifyType('error');
-                setNotifyMsg('Thiếu token xác thực. Vui lòng đăng nhập lại.');
-                setNotifyOpen(true);
+                notifyError('Thiếu token xác thực. Vui lòng đăng nhập lại.');
                 return;
             }
 
-            // Upload media files first (if any)
-            let imageUrls = [];
-            let videoUrls = [];
-            let defaultUrlForPayload = (defaultMediaUrl || '').trim();
-            if (mediaFiles.length > 0) {
-                const formData = new FormData();
-                mediaFiles.forEach((m) => formData.append('files', m.file));
-                const uploadResp = await fetch(`${API_BASE_URL}/media/upload/product`, {
-                    method: 'POST',
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
-                    body: formData,
-                });
-                const uploadData = await uploadResp.json().catch(() => ({}));
-                const urls = Array.isArray(uploadData?.result) ? uploadData.result : [];
-                // Map back uploaded urls to type order
-                let idx = 0;
-                const mapped = mediaFiles.map((m) => ({
-                    ...m,
-                    uploadedUrl: urls[idx++],
-                }));
-                imageUrls = mapped
-                    .filter((m) => m.type === 'IMAGE')
-                    .map((m) => m.uploadedUrl)
-                    .filter(Boolean);
-                videoUrls = mapped
-                    .filter((m) => m.type === 'VIDEO')
-                    .map((m) => m.uploadedUrl)
-                    .filter(Boolean);
-                const defaultItem = mapped.find((m) => m.isDefault) || mapped[0];
-                if (defaultItem && defaultItem.uploadedUrl) {
-                    defaultUrlForPayload = defaultItem.uploadedUrl;
-                }
-            }
-            const payload = {
-                id: (productId || '').trim(),
-                name: (name || '').trim(),
-                description: (description || '').trim() || null,
-                author: (author || '').trim(),
-                publisher: (publisher || '').trim(),
-                weight: weight && Number(weight) > 0 ? Number(weight) : null,
-                length: length && Number(length) >= 1 ? Number(length) : null,
-                width: width && Number(width) >= 1 ? Number(width) : null,
-                height: height && Number(height) >= 1 ? Number(height) : null,
-                price: Number(price) || 0, // required field, must have value
-                tax: taxDecimal || 0, // decimal form e.g. 0.05
-                discountValue:
-                    discountValue && Number(discountValue) > 0
-                        ? Number(discountValue)
-                        : null,
-                categoryId: (categoryId || '').trim(),
-                publicationDate: publicationDate || new Date().toISOString().slice(0, 10),
-                imageUrls: imageUrls.length ? imageUrls : undefined,
-                videoUrls: videoUrls.length ? videoUrls : undefined,
-                defaultMediaUrl: defaultUrlForPayload || undefined,
-            };
+            // Upload media files first (if any) 
+            const { imageUrls, videoUrls, defaultUrl } = await uploadMediaFiles(
+                mediaFiles,
+                token,
+            );
 
-            console.log('Request data:', JSON.stringify(payload, null, 2));
+            // Build payload
+            const payload = buildProductPayload(imageUrls, videoUrls, defaultUrl);
 
+            // Create product
             let response = await fetch(`${API_BASE_URL}/products`, {
                 method: 'POST',
                 headers: {
@@ -289,14 +375,8 @@ export default function AddProductPage() {
             let data = {};
             try {
                 data = await response.json();
-                console.log('Response data:', JSON.stringify(data, null, 2));
-                console.log('Response status:', response.status);
-                console.log('Error code:', data?.code);
-                console.log('Error message:', data?.message);
             } catch (err) {
-                console.error('Error parsing response:', err);
-                const text = await response.text();
-                console.log('Response text:', text);
+                console.error('Error parsing response :', err);
             }
 
             // Nếu hết hạn -> thử refresh và gọi lại 1 lần
@@ -314,82 +394,26 @@ export default function AddProductPage() {
                     });
                     try {
                         data = await response.json();
-                        console.log('Retry response:', JSON.stringify(data, null, 2));
                     } catch (_) { }
                 } else {
                     setIsLoading(false);
-                    setNotifyType('error');
-                    setNotifyMsg('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
-                    setNotifyOpen(true);
+                    notifyError('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
                     return;
                 }
             }
 
             if (response.ok) {
-                setNotifyType('success');
-                setNotifyMsg('Thêm sản phẩm thành công.');
-                setNotifyOpen(true);
-                formRef.current?.reset();
-                // reset controlled values
-                setName('');
-                setDescription('');
-                setAuthor('');
-                setPublisher('');
-                setWeight(0.0);
-                setLength(1);
-                setWidth(1);
-                setHeight(1);
-                setPrice(0.0);
-                setTaxPercent('0');
-                setDiscountValue(0.0);
-                setCategoryId('');
-                setPublicationDate('');
-                setProductId('');
-                setMediaFiles([]);
-                setDefaultMediaUrl('');
-                setErrors({});
+                success('Thêm sản phẩm thành công.');
+                resetForm();
             } else {
-                // Extract error message from response
-                const serverMsg = data?.message || data?.error || data?.result || '';
-                const errorCode = data?.code;
-
-                console.log('Error details:', {
-                    status: response.status,
-                    code: errorCode,
-                    message: serverMsg,
-                    fullData: data,
-                });
-
-                let errorMessage =
-                    serverMsg || 'Thêm sản phẩm thất bại. Vui lòng thử lại.';
-
-                if (response.status === 403) {
-                    errorMessage = 'Bạn không có quyền thực hiện hành động này.';
-                } else if (response.status === 401) {
-                    errorMessage = 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.';
-                } else if (response.status === 400) {
-                    if (serverMsg) {
-                        errorMessage = `Dữ liệu không hợp lệ: ${serverMsg}`;
-                    } else {
-                        errorMessage =
-                            'Dữ liệu không hợp lệ. Vui lòng kiểm tra lại thông tin.';
-                    }
-                } else if (response.status >= 500) {
-                    errorMessage = 'Lỗi máy chủ. Vui lòng thử lại sau.';
-                }
-
-                setError(errorMessage);
-                setNotifyType('error');
-                setNotifyMsg(errorMessage);
-                setNotifyOpen(true);
+                const errorMessage = handleApiError(response, data);
+                notifyError(errorMessage);
             }
         } catch (err) {
-            console.error('Error creating product:', err);
-            const msg = 'Không thể kết nối máy chủ. Vui lòng thử lại.';
-            setError(msg);
-            setNotifyType('error');
-            setNotifyMsg(msg);
-            setNotifyOpen(true);
+            console.error('Lỗi thêm sản phẩm:', err);
+            const errorMsg =
+                err.message || 'Không thể kết nối máy chủ. Vui lòng thử lại.';
+            notifyError(errorMsg);
         } finally {
             setIsLoading(false);
         }
@@ -719,7 +743,17 @@ export default function AddProductPage() {
                     <div className={cx('grid2')}>
                         <div className={cx('row')}>
                             <label>Số lượng tồn kho</label>
-                            <input />
+                            <input
+                                inputMode="numeric"
+                                value={stockQuantity}
+                                onChange={(e) => {
+                                    const cleaned = (e.target.value || '').replace(/[^0-9]/g, '');
+                                    setStockQuantity(cleaned);
+                                }}
+                            />
+                            {errors.stockQuantity && (
+                                <div className={cx('errorText')}>{errors.stockQuantity}</div>
+                            )}
                         </div>
                         <div className={cx('row')}>
                             <label>Trạng thái</label>
@@ -747,19 +781,6 @@ export default function AddProductPage() {
                     </div>
                 </form>
             </div>
-            <Notification
-                open={notifyOpen}
-                type={notifyType}
-                title={
-                    notifyType === 'success'
-                        ? 'Thành công'
-                        : notifyType === 'error'
-                            ? 'Lỗi'
-                            : 'Thông báo'
-                }
-                message={notifyMsg}
-                onClose={() => setNotifyOpen(false)}
-            />
         </div>
     );
 }

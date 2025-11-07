@@ -14,16 +14,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class FileStorageService {
 
-    private static final String PRODUCT_MEDIA_DIR = "product_media"; // relative to project root (working dir)
-
-    /**
-     * Lưu file vào thư mục product_media/
-     * @param file File cần lưu
-     * @return URL của file đã lưu
-     */
-    public String storeFile(MultipartFile file) {
-        return storeFile(file, PRODUCT_MEDIA_DIR, "/product_media/");
-    }
+    private static final String PRODUCT_MEDIA_DIR = "uploads/product_media"; // relative to project root (working dir)
 
     /**
      * Lưu file media của product vào thư mục product_media/

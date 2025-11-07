@@ -1,6 +1,7 @@
 package com.lumina_book.backend.dto.request;
 
 import java.time.LocalDate;
+import java.util.List;
 
 import com.lumina_book.backend.enums.ProductStatus;
 import jakarta.validation.constraints.*;
@@ -58,4 +59,9 @@ public class ProductUpdateRequest {
 
     @Min(value = 0, message = "Số lượng tồn kho phải >= 0")
     Integer stockQuantity;
+
+    // Media fields
+    List<String> imageUrls;
+    List<String> videoUrls;
+    String defaultMediaUrl;
 }

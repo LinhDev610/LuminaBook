@@ -42,6 +42,8 @@ function UpdateProductPage() {
     const [categoryId, setCategoryId] = useState('');
     const [categories, setCategories] = useState([]);
     const [publicationDate, setPublicationDate] = useState('');
+    const [availableQuantity, setAvailableQuantity] = useState('');
+    const [status, setStatus] = useState('PENDING');
     const [errors, setErrors] = useState({});
 
     // Media state (local files + existing media)
@@ -91,6 +93,8 @@ function UpdateProductPage() {
                 setDiscountValue(product.discountValue || 0.0);
                 setCategoryId(product.categoryId || '');
                 setPublicationDate(product.publicationDate ? product.publicationDate.split('T')[0] : '');
+                setAvailableQuantity(product.availableQuantity !== undefined && product.availableQuantity !== null ? String(product.availableQuantity) : '');
+                setStatus(product.status || 'PENDING');
 
                 // Set existing media
                 if (product.mediaUrls && Array.isArray(product.mediaUrls)) {
@@ -141,6 +145,7 @@ function UpdateProductPage() {
     // ========== Validation ==========
     const validate = () => {
         const newErrors = {};
+        if (!productId.trim()) newErrors.productId = 'Vui lòng nhập mã sản phẩm.';
         if (!name.trim()) newErrors.name = 'Vui lòng nhập tên sản phẩm.';
         if (!author.trim()) newErrors.author = 'Vui lòng nhập tên tác giả.';
         if (!publisher.trim()) newErrors.publisher = 'Vui lòng nhập nhà xuất bản.';
@@ -176,6 +181,12 @@ function UpdateProductPage() {
             const weightNum = Number(weight);
             if (isNaN(weightNum) || weightNum < 0) {
                 newErrors.weight = 'Trọng lượng tối thiểu là 0.';
+            }
+        }
+        if (availableQuantity !== undefined && availableQuantity !== null && availableQuantity !== '') {
+            const quantityNum = Number(availableQuantity);
+            if (Number.isNaN(quantityNum) || quantityNum < 0) {
+                newErrors.availableQuantity = 'Số lượng tồn kho tối thiểu là 0.';
             }
         }
 
@@ -256,6 +267,7 @@ function UpdateProductPage() {
 
             // Note: ProductUpdateRequest không hỗ trợ các URL media, vì vậy chỉ cập nhật các trường của sản phẩm
             // Media sẽ được giữ nguyên. Nếu cần thêm media mới, sẽ cần thay đổi ở backend.
+            // Khi gửi lại để duyệt, luôn đặt status về PENDING
             const payload = {
                 name: (name || '').trim(),
                 description: (description || '').trim() || null,
@@ -269,8 +281,12 @@ function UpdateProductPage() {
                 tax: taxDecimal || 0,
                 discountValue: (discountValue && Number(discountValue) > 0) ? Number(discountValue) : null,
                 categoryId: (categoryId || '').trim(),
-                publicationDate: publicationDate || new Date().toISOString().slice(0, 10),
-                status: 'PENDING', // Set status back to PENDING (Chờ duyệt)
+                publicationDate: publicationDate || null,
+                status: 'PENDING', // Luôn đặt về PENDING khi gửi lại để duyệt
+                stockQuantity:
+                    availableQuantity !== undefined && availableQuantity !== null && availableQuantity !== ''
+                        ? Number(availableQuantity)
+                        : undefined,
             };
 
             console.log('Update request data:', JSON.stringify(payload, null, 2));
@@ -309,7 +325,11 @@ function UpdateProductPage() {
                     });
                     try {
                         data = await response.json();
-                    } catch (_) { }
+                    } catch (err) {
+                        console.error('Error parsing retry response:', err);
+                        const text = await response.text().catch(() => '');
+                        console.log('Retry response text:', text);
+                    }
                 } else {
                     setIsLoading(false);
                     setNotifyType('error');
@@ -319,18 +339,18 @@ function UpdateProductPage() {
                 }
             }
 
+            // Kiểm tra response sau khi retry
             if (response.ok) {
                 setNotifyType('success');
                 setNotifyMsg('Cập nhật sản phẩm thành công. Sản phẩm đã được gửi lại để duyệt.');
                 setNotifyOpen(true);
-                // Navigate back to product detail or list after 1.5 seconds
+                // Navigate back to product detail after 1.5 seconds
                 setTimeout(() => {
-                    navigate(`/staff/products/${id}`);
+                    navigate(`/staff/products/${id}`, { replace: true });
                 }, 1500);
             } else {
                 // Extract error message from response
                 const serverMsg = data?.message || data?.error || data?.result || '';
-                const errorCode = data?.code;
 
                 let errorMessage = serverMsg || 'Cập nhật sản phẩm thất bại. Vui lòng thử lại.';
 
@@ -385,16 +405,18 @@ function UpdateProductPage() {
                 </button>
             </div>
             <div className={cx('card')}>
-                <div className={cx('card-header')}>Cập nhật sản phẩm</div>
+                <h3>Chỉnh sửa sản phẩm</h3>
                 <form ref={formRef} className={cx('form')} onSubmit={handleSubmit}>
                     <div className={cx('row')}>
                         <label>Mã sản phẩm</label>
                         <input
                             placeholder="VD: BK001"
                             value={productId}
-                            readOnly
-                            style={{ backgroundColor: '#f3f4f6', cursor: 'not-allowed' }}
+                            onChange={(e) => setProductId(e.target.value)}
                         />
+                        {errors.productId && (
+                            <div className={cx('errorText')}>{errors.productId}</div>
+                        )}
                     </div>
                     <div className={cx('row')}>
                         <label>Tên sản phẩm</label>
@@ -406,15 +428,6 @@ function UpdateProductPage() {
                         {errors.name && (
                             <div className={cx('errorText')}>{errors.name}</div>
                         )}
-                    </div>
-                    <div className={cx('row')}>
-                        <label>Mô tả sản phẩm</label>
-                        <textarea
-                            rows={4}
-                            placeholder="Mô tả ngắn về sản phẩm"
-                            value={description}
-                            onChange={(e) => setDescription(e.target.value)}
-                        />
                     </div>
                     <div className={cx('grid2')}>
                         <div className={cx('row')}>
@@ -507,6 +520,7 @@ function UpdateProductPage() {
                         <label>Giá cuối cùng (đã gồm thuế)</label>
                         <input placeholder="Tự động tính" value={finalPrice} readOnly />
                     </div>
+
                     <div className={cx('row', 'dimension')}>
                         <label>Kích thước (cm) & Trọng lượng</label>
                         <div className={cx('grid4')}>
@@ -704,6 +718,46 @@ function UpdateProductPage() {
                                 ))}
                             </div>
                         )}
+                    </div>
+
+                    <div className={cx('row')}>
+                        <label>Mô tả sản phẩm</label>
+                        <textarea
+                            rows={4}
+                            placeholder="Mô tả ngắn về sản phẩm"
+                            value={description}
+                            onChange={(e) => setDescription(e.target.value)}
+                        />
+                    </div>
+
+                    <div className={cx('grid2')}>
+                        <div className={cx('row')}>
+                            <label>Số lượng tồn kho</label>
+                            <input
+                                inputMode="numeric"
+                                placeholder="VD: 100"
+                                value={availableQuantity}
+                                onChange={(e) => {
+                                    const cleaned = (e.target.value || '').replace(/[^0-9]/g, '');
+                                    setAvailableQuantity(cleaned);
+                                }}
+                            />
+                            {errors.availableQuantity && (
+                                <div className={cx('errorText')}>{errors.availableQuantity}</div>
+                            )}
+                        </div>
+                        <div className={cx('row')}>
+                            <label>Trạng thái</label>
+                            <select
+                                value={status}
+                                onChange={(e) => setStatus(e.target.value)}
+                            >
+                                <option value="PENDING">Chờ duyệt</option>
+                                <option value="APPROVED">Đã duyệt</option>
+                                <option value="REJECTED">Từ chối</option>
+                                <option value="DISABLED">Vô hiệu hóa</option>
+                            </select>
+                        </div>
                     </div>
 
                     <div className={cx('actions')}>

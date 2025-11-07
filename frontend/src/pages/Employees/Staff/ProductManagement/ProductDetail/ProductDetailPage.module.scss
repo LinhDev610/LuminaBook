@@ -1,7 +1,7 @@
 .wrap {
-    padding: 24px;
-    background: #f8f9fa;
-    min-height: 100vh;
+    padding: 12px 8px 24px;
+    background: #f2ebdd;
+    min-height: calc(100vh - 60px);
 }
 
 .loading,
@@ -24,9 +24,53 @@
 
 .header {
     display: flex;
+    justify-content: space-between;
     align-items: center;
-    gap: 16px;
-    margin-bottom: 24px;
+    padding: 12px 8px 0 8px;
+    margin: 0;
+    margin-bottom: 12px;
+}
+
+.detail-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.detail-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: #000;
+    margin: 0;
+}
+
+.rejection-box {
+    background: #fee2e2;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 16px;
+    border-left: 4px solid #dc2626;
+}
+
+.rejection-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: #dc2626;
+    margin: 0 0 8px 0;
+}
+
+.rejection-text {
+    font-size: 14px;
+    color: #000;
+    margin: 0 0 8px 0;
+    line-height: 1.5;
+}
+
+.rejection-date {
+    font-size: 14px;
+    font-weight: 600;
+    color: #000;
+    margin: 0;
 }
 
 .back-btn {
@@ -38,12 +82,14 @@
     border: none;
     background: transparent;
     cursor: pointer;
-    color: #333;
+    color: #000;
     border-radius: 8px;
     transition: background-color 0.2s ease;
+    padding: 0;
+    margin-bottom: 16px;
 
     &:hover {
-        background: #e5e7eb;
+        background: rgba(0, 0, 0, 0.05);
     }
 
     svg {
@@ -54,9 +100,34 @@
 
 .title {
     font-size: 24px;
-    font-weight: 600;
-    color: #333;
+    font-weight: 800;
+    color: #1b2b34;
     margin: 0;
+}
+
+.dashboard-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 40px;
+    padding: 0 16px;
+    border-radius: 10px;
+    border: none;
+    background: #13324a;
+    color: #fff;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    margin-right: 10px;
+    transition: opacity 0.2s ease;
+}
+
+.dashboard-btn:hover {
+    opacity: 0.9;
+}
+
+.icon-left {
+    display: inline-flex;
 }
 
 .detail-card {

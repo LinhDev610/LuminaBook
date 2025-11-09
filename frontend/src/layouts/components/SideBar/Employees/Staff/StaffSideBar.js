@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
 import classNames from 'classnames/bind';
 import styles from './StaffSideBar.module.scss';
 import useLocalStorage from '../../../../../hooks/useLocalStorage';
-import { getApiBaseUrl, getUserRole } from '../../../../../services/utils';
 import avatarFallback from '../../../../../assets/icons/icon_img_guest.png';
+import { useEffect, useMemo, useState } from 'react';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { getApiBaseUrl, getUserRole } from '../../../../../services/utils';
 
 const cx = classNames.bind(styles);
 
@@ -12,6 +12,7 @@ const API_BASE_URL = getApiBaseUrl();
 
 export default function StaffSideBar() {
     const location = useLocation();
+    const navigate = useNavigate();
     const [displayName] = useLocalStorage('displayName', null);
     const [tokenLS] = useLocalStorage('token', null);
     const sessionToken = sessionStorage.getItem('token');
@@ -88,7 +89,7 @@ export default function StaffSideBar() {
     return (
         <div className={cx('side')}>
             <div className={cx('panel-title')}>Hệ thống - Nhân viên</div>
-            <div className={cx('profile')}>
+            <div className={cx('profile')} onClick={() => navigate('/staff')}>
                 <img src={avatarFallback} alt="avatar" className={cx('avatar')} />
                 <div className={cx('info')}>
                     <div className={cx('name')} title={profile.name}>{profile.name}</div>

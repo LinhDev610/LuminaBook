@@ -130,7 +130,7 @@ function ManageCategoriesPage() {
     };
 
     const getStatusText = (status) =>
-        status === true || status === 'active' ? 'Hoạt động' : 'Đã khóa';
+        status === true || status === 'active' ? 'Hiển thị' : 'Ẩn';
     const getStatusClass = (status) =>
         status === true || status === 'active' ? 'active' : 'locked';
 
@@ -183,7 +183,8 @@ function ManageCategoriesPage() {
                 try {
                     const errorData = await resp.json().catch(() => ({}));
                     // Backend trả về message trong errorData.message hoặc errorData.result
-                    errorMessage = errorData?.message || errorData?.result || errorMessage;
+                    errorMessage =
+                        errorData?.message || errorData?.result || errorMessage;
                 } catch (_) {
                     const text = await resp.text().catch(() => '');
                     errorMessage = text || errorMessage;
@@ -191,7 +192,9 @@ function ManageCategoriesPage() {
                 throw new Error(errorMessage);
             }
             // Cập nhật danh sách local
-            const next = allCategories.filter((c) => resolveCategoryId(c) !== String(resolvedId));
+            const next = allCategories.filter(
+                (c) => resolveCategoryId(c) !== String(resolvedId),
+            );
             setAllCategories(next);
             applyFilters(searchTerm, sortBy);
             success('Xóa danh mục thành công');
@@ -353,51 +356,61 @@ function ManageCategoriesPage() {
                                     <td>{category.description || '-'}</td>
                                     <td>{category.parentName || '-'}</td>
                                     <td>{category.productCount || 0}</td>
-                                    <td
-                                        className={cx(
-                                            'status',
-                                            getStatusClass(category.status),
-                                        )}
-                                    >
-                                        {getStatusText(category.status)}
+                                    <td>
+                                        <span
+                                            className={cx(
+                                                'badge',
+                                                getStatusClass(category.status),
+                                            )}
+                                        >
+                                            {getStatusText(category.status)}
+                                        </span>
                                     </td>
                                     <td className={cx('actions')}>
                                         <button
                                             className={cx('btn', 'edit-btn')}
                                             onClick={() =>
-                                                handleEditCategory(resolveCategoryId(category))
+                                                handleEditCategory(
+                                                    resolveCategoryId(category),
+                                                )
                                             }
                                         >
-                                            Sửa
+                                            Chi tiết
+                                        </button>
+                                        <button
+                                            className={cx('btn', 'delete-btn')}
+                                            onClick={() =>
+                                                handleDeleteCategory(
+                                                    resolveCategoryId(category),
+                                                )
+                                            }
+                                        >
+                                            Xóa
                                         </button>
                                         {category.status === true ||
                                             category.status === 'active' ? (
                                             <button
                                                 className={cx('btn', 'lock-btn')}
                                                 onClick={() =>
-                                                    handleLockCategory(resolveCategoryId(category))
+                                                    handleLockCategory(
+                                                        resolveCategoryId(category),
+                                                    )
                                                 }
                                             >
-                                                Khóa
+                                                Ẩn
                                             </button>
                                         ) : (
                                             <button
                                                 className={cx('btn', 'unlock-btn')}
                                                 onClick={() =>
-                                                    handleUnlockCategory(resolveCategoryId(category))
+                                                    handleUnlockCategory(
+                                                        resolveCategoryId(category),
+                                                    )
                                                 }
                                             >
-                                                Mở khóa
+                                                Hiển thị
                                             </button>
                                         )}
-                                        <button
-                                            className={cx('btn', 'delete-btn')}
-                                            onClick={() =>
-                                                handleDeleteCategory(resolveCategoryId(category))
-                                            }
-                                        >
-                                            Xóa
-                                        </button>
                                     </td>
                                 </tr>
                             ))

@@ -8,42 +8,20 @@ import {
     getStoredToken as getStoredTokenUtil,
 } from '../../../../../services/utils';
 import { useNotification } from '../../../../../components/Common/Notification';
+import { INITIAL_FORM_STATE } from '../../../../../services/constants';
 
 const cx = classNames.bind(styles);
 
 // ========== Constants ==========
 const API_BASE_URL = getApiBaseUrl();
 
-// ========== Initial Form State ==========
-const INITIAL_FORM_STATE = {
-    productId: '',
-    name: '',
-    description: '',
-    author: '',
-    publisher: '',
-    weight: 0.0,
-    length: 1,
-    width: 1,
-    height: 1,
-    price: 0.0,
-    taxPercent: '0',
-    discountValue: 0.0,
-    categoryId: '',
-    publicationDate: '',
-    stockQuantity: '',
-    mediaFiles: [],
-    defaultMediaUrl: '',
-    errors: {},
-};
-
 export default function AddProductPage() {
-    // ========== State Management ==========
     const navigate = useNavigate();
     const formRef = useRef(null);
     const { success, error: notifyError } = useNotification();
     const [isLoading, setIsLoading] = useState(false);
 
-    // Form fields state
+    // State form - sử dụng INITIAL_FORM_STATE từ constants
     const [productId, setProductId] = useState(INITIAL_FORM_STATE.productId);
     const [name, setName] = useState(INITIAL_FORM_STATE.name);
     const [description, setDescription] = useState(INITIAL_FORM_STATE.description);
@@ -57,22 +35,21 @@ export default function AddProductPage() {
     const [taxPercent, setTaxPercent] = useState(INITIAL_FORM_STATE.taxPercent);
     const [discountValue, setDiscountValue] = useState(INITIAL_FORM_STATE.discountValue);
     const [categoryId, setCategoryId] = useState(INITIAL_FORM_STATE.categoryId);
-    const [categories, setCategories] = useState([]);
     const [publicationDate, setPublicationDate] = useState(INITIAL_FORM_STATE.publicationDate);
     const [stockQuantity, setStockQuantity] = useState(INITIAL_FORM_STATE.stockQuantity);
-    const [errors, setErrors] = useState(INITIAL_FORM_STATE.errors);
-
-    // Media state (local files)
     const [mediaFiles, setMediaFiles] = useState(INITIAL_FORM_STATE.mediaFiles);
+    const [errors, setErrors] = useState(INITIAL_FORM_STATE.errors);
+    const [categories, setCategories] = useState([]);
 
     // ========== Helper Functions ==========
     const getStoredToken = useCallback((key) => getStoredTokenUtil(key), []);
 
-    // Reset form to initial state
+    // Reset form về trạng thái ban đầu
     const resetForm = useCallback(() => {
         try {
             formRef.current?.reset();
         } catch (_) { }
+        // Reset tất cả fields về giá trị ban đầu từ constants
         setProductId(INITIAL_FORM_STATE.productId);
         setName(INITIAL_FORM_STATE.name);
         setDescription(INITIAL_FORM_STATE.description);

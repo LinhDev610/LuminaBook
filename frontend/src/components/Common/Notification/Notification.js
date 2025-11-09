@@ -5,7 +5,7 @@ import styles from './Notification.module.scss';
 const cx = classNames.bind(styles);
 
 // ========== Constants ==========
-const DEFAULT_DURATION = 7000;
+const DEFAULT_DURATION = 1500;
 const NOTIFICATION_TYPES = ['success', 'error', 'info', 'warning'];
 
 const ICONS = {

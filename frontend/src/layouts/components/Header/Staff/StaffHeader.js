@@ -23,7 +23,7 @@ function StaffHeader() {
     return (
         <>
             <header className={cx('header')}>
-                <div className={cx('title')}>Bảng điều khiển</div>
+                <h2 className={cx('title')}>Bảng điều khiển</h2>
                 <div className={cx('actions')}>
                     <button className={cx('btn', 'btn-secondary')}>Thông báo</button>
                     <button className={cx('btn', 'btn-danger')} onClick={() => setShowLogoutConfirm(true)}>

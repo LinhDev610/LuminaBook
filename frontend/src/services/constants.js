@@ -46,3 +46,25 @@ export const ERROR_MESSAGES = {
     NETWORK_ERROR: 'Lỗi kết nối mạng',
     SERVER_ERROR: 'Lỗi máy chủ',
 };
+
+// Initial Form State for Add Product Page
+export const INITIAL_FORM_STATE = {
+    productId: '',
+    name: '',
+    description: '',
+    author: '',
+    publisher: '',
+    weight: 0.0,
+    length: 1,
+    width: 1,
+    height: 1,
+    price: 0.0,
+    taxPercent: '0',
+    discountValue: 0.0,
+    categoryId: '',
+    publicationDate: '',
+    stockQuantity: '',
+    mediaFiles: [],
+    defaultMediaUrl: '',
+    errors: {},
+};

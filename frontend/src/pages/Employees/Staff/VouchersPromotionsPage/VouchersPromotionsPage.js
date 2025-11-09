@@ -100,7 +100,7 @@ export default function VouchersPromotionsPage() {
     };
 
     const handleSearch = () => {
-        // Filter đã được tính toán real-time
+        // Filter đã được tính toán real-time trong hook useSearchAndFilter
     };
 
     return (

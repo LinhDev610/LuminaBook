@@ -1,87 +1,138 @@
-// Utilities for product management
-import { getApiBaseUrl } from './utils';
-// - API base URL resolution
-// - Token retrieval from storage
-// - Media URL helpers
-// - Date formatting
+// Product utilities - tái sử dụng cho toàn bộ dự án
 
-export function getProductImageUrl(product) {
-    if (!product) return null;
-    const byObject = product?.defaultMedia?.mediaUrl || (typeof product?.defaultMedia === 'string' ? product.defaultMedia : null);
-    const byField = product?.defaultMediaUrl || null;
-    const byList = Array.isArray(product?.mediaUrls) && product.mediaUrls.length > 0 ? product.mediaUrls[0] : null;
-    return byObject || byField || byList || null;
-}
+export const getProductImageUrl = (product) => {
+    if (!product) return '';
+    // Try multiple possible fields
+    return (
+        product.defaultMediaUrl ||
+        product.imageUrl ||
+        product.thumbnailUrl ||
+        (product.media && product.media.length > 0 && product.media[0].mediaUrl) ||
+        (product.productMedia && product.productMedia.length > 0 && product.productMedia.find(m => m.isDefault)?.mediaUrl) ||
+        ''
+    );
+};
 
-/**
- * Chuyển đổi URL media thành URL đầy đủ để hiển thị
- * 
- * Ví dụ:
- * - Input: "/product_media/abc123.jpg"
- * - Output: "http://localhost:8080/lumina_book/product_media/abc123.jpg"
- * 
- * @param {string} url - URL cần chuẩn hóa (có thể là relative hoặc absolute)
- * @param {string} apiBaseUrl - Base URL của backend (optional)
- * @returns {string|null} URL đầy đủ hoặc null nếu không hợp lệ
- */
-export function normalizeMediaUrl(url, apiBaseUrl) {
-    // Kiểm tra đầu vào
-    if (!url) return null;
+// Normalize media URL to full URL
+export const normalizeMediaUrl = (url, apiBaseUrl) => {
+    if (!url) return '';
+    // If already absolute URL, return as is
+    if (url.startsWith('http://') || url.startsWith('https://')) return url;
+    // If starts with /, prepend base URL
+    if (url.startsWith('/')) return `${apiBaseUrl}${url}`;
+    // Otherwise, assume it's relative to product_media
+    return `${apiBaseUrl}/product_media/${url}`;
+};
 
-    // Nếu đã là URL đầy đủ (http:// hoặc https://) thì trả về luôn
-    const lower = String(url).toLowerCase();
-    if (lower.startsWith('http://') || lower.startsWith('https://')) {
-        return url;
-    }
+export const STATUS_MAP = {
+    pending: 'Chờ duyệt',
+    approved: 'Đã duyệt',
+    rejected: 'Từ chối',
+    disabled: 'Vô hiệu hóa',
+};
 
-    // Lấy thông tin backend
-    const base = apiBaseUrl || getApiBaseUrl();
+export const STATUS_TO_CLASS = {
+    'Chờ duyệt': 'pending',
+    'Đã duyệt': 'approved',
+    'Từ chối': 'rejected',
+    'Không được duyệt': 'rejected',
+    'Vô hiệu hóa': 'disabled',
+};
 
-    // Tách URL thành 2 phần:
-    // - backendOrigin: domain + port (ví dụ: "http://localhost:8080")
-    // - ctx: context path (ví dụ: "/lumina_book")
-    let backendOrigin = base;
-    let contextPath = '';
+// Get status class name
+export const getStatusClass = (status) => STATUS_TO_CLASS[status] || '';
+
+// Format price
+export const formatPrice = (price) => {
+    return new Intl.NumberFormat('vi-VN', {
+        style: 'currency',
+        currency: 'VND',
+    }).format(price);
+};
+
+// Map product from API to display format
+export const mapProduct = (product, apiBaseUrl) => {
     try {
-        const urlObj = new URL(base);
-        backendOrigin = urlObj.origin; // "http://localhost:8080"
-        contextPath = urlObj.pathname.replace(/\/?$/, ''); // "/lumina_book"
-    } catch (_) {
-        // Nếu parse lỗi, dùng giá trị mặc định
-        backendOrigin = window.location.origin;
-        contextPath = '/lumina_book';
+        const imageUrl = getProductImageUrl(product);
+        const imageUrlNormalized = normalizeMediaUrl(imageUrl, apiBaseUrl);
+        return {
+            id: product.id || '',
+            name: product.name || '',
+            category: product.categoryName || '-',
+            categoryId: product.categoryId || product.category?.id || '',
+            price: product.price || 0,
+            status: product.status || 'Chờ duyệt',
+            updatedAt: product.updatedAt || product.createdAt,
+            createdAt: product.createdAt || product.updatedAt,
+            imageUrl: imageUrlNormalized,
+            description: product.description,
+            author: product.author,
+            publisher: product.publisher,
+            rejectionReason: product.rejectionReason,
+        };
+    } catch (err) {
+        console.error('Error mapping product:', product, err);
+        return {
+            id: product.id || '',
+            name: product.name || '',
+            category: product.categoryName || '-',
+            price: product.price || 0,
+            status: 'Chờ duyệt',
+            updatedAt: product.updatedAt || product.createdAt,
+        };
     }
+};
 
-    // Hàm helper: ghép URL và xóa dấu / dư thừa
-    const joinUrl = (...parts) => {
-        return parts.join('').replace(/([^:]\/)\/+/, '$1');
-    };
+// Filter products by active categories
+export const filterByActiveCategories = (products, activeCategoryIdSet, activeCategoryNameSet) => {
+    return products.filter((p) => {
+        const pid = String(p.categoryId || '').trim();
+        const pname = String(p.category || '').toLowerCase().trim();
+        const idOk = pid && activeCategoryIdSet.has(pid);
+        const nameOk = pname && activeCategoryNameSet.has(pname);
+        return idOk || nameOk;
+    });
+};
 
-    // Xử lý các trường hợp URL khác nhau
+// Filter products by search keyword
+export const filterByKeyword = (products, keyword) => {
+    if (!keyword?.trim()) return products;
+    const searchLower = keyword.toLowerCase().trim();
+    return products.filter(
+        (p) =>
+            p.name?.toLowerCase().includes(searchLower) ||
+            p.id?.toLowerCase().includes(searchLower),
+    );
+};
 
-    // Trường hợp 1: URL đã có context path ở đầu
-    // Ví dụ: "/lumina_book/product_media/abc123.jpg"
-    // → Chỉ cần thêm domain vào đầu
-    if (url.startsWith(contextPath + '/')) {
-        return joinUrl(backendOrigin, url);
+// Filter products by status
+export const filterByStatus = (products, status, statusMap = STATUS_MAP) => {
+    if (!status || status === 'all') return products;
+    const statusValue = statusMap[status] || status;
+    return products.filter((p) => p.status === statusValue);
+};
+
+// Filter products by date (single date)
+export const filterByDate = (products, date, dateField = 'updatedAt') => {
+    if (!date) return products;
+    try {
+        const filterDate = new Date(date + 'T00:00:00');
+        filterDate.setHours(0, 0, 0, 0);
+        return products.filter((p) => {
+            if (!p[dateField]) return false;
+            const productDate = new Date(p[dateField]);
+            productDate.setHours(0, 0, 0, 0);
+            return productDate.getTime() === filterDate.getTime();
+        });
+    } catch (err) {
+        console.error('Error filtering by date:', err);
+        return products;
     }
+};
 
-    // Trường hợp 2: URL bắt đầu bằng "/product_media/"
-    // Ví dụ: "/product_media/abc123.jpg"
-    // → Cần thêm context path vào giữa: domain + context + url
-    if (url.startsWith('/product_media/')) {
-        return joinUrl(backendOrigin, contextPath, url);
-    }
-
-    // Trường hợp 3: Chỉ có tên file (không có dấu / ở đầu)
-    // Ví dụ: "abc123.jpg"
-    // → Mặc định file nằm trong /product_media/
-    if (!url.startsWith('/')) {
-        return joinUrl(backendOrigin, contextPath, '/product_media/', url);
-    }
-
-    // Trường hợp 4: URL bắt đầu bằng "/" nhưng không phải /product_media/
-    // Ví dụ: "/some/path/file.jpg"
-    // → Ghép thẳng domain vào đầu
-    return joinUrl(backendOrigin, url);
-}
+// Sort products by date (desc)
+export const sortByDate = (products, dateField = 'updatedAt') => {
+    return [...products].sort(
+        (a, b) => new Date(b[dateField] || 0) - new Date(a[dateField] || 0),
+    );
+};

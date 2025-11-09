@@ -10,10 +10,8 @@ function StaffLayout({ children }) {
             <aside>
                 <StaffSideBar />
             </aside>
-            <div>
-                <StaffHeader />
-                <div className="content">{children}</div>
-            </div>
+            <div className="content">{children}</div>
+        
         </div>
     );
 }

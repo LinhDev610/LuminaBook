@@ -260,49 +260,25 @@ function ManageProductsPage() {
             <h1 className={cx('page-title')}>Quản lý sản phẩm</h1>
 
             {/* Search and Filter Controls */}
-            <div className={cx('search-sort-container')}>
-                <div className={cx('search-section')}>
-                    <input
-                        type="text"
-                        placeholder={productSearchPlaceholder}
-                        className={cx('search-input')}
-                        value={searchTerm}
-                        onChange={handleSearchChange}
-                    />
-                    <button className={cx('search-btn')} onClick={handleSearchClick}>
-                        Tìm kiếm
-                    </button>
-                </div>
-
-                <div className={cx('sort-section')}>
-                    <span className={cx('sort-label')}>Sắp xếp:</span>
-                    <select
-                        className={cx('sort-dropdown')}
-                        value={categoryFilter}
-                        onChange={handleCategoryChange}
-                    >
-                        {categoryOptions.map((option, index) => (
-                            <option key={index} value={option.value}>
-                                {option.label}
-                            </option>
-                        ))}
-                    </select>
-                </div>
-
-                <div className={cx('sort-section')}>
-                    <select
-                        className={cx('sort-dropdown')}
-                        value={statusFilter}
-                        onChange={handleStatusChange}
-                    >
-                        {statusOptions.map((option, index) => (
-                            <option key={index} value={option.value}>
-                                {option.label}
-                            </option>
-                        ))}
-                    </select>
-                </div>
-            </div>
+            <SearchAndSort
+                searchPlaceholder={productSearchPlaceholder}
+                searchValue={searchTerm}
+                onSearchChange={handleSearchChange}
+                onSearchClick={handleSearchClick}
+                filters={[
+                    {
+                        label: 'Danh mục:',
+                        options: categoryOptions,
+                        value: categoryFilter,
+                        onChange: handleCategoryChange
+                    },
+                    {
+                        options: statusOptions,
+                        value: statusFilter,
+                        onChange: handleStatusChange
+                    }
+                ]}
+            />
 
             {/* Products Table */}
             <div className={cx('table-container')}>

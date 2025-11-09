@@ -17,7 +17,6 @@ function UpdateProductPage() {
     const navigate = useNavigate();
     const { id } = useParams();
     const formRef = useRef(null);
-    const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [loadingProduct, setLoadingProduct] = useState(true);
 
@@ -247,7 +246,6 @@ function UpdateProductPage() {
         e.preventDefault();
 
         setIsLoading(true);
-        setError('');
         if (!validate()) {
             setIsLoading(false);
             setNotifyType('error');
@@ -306,7 +304,7 @@ function UpdateProductPage() {
                 // console.log('Response data:', JSON.stringify(data, null, 2));
             } catch (err) {
                 console.error('Error parsing response:', err);
-                const text = await response.text();
+                // const text = await response.text();
                 // console.log('Response text:', text);
             }
 
@@ -327,7 +325,7 @@ function UpdateProductPage() {
                         data = await response.json();
                     } catch (err) {
                         console.error('Error parsing retry response:', err);
-                        const text = await response.text().catch(() => '');
+                        // const text = await response.text().catch(() => '');
                         // console.log('Retry response text:', text);
                     }
                 } else {
@@ -368,7 +366,6 @@ function UpdateProductPage() {
                     errorMessage = 'Lỗi máy chủ. Vui lòng thử lại sau.';
                 }
 
-                setError(errorMessage);
                 setNotifyType('error');
                 setNotifyMsg(errorMessage);
                 setNotifyOpen(true);
@@ -376,7 +373,6 @@ function UpdateProductPage() {
         } catch (err) {
             console.error('Error updating product:', err);
             const msg = 'Không thể kết nối máy chủ. Vui lòng thử lại.';
-            setError(msg);
             setNotifyType('error');
             setNotifyMsg(msg);
             setNotifyOpen(true);

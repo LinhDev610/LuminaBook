@@ -4,7 +4,7 @@ import classNames from 'classnames/bind';
 import useLocalStorage from '../../../hooks/useLocalStorage';
 import styles from './ManageCategoriesPage.module.scss';
 import SearchAndSort from '../../../components/Common/SearchAndSort';
-import { getStoredToken, getApiBaseUrl } from '../../../services/utils';
+import { getStoredToken } from '../../../services/utils';
 import { getAllCategories, getCategoryById, deleteCategory, updateCategory } from '../../../services';
 import { useNotification } from '../../../components/Common/Notification';
 

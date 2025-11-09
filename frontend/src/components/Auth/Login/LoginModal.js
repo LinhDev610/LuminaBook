@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useLocalStorage from '../../../hooks/useLocalStorage';
 import { useAuth } from '../../../contexts/AuthContext';
-import { isValidEmail, getApiBaseUrl, getUserRole } from '../../../services/utils';
+import { isValidEmail, getUserRole, getApiBaseUrl } from '../../../services/utils';
+import { login, refreshToken as refreshTokenAPI, getMyInfo } from '../../../services';
 import '../Auth.module.scss';
 import visibleIcon from '../../../assets/icons/icon-visible.png';
 import invisibleIcon from '../../../assets/icons/icon-invisible.png';
@@ -12,8 +13,6 @@ import classNames from 'classnames/bind';
 import styles from './LoginModal.module.scss';
 
 const cx = classNames.bind(styles);
-
-const API_BASE_URL = getApiBaseUrl();
 
 export default function LoginModal({ open = false, onClose }) {
     const navigate = useNavigate();
@@ -39,22 +38,15 @@ export default function LoginModal({ open = false, onClose }) {
     // Function to refresh token using backend endpoint
     const refreshTokenIfNeeded = async () => {
         if (!refreshToken) return false;
-
         try {
-            const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ token: refreshToken }),
-            });
-
-            const data = await response.json();
-            if (response.ok && data?.result?.token) {
-                setToken(data.result.token);
-                setRefreshToken(data.result.token);
+            const { ok, data: responseData } = await refreshTokenAPI(refreshToken);
+            if (ok && responseData?.token) {
+                setToken(responseData.token);
+                setRefreshToken(responseData.token);
                 return true;
             }
         } catch (err) {
-            console.log('Token refresh failed:', err);
+            // console.log('Token refresh failed:', err);
         }
         return false;
     };
@@ -94,7 +86,7 @@ export default function LoginModal({ open = false, onClose }) {
             return;
         }
 
-        console.log('Email validation check:', { email: email.trim(), isValid: isValidEmail(email) });
+        // console.log('Email validation check:', { email: email.trim(), isValid: isValidEmail(email) });
 
         if (!isValidEmail(email)) {
             setError('Email sai định dạng');
@@ -106,47 +98,33 @@ export default function LoginModal({ open = false, onClose }) {
 
         try {
             const payload = { email: email.trim(), password };
-            console.log('Login attempt with:', { email: email.trim(), password: password ? '***' : 'empty' });
+            // console.log('Login attempt with:', { email: email.trim(), password: password ? '***' : 'empty' });
 
-            const resp = await fetch(`${API_BASE_URL}/auth/token`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload),
-            });
+            const { ok, data: loginData } = await login(payload);
+            // console.log('Login response:', { ok, hasToken: !!loginData?.token });
 
-            console.log('Login response status:', resp.status);
-            const data = await resp.json().catch(() => ({}));
-            console.log('Login response data:', data);
-
-            if (resp.ok && data?.result?.token) {
+            if (ok && loginData?.token) {
                 // Handle Remember Me
                 if (rememberMe) {
-                    setToken(data.result.token);
-                    setRefreshToken(data.result.token);
+                    setToken(loginData.token);
+                    setRefreshToken(loginData.token);
                     setSavedEmail(email.trim());
                 } else {
-                    sessionStorage.setItem('token', data.result.token);
+                    sessionStorage.setItem('token', loginData.token);
                     removeSavedEmail();
                     removeRefreshToken();
                 }
 
                 try {
-                    console.log('Calling /users/my-info with token:', data.result.token);
-                    const me = await fetch(`${API_BASE_URL}/users/my-info`, {
-                        headers: {
-                            Authorization: `Bearer ${data.result.token}`,
-                            'Content-Type': 'application/json',
-                        },
-                    });
-                    console.log('API call status:', me.status);
-                    const meData = await me.json().catch(() => ({}));
+                    // console.log('Calling /users/my-info with token:', loginData.token);
+                    const meData = await getMyInfo(loginData.token);
+                    // console.log('API call result:', meData);
 
                     // Debug: Log API response để kiểm tra cấu trúc
-                    console.log('API Response:', meData);
-                    console.log('API Response Status:', me.status);
+                    // console.log('API Response:', meData);
 
                     // Check account active status
-                    const rawActive = meData?.result?.isActive ?? meData?.result?.active ?? meData?.isActive ?? meData?.active;
+                    const rawActive = meData?.isActive ?? meData?.active;
                     let isActive = false;
                     if (typeof rawActive === 'boolean') isActive = rawActive;
                     else if (typeof rawActive === 'number') isActive = rawActive === 1;
@@ -164,60 +142,56 @@ export default function LoginModal({ open = false, onClose }) {
 
                     // Persist token only after confirming the account is active
                     if (rememberMe) {
-                        setToken(data.result.token);
-                        setRefreshToken(data.result.token);
+                        setToken(loginData.token);
+                        setRefreshToken(loginData.token);
                         setSavedEmail(email.trim());
                     } else {
-                        sessionStorage.setItem('token', data.result.token);
+                        sessionStorage.setItem('token', loginData.token);
                         removeSavedEmail();
                         removeRefreshToken();
                     }
                     // Notify app about token change so headers can re-render immediately
                     window.dispatchEvent(new Event('tokenUpdated'));
 
-
                     // Thử nhiều cách để lấy displayName
                     const displayNameValue =
-                        meData?.result?.fullName ||
-                        meData?.result?.username ||
-                        meData?.result?.displayName ||
                         meData?.fullName ||
                         meData?.username ||
                         meData?.displayName ||
                         email.trim();
 
-                    console.log('Display Name Value:', displayNameValue);
-                    console.log('Setting displayName to localStorage...');
+                    // console.log('Display Name Value:', displayNameValue);
+                    // console.log('Setting displayName to localStorage...');
                     setDisplayName(displayNameValue);
-                    console.log('DisplayName set successfully');
+                    // console.log('DisplayName set successfully');
 
                     // Dispatch custom event to notify header
                     window.dispatchEvent(new CustomEvent('displayNameUpdated'));
 
                     // Kiểm tra nếu là admin thì chuyển hướng đến trang admin
-                    const userRole = await getUserRole(API_BASE_URL, data.result.token);
+                    const userRole = await getUserRole(getApiBaseUrl(), loginData.token);
 
-                    console.log('User Role:', userRole);
-                    console.log('Full meData structure:', JSON.stringify(meData, null, 2));
+                    // console.log('User Role:', userRole);
+                    // console.log('Full meData structure:', JSON.stringify(meData, null, 2));
 
                     if (userRole === 'ADMIN') {
-                        console.log('Admin detected, redirecting to /admin');
+                        // console.log('Admin detected, redirecting to /admin');
                         onClose?.();
                         navigate('/admin', { replace: true });
                         return;
                     }
 
                     if (userRole === 'STAFF' || userRole === 'CUSTOMER_SUPPORT') {
-                        console.log('Staff or Customer Support detected, redirecting to /staff');
+                        // console.log('Staff or Customer Support detected, redirecting to /staff');
                         onClose?.();
                         navigate('/staff', { replace: true });
                         return;
                     }
 
-                    console.log('Role not matched for admin/staff, redirecting to home page');
+                    // console.log('Role not matched for admin/staff, redirecting to home page');
                 } catch (error) {
-                    console.log('Error fetching user info:', error);
-                    console.log('Setting fallback displayName to email:', email.trim());
+                    // console.log('Error fetching user info:', error);
+                    // console.log('Setting fallback displayName to email:', email.trim());
                     setDisplayName(email.trim());
 
                     // Dispatch custom event to notify header
@@ -225,7 +199,7 @@ export default function LoginModal({ open = false, onClose }) {
                 }
 
                 onClose?.();
-                console.log('LoginModal: Redirecting to home page');
+                // console.log('LoginModal: Redirecting to home page');
                 navigate('/', { replace: true });
             } else {
                 setError('Tài khoản hoặc mật khẩu không đúng');

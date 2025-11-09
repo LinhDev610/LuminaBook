@@ -4,10 +4,9 @@ import classNames from 'classnames/bind';
 import styles from './AddEmployeePage.module.scss';
 import { useAuth } from '../../../../contexts/AuthContext';
 import { useNotification } from '../../../../components/Common/Notification';
+import { refreshToken, createStaff } from '../../../../services';
 
 const cx = classNames.bind(styles);
-
-const API_BASE_URL = 'http://localhost:8080/lumina_book';
 
 function AddEmployeePage() {
     const navigate = useNavigate();
@@ -85,19 +84,14 @@ function AddEmployeePage() {
     };
 
     const refreshTokenIfNeeded = async () => {
-        const refreshToken = getStoredToken('refreshToken');
-        if (!refreshToken) return null;
+        const refreshTokenValue = getStoredToken('refreshToken');
+        if (!refreshTokenValue) return null;
         try {
-            const resp = await fetch(`${API_BASE_URL}/auth/refresh`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ token: refreshToken })
-            });
-            const data = await resp.json().catch(() => ({}));
-            if (resp.ok && data?.result?.token) {
-                localStorage.setItem('token', data.result.token);
-                localStorage.setItem('refreshToken', data.result.token);
-                return data.result.token;
+            const { ok, data: responseData } = await refreshToken(refreshTokenValue);
+            if (ok && responseData?.token) {
+                localStorage.setItem('token', responseData.token);
+                localStorage.setItem('refreshToken', responseData.token);
+                return responseData.token;
             }
         } catch (_) { }
         return null;
@@ -113,34 +107,14 @@ function AddEmployeePage() {
                     setIsLoading(false);
                     return;
                 }
-                let response = await fetch(`${API_BASE_URL}/users/staff`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(formData),
-                });
-
-                let data = {};
-                try {
-                    data = await response.json();
-                } catch (_) { }
+                let result = await createStaff(formData, token);
 
                 // Nếu hết hạn -> thử refresh và gọi lại 1 lần
-                if (response.status === 401) {
+                if (!result) {
                     const newToken = await refreshTokenIfNeeded();
                     if (newToken) {
                         token = newToken;
-                        response = await fetch(`${API_BASE_URL}/users/staff`, {
-                            method: 'POST',
-                            headers: {
-                                'Authorization': `Bearer ${token}`,
-                                'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify(formData),
-                        });
-                        try { data = await response.json(); } catch (_) { }
+                        result = await createStaff(formData, token);
                     } else {
                         // Không có refreshToken (user không tick Ghi nhớ) -> buộc đăng nhập lại
                         localStorage.removeItem('token');
@@ -154,20 +128,11 @@ function AddEmployeePage() {
                     }
                 }
 
-                if (response.ok) {
+                if (result) {
                     success('Tạo tài khoản nhân viên thành công! Mật khẩu đã được gửi qua email.');
                     navigate('/admin');
                 } else {
-                    const serverMsg = data?.message || data?.error || data?.result || '';
-                    if (response.status === 403) {
-                        error('Bạn không có quyền thực hiện hành động này. Vui lòng đăng nhập bằng tài khoản ADMIN.');
-                    } else if (response.status === 401) {
-                        error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
-                    } else if (response.status === 400) {
-                        error(`Dữ liệu không hợp lệ: ${serverMsg || 'Vui lòng kiểm tra lại thông tin.'}`);
-                    } else {
-                        error(`Lỗi tạo tài khoản (HTTP ${response.status}): ${serverMsg || 'Không rõ nguyên nhân'}`);
-                    }
+                    error('Không thể tạo tài khoản. Vui lòng thử lại.');
                 }
             } catch (error) {
                 console.error('Error creating staff:', error);

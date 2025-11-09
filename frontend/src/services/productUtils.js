@@ -1,8 +1,8 @@
-// Product utilities - tái sử dụng cho toàn bộ dự án
+// Product utilities
+import { STATUS_MAP, STATUS_TO_CLASS } from './constants';
 
 export const getProductImageUrl = (product) => {
     if (!product) return '';
-    // Try multiple possible fields
     return (
         product.defaultMediaUrl ||
         product.imageUrl ||
@@ -13,36 +13,21 @@ export const getProductImageUrl = (product) => {
     );
 };
 
-// Normalize media URL to full URL
+// Chuẩn hóa URL media thành URL đầy đủ
 export const normalizeMediaUrl = (url, apiBaseUrl) => {
     if (!url) return '';
-    // If already absolute URL, return as is
+    // Nếu URL đã là absolute, trả về như là
     if (url.startsWith('http://') || url.startsWith('https://')) return url;
-    // If starts with /, prepend base URL
+    // Nếu URL bắt đầu với /, thêm base URL
     if (url.startsWith('/')) return `${apiBaseUrl}${url}`;
-    // Otherwise, assume it's relative to product_media
+    // Nếu không, giả sử URL là relative đến product_media
     return `${apiBaseUrl}/product_media/${url}`;
 };
 
-export const STATUS_MAP = {
-    pending: 'Chờ duyệt',
-    approved: 'Đã duyệt',
-    rejected: 'Từ chối',
-    disabled: 'Vô hiệu hóa',
-};
-
-export const STATUS_TO_CLASS = {
-    'Chờ duyệt': 'pending',
-    'Đã duyệt': 'approved',
-    'Từ chối': 'rejected',
-    'Không được duyệt': 'rejected',
-    'Vô hiệu hóa': 'disabled',
-};
-
-// Get status class name
+// Lấy tên class của status
 export const getStatusClass = (status) => STATUS_TO_CLASS[status] || '';
 
-// Format price
+// Định dạng giá
 export const formatPrice = (price) => {
     return new Intl.NumberFormat('vi-VN', {
         style: 'currency',
@@ -50,7 +35,7 @@ export const formatPrice = (price) => {
     }).format(price);
 };
 
-// Map product from API to display format
+// Mappping sản phẩm từ API sang định dạng hiển thị
 export const mapProduct = (product, apiBaseUrl) => {
     try {
         const imageUrl = getProductImageUrl(product);
@@ -83,7 +68,7 @@ export const mapProduct = (product, apiBaseUrl) => {
     }
 };
 
-// Filter products by active categories
+// Lọc sản phẩm theo danh mục hoạt động
 export const filterByActiveCategories = (products, activeCategoryIdSet, activeCategoryNameSet) => {
     return products.filter((p) => {
         const pid = String(p.categoryId || '').trim();
@@ -94,7 +79,7 @@ export const filterByActiveCategories = (products, activeCategoryIdSet, activeCa
     });
 };
 
-// Filter products by search keyword
+// Lọc sản phẩm theo từ khóa tìm kiếm
 export const filterByKeyword = (products, keyword) => {
     if (!keyword?.trim()) return products;
     const searchLower = keyword.toLowerCase().trim();
@@ -105,14 +90,14 @@ export const filterByKeyword = (products, keyword) => {
     );
 };
 
-// Filter products by status
+// Lọc sản phẩm theo trạng thái
 export const filterByStatus = (products, status, statusMap = STATUS_MAP) => {
     if (!status || status === 'all') return products;
     const statusValue = statusMap[status] || status;
     return products.filter((p) => p.status === statusValue);
 };
 
-// Filter products by date (single date)
+// Lọc sản phẩm theo ngày (ngày đơn)
 export const filterByDate = (products, date, dateField = 'updatedAt') => {
     if (!date) return products;
     try {
@@ -130,7 +115,7 @@ export const filterByDate = (products, date, dateField = 'updatedAt') => {
     }
 };
 
-// Sort products by date (desc)
+// Sắp xếp sản phẩm theo ngày (giảm dần)
 export const sortByDate = (products, dateField = 'updatedAt') => {
     return [...products].sort(
         (a, b) => new Date(b[dateField] || 0) - new Date(a[dateField] || 0),

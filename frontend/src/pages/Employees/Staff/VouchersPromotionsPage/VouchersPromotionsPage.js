@@ -92,11 +92,11 @@ export default function VouchersPromotionsPage() {
     };
 
     const handleAddVoucher = () => {
-        navigate('/staff/vouchers/add-voucher');
+        navigate('/staff/vouchers/new');
     };
 
     const handleAddPromotion = () => {
-        navigate('/staff/vouchers/add-promotion');
+        navigate('/staff/promotions/new');
     };
 
     const sortOptions = useMemo(

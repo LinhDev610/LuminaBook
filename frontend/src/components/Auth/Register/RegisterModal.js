@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import useLocalStorage from '../../../hooks/useLocalStorage';
 import { useAuth } from '../../../contexts/AuthContext';
 import { isValidEmail, validatePassword } from '../../../services/utils';
+import { register, login, sendOTP } from '../../../services';
 import '../Auth.module.scss';
 import visibleIcon from '../../../assets/icons/icon-visible.png';
 import invisibleIcon from '../../../assets/icons/icon-invisible.png';
@@ -14,8 +15,6 @@ import classNames from 'classnames/bind';
 import styles from './RegisterModal.module.scss';
 
 const cx = classNames.bind(styles);
-
-const API_BASE_URL = 'http://localhost:8080/lumina_book';
 
 export default function RegisterModal({ open = false, onClose }) {
     const navigate = useNavigate();
@@ -36,11 +35,11 @@ export default function RegisterModal({ open = false, onClose }) {
 
     useEffect(() => {
         if (!open) return;
-        
+
         // Check if we have a verified email from localStorage
         const verifiedEmail = localStorage.getItem('verifiedEmail');
         const isVerified = localStorage.getItem('emailVerified') === 'true';
-        
+
         if (isVerified && verifiedEmail) {
             // If email is verified, set email and go to step 3
             setEmail(verifiedEmail);
@@ -50,7 +49,7 @@ export default function RegisterModal({ open = false, onClose }) {
             setRegisterStep(1);
             setEmail('');
         }
-        
+
         setError('');
         setIsLoading(false);
         setFullName('');
@@ -95,17 +94,8 @@ export default function RegisterModal({ open = false, onClose }) {
         setIsLoading(true);
         setError('');
         try {
-            const response = await fetch(
-                `${API_BASE_URL}/auth/send-otp?email=${encodeURIComponent(
-                    email,
-                )}&mode=register`,
-                {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                },
-            );
-            const data = await response.json();
-            if (response.ok && data.code === 200) {
+            const { ok, data } = await sendOTP(email, 'register');
+            if (ok && data.code === 200) {
                 // Switch to verify code modal
                 switchToVerifyCode(email, 'register');
             } else {
@@ -128,13 +118,13 @@ export default function RegisterModal({ open = false, onClose }) {
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!agree) return setError('Hãy đồng ý điều khoản');
-        
+
         // Validate password using utility function
         const passwordValidation = validatePassword(password, confirm);
         if (!passwordValidation.isValid) {
             return setError(passwordValidation.error);
         }
-        
+
         setIsLoading(true);
         setError('');
         try {
@@ -143,28 +133,15 @@ export default function RegisterModal({ open = false, onClose }) {
                 password,
                 fullName: (fullName || '').trim(),
             };
-            const resp = await fetch(`${API_BASE_URL}/users`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload),
-            });
-            const data = await resp.json().catch(() => ({}));
-            if (resp.ok && (data?.result || data?.code === 1000)) {
+            const { ok, data: registerData } = await register(payload);
+            if (ok && (registerData || registerData?.code === 1000)) {
                 try {
-                    const loginResp = await fetch(
-                        `${API_BASE_URL}/auth/token`,
-                        {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                email: (email || '').trim(),
-                                password,
-                            }),
-                        },
-                    );
-                    const loginData = await loginResp.json().catch(() => ({}));
-                    if (loginResp.ok && loginData?.result?.token) {
-                        setToken(loginData.result.token);
+                    const { ok: loginOk, data: loginData } = await login({
+                        email: (email || '').trim(),
+                        password,
+                    });
+                    if (loginOk && loginData?.token) {
+                        setToken(loginData.token);
                         setDisplayName(
                             (fullName || '').trim() || (email || '').trim(),
                         );
@@ -180,11 +157,11 @@ export default function RegisterModal({ open = false, onClose }) {
                 }
             } else {
                 // Handle backend validation errors
-                const code = data?.code;
-                if (code === 1004 || (data?.message || '').includes('INVALID_PASSWORD')) {
+                const code = registerData?.code;
+                if (code === 1004 || (registerData?.message || '').includes('INVALID_PASSWORD')) {
                     setError('Mật khẩu ít nhất phải chứa một chữ cái thường, 1 chữ cái in hoa,1 số và 1 kí tự đặc biệt');
                 } else {
-                    const message = data?.message || 'Đăng ký thất bại. Vui lòng thử lại.';
+                    const message = registerData?.message || 'Đăng ký thất bại. Vui lòng thử lại.';
                     setError(message === 'User existed' ? 'Tài khoản đã tồn tại' : message);
                 }
             }
@@ -356,7 +333,7 @@ export default function RegisterModal({ open = false, onClose }) {
                     </Button>
                     <p className={cx('auth-subtext')}>
                         Đã có tài khoản?{' '}
-                        <button 
+                        <button
                             onClick={switchToLogin}
                             className={cx('auth-link')}
                         >
@@ -365,7 +342,7 @@ export default function RegisterModal({ open = false, onClose }) {
                     </p>
                 </form>
             )}
-            
+
             {registerStep === 3 && (
                 <form onSubmit={handleSubmit} className={cx('auth-form')}>
                     <div className={cx('form-group')}>

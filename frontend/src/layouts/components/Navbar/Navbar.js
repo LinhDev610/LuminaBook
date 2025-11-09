@@ -26,7 +26,7 @@ function Navbar() {
     };
 
     const handleMobileMenuClick = () => {
-        console.log('Mobile menu clicked, current state:', isMobileMenuOpen);
+        // console.log('Mobile menu clicked, current state:', isMobileMenuOpen);
         setIsMobileMenuOpen(!isMobileMenuOpen);
     };
     

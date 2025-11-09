@@ -5,10 +5,10 @@ import styles from './ManageCustomerAccountsPage.module.scss';
 import SearchAndSort from '../../../components/Common/SearchAndSort';
 import ConfirmDialog from '../../../layouts/components/ConfirmDialog';
 import Notification from '../../../components/Common/Notification/Notification';
+import { getStoredToken } from '../../../services/utils';
+import { getAllUsers, updateUser, deleteUser } from '../../../services';
 
 const cx = classNames.bind(styles);
-
-const API_BASE_URL = 'http://localhost:8080/lumina_book';
 
 function ManageCustomerAccountsPage() {
     const navigate = useNavigate();
@@ -42,91 +42,70 @@ function ManageCustomerAccountsPage() {
 
     // Fetch customers from API - tách thành function để có thể gọi lại
     const fetchCustomers = async () => {
-            setLoading(true);
-            setError(null);
-            try {
-                const token = getStoredToken();
-                if (!token) {
-                    setError('Vui lòng đăng nhập để tiếp tục');
-                    setLoading(false);
-                    return;
-                }
+        setLoading(true);
+        setError(null);
+        try {
+            const token = getStoredToken();
+            if (!token) {
+                setError('Vui lòng đăng nhập để tiếp tục');
+                setLoading(false);
+                return;
+            }
 
-                const response = await fetch(`${API_BASE_URL}/users`, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json',
-                    },
+            const users = await getAllUsers(token);
+
+            // Filter only customers (role.name === 'CUSTOMER')
+            const customers = users
+                .filter(user => user?.role?.name === 'CUSTOMER')
+                .map(user => {
+                    // Handle fullName - check both camelCase and snake_case
+                    const fullName = user.fullName || user.full_name || '';
+
+                    // Handle isActive - check field name
+                    let activeValue;
+                    if ('isActive' in user) {
+                        activeValue = user.isActive;
+                    } else if ('active' in user) {
+                        activeValue = user.active;
+                    } else {
+                        activeValue = user.isActive !== undefined ? user.isActive : user.active;
+                    }
+
+                    // Determine active status
+                    let isActiveStatus = false;
+                    if (activeValue !== undefined && activeValue !== null) {
+                        if (typeof activeValue === 'number') {
+                            isActiveStatus = activeValue === 1;
+                        } else if (typeof activeValue === 'boolean') {
+                            isActiveStatus = activeValue === true;
+                        } else if (typeof activeValue === 'string') {
+                            const lower = String(activeValue).toLowerCase().trim();
+                            isActiveStatus = lower === '1' || lower === 'true';
+                        } else {
+                            isActiveStatus = Boolean(activeValue);
+                        }
+                    }
+
+                    return {
+                        id: user.id,
+                        username: user.email?.split('@')[0] || fullName || 'N/A',
+                        email: user.email || '',
+                        phone: user.phoneNumber || user.phone_number || '',
+                        status: isActiveStatus ? 'active' : 'locked',
+                        fullName: fullName,
+                    };
                 });
 
-                if (!response.ok) {
-                    // Try to parse error response
-                    let errorMessage = `HTTP error! status: ${response.status}`;
-                    try {
-                        const errorData = await response.json();
-                        errorMessage = errorData?.message || errorMessage;
-                    } catch (e) {
-                        // If response is not JSON, use default message
-                    }
-                    console.error('API Error:', errorMessage, response.status);
-                    throw new Error(errorMessage);
-                }
-
-                const data = await response.json();
-                const users = data?.result || [];
-
-                // Filter only customers (role.name === 'CUSTOMER')
-                const customers = users
-                    .filter(user => user?.role?.name === 'CUSTOMER')
-                    .map(user => {
-                        // Handle fullName - check both camelCase and snake_case
-                        const fullName = user.fullName || user.full_name || '';
-                        
-                        // Handle isActive - check field name
-                        let activeValue;
-                        if ('isActive' in user) {
-                            activeValue = user.isActive;
-                        } else if ('active' in user) {
-                            activeValue = user.active;
-                        } else {
-                            activeValue = user.isActive !== undefined ? user.isActive : user.active;
-                        }
-                        
-                        // Determine active status
-                        let isActiveStatus = false;
-                        if (activeValue !== undefined && activeValue !== null) {
-                            if (typeof activeValue === 'number') {
-                                isActiveStatus = activeValue === 1;
-                            } else if (typeof activeValue === 'boolean') {
-                                isActiveStatus = activeValue === true;
-                            } else if (typeof activeValue === 'string') {
-                                const lower = String(activeValue).toLowerCase().trim();
-                                isActiveStatus = lower === '1' || lower === 'true';
-                            } else {
-                                isActiveStatus = Boolean(activeValue);
-                            }
-                        }
-                        
-                        return {
-                            id: user.id,
-                            username: user.email?.split('@')[0] || fullName || 'N/A',
-                            email: user.email || '',
-                            phone: user.phoneNumber || user.phone_number || '',
-                            status: isActiveStatus ? 'active' : 'locked',
-                            fullName: fullName,
-                        };
-                    });
-
-                setAllCustomers(customers);
-                setFilteredCustomers(customers);
-            } catch (err) {
-                console.error('Error fetching customers:', err);
-                // Display more detailed error message
-                const errorMessage = err.message || 'Không thể tải dữ liệu khách hàng. Vui lòng thử lại sau.';
-                setError(errorMessage);
-            } finally {
-                setLoading(false);
-            }
+            setAllCustomers(customers);
+            setFilteredCustomers(customers);
+        } catch (err) {
+            console.error('Error fetching customers:', err);
+            // Display more detailed error message
+            const errorMessage = err.message || 'Không thể tải dữ liệu khách hàng. Vui lòng thử lại sau.';
+            setError(errorMessage);
+        } finally {
+            setLoading(false);
+        }
     };
 
     // Fetch customers khi component mount
@@ -161,23 +140,23 @@ function ManageCustomerAccountsPage() {
     // Helper function to apply filters with specific data
     const applyFiltersWithData = (search, status, customers) => {
         let filtered = customers;
-        
+
         // Filter by search term (fullName, email, phone)
         if (search && search.trim()) {
             const searchLower = search.toLowerCase().trim();
-            filtered = filtered.filter(customer => 
+            filtered = filtered.filter(customer =>
                 (customer.fullName || '').toLowerCase().includes(searchLower) ||
                 (customer.username || '').toLowerCase().includes(searchLower) ||
                 (customer.email || '').toLowerCase().includes(searchLower) ||
                 (customer.phone || '').includes(search.trim())
             );
         }
-        
+
         // Filter by status - only if not "all"
         if (status !== 'all') {
             filtered = filtered.filter(customer => customer.status === status);
         }
-        
+
         setFilteredCustomers(filtered);
     };
 
@@ -205,7 +184,7 @@ function ManageCustomerAccountsPage() {
         const action = isCurrentlyActive ? 'khóa' : 'mở khóa';
         const customer = allCustomers.find(c => c.id === customerId);
         const customerName = customer?.fullName || customer?.email || `#${customerId}`;
-        
+
         setConfirmDialog({
             open: true,
             title: 'Xác nhận hành động',
@@ -216,7 +195,7 @@ function ManageCustomerAccountsPage() {
 
     const performToggleLock = async (customerId, currentStatus) => {
         setConfirmDialog({ open: false, title: '', message: '', onConfirm: null });
-        
+
         const isCurrentlyActive = currentStatus === 'active';
         const newIsActive = !isCurrentlyActive;
         const action = isCurrentlyActive ? 'khóa' : 'mở khóa';
@@ -228,63 +207,40 @@ function ManageCustomerAccountsPage() {
                 return;
             }
 
-            const requestBody = {
-                isActive: newIsActive,
-            };
-
-            const response = await fetch(`${API_BASE_URL}/users/${customerId}`, {
-                method: 'PUT',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(requestBody),
-            });
-
-            if (!response.ok) {
-                let errorMessage = `HTTP error! status: ${response.status}`;
-                try {
-                    const errorData = await response.json();
-                    errorMessage = errorData?.message || errorData?.error || errorMessage;
-                } catch (e) {
-                    // Ignore parse error
-                }
-                throw new Error(errorMessage);
-            }
-
-            await response.json();
+            const requestBody = { isActive: newIsActive };
+            await updateUser(customerId, requestBody, token);
 
             // Cập nhật state local thay vì refetch để tránh nhấp nháy
-            setAllCustomers(prevCustomers => 
-                prevCustomers.map(customer => 
-                    customer.id === customerId 
+            setAllCustomers(prevCustomers =>
+                prevCustomers.map(customer =>
+                    customer.id === customerId
                         ? { ...customer, status: newIsActive ? 'active' : 'locked' }
                         : customer
                 )
             );
-            setFilteredCustomers(prevFiltered => 
-                prevFiltered.map(customer => 
-                    customer.id === customerId 
+            setFilteredCustomers(prevFiltered =>
+                prevFiltered.map(customer =>
+                    customer.id === customerId
                         ? { ...customer, status: newIsActive ? 'active' : 'locked' }
                         : customer
                 )
             );
-            
-            setNotif({ 
-                open: true, 
-                type: 'success', 
-                title: 'Thành công', 
-                message: `Đã ${action} tài khoản thành công`, 
-                duration: 3000 
+
+            setNotif({
+                open: true,
+                type: 'success',
+                title: 'Thành công',
+                message: `Đã ${action} tài khoản thành công`,
+                duration: 3000
             });
         } catch (err) {
             console.error(`Error ${action} customer:`, err);
-            setNotif({ 
-                open: true, 
-                type: 'error', 
-                title: 'Thất bại', 
-                message: `Không thể ${action} tài khoản: ${err.message || 'Vui lòng thử lại sau.'}`, 
-                duration: 4000 
+            setNotif({
+                open: true,
+                type: 'error',
+                title: 'Thất bại',
+                message: `Không thể ${action} tài khoản: ${err.message || 'Vui lòng thử lại sau.'}`,
+                duration: 4000
             });
         }
     };
@@ -302,25 +258,7 @@ function ManageCustomerAccountsPage() {
                 return;
             }
 
-            const response = await fetch(`${API_BASE_URL}/users/${customerId}`, {
-                method: 'DELETE',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                },
-            });
-
-            if (!response.ok) {
-                // Try to get error message from response
-                let errorMessage = `HTTP error! status: ${response.status}`;
-                try {
-                    const errorData = await response.json();
-                    errorMessage = errorData?.message || errorMessage;
-                } catch (e) {
-                    // If response is not JSON, use default message
-                }
-                throw new Error(errorMessage);
-            }
+            await deleteUser(customerId, token);
 
             // Sau khi xóa thành công, fetch lại dữ liệu từ backend để đảm bảo hiển thị đúng
             await fetchCustomers();
@@ -340,7 +278,7 @@ function ManageCustomerAccountsPage() {
     return (
         <div className={cx('admin-page')}>
             <h1 className={cx('page-title')}>Quản lý tài khoản khách hàng</h1>
-            
+
             <SearchAndSort
                 searchPlaceholder={customerSearchPlaceholder}
                 searchValue={searchTerm}
@@ -352,7 +290,7 @@ function ManageCustomerAccountsPage() {
                 onSortChange={handleSort}
                 additionalButtons={additionalButtons}
             />
-            
+
             {loading ? (
                 <div className={cx('loading-container')}>
                     <p>Đang tải dữ liệu...</p>
@@ -394,42 +332,42 @@ function ManageCustomerAccountsPage() {
                                             {getStatusText(customer.status)}
                                         </td>
                                         <td className={cx('actions')}>
-                                            <button 
+                                            <button
                                                 className={cx('btn', 'edit-btn')}
                                                 onClick={() => navigate(`/admin/customers/${customer.id}`)}
                                             >
                                                 Sửa
                                             </button>
                                             {customer.status === 'active' ? (
-                                                <button 
+                                                <button
                                                     className={cx('btn', 'lock-btn')}
                                                     onClick={() => handleToggleLock(customer.id, customer.status)}
                                                 >
                                                     Khóa
                                                 </button>
                                             ) : (
-                                                <button 
+                                                <button
                                                     className={cx('btn', 'unlock-btn')}
                                                     onClick={() => handleToggleLock(customer.id, customer.status)}
                                                 >
                                                     Mở khóa
                                                 </button>
                                             )}
-                                            <button 
+                                            <button
                                                 className={cx('btn', 'delete-btn')}
                                                 onClick={() => handleDelete(customer.id)}
                                             >
                                                 Xóa
                                             </button>
                                         </td>
-                                    <td>
-                                        <button 
-                                            className={cx('btn', 'detail-btn')}
-                                            onClick={() => handleViewDetails(customer.id)}
-                                        >
-                                            Xem chi tiết
-                                        </button>
-                                    </td>
+                                        <td>
+                                            <button
+                                                className={cx('btn', 'detail-btn')}
+                                                onClick={() => handleViewDetails(customer.id)}
+                                            >
+                                                Xem chi tiết
+                                            </button>
+                                        </td>
                                     </tr>
                                 ))
                             )}
@@ -441,7 +379,7 @@ function ManageCustomerAccountsPage() {
                 open={confirmDialog.open}
                 title={confirmDialog.title}
                 message={confirmDialog.message}
-                onConfirm={confirmDialog.onConfirm || (() => {})}
+                onConfirm={confirmDialog.onConfirm || (() => { })}
                 onCancel={() => setConfirmDialog({ open: false, title: '', message: '', onConfirm: null })}
             />
             <Notification

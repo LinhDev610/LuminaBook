@@ -19,7 +19,7 @@ const bookTypes = [
 
 export default function AddVoucherPage() {
     const navigate = useNavigate();
-    
+
     const [formData, setFormData] = useState({
         campaignName: '',
         voucherCode: '',
@@ -58,7 +58,7 @@ export default function AddVoucherPage() {
         if (file) {
             setSelectedFileName(file.name);
             setFormData(prev => ({ ...prev, image: file }));
-            
+
             // Tạo preview
             const reader = new FileReader();
             reader.onloadend = () => {
@@ -93,7 +93,7 @@ export default function AddVoucherPage() {
 
     const validateForm = () => {
         const newErrors = {};
-        
+
         if (!formData.campaignName.trim()) {
             newErrors.campaignName = 'Vui lòng nhập tên chương trình';
         }
@@ -121,7 +121,7 @@ export default function AddVoucherPage() {
         if (!formData.endDate) {
             newErrors.endDate = 'Vui lòng chọn ngày kết thúc';
         }
-        
+
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
@@ -162,21 +162,7 @@ export default function AddVoucherPage() {
         <div className={cx('wrap')}>
             <div className={cx('header')}>
                 <div className={cx('header-left')}>
-                    <button className={cx('back-icon-btn')} onClick={() => navigate('/staff/vouchers')}>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                            <path
-                                d="M15 18L9 12L15 6"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                            />
-                        </svg>
-                    </button>
-                    <div>
-                        <h2 className={cx('subtitle')}>Voucher & Khuyến mãi</h2>
-                        <h1 className={cx('title')}>Thêm Voucher</h1>
-                    </div>
+                    <span className={cx('header-text')}>Voucher & Khuyến mãi</span>
                 </div>
                 <button className={cx('dashboard-btn')} onClick={() => navigate('/staff')}>
                     <span className={cx('icon-left')}>
@@ -193,6 +179,20 @@ export default function AddVoucherPage() {
                     Dashboard
                 </button>
             </div>
+
+            <button className={cx('back-arrow-btn')} onClick={() => navigate('/staff/vouchers-promotions')}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                    <path
+                        d="M15 18L9 12L15 6"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                    />
+                </svg>
+            </button>
+
+            <h1 className={cx('title')}>Thêm Voucher</h1>
 
             <div className={cx('form-container')}>
                 <div className={cx('form-card')}>
@@ -242,7 +242,7 @@ export default function AddVoucherPage() {
 
                     <div className={cx('form-group')}>
                         <label className={cx('form-label')}>Điều kiện áp dụng</label>
-                        
+
                         <div className={cx('condition-row')}>
                             <label className={cx('condition-label')}>Giá trị đơn từ (VNĐ):</label>
                             <input
@@ -282,20 +282,6 @@ export default function AddVoucherPage() {
                     </div>
 
                     <div className={cx('form-row')}>
-                        <div className={cx('form-group', 'form-group-half')}>
-                            <label className={cx('form-label')}>Hạn mức</label>
-                            <input
-                                type="text"
-                                className={cx('form-input', { error: errors.limit })}
-                                placeholder="VD: Tối đa 50.000đ / đơn"
-                                value={formData.limit}
-                                onChange={(e) => handleInputChange('limit', e.target.value)}
-                            />
-                            {errors.limit && (
-                                <span className={cx('error-text')}>{errors.limit}</span>
-                            )}
-                        </div>
-
                         {formData.applyType === 'by-book-type' && (
                             <div className={cx('form-group', 'form-group-half')}>
                                 <label className={cx('form-label')}>Loại sách áp dụng</label>
@@ -315,6 +301,20 @@ export default function AddVoucherPage() {
                                 )}
                             </div>
                         )}
+
+                        <div className={cx('form-group', 'form-group-half')}>
+                            <label className={cx('form-label')}>Hạn mức</label>
+                            <input
+                                type="text"
+                                className={cx('form-input', { error: errors.limit })}
+                                placeholder="VD: Tối đa 50.000₫ / don"
+                                value={formData.limit}
+                                onChange={(e) => handleInputChange('limit', e.target.value)}
+                            />
+                            {errors.limit && (
+                                <span className={cx('error-text')}>{errors.limit}</span>
+                            )}
+                        </div>
                     </div>
 
                     <div className={cx('form-row', 'form-row-three')}>

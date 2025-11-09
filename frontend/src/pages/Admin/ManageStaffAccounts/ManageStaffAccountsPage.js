@@ -1,14 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import classNames from 'classnames/bind';
 import styles from './ManageStaffAccountsPage.module.scss';
 import SearchAndSort from '../../../components/Common/SearchAndSort';
 import ConfirmDialog from '../../../layouts/components/ConfirmDialog';
 import Notification from '../../../components/Common/Notification/Notification';
+import { getStoredToken } from '../../../services/utils';
+import { getAllUsers, updateUser, deleteUser } from '../../../services';
 
 const cx = classNames.bind(styles);
-
-const API_BASE_URL = 'http://localhost:8080/lumina_book';
 
 function ManageStaffAccountsPage() {
     const navigate = useNavigate();
@@ -52,28 +52,7 @@ function ManageStaffAccountsPage() {
                 return;
             }
 
-            const response = await fetch(`${API_BASE_URL}/users`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                },
-            });
-
-            if (!response.ok) {
-                // Try to parse error response
-                let errorMessage = `HTTP error! status: ${response.status}`;
-                try {
-                    const errorData = await response.json();
-                    errorMessage = errorData?.message || errorMessage;
-                } catch (e) {
-                    // If response is not JSON, use default message
-                }
-                console.error('API Error:', errorMessage, response.status);
-                throw new Error(errorMessage);
-            }
-
-            const data = await response.json();
-            const users = data?.result || [];
+            const users = await getAllUsers(token);
 
             // Filter only staff (role.name === 'STAFF' or 'CUSTOMER_SUPPORT')
             const employees = users
@@ -84,7 +63,7 @@ function ManageStaffAccountsPage() {
                 .map(user => {
                     // Handle fullName - check both camelCase and snake_case
                     const fullName = user.fullName || user.full_name || '';
-                    
+
                     // Handle isActive - check field name
                     let activeValue;
                     if ('isActive' in user) {
@@ -94,7 +73,7 @@ function ManageStaffAccountsPage() {
                     } else {
                         activeValue = user.isActive !== undefined ? user.isActive : user.active;
                     }
-                    
+
                     // Determine active status
                     let isActiveStatus = false;
                     if (activeValue !== undefined && activeValue !== null) {
@@ -109,7 +88,7 @@ function ManageStaffAccountsPage() {
                             isActiveStatus = Boolean(activeValue);
                         }
                     }
-                    
+
                     return {
                         id: user.id,
                         name: fullName || user.email?.split('@')[0] || 'N/A',
@@ -165,23 +144,23 @@ function ManageStaffAccountsPage() {
     // Helper function to apply filters with specific data
     const applyFiltersWithData = (search, status, employees) => {
         let filtered = employees;
-        
+
         // Filter by search term (fullName, email, phone)
         if (search && search.trim()) {
             const searchLower = search.toLowerCase().trim();
-            filtered = filtered.filter(employee => 
+            filtered = filtered.filter(employee =>
                 (employee.fullName || '').toLowerCase().includes(searchLower) ||
                 (employee.name || '').toLowerCase().includes(searchLower) ||
                 (employee.email || '').toLowerCase().includes(searchLower) ||
                 (employee.phone || '').includes(search.trim())
             );
         }
-        
+
         // Filter by status - only if not "all"
         if (status !== 'all') {
             filtered = filtered.filter(employee => employee.status === status);
         }
-        
+
         setFilteredEmployees(filtered);
     };
 
@@ -209,7 +188,7 @@ function ManageStaffAccountsPage() {
         const action = isCurrentlyActive ? 'khóa' : 'mở khóa';
         const employee = allEmployees.find(e => e.id === employeeId);
         const employeeName = employee?.fullName || employee?.name || employee?.email || `#${employeeId}`;
-        
+
         setConfirmDialog({
             open: true,
             title: 'Xác nhận hành động',
@@ -220,7 +199,7 @@ function ManageStaffAccountsPage() {
 
     const performToggleLock = async (employeeId, currentStatus) => {
         setConfirmDialog({ open: false, title: '', message: '', onConfirm: null });
-        
+
         const isCurrentlyActive = currentStatus === 'active';
         const newIsActive = !isCurrentlyActive;
         const action = isCurrentlyActive ? 'khóa' : 'mở khóa';
@@ -232,63 +211,40 @@ function ManageStaffAccountsPage() {
                 return;
             }
 
-            const requestBody = {
-                isActive: newIsActive,
-            };
-
-            const response = await fetch(`${API_BASE_URL}/users/${employeeId}`, {
-                method: 'PUT',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(requestBody),
-            });
-
-            if (!response.ok) {
-                let errorMessage = `HTTP error! status: ${response.status}`;
-                try {
-                    const errorData = await response.json();
-                    errorMessage = errorData?.message || errorData?.error || errorMessage;
-                } catch (e) {
-                    // Ignore parse error
-                }
-                throw new Error(errorMessage);
-            }
-
-            await response.json();
+            const requestBody = { isActive: newIsActive };
+            await updateUser(employeeId, requestBody, token);
 
             // Cập nhật state local thay vì refetch để tránh nhấp nháy
-            setAllEmployees(prevEmployees => 
-                prevEmployees.map(employee => 
-                    employee.id === employeeId 
+            setAllEmployees(prevEmployees =>
+                prevEmployees.map(employee =>
+                    employee.id === employeeId
                         ? { ...employee, status: newIsActive ? 'active' : 'locked' }
                         : employee
                 )
             );
-            setFilteredEmployees(prevFiltered => 
-                prevFiltered.map(employee => 
-                    employee.id === employeeId 
+            setFilteredEmployees(prevFiltered =>
+                prevFiltered.map(employee =>
+                    employee.id === employeeId
                         ? { ...employee, status: newIsActive ? 'active' : 'locked' }
                         : employee
                 )
             );
-            
-            setNotif({ 
-                open: true, 
-                type: 'success', 
-                title: 'Thành công', 
-                message: `Đã ${action} tài khoản thành công`, 
-                duration: 3000 
+
+            setNotif({
+                open: true,
+                type: 'success',
+                title: 'Thành công',
+                message: `Đã ${action} tài khoản thành công`,
+                duration: 3000
             });
         } catch (err) {
             console.error(`Error ${action} staff:`, err);
-            setNotif({ 
-                open: true, 
-                type: 'error', 
-                title: 'Thất bại', 
-                message: `Không thể ${action} tài khoản: ${err.message || 'Vui lòng thử lại sau.'}`, 
-                duration: 4000 
+            setNotif({
+                open: true,
+                type: 'error',
+                title: 'Thất bại',
+                message: `Không thể ${action} tài khoản: ${err.message || 'Vui lòng thử lại sau.'}`,
+                duration: 4000
             });
         }
     };
@@ -306,25 +262,7 @@ function ManageStaffAccountsPage() {
                 return;
             }
 
-            const response = await fetch(`${API_BASE_URL}/users/${employeeId}`, {
-                method: 'DELETE',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                },
-            });
-
-            if (!response.ok) {
-                // Try to get error message from response
-                let errorMessage = `HTTP error! status: ${response.status}`;
-                try {
-                    const errorData = await response.json();
-                    errorMessage = errorData?.message || errorMessage;
-                } catch (e) {
-                    // If response is not JSON, use default message
-                }
-                throw new Error(errorMessage);
-            }
+            await deleteUser(employeeId, token);
 
             // Sau khi xóa thành công, fetch lại dữ liệu từ backend để đảm bảo hiển thị đúng
             await fetchStaff();
@@ -354,7 +292,7 @@ function ManageStaffAccountsPage() {
     return (
         <div className={cx('admin-page')}>
             <h1 className={cx('page-title')}>Quản lý tài khoản nhân viên</h1>
-            
+
             <SearchAndSort
                 searchPlaceholder={staffSearchPlaceholder}
                 searchValue={searchTerm}
@@ -366,7 +304,7 @@ function ManageStaffAccountsPage() {
                 onSortChange={handleSort}
                 additionalButtons={additionalButtons}
             />
-            
+
             {loading ? (
                 <div className={cx('loading-container')}>
                     <p>Đang tải dữ liệu...</p>
@@ -408,28 +346,28 @@ function ManageStaffAccountsPage() {
                                             {getStatusText(employee.status)}
                                         </td>
                                         <td className={cx('actions')}>
-                                            <button 
+                                            <button
                                                 className={cx('btn', 'edit-btn')}
                                                 onClick={() => navigate(`/admin/staff/${employee.id}`)}
                                             >
                                                 Sửa
                                             </button>
                                             {employee.status === 'active' ? (
-                                                <button 
+                                                <button
                                                     className={cx('btn', 'lock-btn')}
                                                     onClick={() => handleToggleLock(employee.id, employee.status)}
                                                 >
                                                     Khóa
                                                 </button>
                                             ) : (
-                                                <button 
+                                                <button
                                                     className={cx('btn', 'unlock-btn')}
                                                     onClick={() => handleToggleLock(employee.id, employee.status)}
                                                 >
                                                     Mở khóa
                                                 </button>
                                             )}
-                                            <button 
+                                            <button
                                                 className={cx('btn', 'delete-btn')}
                                                 onClick={() => handleDelete(employee.id)}
                                             >
@@ -437,7 +375,7 @@ function ManageStaffAccountsPage() {
                                             </button>
                                         </td>
                                         <td>
-                                            <button 
+                                            <button
                                                 className={cx('btn', 'detail-btn')}
                                                 onClick={() => handleViewDetails(employee.id)}
                                             >
@@ -455,7 +393,7 @@ function ManageStaffAccountsPage() {
                 open={confirmDialog.open}
                 title={confirmDialog.title}
                 message={confirmDialog.message}
-                onConfirm={confirmDialog.onConfirm || (() => {})}
+                onConfirm={confirmDialog.onConfirm || (() => { })}
                 onCancel={() => setConfirmDialog({ open: false, title: '', message: '', onConfirm: null })}
             />
             <Notification

@@ -1,73 +1,11 @@
 // Utils
 // Hàm tiện ích
 
-export function getApiBaseUrl() {
-    const envUrl =
-        typeof process !== 'undefined' ? process.env?.REACT_APP_API_BASE_URL : undefined;
-    const fallback = 'http://localhost:8080/lumina_book';
-    return (envUrl && String(envUrl).trim()) || fallback;
-}
-
-export function getStoredToken(key = 'token') {
-    try {
-        const pick = (val) => {
-            if (!val) return null;
-            let t = String(val).trim();
-            // Strip optional quotes from some storage libs   
-            if ((t.startsWith('"') && t.endsWith('"')) || (t.startsWith("'") && t.endsWith("'"))) {
-                t = t.substring(1, t.length - 1);
-            }
-            // If value is JSON, parse once 
-            // nếu value là JSON, 
-            if (t.startsWith('{') || t.startsWith('[')) {
-                try {
-                    const parsed = JSON.parse(t);
-                    t = typeof parsed === 'string' ? parsed : '';
-                } catch (_) { }
-            }
-            t = t.trim();
-            // Remove accidental Bearer prefix and whitespace
-            if (t.toLowerCase().startsWith('bearer ')) {
-                t = t.slice(7);
-            }
-            t = t.trim();
-            return t || null;
-        };
-
-        const fromSession = pick(sessionStorage.getItem(key));
-        if (fromSession) return fromSession;
-        const fromLocal = pick(localStorage.getItem(key));
-        return fromLocal;
-    } catch (_) {
-        return null;
-    }
-}
-
-// Fetch current user's role from backend
-export async function getUserRole(apiBaseUrl, token) {
-    try {
-        const resp = await fetch(`${apiBaseUrl}/users/my-info`, {
-            headers: {
-                'Content-Type': 'application/json',
-                ...(token ? { Authorization: `Bearer ${token}` } : {}),
-            },
-        });
-        const data = await resp.json().catch(() => ({}));
-        return (
-            data?.result?.role?.name ||
-            data?.role?.name ||
-            data?.result?.role ||
-            data?.role ||
-            data?.result?.authorities?.[0]?.authority ||
-            data?.authorities?.[0]?.authority ||
-            null
-        );
-    } catch (_) {
-        return null;
-    }
-}
+// Re-export API functions from api.js for backward compatibility
+export { getApiBaseUrl, getUserRole, getStoredToken } from './api';
 
 export async function isAdmin(apiBaseUrl, token) {
+    const { getUserRole } = await import('./api');
     const role = await getUserRole(apiBaseUrl, token);
     return role === 'ADMIN';
 }

@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import useLocalStorage from '../../hooks/useLocalStorage';
 import Notification from '../../components/Common/Notification/Notification';
 import guestImgIcon from '../../assets/icons/icon_img_guest.png';
-
+import { getMyInfo, updateUser } from '../../services';
 import styles from './CustomerAccountPage.module.scss';
 import CustomerChangePasswordPage from './CustomerChangePassword/CustomerChangePasswordPage';
 import classNames from 'classnames/bind';
@@ -17,7 +17,7 @@ function CustomerAccountPage() {
     const [displayName, setDisplayName, removeDisplayName] = useLocalStorage(
         'displayName',
         null,
-);
+    );
     const [email, setEmail, removeEmail] = useLocalStorage('email', '');
     const [token, setToken, removeToken] = useLocalStorage('token', null);
 
@@ -73,15 +73,8 @@ function CustomerAccountPage() {
             try {
                 const tk = getStoredToken();
                 if (!tk) return;
-                const resp = await fetch('http://localhost:8080/lumina_book/users/my-info', {
-                    headers: {
-                        Authorization: `Bearer ${tk}`,
-                        'Content-Type': 'application/json',
-                    },
-                });
-                const data = await resp.json().catch(() => ({}));
-                if (resp.ok && data?.result) {
-                    const u = data.result;
+                const u = await getMyInfo(tk);
+                if (u) {
                     setUser(u);
                     // Deep clone to ensure cancel restores immutable snapshot
                     try {
@@ -100,7 +93,6 @@ function CustomerAccountPage() {
             }
         };
         fetchMe();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     // Change password form state
@@ -185,25 +177,17 @@ function CustomerAccountPage() {
                                         try {
                                             if (user?.id) {
                                                 const tk2 = getStoredToken();
-                                                const updateResp = await fetch(`http://localhost:8080/lumina_book/users/${user.id}`, {
-                                                    method: 'PUT',
-                                                    headers: {
-                                                        'Content-Type': 'application/json',
-                                                        Authorization: `Bearer ${tk2}`,
-                                                    },
-                                                    body: JSON.stringify({ avatarUrl: url }),
-                                                });
-                                                const updateData = await updateResp.json().catch(() => ({}));
-                                                if (updateResp.ok && updateData?.result) {
+                                                const updateData = await updateUser(user.id, { avatarUrl: url }, tk2);
+                                                if (updateData) {
                                                     // Refresh original snapshot and notify
                                                     try {
-                                                        setOriginalUser(JSON.parse(JSON.stringify(updateData.result)));
+                                                        setOriginalUser(JSON.parse(JSON.stringify(updateData)));
                                                     } catch (_e) {
-                                                        setOriginalUser(updateData.result);
+                                                        setOriginalUser(updateData);
                                                     }
                                                     setNotif({ open: true, type: 'success', title: 'Đã lưu ảnh đại diện', message: 'Ảnh đại diện đã được cập nhật', duration: 2500 });
                                                 } else {
-                                                    setNotif({ open: true, type: 'warning', title: 'Không lưu được ảnh', message: updateData?.message || 'Không thể lưu avatar, thử lại sau', duration: 3500 });
+                                                    setNotif({ open: true, type: 'warning', title: 'Không lưu được ảnh', message: 'Không thể lưu avatar, thử lại sau', duration: 3500 });
                                                 }
                                             }
                                         } catch (_e) {
@@ -212,7 +196,7 @@ function CustomerAccountPage() {
                                     } else {
                                         setNotif({ open: true, type: 'error', title: 'Upload thất bại', message: 'Không thể tải ảnh lên máy chủ', duration: 3000 });
                                     }
-                                } catch (_) {}
+                                } catch (_) { }
                                 finally { setUploadingAvatar(false); }
                             }} />
                         </div>
@@ -324,9 +308,9 @@ function CustomerAccountPage() {
                                     onClick={() => {
                                         if (originalUser) {
                                             try {
-                                            setUser(JSON.parse(JSON.stringify(originalUser)));
+                                                setUser(JSON.parse(JSON.stringify(originalUser)));
                                             } catch (_e) {
-                                            setUser(originalUser);
+                                                setUser(originalUser);
                                             }
                                             setPendingAvatarDataUrl(null);
                                             if (originalUser.avatarUrl) {
@@ -353,36 +337,22 @@ function CustomerAccountPage() {
                                                 address: user.address ?? '',
                                                 avatarUrl: (user?.avatarUrl ?? '').trim(),
                                             };
-                                            const resp = await fetch(`http://localhost:8080/lumina_book/users/${user.id}`, {
-                                                method: 'PUT',
-                                                headers: {
-                                                    'Content-Type': 'application/json',
-                                                    Authorization: `Bearer ${tk}`,
-                                                },
-                                                body: JSON.stringify(body),
-                                            });
-                                            const data = await resp.json().catch(() => ({}));
-                                            if (resp.ok) {
+                                            const updatedData = await updateUser(user.id, body, tk);
+                                            if (updatedData) {
                                                 // Refetch user to ensure data persisted and sync local state
                                                 try {
-                                                    const confirmResp = await fetch('http://localhost:8080/lumina_book/users/my-info', {
-                                                        headers: {
-                                                            Authorization: `Bearer ${tk}`,
-                                                            'Content-Type': 'application/json',
-                                                        },
-                                                    });
-                                                    const confirmData = await confirmResp.json().catch(() => ({}));
-                                                    if (confirmResp.ok && confirmData?.result) {
-                                                        setUser(confirmData.result);
+                                                    const confirmedUser = await getMyInfo(tk);
+                                                    if (confirmedUser) {
+                                                        setUser(confirmedUser);
                                                         // Refresh original snapshot after successful save
                                                         try {
-                                                            setOriginalUser(JSON.parse(JSON.stringify(confirmData.result)));
+                                                            setOriginalUser(JSON.parse(JSON.stringify(confirmedUser)));
                                                         } catch (_e) {
-                                                            setOriginalUser(confirmData.result);
+                                                            setOriginalUser(confirmedUser);
                                                         }
                                                         setPendingAvatarDataUrl(null);
-                                                        if (confirmData.result?.avatarUrl) {
-                                                            setUserAvatar(confirmData.result.avatarUrl);
+                                                        if (confirmedUser?.avatarUrl) {
+                                                            setUserAvatar(confirmedUser.avatarUrl);
                                                         } else {
                                                             setUserAvatar(null);
                                                         }
@@ -396,7 +366,7 @@ function CustomerAccountPage() {
                                                 setDisplayName(body.fullName || displayName);
                                                 window.dispatchEvent(new CustomEvent('displayNameUpdated'));
                                             } else {
-                                                setNotif({ open: true, type: 'error', title: 'Thất bại', message: data?.message || 'Cập nhật thông tin thất bại', duration: 3000 });
+                                                setNotif({ open: true, type: 'error', title: 'Thất bại', message: 'Cập nhật thông tin thất bại', duration: 3000 });
                                             }
                                         } catch (_e) {
                                             setNotif({ open: true, type: 'error', title: 'Lỗi', message: 'Có lỗi xảy ra, vui lòng thử lại', duration: 3000 });

@@ -303,11 +303,11 @@ function UpdateProductPage() {
             let data = {};
             try {
                 data = await response.json();
-                console.log('Response data:', JSON.stringify(data, null, 2));
+                // console.log('Response data:', JSON.stringify(data, null, 2));
             } catch (err) {
                 console.error('Error parsing response:', err);
                 const text = await response.text();
-                console.log('Response text:', text);
+                // console.log('Response text:', text);
             }
 
             // Nếu hết hạn -> thử refresh và gọi lại 1 lần
@@ -328,7 +328,7 @@ function UpdateProductPage() {
                     } catch (err) {
                         console.error('Error parsing retry response:', err);
                         const text = await response.text().catch(() => '');
-                        console.log('Retry response text:', text);
+                        // console.log('Retry response text:', text);
                     }
                 } else {
                     setIsLoading(false);

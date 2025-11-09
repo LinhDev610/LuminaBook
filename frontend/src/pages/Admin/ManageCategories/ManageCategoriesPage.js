@@ -4,13 +4,11 @@ import classNames from 'classnames/bind';
 import useLocalStorage from '../../../hooks/useLocalStorage';
 import styles from './ManageCategoriesPage.module.scss';
 import SearchAndSort from '../../../components/Common/SearchAndSort';
-import { getApiBaseUrl, getStoredToken } from '../../../services/utils';
+import { getStoredToken, getApiBaseUrl } from '../../../services/utils';
+import { getAllCategories, getCategoryById, deleteCategory, updateCategory } from '../../../services';
 import { useNotification } from '../../../components/Common/Notification';
 
 const cx = classNames.bind(styles);
-
-// ========== Constants ==========
-const API_BASE_URL = getApiBaseUrl();
 
 function ManageCategoriesPage() {
     // ========== State Management ==========
@@ -52,22 +50,9 @@ function ManageCategoriesPage() {
                     return;
                 }
 
-                const resp = await fetch(`${API_BASE_URL}/categories`, {
-                    method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        Authorization: `Bearer ${tokenToUse}`,
-                    },
-                });
-
-                if (!resp.ok) {
-                    throw new Error(`Failed to fetch categories: ${resp.status}`);
-                }
-
-                const data = await resp.json().catch(() => ({}));
-                const categories = data?.result || data || [];
-                setAllCategories(Array.isArray(categories) ? categories : []);
-                setFilteredCategories(Array.isArray(categories) ? categories : []);
+                const categories = await getAllCategories(tokenToUse);
+                setAllCategories(categories);
+                setFilteredCategories(categories);
             } catch (err) {
                 console.error('Error fetching categories:', err);
                 setError(err.message || 'Không thể tải danh sách danh mục');
@@ -156,40 +141,13 @@ function ManageCategoriesPage() {
             // Resolve real backend identifier before delete
             let resolvedId = String(id).trim();
             try {
-                const probe = await fetch(`${API_BASE_URL}/categories/${resolvedId}`, {
-                    method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        Authorization: `Bearer ${tokenToUse}`,
-                    },
-                });
-                if (probe.ok) {
-                    const probeData = await probe.json().catch(() => ({}));
-                    const cat = probeData?.result || probeData || {};
-                    resolvedId = resolveCategoryId(cat) || resolvedId;
-                }
+                const cat = await getCategoryById(resolvedId, tokenToUse) || {};
+                resolvedId = resolveCategoryId(cat) || resolvedId;
             } catch (_) { }
 
-            const resp = await fetch(`${API_BASE_URL}/categories/${resolvedId}`, {
-                method: 'DELETE',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${tokenToUse}`,
-                },
-            });
-            if (!resp.ok) {
-                // Parse error response từ backend
-                let errorMessage = 'Không thể xóa danh mục';
-                try {
-                    const errorData = await resp.json().catch(() => ({}));
-                    // Backend trả về message trong errorData.message hoặc errorData.result
-                    errorMessage =
-                        errorData?.message || errorData?.result || errorMessage;
-                } catch (_) {
-                    const text = await resp.text().catch(() => '');
-                    errorMessage = text || errorMessage;
-                }
-                throw new Error(errorMessage);
+            const { ok } = await deleteCategory(resolvedId, tokenToUse);
+            if (!ok) {
+                throw new Error('Không thể xóa danh mục');
             }
             // Cập nhật danh sách local
             const next = allCategories.filter(
@@ -206,19 +164,7 @@ function ManageCategoriesPage() {
     const updateCategoryStatus = async (id, newStatus) => {
         const tokenToUse = readToken();
         // Lấy dữ liệu đầy đủ hiện tại để tránh backend yêu cầu các trường bắt buộc (ví dụ: name không được null)
-        const getResp = await fetch(`${API_BASE_URL}/categories/${id}`, {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${tokenToUse}`,
-            },
-        });
-        if (!getResp.ok) {
-            const text = await getResp.text().catch(() => '');
-            throw new Error(text || `HTTP ${getResp.status}`);
-        }
-        const current = await getResp.json().catch(() => ({}));
-        const cat = current?.result || current || {};
+        const cat = await getCategoryById(id, tokenToUse) || {};
 
         const payload = {
             name: (cat.name || '').trim(),
@@ -228,20 +174,11 @@ function ManageCategoriesPage() {
             promotion: cat.promotion ?? null,
         };
 
-        const resp = await fetch(`${API_BASE_URL}/categories/${id}`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${tokenToUse}`,
-            },
-            body: JSON.stringify(payload),
-        });
-        if (!resp.ok) {
-            const text = await resp.text().catch(() => '');
-            throw new Error(text || `HTTP ${resp.status}`);
+        const { ok, data } = await updateCategory(id, payload, tokenToUse);
+        if (!ok) {
+            throw new Error('Không thể cập nhật danh mục');
         }
-        const data = await resp.json().catch(() => ({}));
-        return data?.result || data;
+        return data || {};
     };
 
     const handleLockCategory = async (id) => {

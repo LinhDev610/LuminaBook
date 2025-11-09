@@ -36,7 +36,7 @@ export default function CustomerService() {
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        console.log('Support request submitted:', formData);
+        // console.log('Support request submitted:', formData);
         // TODO: Implement API call to submit support request
         alert('Yêu cầu hỗ trợ đã được gửi thành công!');
     };

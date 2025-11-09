@@ -4,9 +4,9 @@ import classNames from 'classnames/bind';
 import styles from './CustomerDetailPage.module.scss';
 import guestAvatar from '../../../../assets/icons/icon_img_guest.png';
 import Notification from '../../../../components/Common/Notification/Notification';
+import { getUserById, updateUser, deleteUser } from '../../../../services';
 
 const cx = classNames.bind(styles);
-const API_BASE_URL = 'http://localhost:8080/lumina_book';
 
 
 function CustomerDetailPage() {
@@ -46,22 +46,7 @@ function CustomerDetailPage() {
                 return;
             }
 
-            const res = await fetch(`${API_BASE_URL}/users/${id}`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                }
-            });
-            if (!res.ok) {
-                let msg = `HTTP error! status: ${res.status}`;
-                try {
-                    const j = await res.json();
-                    msg = j?.message || msg;
-                } catch (_) {}
-                throw new Error(msg);
-            }
-            const data = await res.json();
-            const result = data?.result || null;
+            const result = await getUserById(id, token) || null;
             setCustomer(result);
             if (result) {
                 setFormData({
@@ -79,9 +64,7 @@ function CustomerDetailPage() {
 
     useEffect(() => {
         fetchCustomer();
-        // Order history endpoint is not available yet; keep placeholder for future wiring
         setOrders([]);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [id]);
 
     const handleBack = () => {
@@ -107,21 +90,7 @@ function CustomerDetailPage() {
         if (!window.confirm(`Bạn có chắc chắn muốn ${action} tài khoản này?`)) return;
         try {
             const token = getStoredToken();
-            const res = await fetch(`${API_BASE_URL}/users/${customer.id}`, {
-                method: 'PUT',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ isActive: newIsActive }),
-            });
-            if (!res.ok) {
-                let msg = `HTTP error! status: ${res.status}`;
-                try { const j = await res.json(); msg = j?.message || msg; } catch(_){}
-                throw new Error(msg);
-            }
-            const updated = await res.json();
-            const next = updated?.result || { ...customer, isActive: newIsActive };
+            const next = await updateUser(customer.id, { isActive: newIsActive }, token) || { ...customer, isActive: newIsActive };
             // Normalize both fields for UI consistency
             if (next.isActive === undefined) next.isActive = newIsActive;
             if (next.active === undefined) next.active = newIsActive;
@@ -137,18 +106,7 @@ function CustomerDetailPage() {
         if (!window.confirm('Bạn có chắc chắn muốn xóa tài khoản này? Hành động này không thể hoàn tác.')) return;
         try {
             const token = getStoredToken();
-            const res = await fetch(`${API_BASE_URL}/users/${customer.id}`, {
-                method: 'DELETE',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                },
-            });
-            if (!res.ok) {
-                let msg = `HTTP error! status: ${res.status}`;
-                try { const j = await res.json(); msg = j?.message || msg; } catch(_){}
-                throw new Error(msg);
-            }
+            await deleteUser(customer.id, token);
             alert('Đã xóa tài khoản thành công');
             navigate('/admin/customer-accounts');
         } catch (e) {
@@ -196,23 +154,7 @@ function CustomerDetailPage() {
                 address: formData.address || '',
             };
 
-            const res = await fetch(`${API_BASE_URL}/users/${customer.id}`, {
-                method: 'PUT',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(payload),
-            });
-
-            const data = await res.json().catch(() => ({}));
-
-            if (!res.ok) {
-                const msg = data?.message || `Không thể cập nhật thông tin (mã ${res.status})`;
-                throw new Error(msg);
-            }
-
-            const updated = data?.result || { ...customer, ...payload };
+            const updated = await updateUser(customer.id, payload, token) || { ...customer, ...payload };
             setCustomer(updated);
             setFormData({
                 fullName: updated.fullName || '',

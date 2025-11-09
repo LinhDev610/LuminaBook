@@ -6,18 +6,15 @@ import {
     getProductImageUrl,
     normalizeMediaUrl,
 } from '../../../../../services/productUtils';
-import {
-    getApiBaseUrl,
-    getStoredToken,
-    formatDateTime,
-} from '../../../../../services/utils';
+import { formatDateTime, getApiBaseUrl } from '../../../../../services/utils';
+import { getProductById } from '../../../../../services';
 
 const cx = classNames.bind(styles);
 
 function ProductDetailPage() {
-    const API_BASE_URL = useMemo(() => getApiBaseUrl(), []);
     const navigate = useNavigate();
     const { id } = useParams();
+    const API_BASE_URL = useMemo(() => getApiBaseUrl(), []);
     const [product, setProduct] = useState(null);
     const [lightboxOpen, setLightboxOpen] = useState(false);
     const [lightboxIndex, setLightboxIndex] = useState(0);
@@ -30,22 +27,7 @@ function ProductDetailPage() {
             try {
                 setLoading(true);
                 setError('');
-                const token = getStoredToken('token');
-                const resp = await fetch(`${API_BASE_URL}/products/${id}`, {
-                    method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-                    },
-                });
-
-                if (!resp.ok) {
-                    const text = await resp.text().catch(() => '');
-                    throw new Error(text || `HTTP ${resp.status}`);
-                }
-
-                const data = await resp.json().catch(() => ({}));
-                const productData = data?.result || data;
+                const productData = await getProductById(id);
                 setProduct(productData);
             } catch (e) {
                 setError(e?.message || 'Không thể tải thông tin sản phẩm');

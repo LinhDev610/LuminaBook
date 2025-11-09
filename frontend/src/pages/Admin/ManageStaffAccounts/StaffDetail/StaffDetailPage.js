@@ -5,9 +5,9 @@ import styles from './StaffDetailPage.module.scss';
 import guestAvatar from '../../../../assets/icons/icon_img_guest.png';
 import ConfirmDialog from '../../../../layouts/components/ConfirmDialog';
 import Notification from '../../../../components/Common/Notification/Notification';
+import { getUserById, updateUser, deleteUser } from '../../../../services';
 
 const cx = classNames.bind(styles);
-const API_BASE_URL = 'http://localhost:8080/lumina_book';
 
 function StaffDetailPage() {
     const navigate = useNavigate();
@@ -50,22 +50,7 @@ function StaffDetailPage() {
                 return;
             }
 
-            const res = await fetch(`${API_BASE_URL}/users/${id}`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                }
-            });
-            if (!res.ok) {
-                let msg = `HTTP error! status: ${res.status}`;
-                try {
-                    const j = await res.json();
-                    msg = j?.message || msg;
-                } catch (_) {}
-                throw new Error(msg);
-            }
-            const data = await res.json();
-            const staffData = data?.result || null;
+            const staffData = await getUserById(id, token) || null;
             setStaff(staffData);
             // Deep clone for reset functionality
             try {
@@ -82,7 +67,7 @@ function StaffDetailPage() {
 
     useEffect(() => {
         fetchStaff();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [id]);
 
     const handleBack = () => {
@@ -134,26 +119,7 @@ function StaffDetailPage() {
                 isActive: isActiveValue,
             };
 
-            const res = await fetch(`${API_BASE_URL}/users/${staff.id}`, {
-                method: 'PUT',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(requestBody),
-            });
-
-            if (!res.ok) {
-                let msg = `HTTP error! status: ${res.status}`;
-                try {
-                    const j = await res.json();
-                    msg = j?.message || msg;
-                } catch (_) {}
-                throw new Error(msg);
-            }
-
-            const updated = await res.json();
-            const updatedStaff = updated?.result || staff;
+            const updatedStaff = await updateUser(staff.id, requestBody, token) || staff;
             setStaff(updatedStaff);
             try {
                 setOriginalStaff(JSON.parse(JSON.stringify(updatedStaff)));
@@ -174,7 +140,7 @@ function StaffDetailPage() {
         const isCurrentlyActive = resolveActive(staff);
         const action = isCurrentlyActive ? 'khóa' : 'mở khóa';
         const staffName = staff.fullName || staff.email || `#${staff.id}`;
-        
+
         setConfirmDialog({
             open: true,
             title: 'Xác nhận hành động',
@@ -186,7 +152,7 @@ function StaffDetailPage() {
     const performToggleLock = async () => {
         setConfirmDialog({ open: false, title: '', message: '', onConfirm: null });
         if (!staff) return;
-        
+
         const isCurrentlyActive = resolveActive(staff);
         const newIsActive = !isCurrentlyActive;
         const action = isCurrentlyActive ? 'khóa' : 'mở khóa';
@@ -198,26 +164,7 @@ function StaffDetailPage() {
                 return;
             }
 
-            const res = await fetch(`${API_BASE_URL}/users/${staff.id}`, {
-                method: 'PUT',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ isActive: newIsActive }),
-            });
-
-            if (!res.ok) {
-                let msg = `HTTP error! status: ${res.status}`;
-                try {
-                    const j = await res.json();
-                    msg = j?.message || msg;
-                } catch (_) {}
-                throw new Error(msg);
-            }
-
-            const updated = await res.json();
-            const next = updated?.result || { ...staff, isActive: newIsActive };
+            const next = await updateUser(staff.id, { isActive: newIsActive }, token) || { ...staff, isActive: newIsActive };
             if (next.isActive === undefined) next.isActive = newIsActive;
             if (next.active === undefined) next.active = newIsActive;
             setStaff(next);
@@ -349,15 +296,15 @@ function StaffDetailPage() {
                     </div>
 
                     <div className={cx('actions')}>
-                        <button 
-                            className={cx('btn', 'save-btn')} 
+                        <button
+                            className={cx('btn', 'save-btn')}
                             onClick={handleSave}
                             disabled={saving}
                         >
                             {saving ? 'Đang lưu...' : 'Lưu thay đổi'}
                         </button>
-                        <button 
-                            className={cx('btn', 'lock-btn')} 
+                        <button
+                            className={cx('btn', 'lock-btn')}
                             onClick={handleToggleLock}
                         >
                             {isActiveResolved ? 'Khóa tài khoản' : 'Mở khóa tài khoản'}
@@ -370,7 +317,7 @@ function StaffDetailPage() {
                 open={confirmDialog.open}
                 title={confirmDialog.title}
                 message={confirmDialog.message}
-                onConfirm={confirmDialog.onConfirm || (() => {})}
+                onConfirm={confirmDialog.onConfirm || (() => { })}
                 onCancel={() => setConfirmDialog({ open: false, title: '', message: '', onConfirm: null })}
             />
             <Notification

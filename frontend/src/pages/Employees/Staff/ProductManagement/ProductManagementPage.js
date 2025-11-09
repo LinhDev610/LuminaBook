@@ -11,14 +11,12 @@ import {
     filterByStatus,
     filterByDate,
     sortByDate,
-    STATUS_MAP,
 } from '../../../../services/productUtils';
+import { STATUS_MAP, FALLBACK_THUMB } from '../../../../services/constants';
 import SearchAndSort from '../../../../components/Common/SearchAndSort';
 import StatusBadge from '../../../../components/Common/StatusBadge';
 
 const cx = classNames.bind(styles);
-const FALLBACK_THUMB =
-    'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><rect width="40" height="40" fill="%23e5e7eb"/><path d="M8 28l6-7 5 6 4-5 9 10H8z" fill="%23cbd5e1"/><circle cx="14" cy="14" r="4" fill="%23cbd5e1"/></svg>';
 
 // Quản lý sản phẩm của staff (chỉ sản phẩm do staff này tạo)
 export default function ProductManagementPage() {

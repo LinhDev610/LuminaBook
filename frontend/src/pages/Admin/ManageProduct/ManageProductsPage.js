@@ -3,14 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import classNames from 'classnames/bind';
 import styles from './ManageProductsPage.module.scss';
 import SearchAndSort from '../../../components/Common/SearchAndSort';
-import { getApiBaseUrl, getStoredToken, formatDateTime } from '../../../services/utils';
+import { formatDateTime } from '../../../services/utils';
+import { getAllProducts, getActiveCategories } from '../../../services';
 
 const cx = classNames.bind(styles);
 
 function ManageProductsPage() {
     // ========== Constants ==========
     const navigate = useNavigate();
-    const API_BASE_URL = useMemo(() => getApiBaseUrl(), []);
     const productSearchPlaceholder = 'Tìm kiếm theo mã đơn, tên sản phẩm,......';
     const statusOptions = [
         { value: 'all', label: 'Tất cả trạng thái' },
@@ -41,24 +41,7 @@ function ManageProductsPage() {
         try {
             setLoading(true);
             setError('');
-            const token = getStoredToken('token');
-            const resp = await fetch(`${API_BASE_URL}/products`, {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-                },
-            });
-            if (!resp.ok) {
-                const text = await resp.text().catch(() => '');
-                throw new Error(text || `HTTP ${resp.status}`);
-            }
-            const data = await resp.json().catch(() => ({}));
-            const list = Array.isArray(data?.result)
-                ? data.result
-                : Array.isArray(data)
-                    ? data
-                    : [];
+            const list = await getAllProducts();
             const mapped = list.map((p) => ({
                 id: p.id || '',
                 name: p.name || '',
@@ -69,7 +52,6 @@ function ManageProductsPage() {
                 createdAt: p.createdAt || p.updatedAt,
                 updatedAt: p.updatedAt || p.createdAt,
             }));
-            // sort by updatedAt desc by default
             const sorted = [...mapped].sort(
                 (a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0),
             );
@@ -85,20 +67,7 @@ function ManageProductsPage() {
 
     const fetchCategories = async () => {
         try {
-            const token = getStoredToken('token');
-            const resp = await fetch(`${API_BASE_URL}/categories/active`, {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-                },
-            });
-            const data = await resp.json().catch(() => ({}));
-            const list = Array.isArray(data?.result)
-                ? data.result
-                : Array.isArray(data)
-                    ? data
-                    : [];
+            const list = await getActiveCategories();
             const opts = [{ value: 'all', label: 'Tất cả danh mục' }].concat(
                 list.map((c) => ({ value: c.id || c.categoryId, label: c.name })),
             );

@@ -2,13 +2,12 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../contexts/AuthContext';
 import { isValidEmail, validatePassword } from '../../../services/utils';
+import { resetPassword, sendOTP } from '../../../services';
 import styles from './ForgotPasswordModal.module.scss';
 import Button from '../../Common/Button';
 import classNames from 'classnames/bind';
 
 const cx = classNames.bind(styles);
-
-const API_BASE_URL = 'http://localhost:8080/lumina_book';
 
 export default function ForgotPasswordModal({ open = false, onClose }) {
     const navigate = useNavigate();
@@ -86,18 +85,8 @@ export default function ForgotPasswordModal({ open = false, onClose }) {
         setError('');
         try {
             // Gửi OTP với mode=forgot để backend tự động kiểm tra email tồn tại
-            const response = await fetch(
-                `${API_BASE_URL}/auth/send-otp?email=${encodeURIComponent(
-                    email,
-                )}&mode=forgot`,
-                {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                },
-            );
-            const data = await response.json();
-
-            if (response.ok && data.code === 200) {
+            const { ok, data } = await sendOTP(email, 'forgot');
+            if (ok && data.code === 200) {
                 // Switch to verify code modal
                 switchToVerifyCode(email, 'forgot-password');
             } else {
@@ -123,13 +112,8 @@ export default function ForgotPasswordModal({ open = false, onClose }) {
         setError('');
         try {
             const verifiedOtp = localStorage.getItem('verifiedOtp');
-            const resp = await fetch(`${API_BASE_URL}/auth/reset-password`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, otp: verifiedOtp, newPassword: password }),
-            });
-            const data = await resp.json();
-            if (resp.ok && data?.code === 1000) {
+            const { ok, data } = await resetPassword({ email, otp: verifiedOtp, newPassword: password });
+            if (ok && data?.code === 1000) {
                 // Đổi mật khẩu thành công, chuyển về form đăng nhập
                 setForgotPasswordStep(1);
                 setEmail('');

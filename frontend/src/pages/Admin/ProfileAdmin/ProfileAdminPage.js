@@ -5,9 +5,9 @@ import styles from './ProfileAdminPage.module.scss';
 import guestAvatar from '../../../assets/icons/icon_img_guest.png';
 import Notification from '../../../components/Common/Notification/Notification';
 import ConfirmDialog from '../../../layouts/components/ConfirmDialog';
+import { getMyInfo, updateUser, changePassword, uploadMedia } from '../../../services';
 
 const cx = classNames.bind(styles);
-const API_BASE_URL = 'http://localhost:8080/lumina_book';
 
 function ProfileAdminPage() {
     const navigate = useNavigate();
@@ -48,19 +48,7 @@ function ProfileAdminPage() {
                 return;
             }
 
-            const resp = await fetch(`${API_BASE_URL}/users/my-info`, {
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                },
-            });
-
-            if (!resp.ok) {
-                throw new Error('Không thể tải thông tin người dùng');
-            }
-
-            const data = await resp.json();
-            const userData = data?.result || null;
+            const userData = await getMyInfo(token) || null;
             setUser(userData);
             setUserAvatar(userData?.avatarUrl || null);
             try {
@@ -77,7 +65,6 @@ function ProfileAdminPage() {
 
     useEffect(() => {
         fetchUserInfo();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const getRoleDisplayName = (roleName) => {
@@ -115,26 +102,7 @@ function ProfileAdminPage() {
                 phoneNumber: user.phoneNumber || '',
             };
 
-            const res = await fetch(`${API_BASE_URL}/users/${user.id}`, {
-                method: 'PUT',
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(requestBody),
-            });
-
-            if (!res.ok) {
-                let msg = `HTTP error! status: ${res.status}`;
-                try {
-                    const j = await res.json();
-                    msg = j?.message || msg;
-                } catch (_) {}
-                throw new Error(msg);
-            }
-
-            const updated = await res.json();
-            const updatedUser = updated?.result || user;
+            const updatedUser = await updateUser(user.id, requestBody, token) || user;
             setUser(updatedUser);
             try {
                 setOriginalUser(JSON.parse(JSON.stringify(updatedUser)));
@@ -178,20 +146,12 @@ function ProfileAdminPage() {
                 return;
             }
 
-            const res = await fetch(`${API_BASE_URL}/auth/change-password`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token}`,
-                },
-                body: JSON.stringify({
-                    currentPassword: changePasswordData.currentPassword,
-                    newPassword: changePasswordData.newPassword,
-                }),
-            });
+            const { ok, data } = await changePassword({
+                currentPassword: changePasswordData.currentPassword,
+                newPassword: changePasswordData.newPassword,
+            }, token);
 
-            const data = await res.json();
-            if (res.ok && (data?.code === 200 || data?.code === 1000)) {
+            if (ok && (data?.code === 200 || data?.code === 1000)) {
                 setNotif({ open: true, type: 'success', title: 'Thành công', message: 'Đổi mật khẩu thành công', duration: 3000 });
                 setChangePasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
                 setShowChangePassword(false);
@@ -231,10 +191,10 @@ function ProfileAdminPage() {
                 <div className={cx('profile-header')}>
                     <div className={cx('profile-left')}>
                         <div className={cx('avatar-wrapper')}>
-                            <img 
-                                className={cx('avatar')} 
-                                src={userAvatar || avatarSrc} 
-                                alt="avatar" 
+                            <img
+                                className={cx('avatar')}
+                                src={userAvatar || avatarSrc}
+                                alt="avatar"
                                 onError={(e) => { e.currentTarget.src = guestAvatar; }}
                                 onClick={() => document.getElementById('avatar-file-input')?.click()}
                             />
@@ -253,42 +213,27 @@ function ProfileAdminPage() {
 
                                         // Upload to server to obtain persistent URL
                                         setUploadingAvatar(true);
-                                        const form = new FormData();
-                                        form.append('files', file);
                                         const token = getStoredToken();
-                                        const resp = await fetch(`${API_BASE_URL}/media/upload`, {
-                                            method: 'POST',
-                                            headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-                                            body: form,
-                                        });
-                                        const data = await resp.json().catch(() => ({}));
-                                        if (resp.ok && Array.isArray(data?.result) && data.result.length > 0) {
-                                            const uploadedUrl = data.result[0];
+                                        const { ok: uploadOk, data: uploadData } = await uploadMedia(file, token);
+                                        if (uploadOk && Array.isArray(uploadData?.result) && uploadData.result.length > 0) {
+                                            const uploadedUrl = uploadData.result[0];
                                             // Update user avatar URL
-                                            const updateResp = await fetch(`${API_BASE_URL}/users/${user.id}`, {
-                                                method: 'PUT',
-                                                headers: {
-                                                    Authorization: `Bearer ${token}`,
-                                                    'Content-Type': 'application/json',
-                                                },
-                                                body: JSON.stringify({
-                                                    fullName: user.fullName,
-                                                    phoneNumber: user.phoneNumber,
-                                                    avatarUrl: uploadedUrl,
-                                                }),
-                                            });
-                                            const updateData = await updateResp.json().catch(() => ({}));
-                                            if (updateResp.ok && updateData?.result) {
+                                            const updatedUserData = await updateUser(user.id, {
+                                                fullName: user.fullName,
+                                                phoneNumber: user.phoneNumber,
+                                                avatarUrl: uploadedUrl,
+                                            }, token);
+                                            if (updatedUserData) {
                                                 setUser({ ...user, avatarUrl: uploadedUrl });
                                                 setUserAvatar(uploadedUrl);
                                                 try {
-                                                    setOriginalUser(JSON.parse(JSON.stringify(updateData.result)));
+                                                    setOriginalUser(JSON.parse(JSON.stringify(updatedUserData)));
                                                 } catch (_) {
-                                                    setOriginalUser(updateData.result);
+                                                    setOriginalUser(updatedUserData);
                                                 }
                                                 setNotif({ open: true, type: 'success', title: 'Đã lưu ảnh đại diện', message: 'Ảnh đại diện đã được cập nhật', duration: 2500 });
                                             } else {
-                                                setNotif({ open: true, type: 'warning', title: 'Không lưu được ảnh', message: updateData?.message || 'Không thể lưu avatar, thử lại sau', duration: 3500 });
+                                                setNotif({ open: true, type: 'warning', title: 'Không lưu được ảnh', message: 'Không thể lưu avatar, thử lại sau', duration: 3500 });
                                             }
                                         } else {
                                             setNotif({ open: true, type: 'error', title: 'Upload thất bại', message: 'Không thể tải ảnh lên máy chủ', duration: 3000 });

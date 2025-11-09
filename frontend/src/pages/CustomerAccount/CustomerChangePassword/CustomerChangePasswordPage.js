@@ -6,6 +6,7 @@ import lockIcon from '../../../assets/icons/icon_lock.png';
 import Notification from '../../../components/Common/Notification/Notification';
 import iconVisible from '../../../assets/icons/icon-visible.png';
 import iconInvisible from '../../../assets/icons/icon-invisible.png';
+import { changePassword } from '../../../services';
 
 const cx = classNames.bind(styles);
 
@@ -21,14 +22,13 @@ export default function CustomerChangePasswordPage() {
     const [loading, setLoading] = useState(false);
     const [notif, setNotif] = useState({ open: false, type: 'success', title: '', message: '', duration: 2500 });
 
-    const API_BASE_URL = 'http://localhost:8080/lumina_book';
     const getStoredToken = useMemo(() => () => {
         try {
             const prefer = localStorage.getItem('token') ?? sessionStorage.getItem('token');
             if (!prefer) return null;
             let parsed = prefer;
             if (typeof parsed === 'string' && (parsed.startsWith('{') || parsed.startsWith('[') || (parsed.startsWith('"') && parsed.endsWith('"')))) {
-                try { parsed = JSON.parse(parsed); } catch (_) {}
+                try { parsed = JSON.parse(parsed); } catch (_) { }
             }
             if (parsed && typeof parsed === 'object') {
                 // common shapes: { token: '...' } or { result: { token: '...' } }
@@ -61,16 +61,8 @@ export default function CustomerChangePasswordPage() {
                 setLoading(false);
                 return;
             }
-            const resp = await fetch(`${API_BASE_URL}/auth/change-password`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${tk}`,
-                },
-                body: JSON.stringify({ currentPassword, newPassword }),
-            });
-            const data = await resp.json();
-            if (resp.ok && (data?.code === 200 || data?.code === 1000)) {
+            const { ok, data } = await changePassword({ currentPassword, newPassword }, tk);
+            if (ok && (data?.code === 200 || data?.code === 1000)) {
                 setNotif({ open: true, type: 'success', title: 'Thành công', message: 'Đổi mật khẩu thành công', duration: 2500 });
                 setCurrentPassword('');
                 setNewPassword('');

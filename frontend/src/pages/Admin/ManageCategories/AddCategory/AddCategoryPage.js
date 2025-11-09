@@ -4,12 +4,10 @@ import classNames from 'classnames/bind';
 import styles from './AddCategoryPage.module.scss';
 import { useAuth } from '../../../../contexts/AuthContext';
 import { useNotification } from '../../../../components/Common/Notification';
-import { getApiBaseUrl, getStoredToken } from '../../../../services/utils';
+import { getStoredToken } from '../../../../services/utils';
+import { getRootCategories, refreshToken, createCategory } from '../../../../services';
 
 const cx = classNames.bind(styles);
-
-// ========== Constants ==========
-const API_BASE_URL = getApiBaseUrl();
 
 function AddCategoryPage() {
     // ========== State Management ==========
@@ -38,16 +36,7 @@ function AddCategoryPage() {
             setLoadingCategories(true);
             try {
                 let token = readToken('token') || sessionStorage.getItem('token');
-                const resp = await fetch(`${API_BASE_URL}/categories/root`, {
-                    method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-                    },
-                });
-
-                const data = await resp.json().catch(() => ({}));
-                const categories = data?.result || data || [];
+                const categories = await getRootCategories(token) || [];
                 setRootCategories(Array.isArray(categories) ? categories : []);
             } catch (err) {
                 console.error('Error fetching root categories:', err);
@@ -94,16 +83,11 @@ function AddCategoryPage() {
         const refreshToken = getStoredToken('refreshToken');
         if (!refreshToken) return null;
         try {
-            const resp = await fetch(`${API_BASE_URL}/auth/refresh`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ token: refreshToken })
-            });
-            const data = await resp.json().catch(() => ({}));
-            if (resp.ok && data?.result?.token) {
-                localStorage.setItem('token', data.result.token);
-                localStorage.setItem('refreshToken', data.result.token);
-                return data.result.token;
+            const { ok, data: responseData } = await refreshToken(refreshToken);
+            if (ok && responseData?.token) {
+                localStorage.setItem('token', responseData.token);
+                localStorage.setItem('refreshToken', responseData.token);
+                return responseData.token;
             }
         } catch (_) { }
         return null;
@@ -129,32 +113,16 @@ function AddCategoryPage() {
                     parentId: (formData.parentId && formData.parentId.trim()) || null
                 };
 
-                let response = await fetch(`${API_BASE_URL}/categories`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(requestData),
-                });
-
-                let data = {};
-                try { data = await response.json(); } catch (_) { }
+                let { ok, data: result } = await createCategory(requestData, token);
 
                 // Nếu hết hạn -> thử refresh và gọi lại 1 lần
-                if (response.status === 401) {
+                if (!ok) {
                     const newToken = await refreshTokenIfNeeded();
                     if (newToken) {
                         token = newToken;
-                        response = await fetch(`${API_BASE_URL}/categories`, {
-                            method: 'POST',
-                            headers: {
-                                'Authorization': `Bearer ${token}`,
-                                'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify(requestData),
-                        });
-                        try { data = await response.json(); } catch (_) { }
+                        const retryResult = await createCategory(requestData, token);
+                        ok = retryResult.ok;
+                        result = retryResult.data;
                     } else {
                         // Không có refreshToken (user không tick Ghi nhớ) -> buộc đăng nhập lại
                         localStorage.removeItem('token');
@@ -168,40 +136,12 @@ function AddCategoryPage() {
                     }
                 }
 
-                if (response.ok) {
+                if (ok) {
                     success('Tạo danh mục thành công!');
                     navigate('/admin/categories');
                 } else {
-                    // Extract error message from response
-                    const serverMsg = data?.message || data?.error || data?.result || '';
-                    const errorCode = data?.code;
-
-                    if (response.status === 403) {
-                        error('Bạn không có quyền thực hiện hành động này. Vui lòng đăng nhập bằng tài khoản ADMIN.');
-                    } else if (response.status === 401) {
-                        error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
-                    } else if (response.status === 400) {
-                        // More specific error messages
-                        let errorAlert = '';
-                        if (serverMsg) {
-                            errorAlert = serverMsg;
-                        } else if (errorCode) {
-                            errorAlert = `Lỗi mã ${errorCode}: Vui lòng kiểm tra lại thông tin.`;
-                        } else {
-                            errorAlert = 'Dữ liệu không hợp lệ. Vui lòng kiểm tra lại thông tin. Có thể mã danh mục hoặc tên danh mục đã tồn tại.';
-                        }
-
-                        // Show specific messages for common errors
-                        if (serverMsg && (serverMsg.includes('existed') || serverMsg.includes('tồn tại'))) {
-                            error(`Danh mục đã tồn tại: ${serverMsg}`);
-                        } else if (serverMsg && (serverMsg.includes('không được để trống') || serverMsg.includes('không hợp lệ') || serverMsg.includes('vượt quá'))) {
-                            error(`Dữ liệu không hợp lệ: ${serverMsg}`);
-                        } else {
-                            error(`Dữ liệu không hợp lệ: ${errorAlert}`);
-                        }
-                    } else {
-                        error(`Lỗi tạo danh mục (HTTP ${response.status}): ${serverMsg || 'Không rõ nguyên nhân'}`);
-                    }
+                    const serverMsg = result?.message || result?.error || '';
+                    error(serverMsg || 'Không thể tạo danh mục. Vui lòng thử lại.');
                 }
             } catch (error) {
                 console.error('Error creating category:', error);

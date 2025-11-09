@@ -44,13 +44,13 @@ const ProductDetail = ({ productId }) => {
 
     const handleAddToCart = () => {
         // TODO: Implement add to cart functionality
-        console.log(`Added ${quantity} of ${product.name} to cart`);
+        // console.log(`Added ${quantity} of ${product.name} to cart`);
         alert(`Đã thêm ${quantity} sản phẩm vào giỏ hàng!`);
     };
 
     const handleBuyNow = () => {
         // TODO: Implement buy now functionality
-        console.log(`Buy now: ${quantity} of ${product.name}`);
+        // console.log(`Buy now: ${quantity} of ${product.name}`);
         alert('Chuyển đến trang thanh toán!');
     };
 

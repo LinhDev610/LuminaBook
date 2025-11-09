@@ -4,11 +4,10 @@ import useLocalStorage from '../../../../../hooks/useLocalStorage';
 import avatarFallback from '../../../../../assets/icons/icon_img_guest.png';
 import { useEffect, useMemo, useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { getApiBaseUrl, getUserRole } from '../../../../../services/utils';
+import { getUserRole, getApiBaseUrl } from '../../../../../services/utils';
+import { getMyInfo } from '../../../../../services';
 
 const cx = classNames.bind(styles);
-
-const API_BASE_URL = getApiBaseUrl();
 
 export default function StaffSideBar() {
     const location = useLocation();
@@ -45,22 +44,14 @@ export default function StaffSideBar() {
                     tokenToUse = String(tokenToUse);
                 }
 
-                const resp = await fetch(`${API_BASE_URL}/users/my-info`, {
-                    headers: {
-                        Authorization: `Bearer ${tokenToUse}`,
-                        'Content-Type': 'application/json',
-                    },
-                });
-                const data = await resp.json().catch(() => ({}));
+                const data = await getMyInfo(tokenToUse) || {};
                 if (!isMounted) return;
                 const name =
-                    data?.result?.fullName ||
                     data?.fullName ||
                     displayName ||
-                    data?.result?.username ||
                     data?.username ||
                     'Người dùng';
-                const rawRole = await getUserRole(API_BASE_URL, tokenToUse);
+                const rawRole = await getUserRole(getApiBaseUrl(), tokenToUse);
                 const role = rawRole === 'CUSTOMER_SUPPORT' ? 'Chăm sóc khách hàng' : 'Nhân viên';
                 setProfile({ name, role });
             } catch (_e) {
@@ -108,7 +99,7 @@ export default function StaffSideBar() {
                     </NavLink>
                 </li>
                 <li>
-                    <NavLink to="/staff/vouchers" className={cx('link', { active: isActive('/staff/vouchers-promotions') })}>
+                    <NavLink to="/staff/vouchers-promotions" className={cx('link', { active: isActive('/staff/vouchers-promotions') })}>
                         Voucher & Khuyến mãi
                     </NavLink>
                 </li>

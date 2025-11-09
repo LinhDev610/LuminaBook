@@ -3,17 +3,12 @@ import classNames from 'classnames/bind';
 import styles from './AddProductPage.module.scss';
 import { useNavigate } from 'react-router-dom';
 import backIcon from '../../../../../assets/icons/icon_back.png';
-import {
-    getApiBaseUrl,
-    getStoredToken as getStoredTokenUtil,
-} from '../../../../../services/utils';
+import { getStoredToken as getStoredTokenUtil, getApiBaseUrl } from '../../../../../services/utils';
+import { getActiveCategories, refreshToken as refreshTokenAPI, createProduct } from '../../../../../services';
 import { useNotification } from '../../../../../components/Common/Notification';
 import { INITIAL_FORM_STATE } from '../../../../../services/constants';
 
 const cx = classNames.bind(styles);
-
-// ========== Constants ==========
-const API_BASE_URL = getApiBaseUrl();
 
 export default function AddProductPage() {
     const navigate = useNavigate();
@@ -75,16 +70,7 @@ export default function AddProductPage() {
     useEffect(() => {
         const fetchCategories = async () => {
             try {
-                const tokenToUse = getStoredToken('token');
-                const resp = await fetch(`${API_BASE_URL}/categories/active`, {
-                    method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        ...(tokenToUse ? { Authorization: `Bearer ${tokenToUse}` } : {}),
-                    },
-                });
-                const data = await resp.json().catch(() => ({}));
-                const list = data?.result || data || [];
+                const list = await getActiveCategories();
                 setCategories(Array.isArray(list) ? list : []);
             } catch (err) {
                 console.error('Error fetching categories:', err);
@@ -172,16 +158,11 @@ export default function AddProductPage() {
         const refreshToken = getStoredToken('refreshToken');
         if (!refreshToken) return null;
         try {
-            const resp = await fetch(`${API_BASE_URL}/auth/refresh`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ token: refreshToken }),
-            });
-            const data = await resp.json().catch(() => ({}));
-            if (resp.ok && data?.result?.token) {
-                localStorage.setItem('token', data.result.token);
-                localStorage.setItem('refreshToken', data.result.token);
-                return data.result.token;
+            const { ok, data: responseData } = await refreshTokenAPI(refreshToken);
+            if (ok && responseData?.token) {
+                localStorage.setItem('token', responseData.token);
+                localStorage.setItem('refreshToken', responseData.token);
+                return responseData.token;
             }
         } catch (_) { }
         return null;
@@ -194,10 +175,11 @@ export default function AddProductPage() {
         }
 
         try {
+            // Upload multiple files - backend endpoint supports multiple files
             const formData = new FormData();
             files.forEach((m) => formData.append('files', m.file));
 
-            const uploadResp = await fetch(`${API_BASE_URL}/media/upload-product`, {
+            const uploadResp = await fetch(`${getApiBaseUrl()}/media/upload-product`, {
                 method: 'POST',
                 headers: {
                     Authorization: `Bearer ${token}`,
@@ -340,38 +322,16 @@ export default function AddProductPage() {
             const payload = buildProductPayload(imageUrls, videoUrls, defaultUrl);
 
             // Create product
-            let response = await fetch(`${API_BASE_URL}/products`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token}`,
-                },
-                body: JSON.stringify(payload),
-            });
-
-            let data = {};
-            try {
-                data = await response.json();
-            } catch (err) {
-                console.error('Error parsing response :', err);
-            }
+            let { ok, data } = await createProduct(payload, token);
 
             // Nếu hết hạn -> thử refresh và gọi lại 1 lần
-            if (response.status === 401) {
+            if (!ok) {
                 const newToken = await refreshTokenIfNeeded();
                 if (newToken) {
                     token = newToken;
-                    response = await fetch(`${API_BASE_URL}/products`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            Authorization: `Bearer ${token}`,
-                        },
-                        body: JSON.stringify(payload),
-                    });
-                    try {
-                        data = await response.json();
-                    } catch (_) { }
+                    const retryResult = await createProduct(payload, token);
+                    ok = retryResult.ok;
+                    data = retryResult.data;
                 } else {
                     setIsLoading(false);
                     notifyError('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
@@ -379,11 +339,11 @@ export default function AddProductPage() {
                 }
             }
 
-            if (response.ok) {
+            if (ok) {
                 success('Thêm sản phẩm thành công.');
                 resetForm();
             } else {
-                const errorMessage = handleApiError(response, data);
+                const errorMessage = data?.message || 'Không thể thêm sản phẩm. Vui lòng thử lại.';
                 notifyError(errorMessage);
             }
         } catch (err) {

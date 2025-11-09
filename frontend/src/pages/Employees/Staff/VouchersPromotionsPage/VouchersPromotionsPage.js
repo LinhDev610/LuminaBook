@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import classNames from 'classnames/bind';
 import styles from './VouchersPromotionsPage.module.scss';
 import { useSearchAndFilter } from '../../../../hooks';
-import { SearchFilterBar } from '../../../../components/Common';
+import StatusBadge from '../../../../components/Common/StatusBadge';
 
 const cx = classNames.bind(styles);
 
@@ -99,12 +99,18 @@ export default function VouchersPromotionsPage() {
         navigate('/staff/vouchers/add-promotion');
     };
 
-    const handleSearch = () => {
-        // Filter đã được tính toán real-time trong hook useSearchAndFilter
-    };
+    const sortOptions = useMemo(
+        () => [
+            { value: 'all', label: 'Tất cả trạng thái' },
+            { value: 'pending', label: 'Chờ duyệt' },
+            { value: 'approved', label: 'Đã duyệt' },
+        ],
+        [],
+    );
 
     return (
-        <div className={cx('wrap')}>
+        <div>
+            {/* Header */}
             <div className={cx('header')}>
                 <h1 className={cx('title')}>Voucher & Khuyến mãi</h1>
                 <button className={cx('dashboard-btn')} onClick={() => navigate('/staff')}>
@@ -123,30 +129,68 @@ export default function VouchersPromotionsPage() {
                 </button>
             </div>
 
-            <SearchFilterBar
-                searchQuery={searchQuery}
-                onSearchChange={(e) => setSearchQuery(e.target.value)}
-                searchPlaceholder="Tìm kiếm theo mã voucher, tên khuyến mãi....."
-                dateFilter={dateFilter}
-                onDateChange={(e) => setDateFilter(e.target.value)}
-                onSearchClick={handleSearch}
-                sortFilter={sortFilter}
-                onSortChange={(e) => setSortFilter(e.target.value)}
-                sortOptions={[
-                    { value: 'all', label: 'Tất cả trạng thái' },
-                    { value: 'pending', label: 'Chờ duyệt' },
-                    { value: 'approved', label: 'Đã duyệt' },
-                ]}
-                actionButtons={[
-                    { label: 'Thêm voucher', onClick: handleAddVoucher },
-                    { label: 'Thêm khuyến mãi', onClick: handleAddPromotion },
-                ]}
-            />
+            <div className={cx('wrap')}>
+                {/* Search và Filter */}
+                <div className={cx('search-filter-container')}>
+                    {/* Hàng 1: Search, Date, Search Button */}
+                    <div className={cx('search-row')}>
+                        <input
+                            type="text"
+                            className={cx('search-input')}
+                            placeholder="Tìm kiếm theo mã voucher, tên khuyến mãi....."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                        />
+                        <div className={cx('date-wrapper')}>
+                            <input
+                                type="date"
+                                className={cx('date-input')}
+                                value={dateFilter || ''}
+                                onChange={(e) => setDateFilter(e.target.value)}
+                            />
+                        </div>
+                        <button className={cx('search-btn')} onClick={() => { }}>
+                            Tìm kiếm
+                        </button>
+                    </div>
 
-            <div className={cx('table-section')}>
-                <h2 className={cx('table-title')}>Danh sách Voucher / Khuyến mãi</h2>
-                <div className={cx('table-container')}>
-                    <table className={cx('vouchers-table')}>
+                    {/* Hàng 2: Sort (trái) và Action Buttons (phải) */}
+                    <div className={cx('filter-row')}>
+                        <div className={cx('sort-section')}>
+                            <span className={cx('sort-label')}>Sắp xếp:</span>
+                            <select
+                                className={cx('sort-dropdown')}
+                                value={sortFilter}
+                                onChange={(e) => setSortFilter(e.target.value)}
+                            >
+                                {sortOptions.map((option) => (
+                                    <option key={option.value} value={option.value}>
+                                        {option.label}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className={cx('action-buttons')}>
+                            <button
+                                className={cx('btn', 'primary')}
+                                onClick={handleAddVoucher}
+                            >
+                                Thêm voucher
+                            </button>
+                            <button
+                                className={cx('btn', 'primary')}
+                                onClick={handleAddPromotion}
+                            >
+                                Thêm khuyến mãi
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Bảng Voucher & Khuyến mãi */}
+                <div className={cx('card')}>
+                    <div className={cx('card-header')}>Danh sách Voucher / Khuyến mãi</div>
+                    <table className={cx('table')}>
                         <thead>
                             <tr>
                                 <th>Mã</th>
@@ -158,39 +202,33 @@ export default function VouchersPromotionsPage() {
                             </tr>
                         </thead>
                         <tbody>
-                            {filtered.length === 0 && (
+                            {filtered.length === 0 ? (
                                 <tr>
-                                    <td colSpan={6} className={cx('empty-cell')}>
+                                    <td colSpan={6} className={cx('empty')}>
                                         Không có voucher/khuyến mãi phù hợp.
                                     </td>
                                 </tr>
+                            ) : (
+                                filtered.map((voucher) => (
+                                    <tr key={voucher.id}>
+                                        <td className={cx('code-cell')}>{voucher.code}</td>
+                                        <td className={cx('name-cell')}>{voucher.name}</td>
+                                        <td>{voucher.type}</td>
+                                        <td>{voucher.createDate}</td>
+                                        <td>
+                                            <StatusBadge status={voucher.status} />
+                                        </td>
+                                        <td>
+                                            <button
+                                                className={cx('btn', 'view-btn')}
+                                                onClick={() => handleViewDetail(voucher.id)}
+                                            >
+                                                Xem
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))
                             )}
-                            {filtered.map((voucher) => (
-                                <tr key={voucher.id}>
-                                    <td className={cx('code-cell')}>{voucher.code}</td>
-                                    <td className={cx('name-cell')}>{voucher.name}</td>
-                                    <td className={cx('type-cell')}>{voucher.type}</td>
-                                    <td className={cx('date-cell')}>{voucher.createDate}</td>
-                                    <td className={cx('status-cell')}>
-                                        <span
-                                            className={cx('status-badge', {
-                                                pending: voucher.status === 'Chờ duyệt',
-                                                approved: voucher.status === 'Đã duyệt',
-                                            })}
-                                        >
-                                            {voucher.status}
-                                        </span>
-                                    </td>
-                                    <td className={cx('action-cell')}>
-                                        <button
-                                            className={cx('btn', 'btn-view')}
-                                            onClick={() => handleViewDetail(voucher.id)}
-                                        >
-                                            Xem
-                                        </button>
-                                    </td>
-                                </tr>
-                            ))}
                         </tbody>
                     </table>
                 </div>

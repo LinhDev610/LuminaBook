@@ -21,7 +21,7 @@ export default function StaffMainPage() {
                     </div>
                 </div>
 
-                <div className={cx('card')} onClick={() => navigate('/staff/vouchers')}>
+                <div className={cx('card')} onClick={() => navigate('/staff/vouchers-promotions')}>
                     <div className={cx('card-title')}>Voucher và khuyến mãi</div>
                     <div className={cx('card-desc')}>
                         Quản lý mã giảm giá và chương trình khuyến mãi.

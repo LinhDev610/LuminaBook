@@ -108,7 +108,7 @@ export default function StaffSideBar() {
                     </NavLink>
                 </li>
                 <li>
-                    <NavLink to="/staff/vouchers" className={cx('link', { active: isActive('/staff/vouchers') })}>
+                    <NavLink to="/staff/vouchers" className={cx('link', { active: isActive('/staff/vouchers-promotions') })}>
                         Voucher & Khuyến mãi
                     </NavLink>
                 </li>

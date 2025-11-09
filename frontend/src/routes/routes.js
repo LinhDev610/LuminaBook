@@ -23,6 +23,8 @@ import ManageCategoriesPage from '../pages/Admin/ManageCategories/ManageCategori
 import AddCategoryPage from '../pages/Admin/ManageCategories/AddCategory/AddCategoryPage';
 import ManageProductsPage from '../pages/Admin/ManageProduct';
 import AdminProductDetailPage from '../pages/Admin/ManageProduct/ProductDetail/ProductDetailPage';
+import CategoryDetailPage from '../pages/Admin/ManageCategories/CategoryDetail';
+import UpdateCategoryPage from '../pages/Admin/ManageCategories/UpdateCategory';
 
 import StaffMainPage from '../pages/Employees/Staff/StaffMain';
 import ProfileStaffPage from '../pages/Employees/Staff/ProfileStaff';
@@ -32,10 +34,9 @@ import StaffAddProductPage from '../pages/Employees/Staff/ProductManagement/AddP
 import StaffProductDetailPage from '../pages/Employees/Staff/ProductManagement/ProductDetail/ProductDetailPage';
 import StaffUpdateProductPage from '../pages/Employees/Staff/ProductManagement/UpdateProduct/UpdateProductPage';
 import ContentManagementPage from '../pages/Employees/Staff/ContentManagement';
-import BannerDetailPage from '../pages/Employees/Staff/ContentManagement/BannerDetail';
 import VouchersPromotionsPage from '../pages/Employees/Staff/VouchersPromotionsPage';
-import CategoryDetailPage from '../pages/Admin/ManageCategories/CategoryDetail';
-import UpdateCategoryPage from '../pages/Admin/ManageCategories/UpdateCategory';
+import VoucherDetailPage from '../pages/Employees/Staff/VouchersPromotionsPage/Voucher/VoucherDetail';
+import PromotionDetailPage from '../pages/Employees/Staff/VouchersPromotionsPage/Promotion/PromotionDetail';
 
 // Public routes
 const publicRoutes = [
@@ -75,6 +76,7 @@ const privateRoutes = [
     { path: '/admin/content', component: ManageStaffAccountsPage, layout: AdminLayout },
     { path: '/admin/reports', component: ManageStaffAccountsPage, layout: AdminLayout },
     { path: '/admin/profile', component: ProfileAdminPage, layout: AdminLayout },
+
     // Staff routes
     { path: '/staff', component: StaffMainPage, layout: StaffLayout },
     { path: '/staff/products', component: StaffProductsPage, layout: StaffLayout },
@@ -82,8 +84,9 @@ const privateRoutes = [
     { path: '/staff/products/:id', component: StaffProductDetailPage, layout: StaffLayout },
     { path: '/staff/products/:id/update', component: StaffUpdateProductPage, layout: StaffLayout },
     { path: '/staff/content', component: ContentManagementPage, layout: StaffLayout },
-    { path: '/staff/content/:id', component: BannerDetailPage, layout: StaffLayout },
-    { path: '/staff/vouchers', component: VouchersPromotionsPage, layout: StaffLayout },
+    { path: '/staff/vouchers-promotions', component: VouchersPromotionsPage, layout: StaffLayout },
+    { path: '/staff/vouchers/:id', component: VoucherDetailPage, layout: StaffLayout },
+    { path: '/staff/promotions/:id', component: PromotionDetailPage, layout: StaffLayout },
     { path: '/staff/orders', component: VouchersPromotionsPage, layout: StaffLayout },
     { path: '/staff/profile', component: ProfileStaffPage, layout: StaffLayout },
 ];

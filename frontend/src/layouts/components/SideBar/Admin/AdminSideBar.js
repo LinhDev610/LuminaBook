@@ -15,10 +15,10 @@ export default function AdminSideBar() {
     const [token, setToken, removeToken] = useLocalStorage('token', null);
     const [refreshToken, setRefreshToken, removeRefreshToken] = useLocalStorage('refreshToken', null);
     const [displayName, setDisplayName, removeDisplayName] = useLocalStorage('displayName', null);
-    
+
     // Check if current path is related to staff management
     const isStaffManagementActive = location.pathname === '/admin' || location.pathname.startsWith('/admin/add-employee');
-    
+
     const handleLogout = () => {
         // Close confirm modal immediately so it disappears before navigation
         setShowLogoutConfirm(false);
@@ -29,7 +29,7 @@ export default function AdminSideBar() {
         // Always go back to home after logout
         navigate('/', { replace: true });
     };
-    
+
     return (
         <>
             <div className={cx('side')}>
@@ -40,7 +40,7 @@ export default function AdminSideBar() {
                     <li><NavLink to="/admin/products" className={({ isActive }) => cx('link', { active: isActive })}>QL Sản phẩm</NavLink></li>
                     <li><NavLink to="/admin/categories" className={({ isActive }) => cx('link', { active: isActive })}>QL Danh mục</NavLink></li>
                     <li><NavLink to="/admin/orders" className={({ isActive }) => cx('link', { active: isActive })}>QL Đơn hàng</NavLink></li>
-                    <li><NavLink to="/admin/vouchers" className={({ isActive }) => cx('link', { active: isActive })}>QL Voucher & Khuyến mãi</NavLink></li>
+                    <li><NavLink to="/admin/vouchers-promotions" className={({ isActive }) => cx('link', { active: isActive })}>QL Voucher & Khuyến mãi</NavLink></li>
                     <li><NavLink to="/admin/complaints" className={({ isActive }) => cx('link', { active: isActive })}>QL Khiếu nại</NavLink></li>
                     <li><NavLink to="/admin/content" className={({ isActive }) => cx('link', { active: isActive })}>QL Nội dung</NavLink></li>
                     <li><NavLink to="/admin/reports" className={({ isActive }) => cx('link', { active: isActive })}>Báo cáo và thống kê</NavLink></li>

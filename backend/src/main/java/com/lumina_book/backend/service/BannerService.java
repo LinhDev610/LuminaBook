@@ -53,6 +53,8 @@ public class BannerService {
         banner.setCreatedBy(user);
         banner.setCreatedAt(LocalDateTime.now());
         banner.setUpdatedAt(LocalDateTime.now());
+        banner.setStatus(Boolean.FALSE);
+        banner.setPendingReview(Boolean.TRUE);
 
         // Set order index if not provided
         if (banner.getOrderIndex() == null) {
@@ -96,10 +98,22 @@ public class BannerService {
     }
 
     @Transactional
-    @PreAuthorize("hasRole('ADMIN')")
     public BannerResponse updateBanner(String bannerId, BannerUpdateRequest request) {
+        var context = SecurityContextHolder.getContext();
+        String userEmail = context.getAuthentication().getName();
+        User user = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+
         Banner banner =
                 bannerRepository.findById(bannerId).orElseThrow(() -> new AppException(ErrorCode.BANNER_NOT_EXISTED));
+
+        // Kiểm tra quyền: Admin hoặc chủ sở hữu banner
+        boolean isAdmin = context.getAuthentication().getAuthorities().stream()
+                .anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN"));
+
+        if (!isAdmin && (banner.getCreatedBy() == null || !banner.getCreatedBy().getId().equals(user.getId()))) {
+            throw new AppException(ErrorCode.UNAUTHORIZED);
+        }
 
         // Update only non-null fields to preserve existing values
         if (request.getTitle() != null) {
@@ -114,13 +128,27 @@ public class BannerService {
         if (request.getLinkUrl() != null) {
             banner.setLinkUrl(request.getLinkUrl());
         }
-        if (request.getStatus() != null) {
-            banner.setStatus(request.getStatus());
+        // Nếu là staff (không phải admin), luôn set status về false (chờ duyệt) khi gửi lại
+        // và giữ nguyên rejectionReason
+        if (!isAdmin) {
+            // Staff gửi lại banner -> luôn set về chờ duyệt
+            banner.setStatus(false);
+            banner.setPendingReview(true);
+            // Giữ nguyên rejectionReason (không xóa)
+        } else {
+            // Admin có thể thay đổi status
+            if (request.getStatus() != null) {
+                banner.setStatus(request.getStatus());
+                banner.setPendingReview(Boolean.FALSE);
+            }
         }
-        if (request.getRejectionReason() != null) {
+        // Staff không được phép thay đổi rejectionReason, chỉ ADMIN mới có quyền này
+        if (request.getRejectionReason() != null && isAdmin) {
             banner.setRejectionReason(request.getRejectionReason());
+            banner.setPendingReview(Boolean.FALSE);
         }
-        if (request.getOrderIndex() != null) {
+        // Staff không được phép thay đổi orderIndex, chỉ ADMIN mới có quyền này
+        if (request.getOrderIndex() != null && isAdmin) {
             banner.setOrderIndex(request.getOrderIndex());
         }
         if (request.getStartDate() != null) {
@@ -150,7 +178,7 @@ public class BannerService {
         log.info(
                 "Banner updated: {} by user: {}",
                 bannerId,
-                SecurityContextHolder.getContext().getAuthentication().getName());
+                userEmail);
 
         return bannerMapper.toResponse(savedBanner);
     }

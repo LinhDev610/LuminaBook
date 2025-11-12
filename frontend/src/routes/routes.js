@@ -36,11 +36,13 @@ import ContentManagementPage from '../pages/Employees/Staff/ContentManagement';
 import AddBannerPage from '../pages/Employees/Staff/ContentManagement/AddBanner';
 import BannerDetailPage from '../pages/Employees/Staff/ContentManagement/BannerDetail';
 import BannerBookListPage from '../pages/Employees/Staff/ContentManagement/BannerDetail/BannerBookList';
+import UpdateContentPage from '../pages/Employees/Staff/ContentManagement/UpdateContent';
 import VouchersPromotionsPage from '../pages/Employees/Staff/VouchersPromotionsPage';
 import CategoryDetailPage from '../pages/Admin/ManageCategories/CategoryDetail';
 import UpdateCategoryPage from '../pages/Admin/ManageCategories/UpdateCategory';
 import CustomerSupportMainPage from '../pages/Employees/CustomerSupport/CustomerSupportMain';
 import ComplaintManagementPage from '../pages/Employees/CustomerSupport/ComplaintManagement';
+import ReviewCommentManagementPage from '../pages/Employees/CustomerSupport/ReviewCommentManagement';
 import ProfileCustomerSupportPage from '../pages/Employees/CustomerSupport/ProfileCustomerSupport';
 import ManageComplaintsPage from '../pages/Admin/ManageComplaints';
 import ComplaintsDetailPage from '../pages/Admin/ManageComplaints/ComplaintsDetail';
@@ -97,6 +99,7 @@ const privateRoutes = [
     { path: '/staff/content', component: ContentManagementPage, layout: StaffLayout },
     { path: '/staff/content/add-banner', component: AddBannerPage, layout: StaffLayout },
     { path: '/staff/content/:id', component: BannerDetailPage, layout: StaffLayout },
+    { path: '/staff/content/:id/edit', component: UpdateContentPage, layout: StaffLayout },
     { path: '/staff/content/:id/books', component: BannerBookListPage, layout: StaffLayout },
     { path: '/staff/vouchers', component: VouchersPromotionsPage, layout: StaffLayout },
     { path: '/staff/orders', component: VouchersPromotionsPage, layout: StaffLayout },
@@ -104,7 +107,7 @@ const privateRoutes = [
     // Customer Support routes
     { path: '/customer-support', component: CustomerSupportMainPage, layout: CustomerSupportLayout },
     { path: '/customer-support/complaints', component: ComplaintManagementPage, layout: CustomerSupportLayout },
-    { path: '/customer-support/reviews', component: CustomerSupportMainPage, layout: CustomerSupportLayout },
+    { path: '/customer-support/reviews', component: ReviewCommentManagementPage, layout: CustomerSupportLayout },
     { path: '/customer-support/profile', component: ProfileCustomerSupportPage, layout: CustomerSupportLayout },
 ];
 

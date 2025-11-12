@@ -1,14 +1,17 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import classNames from 'classnames/bind';
 import styles from './AddBannerPage.module.scss';
 import { getApiBaseUrl, getStoredToken, getUserRole } from '../../../../../services/utils';
+import { normalizeMediaUrl } from '../../../../../services/productUtils';
 import { useNotification } from '../../../../../components/Common/Notification';
 
 const cx = classNames.bind(styles);
 
 export default function AddBannerPage() {
     const navigate = useNavigate();
+    const { id } = useParams();
+    const isEditMode = !!id;
     const API_BASE_URL = useMemo(() => getApiBaseUrl(), []);
     const fileInputRef = useRef(null);
     const { success: notifySuccess, error: notifyError } = useNotification();
@@ -28,6 +31,7 @@ export default function AddBannerPage() {
     const [showProductModal, setShowProductModal] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isAdmin, setIsAdmin] = useState(false);
+    const [bannerLoaded, setBannerLoaded] = useState(false); // Track if banner data has been loaded
 
     // Fetch user role to check if admin
     useEffect(() => {
@@ -84,7 +88,7 @@ export default function AddBannerPage() {
         checkUserRole();
     }, [API_BASE_URL]);
 
-    // Fetch available products
+    // Fetch available products first
     useEffect(() => {
         const fetchProducts = async () => {
             try {
@@ -114,6 +118,101 @@ export default function AddBannerPage() {
 
         fetchProducts();
     }, [API_BASE_URL]);
+
+    // Fetch banner data if in edit mode (only once)
+    useEffect(() => {
+        if (!isEditMode || !id || bannerLoaded) return;
+
+        const fetchBanner = async () => {
+            try {
+                const token = getStoredToken();
+                if (!token) return;
+
+                const response = await fetch(`${API_BASE_URL}/banners/${id}`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`,
+                    },
+                });
+
+                const data = await response.json();
+                if (response.ok && data?.result) {
+                    const banner = data.result;
+                    
+                    // Format dates
+                    const formatLocalDate = (value) => {
+                        if (!value) return '';
+                        if (Array.isArray(value) && value.length >= 3) {
+                            const y = String(value[0]).padStart(4, '0');
+                            const m = String(value[1]).padStart(2, '0');
+                            const d = String(value[2]).padStart(2, '0');
+                            return `${y}-${m}-${d}`;
+                        }
+                        if (typeof value === 'string') {
+                            const isoMatch = value.match(/^(\d{4}-\d{2}-\d{2})/);
+                            if (isoMatch) return isoMatch[1];
+                            if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+                        }
+                        try {
+                            const d = new Date(value);
+                            if (!isNaN(d.getTime())) {
+                                const yyyy = d.getFullYear();
+                                const mm = String(d.getMonth() + 1).padStart(2, '0');
+                                const dd = String(d.getDate()).padStart(2, '0');
+                                return `${yyyy}-${mm}-${dd}`;
+                            }
+                        } catch (e) {
+                            // ignore
+                        }
+                        return '';
+                    };
+
+                    setFormData({
+                        title: banner.title || '',
+                        description: banner.description || '',
+                        status: false, // Always set to false (chờ duyệt) when editing
+                        imageFile: null,
+                        imageUrl: banner.imageUrl || '',
+                        productIds: banner.productIds || [],
+                        createdDate: banner.createdAt
+                            ? new Date(banner.createdAt).toISOString().split('T')[0]
+                            : new Date().toISOString().split('T')[0],
+                        startDate: formatLocalDate(banner.startDate),
+                        endDate: formatLocalDate(banner.endDate),
+                    });
+                    
+                    // Set selected products with IDs first, names will be updated when products load
+                    const selected = (banner.productIds || []).map((pid) => ({
+                        id: pid,
+                        name: 'Đang tải...',
+                    }));
+                    setSelectedProducts(selected);
+                    setBannerLoaded(true);
+                }
+            } catch (err) {
+                console.error('Error fetching banner:', err);
+                notifyError('Không thể tải thông tin banner');
+            }
+        };
+
+        fetchBanner();
+    }, [isEditMode, id, API_BASE_URL, notifyError, bannerLoaded]);
+
+    // Update selected products names when availableProducts are loaded
+    useEffect(() => {
+        if (!isEditMode || availableProducts.length === 0 || selectedProducts.length === 0) return;
+        
+        // Check if any product has "Đang tải..." name
+        const needsUpdate = selectedProducts.some((p) => p.name === 'Đang tải...');
+        if (needsUpdate) {
+            const updated = selectedProducts.map((sp) => {
+                const product = availableProducts.find((p) => p.id === sp.id);
+                return product ? { id: product.id, name: product.name } : sp;
+            });
+            setSelectedProducts(updated);
+        }
+    }, [availableProducts, isEditMode]);
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
@@ -183,7 +282,11 @@ export default function AddBannerPage() {
             notifyError('Vui lòng nhập tiêu đề banner');
             return;
         }
-        if (!formData.imageFile) {
+        if (!isEditMode && !formData.imageFile) {
+            notifyError('Vui lòng chọn ảnh banner');
+            return;
+        }
+        if (isEditMode && !formData.imageFile && !formData.imageUrl) {
             notifyError('Vui lòng chọn ảnh banner');
             return;
         }
@@ -198,64 +301,94 @@ export default function AddBannerPage() {
                 return;
             }
 
-            // Step 1: Upload image
-            const formDataUpload = new FormData();
-            formDataUpload.append('files', formData.imageFile);
+            let imageUrl = formData.imageUrl;
 
-            const uploadResponse = await fetch(`${API_BASE_URL}/media/upload-product`, {
-                method: 'POST',
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                },
-                body: formDataUpload,
-            });
+            // Step 1: Upload image if new file is selected
+            if (formData.imageFile) {
+                const formDataUpload = new FormData();
+                formDataUpload.append('files', formData.imageFile);
 
-            if (!uploadResponse.ok) {
-                throw new Error('Không thể upload ảnh');
+                const uploadResponse = await fetch(`${API_BASE_URL}/media/upload-product`, {
+                    method: 'POST',
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                    body: formDataUpload,
+                });
+
+                if (!uploadResponse.ok) {
+                    throw new Error('Không thể upload ảnh');
+                }
+
+                const uploadData = await uploadResponse.json();
+                imageUrl = uploadData?.result?.[0] || '';
+
+                if (!imageUrl) {
+                    throw new Error('Không thể lấy URL ảnh');
+                }
             }
 
-            const uploadData = await uploadResponse.json();
-            const imageUrl = uploadData?.result?.[0] || '';
-
-            if (!imageUrl) {
-                throw new Error('Không thể lấy URL ảnh');
-            }
-
-            // Step 2: Create banner
+            // Step 2: Create or Update banner
             const bannerPayload = {
                 title: formData.title.trim(),
                 description: formData.description.trim() || '',
                 imageUrl: imageUrl,
                 linkUrl: '',
-                status: formData.status,
+                status: false, // Always set to false (chờ duyệt) when staff submits
                 productIds: formData.productIds,
-                createdDate: formData.createdDate || new Date().toISOString().split('T')[0],
                 startDate: formData.startDate || null,
                 endDate: formData.endDate || null,
             };
 
-            const createResponse = await fetch(`${API_BASE_URL}/banners`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token}`,
-                },
-                body: JSON.stringify(bannerPayload),
-            });
+            // Don't send rejectionReason - keep the old one
+            // When status is set to false, it will be "Chờ duyệt" but rejectionReason remains
 
-            const createData = await createResponse.json();
+            if (isEditMode) {
+                // Update banner
+                const updateResponse = await fetch(`${API_BASE_URL}/banners/${id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify(bannerPayload),
+                });
 
-            if (!createResponse.ok) {
-                throw new Error(createData?.message || 'Không thể tạo banner');
+                const updateData = await updateResponse.json();
+
+                if (!updateResponse.ok) {
+                    throw new Error(updateData?.message || 'Không thể cập nhật banner');
+                }
+
+                notifySuccess('Banner đã được cập nhật và gửi lại để duyệt!');
+            } else {
+                // Create banner
+                bannerPayload.createdDate = formData.createdDate || new Date().toISOString().split('T')[0];
+                
+                const createResponse = await fetch(`${API_BASE_URL}/banners`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify(bannerPayload),
+                });
+
+                const createData = await createResponse.json();
+
+                if (!createResponse.ok) {
+                    throw new Error(createData?.message || 'Không thể tạo banner');
+                }
+
+                notifySuccess('Banner đã được gửi duyệt thành công!');
             }
 
-            notifySuccess('Banner đã được gửi duyệt thành công!');
             setTimeout(() => {
                 navigate('/staff/content');
             }, 2000);
         } catch (err) {
-            console.error('Error creating banner:', err);
-            notifyError(err.message || 'Đã xảy ra lỗi khi tạo banner');
+            console.error(`Error ${isEditMode ? 'updating' : 'creating'} banner:`, err);
+            notifyError(err.message || `Đã xảy ra lỗi khi ${isEditMode ? 'cập nhật' : 'tạo'} banner`);
         } finally {
             setIsSubmitting(false);
         }
@@ -291,7 +424,7 @@ export default function AddBannerPage() {
             </div>
 
             <div className={cx('form-container')}>
-                <h2 className={cx('form-title')}>Thêm banner/slider mới</h2>
+                <h2 className={cx('form-title')}>{isEditMode ? 'Sửa banner/slider' : 'Thêm banner/slider mới'}</h2>
 
                 <form onSubmit={handleSubmit}>
                     <div className={cx('form-group')}>
@@ -308,14 +441,22 @@ export default function AddBannerPage() {
                                 Chọn tệp
                             </label>
                             <span className={cx('file-name')}>
-                                {formData.imageFile ? formData.imageFile.name : 'Chưa có tệp nào được chọn'}
+                                {formData.imageFile
+                                    ? formData.imageFile.name
+                                    : isEditMode && formData.imageUrl
+                                    ? 'Ảnh hiện tại (có thể thay đổi)'
+                                    : 'Chưa có tệp nào được chọn'}
                             </span>
                         </div>
-                        {formData.imageFile && (
+                        {(formData.imageFile || (isEditMode && formData.imageUrl)) && (
                             <div className={cx('image-preview-wrapper')}>
                                 <div className={cx('image-preview')}>
                                     <img
-                                        src={URL.createObjectURL(formData.imageFile)}
+                                        src={
+                                            formData.imageFile
+                                                ? URL.createObjectURL(formData.imageFile)
+                                                : normalizeMediaUrl(formData.imageUrl, API_BASE_URL)
+                                        }
                                         alt="Preview"
                                     />
                                     <div className={cx('image-actions')}>

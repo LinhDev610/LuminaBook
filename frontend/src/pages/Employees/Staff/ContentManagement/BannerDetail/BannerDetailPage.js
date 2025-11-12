@@ -16,10 +16,12 @@ export default function BannerDetailPage() {
     const navigate = useNavigate();
     const { id } = useParams();
     const API_BASE_URL = useMemo(() => getApiBaseUrl(), []);
-    const { error: notifyError } = useNotification();
+    const { error: notifyError, success: notifySuccess } = useNotification();
 
     const [banner, setBanner] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     // Normalize LocalDate from backend (can be 'YYYY-MM-DD', ISO string, or [yyyy, mm, dd])
     const formatLocalDateValue = (value) => {
@@ -85,6 +87,7 @@ export default function BannerDetailPage() {
                         title: detail.title || '',
                         description: detail.description || '',
                         status: detail.status, // could be true/false/undefined
+                        pendingReview: detail.pendingReview === true,
                         imageUrl: detail.imageUrl || '',
                         linkUrl: detail.linkUrl || '',
                         createdByName: detail.createdByName || detail.createdBy || 'N/A',
@@ -125,6 +128,47 @@ export default function BannerDetailPage() {
         }
     };
 
+    const handleEdit = () => {
+        navigate(`/staff/content/${id}/edit`);
+    };
+
+    const handleDelete = async () => {
+        setIsDeleting(true);
+        try {
+            const token = getStoredToken();
+            if (!token) {
+                notifyError('Vui lòng đăng nhập');
+                setIsDeleting(false);
+                return;
+            }
+
+            const deleteResponse = await fetch(`${API_BASE_URL}/banners/${id}`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+
+            const deleteData = await deleteResponse.json();
+
+            if (!deleteResponse.ok) {
+                throw new Error(deleteData?.message || 'Không thể xóa banner');
+            }
+
+            notifySuccess('Đã xóa banner thành công!');
+            setTimeout(() => {
+                navigate('/staff/content');
+            }, 1500);
+        } catch (err) {
+            console.error('Error deleting banner:', err);
+            notifyError(err.message || 'Đã xảy ra lỗi khi xóa banner');
+        } finally {
+            setIsDeleting(false);
+            setShowDeleteModal(false);
+        }
+    };
+
     if (loading) {
         return (
             <div className={cx('wrap')}>
@@ -149,12 +193,17 @@ export default function BannerDetailPage() {
         : '';
 
     const isApproved = banner.status === true;
-    const isRejected =
-        banner.status === false && (
-            (banner.createdAt && banner.updatedAt && banner.createdAt !== banner.updatedAt) ||
-            Boolean(banner.rejectionReason)
-        );
+    const isPending = banner.status !== true && banner.pendingReview === true;
+    const isRejected = banner.status === false && !isPending;
     const statusDisplay = isApproved ? 'Đã duyệt' : isRejected ? 'Từ chối' : 'Chờ duyệt';
+
+    const hasRejectionInfo = banner.rejectionReason !== undefined && banner.rejectionReason !== null;
+    const showRejectionInfo = hasRejectionInfo && (isRejected || isPending);
+    const rejectionReasonText =
+        banner.rejectionReason && banner.rejectionReason.trim().length > 0
+            ? banner.rejectionReason
+            : 'Không có lý do';
+    const rejectionTimestamp = banner.updatedAt ? formatDateTime(banner.updatedAt) : '';
 
     return (
         <div className={cx('wrap')}>
@@ -192,6 +241,18 @@ export default function BannerDetailPage() {
             <div className={cx('content')}>
                 <div className={cx('banner-card')}>
                     <h2 className={cx('card-title')}>Chi tiết Banner</h2>
+
+                    {showRejectionInfo && (
+                        <div className={cx('rejection-box')}>
+                            <h3 className={cx('rejection-title')}>Lý do không duyệt banner</h3>
+                            <p className={cx('rejection-text')}>{rejectionReasonText}</p>
+                            {rejectionTimestamp && (
+                                <p className={cx('rejection-date')}>
+                                    Ngày giờ kiểm duyệt: {rejectionTimestamp}
+                                </p>
+                            )}
+                        </div>
+                    )}
 
                     <div className={cx('banner-visual')}>
                         {imageSrc ? (
@@ -234,12 +295,6 @@ export default function BannerDetailPage() {
                                 {statusDisplay}
                             </span>
                         </div>
-                        {isRejected && banner.rejectionReason && (
-                            <div className={cx('detail-row')}>
-                                <span className={cx('detail-label')}>Lý do từ chối:</span>
-                                <span className={cx('detail-value')}>{banner.rejectionReason}</span>
-                            </div>
-                        )}
                         <div className={cx('detail-row')}>
                             <span className={cx('detail-label')}>Người tạo:</span>
                             <span className={cx('detail-value')}>Nhân viên - {banner.createdByName}</span>
@@ -257,12 +312,57 @@ export default function BannerDetailPage() {
                     </div>
 
                     <div className={cx('actions')}>
-                        <button className={cx('btn', 'btn-back')} onClick={handleBack}>
-                            Quay lại
-                        </button>
+                        {isRejected ? (
+                            <button 
+                                className={cx('btn', 'btn-edit')} 
+                                onClick={handleEdit}
+                            >
+                                Sửa lại
+                            </button>
+                        ) : (
+                            <button className={cx('btn', 'btn-back')} onClick={handleBack}>
+                                Quay lại
+                            </button>
+                        )}
                     </div>
                 </div>
             </div>
+
+            {/* Delete Modal */}
+            {showDeleteModal && (
+                <div className={cx('modal-overlay')} onClick={() => setShowDeleteModal(false)}>
+                    <div className={cx('modal')} onClick={(e) => e.stopPropagation()}>
+                        <div className={cx('modal-header')}>
+                            <h2 className={cx('modal-title')}>Xác nhận xóa banner</h2>
+                            <button className={cx('modal-close')} onClick={() => setShowDeleteModal(false)} aria-label="Đóng">×</button>
+                        </div>
+                        <div className={cx('modal-content')}>
+                            <p className={cx('modal-message')}>
+                                Bạn có chắc chắn muốn xóa banner <span className={cx('banner-title-highlight')}>"{banner?.title || ''}"</span> không?
+                            </p>
+                            <p className={cx('modal-message')}>
+                                Hành động này không thể hoàn tác.
+                            </p>
+                        </div>
+                        <div className={cx('modal-actions')}>
+                            <button
+                                className={cx('btn', 'btn-cancel')}
+                                onClick={() => setShowDeleteModal(false)}
+                                disabled={isDeleting}
+                            >
+                                Hủy
+                            </button>
+                            <button
+                                className={cx('btn', 'btn-confirm-delete')}
+                                onClick={handleDelete}
+                                disabled={isDeleting}
+                            >
+                                {isDeleting ? 'Đang xử lý...' : 'Xóa'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

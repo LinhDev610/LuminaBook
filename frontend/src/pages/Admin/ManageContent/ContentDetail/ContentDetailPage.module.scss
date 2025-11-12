@@ -70,7 +70,7 @@
 .banner-preview img {
     width: 100%;
     height: auto;
-    max-height: 560px; /* taller preview */
+    max-height: 1000px; /* increased height for larger image */
     object-fit: contain; /* keep aspect ratio without cropping */
     display: block;
 }
@@ -126,6 +126,11 @@
     padding: 12px 16px;
     line-height: 1.6;
     white-space: pre-wrap;
+}
+
+.title-value {
+    color: #1A3C5A;
+    font-weight: 700;
 }
 
 .status-badge {
@@ -360,7 +365,24 @@
 }
 
 .btn-reject {
-    background: #ef4444;
+    background: #ffffff;
+    color: #333;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1px solid #d1d5db;
+    min-width: 120px;
+}
+
+.btn-reject:hover:not(:disabled) {
+    background: #f9fafb;
+}
+
+.btn-delete {
+    background: #dc2626;
     color: #fff;
     padding: 12px 24px;
     border-radius: 8px;
@@ -369,11 +391,16 @@
     cursor: pointer;
     transition: all 0.2s ease;
     border: none;
-    min-width: 120px;
+    min-width: 180px;
 }
 
-.btn-reject:hover:not(:disabled) {
+.btn-delete:hover:not(:disabled) {
+    background: #b91c1c;
+}
+
+.btn-confirm-delete {
     background: #dc2626;
+    color: #fff;
 }
 
 .btn:disabled {
@@ -413,9 +440,9 @@
 }
 
 .modal-title {
-    font-size: 20px;
+    font-size: 22px;
     font-weight: 700;
-    color: #1b2b34;
+    color: #1A3C5A;
     margin: 0;
 }
 
@@ -443,6 +470,23 @@
     padding: 20px 24px;
     overflow-y: auto;
     max-height: calc(80vh - 80px);
+    text-align: center;
+}
+
+.modal-message {
+    font-size: 18px;
+    color: #374151;
+    line-height: 1.6;
+    margin-bottom: 10px;
+}
+
+.modal-message:last-of-type {
+    margin-bottom: 0;
+}
+
+.banner-title-highlight {
+    color: #1A3C5A;
+    font-weight: 700;
 }
 
 .modal-input-section {
@@ -491,6 +535,36 @@
     white-space: pre-wrap;
     word-break: break-word;
     color: #991b1b; /* red text */
+}
+
+.rejection-box {
+    background: #fee2e2;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 24px;
+    border-left: 4px solid #dc2626;
+}
+
+.rejection-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: #dc2626;
+    margin: 0 0 8px 0;
+}
+
+.rejection-text {
+    font-size: 14px;
+    color: #000;
+    margin: 0 0 8px 0;
+    line-height: 1.5;
+    white-space: pre-wrap;
+}
+
+.rejection-date {
+    font-size: 14px;
+    font-weight: 600;
+    color: #000;
+    margin: 0;
 }
 
 .product-option {

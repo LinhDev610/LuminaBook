@@ -4,6 +4,7 @@ import classNames from 'classnames/bind';
 import styles from './ManageContentPage.module.scss';
 import { getApiBaseUrl, getStoredToken, formatDateTime } from '../../../services/utils';
 import SearchAndSort from '../../../components/Common/SearchAndSort';
+import ReviewAndCommentPage from './ReviewAndComment';
 
 const cx = classNames.bind(styles);
 
@@ -20,25 +21,15 @@ export default function ManageContentPage() {
     const [statusFilter, setStatusFilter] = useState('all');
 
     // Determine label/class using timestamps to know if rejected
-    const getStatusDisplayFromRecord = (status, createdAt, updatedAt) => {
+    const getStatusDisplayFromRecord = (status, pendingReview) => {
         if (status === true) return 'Đã duyệt';
-        if (status === false) {
-            const created = createdAt ? String(createdAt) : '';
-            const updated = updatedAt ? String(updatedAt) : '';
-            const hasReviewed = created && updated && created !== updated;
-            return hasReviewed ? 'Không duyệt' : 'Chờ duyệt';
-        }
+        if (status === false && pendingReview !== true) return 'Không duyệt';
         return 'Chờ duyệt';
     };
 
-    const getStatusClassFromRecord = (status, createdAt, updatedAt) => {
+    const getStatusClassFromRecord = (status, pendingReview) => {
         if (status === true) return 'approved';
-        if (status === false) {
-            const created = createdAt ? String(createdAt) : '';
-            const updated = updatedAt ? String(updatedAt) : '';
-            const hasReviewed = created && updated && created !== updated;
-            return hasReviewed ? 'rejected' : 'pending';
-        }
+        if (status === false && pendingReview !== true) return 'rejected';
         return 'pending';
     };
 
@@ -82,8 +73,9 @@ export default function ManageContentPage() {
                         linkUrl: banner.linkUrl || '',
                         creator: banner.createdByName || banner.createdBy || '',
                         status: banner.status,
-                        statusDisplay: getStatusDisplayFromRecord(banner.status, banner.createdAt, banner.updatedAt),
-                        statusClass: getStatusClassFromRecord(banner.status, banner.createdAt, banner.updatedAt),
+                        pendingReview: banner.pendingReview === true,
+                        statusDisplay: getStatusDisplayFromRecord(banner.status, banner.pendingReview),
+                        statusClass: getStatusClassFromRecord(banner.status, banner.pendingReview),
                         date: dateStr,
                         createdAt: banner.createdAt,
                         updatedAt: banner.updatedAt,
@@ -142,12 +134,11 @@ export default function ManageContentPage() {
         // Status filter
         if (statusFilter !== 'all') {
             if (statusFilter === 'Đã duyệt') {
-                filtered = filtered.filter((b) => b.status === true);
+                filtered = filtered.filter((b) => b.statusClass === 'approved');
             } else if (statusFilter === 'Chờ duyệt') {
-                filtered = filtered.filter((b) => b.status === false);
+                filtered = filtered.filter((b) => b.statusClass === 'pending');
             } else if (statusFilter === 'Không duyệt') {
-                // For now, we don't have rejected status, but keeping for future
-                filtered = filtered.filter((b) => b.status === false);
+                filtered = filtered.filter((b) => b.statusClass === 'rejected');
             }
         }
 
@@ -311,11 +302,7 @@ export default function ManageContentPage() {
                 </>
             )}
 
-            {activeTab === 'reviews' && (
-                <div style={{ textAlign: 'center', padding: '40px' }}>
-                    <p>Chức năng đánh giá và bình luận đang được phát triển</p>
-                </div>
-            )}
+            {activeTab === 'reviews' && <ReviewAndCommentPage />}
         </div>
     );
 }

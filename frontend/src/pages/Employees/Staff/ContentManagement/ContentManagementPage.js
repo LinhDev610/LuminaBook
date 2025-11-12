@@ -51,14 +51,10 @@ export default function ContentManagementPage() {
                         ? formatDateTime(banner.createdAt).split(' ')[0]
                         : '';
 
-                    const isRejected =
-                        banner.status === false &&
-                        banner.createdAt &&
-                        banner.updatedAt &&
-                        banner.createdAt !== banner.updatedAt;
-
-                    const statusDisplay =
-                        banner.status === true ? 'Đã duyệt' : isRejected ? 'Từ chối' : 'Chờ duyệt';
+                    const isApproved = banner.status === true;
+                    const isPending = banner.status !== true && banner.pendingReview === true;
+                    const isRejected = banner.status === false && !isPending;
+                    const statusDisplay = isApproved ? 'Đã duyệt' : isRejected ? 'Từ chối' : 'Chờ duyệt';
 
                     return {
                         id: banner.id,
@@ -68,6 +64,8 @@ export default function ContentManagementPage() {
                         creator: banner.createdByName || banner.createdBy || 'N/A',
                         createdAt: banner.createdAt,
                         updatedAt: banner.updatedAt,
+                        pendingReview: banner.pendingReview === true,
+                        rawStatus: banner.status,
                     };
                 });
 
@@ -93,6 +91,7 @@ export default function ContentManagementPage() {
         statusMap: {
             pending: 'Chờ duyệt',
             approved: 'Đã duyệt',
+            rejected: 'Từ chối',
         },
     });
 
@@ -142,6 +141,7 @@ export default function ContentManagementPage() {
                     { value: 'all', label: 'Tất cả trạng thái' },
                     { value: 'pending', label: 'Chờ duyệt' },
                     { value: 'approved', label: 'Đã duyệt' },
+                    { value: 'rejected', label: 'Từ chối' },
                 ]}
                 actionButtons={[
                     { label: 'Thêm Banner/ Slider', onClick: handleAddBanner },

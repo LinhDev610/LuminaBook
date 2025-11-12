@@ -18,6 +18,7 @@ export default function ContentDetailPage() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showRejectModal, setShowRejectModal] = useState(false);
     const [rejectReason, setRejectReason] = useState('');
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
 
     // Fetch banner detail
     useEffect(() => {
@@ -60,6 +61,7 @@ export default function ContentDetailPage() {
                         title: bannerData.title,
                         description: bannerData.description || '',
                         status: bannerData.status,
+                        pendingReview: bannerData.pendingReview === true,
                         imageUrl: bannerData.imageUrl,
                         linkUrl: bannerData.linkUrl || '',
                         createdBy: bannerData.createdBy || '',
@@ -158,13 +160,62 @@ export default function ContentDetailPage() {
             });
 
             const updateData = await updateResponse.json();
+            console.log('Update response:', updateData);
+            console.log('Rejection reason in update response:', updateData?.result?.rejectionReason);
 
             if (!updateResponse.ok) {
                 throw new Error(updateData?.message || 'Không thể từ chối banner');
             }
 
-            // Cập nhật ngay trên UI
-            setBanner((prev) => ({ ...prev, status: false, rejectionReason: rejectReason.trim(), updatedAt: new Date().toISOString() }));
+            // Sử dụng dữ liệu từ update response nếu có, nếu không thì fetch lại
+            let bannerData = updateData?.result;
+            
+            if (!bannerData || !bannerData.rejectionReason) {
+                // Fetch lại banner để lấy dữ liệu mới nhất từ server
+                const fetchResponse = await fetch(`${API_BASE_URL}/banners/${id}`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`,
+                    },
+                });
+
+                const fetchData = await fetchResponse.json();
+                if (fetchResponse.ok && fetchData?.result) {
+                    bannerData = fetchData.result;
+                }
+            }
+
+            if (bannerData) {
+                console.log('Banner data after reject:', bannerData);
+                console.log('Rejection reason from API:', bannerData.rejectionReason);
+                const createdDate = bannerData.createdAt
+                    ? formatDateTime(bannerData.createdAt).split(' ')[0]
+                    : '';
+                const startDate = bannerData.startDate || '';
+                const endDate = bannerData.endDate || '';
+
+                setBanner({
+                    id: bannerData.id,
+                    title: bannerData.title,
+                    description: bannerData.description || '',
+                    status: bannerData.status,
+                    pendingReview: bannerData.pendingReview === true,
+                    imageUrl: bannerData.imageUrl,
+                    linkUrl: bannerData.linkUrl || '',
+                    createdBy: bannerData.createdBy || '',
+                    createdByName: bannerData.createdByName || 'N/A',
+                    createdDate: createdDate,
+                    createdAt: bannerData.createdAt,
+                    updatedAt: bannerData.updatedAt,
+                    startDate: startDate,
+                    endDate: endDate,
+                    productIds: bannerData.productIds || [],
+                    productNames: bannerData.productNames || [],
+                    rejectionReason: bannerData.rejectionReason || '',
+                });
+            }
+
             setShowRejectModal(false);
             setRejectReason('');
             notifySuccess('Đã từ chối banner');
@@ -176,9 +227,42 @@ export default function ContentDetailPage() {
         }
     };
 
-    const handleEdit = () => {
-        // Navigate to edit page
-        navigate(`/admin/content/${id}/edit`);
+
+    const handleDelete = async () => {
+        setIsSubmitting(true);
+        try {
+            const token = getStoredToken();
+            if (!token) {
+                notifyError('Vui lòng đăng nhập');
+                setIsSubmitting(false);
+                return;
+            }
+
+            const deleteResponse = await fetch(`${API_BASE_URL}/banners/${id}`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+
+            const deleteData = await deleteResponse.json();
+
+            if (!deleteResponse.ok) {
+                throw new Error(deleteData?.message || 'Không thể xóa banner');
+            }
+
+            notifySuccess('Đã xóa banner thành công!');
+            setTimeout(() => {
+                navigate('/admin/content');
+            }, 1500);
+        } catch (err) {
+            console.error('Error deleting banner:', err);
+            notifyError(err.message || 'Đã xảy ra lỗi khi xóa banner');
+        } finally {
+            setIsSubmitting(false);
+            setShowDeleteModal(false);
+        }
     };
 
     if (loading) {
@@ -206,34 +290,31 @@ export default function ContentDetailPage() {
         : '';
 
     // Helpers to unify status display same as listing
-    const getStatusDisplayFromRecord = (status, createdAt, updatedAt) => {
+    const getStatusDisplayFromRecord = (status, pendingReview) => {
         if (status === true) return 'Đã duyệt';
-        if (status === false) {
-            const c = createdAt ? new Date(createdAt).getTime() : NaN;
-            const u = updatedAt ? new Date(updatedAt).getTime() : NaN;
-            const hasReviewed =
-                (Number.isFinite(c) && Number.isFinite(u) && u > c) ||
-                Boolean(banner?.rejectionReason); // fallback: có lý do => không duyệt
-            return hasReviewed ? 'Từ chối' : 'Chờ duyệt';
-        }
+        if (status === false && pendingReview !== true) return 'Từ chối';
         return 'Chờ duyệt';
     };
 
-    const getStatusClassFromRecord = (status, createdAt, updatedAt) => {
+    const getStatusClassFromRecord = (status, pendingReview) => {
         if (status === true) return 'approved';
-        if (status === false) {
-            const c = createdAt ? new Date(createdAt).getTime() : NaN;
-            const u = updatedAt ? new Date(updatedAt).getTime() : NaN;
-            const hasReviewed =
-                (Number.isFinite(c) && Number.isFinite(u) && u > c) ||
-                Boolean(banner?.rejectionReason);
-            return hasReviewed ? 'rejected' : 'pending';
-        }
+        if (status === false && pendingReview !== true) return 'rejected';
         return 'pending';
     };
 
-    const statusDisplay = getStatusDisplayFromRecord(banner.status, banner.createdAt, banner.updatedAt);
-    const statusClass = getStatusClassFromRecord(banner.status, banner.createdAt, banner.updatedAt);
+    const statusDisplay = getStatusDisplayFromRecord(banner.status, banner.pendingReview);
+    const statusClass = getStatusClassFromRecord(banner.status, banner.pendingReview);
+    const isApproved = banner.status === true;
+    const isPending = banner.status !== true && banner.pendingReview === true;
+    const isRejected = banner.status === false && banner.pendingReview !== true;
+
+    const hasRejectionInfo = banner.rejectionReason !== undefined && banner.rejectionReason !== null;
+    const showRejectionInfo = hasRejectionInfo && (isRejected || isPending);
+    const rejectionReasonText =
+        banner.rejectionReason && banner.rejectionReason.trim().length > 0
+            ? banner.rejectionReason
+            : 'Không có lý do';
+    const rejectionTimestamp = banner.updatedAt ? formatDateTime(banner.updatedAt) : '';
 
     return (
         <div className={cx('content-detail-page')}>
@@ -248,6 +329,17 @@ export default function ContentDetailPage() {
 
             {/* One unified card: Title + Image + Detail fields */}
             <div className={cx('form-container')}>
+                {showRejectionInfo && (
+                    <div className={cx('rejection-box')}>
+                        <h3 className={cx('rejection-title')}>Lý do không duyệt banner</h3>
+                        <p className={cx('rejection-text')}>{rejectionReasonText}</p>
+                        {rejectionTimestamp && (
+                            <p className={cx('rejection-date')}>
+                                Ngày giờ kiểm duyệt: {rejectionTimestamp}
+                            </p>
+                        )}
+                    </div>
+                )}
                 {displayImageUrl && (
                     <div className={cx('banner-preview')}>
                         <img src={displayImageUrl} alt="Banner" />
@@ -255,7 +347,7 @@ export default function ContentDetailPage() {
                 )}
                 <div className={cx('form-group')}>
                     <label className={cx('form-label')}>Tiêu đề</label>
-                    <div className={cx('form-value')}>{banner.title || '-'}</div>
+                    <div className={cx('form-value', 'title-value')}>{banner.title || '-'}</div>
                 </div>
                 <div className={cx('form-group')}>
                     <label className={cx('form-label')}>Người tạo</label>
@@ -301,15 +393,6 @@ export default function ContentDetailPage() {
                     </div>
                 </div>
 
-                {banner.rejectionReason && (
-                    <div className={cx('form-group')}>
-                        <label className={cx('form-label')}>Lý do từ chối</label>
-                        <div className={cx('form-value', 'rejection-value')}>
-                            {banner.rejectionReason}
-                        </div>
-                    </div>
-                )}
-
                 <div className={cx('form-group')}>
                     <label className={cx('form-label')}>Liên kết đến sản phẩm</label>
                     <div className={cx('form-value')}>
@@ -328,36 +411,52 @@ export default function ContentDetailPage() {
                 </div>
 
                 <div className={cx('form-actions')}>
-                    <button
-                        type="button"
-                        className={cx('btn', 'btn-edit')}
-                        onClick={handleEdit}
-                        disabled={isSubmitting}
-                    >
-                        Chỉnh sửa
-                    </button>
-                    <button
-                        type="button"
-                        className={cx('btn', 'btn-approve')}
-                        onClick={handleApprove}
-                        disabled={isSubmitting || banner.status === true}
-                    >
-                        Duyệt
-                    </button>
-                    <button
-                        type="button"
-                        className={cx('btn', 'btn-reject')}
-                        onClick={() => setShowRejectModal(true)}
-                        disabled={
-                            isSubmitting ||
-                            (banner.status === false &&
-                                banner.createdAt &&
-                                banner.updatedAt &&
-                                banner.createdAt !== banner.updatedAt)
-                        }
-                    >
-                        Từ chối
-                    </button>
+                    {isApproved ? (
+                        <button
+                            type="button"
+                            className={cx('btn', 'btn-delete')}
+                            onClick={() => setShowDeleteModal(true)}
+                            disabled={isSubmitting}
+                        >
+                            Xóa Banner/ Slider
+                        </button>
+                    ) : isRejected ? (
+                        <button
+                            type="button"
+                            className={cx('btn', 'btn-delete')}
+                            onClick={() => setShowDeleteModal(true)}
+                            disabled={isSubmitting}
+                        >
+                            Xóa Banner/ Slider
+                        </button>
+                    ) : (
+                        <>
+                            <button
+                                type="button"
+                                className={cx('btn', 'btn-approve')}
+                                onClick={handleApprove}
+                                disabled={isSubmitting || banner.status === true}
+                            >
+                                Duyệt
+                            </button>
+                            <button
+                                type="button"
+                                className={cx('btn', 'btn-reject')}
+                                onClick={() => setShowRejectModal(true)}
+                                disabled={isSubmitting}
+                            >
+                                Không duyệt
+                            </button>
+                            <button
+                                type="button"
+                                className={cx('btn', 'btn-delete')}
+                                onClick={() => setShowDeleteModal(true)}
+                                disabled={isSubmitting}
+                            >
+                                Xóa Banner/ Slider
+                            </button>
+                        </>
+                    )}
                 </div>
             </div>
             {/* Reject Modal */}
@@ -371,13 +470,13 @@ export default function ContentDetailPage() {
                         <div className={cx('modal-content')}>
                             <p className={cx('modal-message')}>Bạn có chắc chắn muốn từ chối banner này không?</p>
                             <div className={cx('modal-input-section')}>
-                                <label className={cx('modal-label')}>Lý do từ chối</label>
+                                <label className={cx('modal-label')}>Lý do từ chối:</label>
                                 <textarea
                                     className={cx('modal-textarea')}
                                     value={rejectReason}
                                     onChange={(e) => setRejectReason(e.target.value)}
                                     placeholder="Nhập lý do từ chối..."
-                                    rows={5}
+                                    rows={4}
                                 />
                             </div>
                         </div>
@@ -398,6 +497,41 @@ export default function ContentDetailPage() {
                                 disabled={isSubmitting}
                             >
                                 {isSubmitting ? 'Đang xử lý...' : 'Từ chối'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* Delete Modal */}
+            {showDeleteModal && (
+                <div className={cx('modal-overlay')} onClick={() => setShowDeleteModal(false)}>
+                    <div className={cx('modal')} onClick={(e) => e.stopPropagation()}>
+                        <div className={cx('modal-header')}>
+                            <h2 className={cx('modal-title')}>Xác nhận xóa banner</h2>
+                            <button className={cx('modal-close')} onClick={() => setShowDeleteModal(false)} aria-label="Đóng">×</button>
+                        </div>
+                        <div className={cx('modal-content')}>
+                            <p className={cx('modal-message')}>
+                                Bạn có chắc chắn muốn xóa banner <span className={cx('banner-title-highlight')}>"{banner?.title || ''}"</span> không?
+                            </p>
+                            <p className={cx('modal-message')}>
+                                Hành động này không thể hoàn tác.
+                            </p>
+                        </div>
+                        <div className={cx('modal-actions')}>
+                            <button
+                                className={cx('btn', 'btn-cancel')}
+                                onClick={() => setShowDeleteModal(false)}
+                                disabled={isSubmitting}
+                            >
+                                Hủy
+                            </button>
+                            <button
+                                className={cx('btn', 'btn-confirm-delete')}
+                                onClick={handleDelete}
+                                disabled={isSubmitting}
+                            >
+                                {isSubmitting ? 'Đang xử lý...' : 'Xóa'}
                             </button>
                         </div>
                     </div>

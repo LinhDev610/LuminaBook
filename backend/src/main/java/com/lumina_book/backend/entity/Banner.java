@@ -37,6 +37,9 @@ public class Banner {
     @Column(name = "status", nullable = false)
     Boolean status;
 
+    @Column(name = "pending_review")
+    Boolean pendingReview;
+
     @Column(name = "order_index")
     Integer orderIndex;
 

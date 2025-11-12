@@ -1,9 +1,49 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import styles from './ProductDetail.module.scss';
+import { getApiBaseUrl, formatDateTime } from '../../../services/utils';
+import { normalizeMediaUrl } from '../../../services/productUtils';
 
 const ProductDetail = ({ productId }) => {
-    // Dữ liệu mẫu sản phẩm theo thiết kế trong hình
-    const [product] = useState({
+    const API_BASE_URL = useMemo(() => getApiBaseUrl(), []);
+    const [product, setProduct] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
+
+    // Fetch product data from API
+    useEffect(() => {
+        if (!productId) return;
+
+        const fetchProduct = async () => {
+            try {
+                setLoading(true);
+                setError('');
+                const response = await fetch(`${API_BASE_URL}/products/${productId}`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                });
+
+                if (!response.ok) {
+                    throw new Error('Không thể tải thông tin sản phẩm');
+                }
+
+                const data = await response.json();
+                const productData = data?.result || data;
+                setProduct(productData);
+            } catch (err) {
+                console.error('Error fetching product:', err);
+                setError(err.message || 'Không thể tải thông tin sản phẩm');
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchProduct();
+    }, [productId, API_BASE_URL]);
+
+    // Fallback to mock data if API fails or no productId
+    const mockProduct = {
         id: 1,
         name: "Tủ Sách Giáo Dục Shichida - Siêu Não Phải - Nuôi Dạy Con Trở Thành Thiên Tài Theo Phương Pháp Giáo Dục Shichida",
         subtitle: "Nuôi dạy con trở thành thiên tài theo phương pháp giáo dục Shichida",
@@ -38,23 +78,54 @@ const ProductDetail = ({ productId }) => {
         shippingAddress: "Phường Bến Nghé, Quận 1, Hồ Chí Minh",
         deliveryMethod: "Giao hàng tiêu chuẩn",
         estimatedDelivery: "Thứ ba - 14/10"
-    });
+    };
 
     const [quantity, setQuantity] = useState(1);
 
+    // Use product from API or fallback to mock data
+    const displayProduct = product || mockProduct;
+
+    // Check if product is rejected
+    const isRejected = product && product.status === 'REJECTED';
+
+    if (loading) {
+        return (
+            <div className={styles.productDetail}>
+                <div className={styles.container}>
+                    <div style={{ padding: '40px', textAlign: 'center' }}>
+                        Đang tải thông tin sản phẩm...
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    if (error && !product) {
+        return (
+            <div className={styles.productDetail}>
+                <div className={styles.container}>
+                    <div style={{ padding: '40px', textAlign: 'center', color: '#dc2626' }}>
+                        {error}
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     const handleAddToCart = () => {
         // TODO: Implement add to cart functionality
-        console.log(`Added ${quantity} of ${product.name} to cart`);
+        console.log(`Added ${quantity} of ${displayProduct.name} to cart`);
         alert(`Đã thêm ${quantity} sản phẩm vào giỏ hàng!`);
     };
 
     const handleBuyNow = () => {
         // TODO: Implement buy now functionality
-        console.log(`Buy now: ${quantity} of ${product.name}`);
+        console.log(`Buy now: ${quantity} of ${displayProduct.name}`);
         alert('Chuyển đến trang thanh toán!');
     };
 
     const formatPrice = (price) => {
+        if (!price) return '0 ₫';
         return new Intl.NumberFormat('vi-VN', {
             style: 'currency',
             currency: 'VND'
@@ -62,6 +133,7 @@ const ProductDetail = ({ productId }) => {
     };
 
     const renderStars = (rating) => {
+        if (!rating) return null;
         const stars = [];
         const fullStars = Math.floor(rating);
         const hasHalfStar = rating % 1 !== 0;
@@ -82,90 +154,113 @@ const ProductDetail = ({ productId }) => {
         return stars;
     };
 
+    // Get product images
+    const productImages = product?.mediaUrls || displayProduct.images || [];
+    const defaultImage = product?.defaultMediaUrl 
+        ? normalizeMediaUrl(product.defaultMediaUrl, API_BASE_URL)
+        : productImages[0] || require('../../../assets/images/img_sach.png');
+
     return (
         <div className={styles.productDetail}>
             <div className={styles.container}>
                 {/* Header Breadcrumb */}
                 <div className={styles.headerBreadcrumb}>
-                    <span className={styles.categoryHeader}>{product.category}</span>
+                    <span className={styles.categoryHeader}>{displayProduct.categoryName || displayProduct.category || 'Sản phẩm'}</span>
                 </div>
+
+                {/* Lý do không duyệt sản phẩm */}
+                {isRejected && product.rejectionReason && (
+                    <div className={styles.rejectionBox}>
+                        <h3 className={styles.rejectionTitle}>Lý do không duyệt sản phẩm</h3>
+                        <p className={styles.rejectionText}>{product.rejectionReason}</p>
+                        {product.updatedAt && (
+                            <p className={styles.rejectionDate}>
+                                Ngày giờ kiểm duyệt: {formatDateTime(product.updatedAt)}
+                            </p>
+                        )}
+                    </div>
+                )}
 
                 <div className={styles.productContent}>
                     {/* Product Images */}
                     <div className={styles.productImages}>
                         <div className={styles.mainImage}>
                             <img 
-                                src={require('../../../assets/images/img_kinangsong.png')}
-                                alt={product.name}
+                                src={defaultImage}
+                                alt={displayProduct.name}
                                 onError={(e) => {
                                     e.target.src = require('../../../assets/images/img_sach.png');
                                 }}
                             />
                         </div>
-                        <div className={styles.thumbnailImages}>
-                            <img
-                                src={require('../../../assets/images/img_kinangsong.png')}
-                                alt={`${product.name} 1`}
-                                className={styles.active}
-                                onError={(e) => {
-                                    e.target.src = require('../../../assets/images/img_sach.png');
-                                }}
-                            />
-                            <img
-                                src={require('../../../assets/images/img_kinangsong.png')}
-                                alt={`${product.name} 2`}
-                                onError={(e) => {
-                                    e.target.src = require('../../../assets/images/img_sach.png');
-                                }}
-                            />
-                            <img
-                                src={require('../../../assets/images/img_kinangsong.png')}
-                                alt={`${product.name} 3`}
-                                onError={(e) => {
-                                    e.target.src = require('../../../assets/images/img_sach.png');
-                                }}
-                            />
-                            <div className={styles.moreImages}>
-                                +2
+                        {productImages.length > 1 && (
+                            <div className={styles.thumbnailImages}>
+                                {productImages.slice(0, 3).map((img, idx) => {
+                                    const imgUrl = typeof img === 'string' 
+                                        ? normalizeMediaUrl(img, API_BASE_URL)
+                                        : img;
+                                    return (
+                                        <img
+                                            key={idx}
+                                            src={imgUrl}
+                                            alt={`${displayProduct.name} ${idx + 1}`}
+                                            className={idx === 0 ? styles.active : ''}
+                                            onError={(e) => {
+                                                e.target.src = require('../../../assets/images/img_sach.png');
+                                            }}
+                                        />
+                                    );
+                                })}
+                                {productImages.length > 3 && (
+                                    <div className={styles.moreImages}>
+                                        +{productImages.length - 3}
+                                    </div>
+                                )}
                             </div>
-                        </div>
+                        )}
                     </div>
 
                     {/* Product Info */}
                     <div className={styles.productInfo}>
-                        <h1 className={styles.productName}>{product.name}</h1>
+                        <h1 className={styles.productName}>{displayProduct.name}</h1>
                         
                         <div className={styles.productMeta}>
                             <div className={styles.metaRow}>
-                                <span><strong>Nhà xuất bản:</strong> {product.publisher}</span>
-                                <span><strong>Hình thức bìa:</strong> {product.coverType}</span>
+                                <span><strong>Nhà xuất bản:</strong> {displayProduct.publisher || '-'}</span>
+                                <span><strong>Hình thức bìa:</strong> {displayProduct.coverType || '-'}</span>
                             </div>
                             <div className={styles.authorRow}>
-                                <span><strong>Tác giả:</strong> {product.author}</span>
+                                <span><strong>Tác giả:</strong> {displayProduct.author || '-'}</span>
                             </div>
                         </div>
 
                         {/* Rating and Sales */}
                         <div className={styles.ratingSection}>
                             <div className={styles.stars}>
-                                {renderStars(product.rating)}
+                                {renderStars(displayProduct.averageRating || displayProduct.rating)}
                             </div>
                             <span className={styles.ratingText}>
-                                ({product.reviewCount} đánh giá) . Đã bán {product.soldCount}
+                                ({displayProduct.reviewCount || 0} đánh giá) . Đã bán {displayProduct.quantitySold || displayProduct.soldCount || 0}
                             </span>
                         </div>
 
                         {/* Price */}
                         <div className={styles.priceSection}>
                             <div className={styles.currentPrice}>
-                                {formatPrice(product.price)}
+                                {formatPrice(displayProduct.price)}
                             </div>
-                            <div className={styles.originalPrice}>
-                                {formatPrice(product.originalPrice)}
-                            </div>
-                            <div className={styles.discount}>
-                                -{product.discount}%
-                            </div>
+                            {displayProduct.originalPrice && displayProduct.originalPrice > displayProduct.price && (
+                                <>
+                                    <div className={styles.originalPrice}>
+                                        {formatPrice(displayProduct.originalPrice)}
+                                    </div>
+                                    {displayProduct.discount && (
+                                        <div className={styles.discount}>
+                                            -{displayProduct.discount}%
+                                        </div>
+                                    )}
+                                </>
+                            )}
                             <div className={styles.taxNote}>
                                 (Giá đã gồm thuế)
                             </div>
@@ -176,15 +271,15 @@ const ProductDetail = ({ productId }) => {
                             <h3>Thông tin vận chuyển</h3>
                             <div className={styles.shippingItem}>
                                 <span className={styles.shippingIcon}>📍</span>
-                                <span>Giao hàng đến: {product.shippingAddress}</span>
+                                <span>Giao hàng đến: {displayProduct.shippingAddress || 'Toàn quốc'}</span>
                             </div>
                             <div className={styles.shippingItem}>
                                 <span className={styles.shippingIcon}>🚚</span>
-                                <span>{product.deliveryMethod}</span>
+                                <span>{displayProduct.deliveryMethod || 'Giao hàng tiêu chuẩn'}</span>
                             </div>
                             <div className={styles.shippingItem}>
                                 <span className={styles.shippingIcon}>📅</span>
-                                <span>Dự kiến giao: {product.estimatedDelivery}</span>
+                                <span>Dự kiến giao: {displayProduct.estimatedDelivery || '3-5 ngày làm việc'}</span>
                             </div>
                         </div>
 
@@ -259,60 +354,74 @@ const ProductDetail = ({ productId }) => {
                         <div className={styles.infoTable}>
                             <div className={styles.infoRow}>
                                 <span className={styles.infoLabel}>Mã hàng</span>
-                                <span className={styles.infoValue}>{product.productCode}</span>
+                                <span className={styles.infoValue}>{displayProduct.id || displayProduct.productCode || '-'}</span>
                             </div>
                             <div className={styles.infoRow}>
                                 <span className={styles.infoLabel}>Tên Nhà Cung Cấp</span>
-                                <span className={styles.infoValue}></span>
+                                <span className={styles.infoValue}>-</span>
                             </div>
                             <div className={styles.infoRow}>
                                 <span className={styles.infoLabel}>Tác giả</span>
-                                <span className={styles.infoValue}>{product.author}</span>
+                                <span className={styles.infoValue}>{displayProduct.author || '-'}</span>
                             </div>
                             <div className={styles.infoRow}>
                                 <span className={styles.infoLabel}>Người Dịch</span>
-                                <span className={styles.infoValue}>{product.translator}</span>
+                                <span className={styles.infoValue}>{displayProduct.translator || '-'}</span>
                             </div>
                             <div className={styles.infoRow}>
                                 <span className={styles.infoLabel}>NXB</span>
-                                <span className={styles.infoValue}>{product.publisher}</span>
+                                <span className={styles.infoValue}>{displayProduct.publisher || '-'}</span>
                             </div>
                             <div className={styles.infoRow}>
                                 <span className={styles.infoLabel}>Năm XB</span>
-                                <span className={styles.infoValue}>{product.publishYear}</span>
+                                <span className={styles.infoValue}>
+                                    {displayProduct.publicationDate 
+                                        ? new Date(displayProduct.publicationDate).getFullYear()
+                                        : displayProduct.publishYear || '-'}
+                                </span>
                             </div>
                             <div className={styles.infoRow}>
                                 <span className={styles.infoLabel}>Trọng lượng (gr)</span>
-                                <span className={styles.infoValue}>{product.weight}</span>
+                                <span className={styles.infoValue}>{displayProduct.weight || '-'}</span>
                             </div>
                             <div className={styles.infoRow}>
                                 <span className={styles.infoLabel}>Kích Thước Bao Bì</span>
-                                <span className={styles.infoValue}>{product.dimensions}</span>
+                                <span className={styles.infoValue}>
+                                    {displayProduct.length && displayProduct.width && displayProduct.height
+                                        ? `${displayProduct.length} × ${displayProduct.width} × ${displayProduct.height} cm`
+                                        : displayProduct.dimensions || '-'}
+                                </span>
                             </div>
                             <div className={styles.infoRow}>
                                 <span className={styles.infoLabel}>Số trang</span>
-                                <span className={styles.infoValue}>{product.pages}</span>
+                                <span className={styles.infoValue}>{displayProduct.pages || '-'}</span>
                             </div>
                             <div className={styles.infoRow}>
                                 <span className={styles.infoLabel}>Hình thức</span>
-                                <span className={styles.infoValue}>{product.format}</span>
+                                <span className={styles.infoValue}>{displayProduct.format || displayProduct.coverType || '-'}</span>
                             </div>
-                            <div className={styles.infoRow}>
-                                <span className={styles.infoLabel}>Sản phẩm bán chạy nhất</span>
-                                <span className={styles.infoValue}>
-                                    <a href="#" className={styles.bestSellerLink}>{product.bestSeller}</a>
-                                </span>
-                            </div>
+                            {displayProduct.bestSeller && (
+                                <div className={styles.infoRow}>
+                                    <span className={styles.infoLabel}>Sản phẩm bán chạy nhất</span>
+                                    <span className={styles.infoValue}>
+                                        <a href="#" className={styles.bestSellerLink}>{displayProduct.bestSeller}</a>
+                                    </span>
+                                </div>
+                            )}
                         </div>
                     </div>
 
                     {/* Product Description */}
                     <div className={styles.productDescription}>
                         <h3>Mô tả sản phẩm</h3>
-                        <h4>{product.name}</h4>
-                        <p className={styles.subtitle}>{product.subtitle}</p>
-                        <p>{product.description}</p>
-                        <p>{product.longDescription}</p>
+                        <h4>{displayProduct.name}</h4>
+                        {displayProduct.subtitle && (
+                            <p className={styles.subtitle}>{displayProduct.subtitle}</p>
+                        )}
+                        <p>{displayProduct.description || '-'}</p>
+                        {displayProduct.longDescription && (
+                            <p>{displayProduct.longDescription}</p>
+                        )}
                     </div>
                 </div>
             </div>

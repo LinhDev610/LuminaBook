@@ -1,0 +1,401 @@
+.review-page {
+    margin-top: 24px;
+}
+
+.tabs-placeholder {
+    height: 4px;
+}
+
+.loading-state,
+.empty-state {
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 48px 32px;
+    text-align: center;
+    color: #1b2b34;
+    font-size: 16px;
+    font-weight: 500;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+}
+
+.table-wrapper {
+    margin-top: 24px;
+    background: #ffffff;
+    border-radius: 16px;
+    box-shadow: 0 10px 32px rgba(26, 60, 90, 0.08);
+    padding: 24px;
+}
+
+.table-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: #1a3c5a;
+    margin: 0 0 20px;
+}
+
+.reviews-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.reviews-table thead tr {
+    background: #f0f4f8;
+}
+
+.reviews-table th {
+    text-align: left;
+    padding: 16px;
+    font-size: 14px;
+    font-weight: 700;
+    color: #1a3c5a;
+    border-bottom: 1px solid #e4eaf1;
+}
+
+.reviews-table td {
+    padding: 18px 16px;
+    font-size: 14px;
+    color: #1b2b34;
+    vertical-align: top;
+    border-bottom: 1px solid #eff3f8;
+}
+
+.reviews-table .odd-row {
+    background: #f9fbfd;
+}
+
+.product-cell {
+    font-weight: 600;
+    color: #0f3655;
+}
+
+.stars {
+    display: inline-flex;
+    gap: 2px;
+}
+
+.star {
+    font-size: 18px;
+    color: #d1d5db;
+}
+
+.star.filled {
+    color: #f97316;
+}
+
+.comment-block {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.comment-text {
+    margin: 0;
+    font-style: italic;
+    color: #1b2b34;
+}
+
+.reply-block {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    background: #e2f0ff;
+    border-radius: 12px;
+    padding: 12px 16px;
+    border-left: 4px solid #1a3c5a;
+}
+
+.reply-badge {
+    font-weight: 700;
+    color: #1a3c5a;
+    white-space: nowrap;
+}
+
+.reply-text {
+    margin: 0;
+    color: #1b2b34;
+    line-height: 1.5;
+}
+
+.no-reply {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    background: #fef3c7;
+    color: #92400e;
+    font-weight: 500;
+    width: fit-content;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 10px;
+}
+
+.action-btn {
+    min-width: 60px;
+    padding: 8px 16px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.action-btn.view {
+    background: #1a3c5a;
+    color: #ffffff;
+}
+
+.action-btn.view:hover {
+    opacity: 0.9;
+}
+
+.action-btn.delete {
+    background: #ef4444;
+    color: #ffffff;
+}
+
+.action-btn.delete:hover {
+    opacity: 0.88;
+}
+
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(17, 24, 39, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 999;
+    padding: 16px;
+}
+
+.modal {
+    width: 100%;
+    max-width: 520px;
+    background: #ffffff;
+    border-radius: 16px;
+    box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.35);
+    overflow: hidden;
+    animation: popIn 0.25s ease forwards;
+}
+
+.modal.delete {
+    max-width: 480px;
+}
+
+.detail-modal {
+    max-width: 540px;
+}
+
+.modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 24px;
+    border-bottom: 1px solid #eef2f7;
+    background: #f7fbff;
+}
+
+.modal-title {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 700;
+    color: #1a3c5a;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: #6b7280;
+}
+
+.modal-close:hover {
+    color: #1a3c5a;
+}
+
+.modal-body {
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.detail-title {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 700;
+    color: #1a3c5a;
+    text-align: left;
+}
+
+.detail-row {
+    display: flex;
+    gap: 6px;
+    font-size: 15px;
+    color: #1b2b34;
+    line-height: 1.5;
+}
+
+.detail-label {
+    font-weight: 700;
+    color: #1a3c5a;
+}
+
+.detail-value {
+    font-weight: 500;
+}
+
+.detail-stars {
+    letter-spacing: 2px;
+    color: #f59e0b;
+    font-weight: 700;
+}
+
+.detail-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 15px;
+    color: #1b2b34;
+}
+
+.detail-text {
+    margin: 0;
+    font-style: italic;
+    line-height: 1.6;
+}
+
+.modal-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 15px;
+    color: #1b2b34;
+}
+
+.modal-row.column {
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.modal-label {
+    font-weight: 600;
+    color: #1a3c5a;
+    min-width: 120px;
+}
+
+.modal-value {
+    font-weight: 500;
+}
+
+.modal-text {
+    margin: 0;
+    line-height: 1.6;
+}
+
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    padding: 0 24px 24px;
+}
+
+.modal-footer {
+    padding: 0 24px 24px;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.modal-btn {
+    min-width: 92px;
+    padding: 10px 18px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s ease;
+}
+
+.modal-btn.cancel {
+    background: #e5e7eb;
+    color: #111827;
+}
+
+.modal-btn.cancel:hover {
+    background: #d1d5db;
+}
+
+.modal-btn.primary {
+    background: #1a3c5a;
+    color: #ffffff;
+}
+
+.modal-btn.primary:hover {
+    opacity: 0.9;
+}
+
+.modal-btn.danger {
+    background: #ef4444;
+    color: #ffffff;
+}
+
+.modal-btn.danger:hover {
+    opacity: 0.9;
+}
+
+@keyframes popIn {
+    from {
+        transform: translateY(24px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+@media (max-width: 900px) {
+    .reviews-table,
+    .reviews-table thead,
+    .reviews-table tbody,
+    .reviews-table th,
+    .reviews-table td,
+    .reviews-table tr {
+        display: block;
+    }
+
+    .reviews-table thead {
+        display: none;
+    }
+
+    .reviews-table tr {
+        margin-bottom: 16px;
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        overflow: hidden;
+    }
+
+    .reviews-table td {
+        border: none;
+        padding: 12px 16px;
+    }
+
+    .reviews-table td::before {
+        content: attr(data-label);
+        font-weight: 600;
+        color: #1a3c5a;
+        display: block;
+        margin-bottom: 4px;
+    }
+}
+

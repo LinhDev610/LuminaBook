@@ -11,6 +11,9 @@ public class StaticResourceConfig implements WebMvcConfigurer {
         // Serve files under /product_media/** from the local product_media/ folder
         registry.addResourceHandler("/product_media/**")
                 .addResourceLocations("file:uploads/product_media/");
+        // Serve files under /uploads/** from the local uploads/ folder
+        registry.addResourceHandler("/uploads/**")
+                .addResourceLocations("file:uploads/");
     }
 }
 

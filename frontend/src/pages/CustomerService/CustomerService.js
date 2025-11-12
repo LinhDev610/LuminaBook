@@ -3,6 +3,8 @@ import classNames from 'classnames/bind';
 import homeStyles from '../Home/Home.module.scss';
 import supportStyles from './CustomerService.module.scss';
 import { useAuth } from '../../contexts/AuthContext';
+import { getApiBaseUrl, getStoredToken } from '../../services/utils';
+import { useNavigate } from 'react-router-dom';
 
 // Import icons
 import iconBox from '../../assets/icons/icon_box.png';
@@ -17,6 +19,8 @@ const cxSupport = classNames.bind(supportStyles);
 
 export default function CustomerService() {
     const { user } = useAuth();
+    const navigate = useNavigate();
+    const API_BASE_URL = getApiBaseUrl();
     const [formData, setFormData] = useState({
         orderId: '',
         customerName: user?.name || '',
@@ -25,6 +29,9 @@ export default function CustomerService() {
         issue: '',
         notes: ''
     });
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [submitError, setSubmitError] = useState('');
+    const [submitSuccess, setSubmitSuccess] = useState(false);
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
@@ -34,11 +41,92 @@ export default function CustomerService() {
         }));
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        console.log('Support request submitted:', formData);
-        // TODO: Implement API call to submit support request
-        alert('Yêu cầu hỗ trợ đã được gửi thành công!');
+        setSubmitError('');
+        setSubmitSuccess(false);
+
+        // Check if user is logged in
+        const token = getStoredToken();
+        if (!token) {
+            setSubmitError('Vui lòng đăng nhập để gửi khiếu nại');
+            setTimeout(() => {
+                navigate('/login');
+            }, 2000);
+            return;
+        }
+
+        // Validation
+        if (!formData.orderId || !formData.orderId.trim()) {
+            setSubmitError('Vui lòng nhập mã đơn hàng');
+            return;
+        }
+        if (!formData.customerName || !formData.customerName.trim()) {
+            setSubmitError('Vui lòng nhập họ và tên');
+            return;
+        }
+        if (!formData.email || !formData.email.trim()) {
+            setSubmitError('Vui lòng nhập email');
+            return;
+        }
+        if (!formData.phone || !formData.phone.trim()) {
+            setSubmitError('Vui lòng nhập số điện thoại');
+            return;
+        }
+        if (!formData.issue || !formData.issue.trim()) {
+            setSubmitError('Vui lòng mô tả tình trạng bạn đang gặp phải');
+            return;
+        }
+
+        setIsSubmitting(true);
+
+        try {
+            // Combine issue and notes into content
+            const content = formData.issue + (formData.notes ? `\n\nGhi chú thêm: ${formData.notes}` : '');
+
+            const response = await fetch(`${API_BASE_URL}/api/tickets`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                    orderCode: formData.orderId.trim(),
+                    customerName: formData.customerName.trim(),
+                    email: formData.email.trim(),
+                    phone: formData.phone.trim(),
+                    content: content.trim(),
+                }),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data?.message || 'Không thể gửi yêu cầu hỗ trợ. Vui lòng thử lại sau.');
+            }
+
+            // Success
+            setSubmitSuccess(true);
+            // Reset form
+            setFormData({
+                orderId: '',
+                customerName: user?.name || '',
+                email: user?.email || '',
+                phone: user?.phone || '',
+                issue: '',
+                notes: ''
+            });
+
+            // Hide success message after 5 seconds
+            setTimeout(() => {
+                setSubmitSuccess(false);
+            }, 5000);
+        } catch (error) {
+            console.error('Error submitting support request:', error);
+            setSubmitError(error.message || 'Đã xảy ra lỗi khi gửi yêu cầu hỗ trợ. Vui lòng thử lại sau.');
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     const faqItems = [
@@ -195,9 +283,24 @@ export default function CustomerService() {
                             </div>
                         </div>
 
+                        {submitError && (
+                            <div className={cxSupport('form-error')} style={{ color: 'red', marginBottom: '16px', padding: '12px', background: '#fee', borderRadius: '8px' }}>
+                                {submitError}
+                            </div>
+                        )}
+                        {submitSuccess && (
+                            <div className={cxSupport('form-success')} style={{ color: 'green', marginBottom: '16px', padding: '12px', background: '#efe', borderRadius: '8px' }}>
+                                Yêu cầu hỗ trợ đã được gửi thành công! Chúng tôi sẽ liên hệ với bạn sớm nhất có thể.
+                            </div>
+                        )}
+
                         <div className={cxSupport('form-actions')}>
-                            <button type="submit" className={cxSupport('submit-button')}>
-                                Gửi yêu cầu hỗ trợ
+                            <button 
+                                type="submit" 
+                                className={cxSupport('submit-button')}
+                                disabled={isSubmitting}
+                            >
+                                {isSubmitting ? 'Đang gửi...' : 'Gửi yêu cầu hỗ trợ'}
                             </button>
                         </div>
                     </form>

@@ -1,5 +1,6 @@
 package com.lumina_book.backend.dto.request;
 
+import java.time.LocalDate;
 import java.util.List;
 
 import jakarta.validation.constraints.*;
@@ -33,4 +34,8 @@ public class BannerCreationRequest {
     Integer orderIndex;
 
     List<String> productIds;
+
+    LocalDate startDate;
+
+    LocalDate endDate;
 }

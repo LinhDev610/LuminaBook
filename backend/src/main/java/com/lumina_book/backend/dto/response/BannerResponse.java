@@ -1,5 +1,6 @@
 package com.lumina_book.backend.dto.response;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -22,6 +23,8 @@ public class BannerResponse {
     Integer orderIndex;
     LocalDateTime createdAt;
     LocalDateTime updatedAt;
+    LocalDate startDate;
+    LocalDate endDate;
 
     // Created by user info
     String createdBy;

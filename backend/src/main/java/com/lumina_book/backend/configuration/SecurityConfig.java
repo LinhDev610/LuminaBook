@@ -44,6 +44,10 @@ public class SecurityConfig {
         httpSecurity.authorizeHttpRequests(request -> request
                 // Cho phép truy cập file media của product không cần token
                 .requestMatchers(HttpMethod.GET, "/product_media/**").permitAll()
+                // Cho phép truy cập file uploads không cần token
+                .requestMatchers(HttpMethod.GET, "/uploads/**").permitAll()
+                // Cho phép lấy banner active (hiển thị homepage) không cần token
+                .requestMatchers(HttpMethod.GET, "/banners/active").permitAll()
                 // Các endpoint public theo danh sách (POST)
                 .requestMatchers(HttpMethod.POST, PUBLIC_ENDPOINTS).permitAll()
                 .anyRequest()

@@ -207,8 +207,15 @@ export default function LoginModal({ open = false, onClose }) {
                         return;
                     }
 
-                    if (userRole === 'STAFF' || userRole === 'CUSTOMER_SUPPORT') {
-                        console.log('Staff or Customer Support detected, redirecting to /staff');
+                    if (userRole === 'CUSTOMER_SUPPORT') {
+                        console.log('Customer Support detected, redirecting to /customer-support');
+                        onClose?.();
+                        navigate('/customer-support', { replace: true });
+                        return;
+                    }
+
+                    if (userRole === 'STAFF') {
+                        console.log('Staff detected, redirecting to /staff');
                         onClose?.();
                         navigate('/staff', { replace: true });
                         return;

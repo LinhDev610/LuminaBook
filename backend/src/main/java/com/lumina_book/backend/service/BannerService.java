@@ -43,10 +43,10 @@ public class BannerService {
     public BannerResponse createBanner(BannerCreationRequest request) {
         // Get current user from security context
         var context = SecurityContextHolder.getContext();
-        String userId = context.getAuthentication().getName();
+        String userEmail = context.getAuthentication().getName();
 
-        // Get user
-        User user = userRepository.findById(userId).orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+        // Get user by email (getName() returns email, not ID)
+        User user = userRepository.findByEmail(userEmail).orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
 
         // Create banner entity using mapper
         Banner banner = bannerMapper.toBanner(request);
@@ -71,7 +71,7 @@ public class BannerService {
         }
 
         Banner savedBanner = bannerRepository.save(banner);
-        log.info("Banner created with ID: {} by user: {}", savedBanner.getId(), userId);
+        log.info("Banner created with ID: {} by user: {}", savedBanner.getId(), userEmail);
 
         return bannerMapper.toResponse(savedBanner);
     }
@@ -101,8 +101,35 @@ public class BannerService {
         Banner banner =
                 bannerRepository.findById(bannerId).orElseThrow(() -> new AppException(ErrorCode.BANNER_NOT_EXISTED));
 
-        // Update banner using mapper
-        bannerMapper.updateBanner(banner, request);
+        // Update only non-null fields to preserve existing values
+        if (request.getTitle() != null) {
+            banner.setTitle(request.getTitle());
+        }
+        if (request.getDescription() != null) {
+            banner.setDescription(request.getDescription());
+        }
+        if (request.getImageUrl() != null) {
+            banner.setImageUrl(request.getImageUrl());
+        }
+        if (request.getLinkUrl() != null) {
+            banner.setLinkUrl(request.getLinkUrl());
+        }
+        if (request.getStatus() != null) {
+            banner.setStatus(request.getStatus());
+        }
+        if (request.getRejectionReason() != null) {
+            banner.setRejectionReason(request.getRejectionReason());
+        }
+        if (request.getOrderIndex() != null) {
+            banner.setOrderIndex(request.getOrderIndex());
+        }
+        if (request.getStartDate() != null) {
+            banner.setStartDate(request.getStartDate());
+        }
+        if (request.getEndDate() != null) {
+            banner.setEndDate(request.getEndDate());
+        }
+
         banner.setUpdatedAt(LocalDateTime.now());
 
         // Update products if provided

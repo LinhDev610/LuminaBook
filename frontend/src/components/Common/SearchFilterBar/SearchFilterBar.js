@@ -34,7 +34,7 @@ export default function SearchFilterBar({
                     <input
                         type="text"
                         className={cx('date-input')}
-                        placeholder="dd/mm/yyyy"
+                        placeholder="mm/dd/yyyy"
                         value={dateFilter}
                         onChange={onDateChange}
                     />

@@ -40,8 +40,8 @@ public interface PromotionRepository extends JpaRepository<Promotion, String> {
     List<Promotion> findByApprovedBy(User approvedBy);
 
     // Active promotions
-    @Query(
-            "SELECT p FROM Promotion p WHERE p.status = 'APPROVED' AND p.isActive = true AND p.expiryDate >= :currentDate")
+    @Query("SELECT p FROM Promotion p WHERE p.status = 'APPROVED' AND p.isActive = true "
+            + "AND (p.expiryDate IS NULL OR p.expiryDate >= :currentDate)")
     List<Promotion> findActivePromotions(@Param("currentDate") LocalDate currentDate);
 
     // Expiring promotions

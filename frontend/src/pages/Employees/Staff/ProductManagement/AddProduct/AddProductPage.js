@@ -1,12 +1,17 @@
-import { useMemo, useRef, useState, useEffect, useCallback } from 'react';
 import classNames from 'classnames/bind';
 import styles from './AddProductPage.module.scss';
+import { useMemo, useRef, useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import backIcon from '../../../../../assets/icons/icon_back.png';
-import { getStoredToken as getStoredTokenUtil, getApiBaseUrl } from '../../../../../services/utils';
-import { getActiveCategories, refreshToken as refreshTokenAPI, createProduct } from '../../../../../services';
 import { useNotification } from '../../../../../components/Common/Notification';
-import { INITIAL_FORM_STATE } from '../../../../../services/constants';
+import {
+    getStoredToken as getStoredTokenUtil,
+    refreshToken as refreshTokenAPI,
+    getApiBaseUrl,
+    getActiveCategories,
+    createProduct,
+    INITIAL_FORM_STATE_PRODUCT,
+} from '../../../../../services';
 
 const cx = classNames.bind(styles);
 
@@ -17,23 +22,31 @@ export default function AddProductPage() {
     const [isLoading, setIsLoading] = useState(false);
 
     // State form - sử dụng INITIAL_FORM_STATE từ constants
-    const [productId, setProductId] = useState(INITIAL_FORM_STATE.productId);
-    const [name, setName] = useState(INITIAL_FORM_STATE.name);
-    const [description, setDescription] = useState(INITIAL_FORM_STATE.description);
-    const [author, setAuthor] = useState(INITIAL_FORM_STATE.author);
-    const [publisher, setPublisher] = useState(INITIAL_FORM_STATE.publisher);
-    const [weight, setWeight] = useState(INITIAL_FORM_STATE.weight);
-    const [length, setLength] = useState(INITIAL_FORM_STATE.length);
-    const [width, setWidth] = useState(INITIAL_FORM_STATE.width);
-    const [height, setHeight] = useState(INITIAL_FORM_STATE.height);
-    const [price, setPrice] = useState(INITIAL_FORM_STATE.price);
-    const [taxPercent, setTaxPercent] = useState(INITIAL_FORM_STATE.taxPercent);
-    const [discountValue, setDiscountValue] = useState(INITIAL_FORM_STATE.discountValue);
-    const [categoryId, setCategoryId] = useState(INITIAL_FORM_STATE.categoryId);
-    const [publicationDate, setPublicationDate] = useState(INITIAL_FORM_STATE.publicationDate);
-    const [stockQuantity, setStockQuantity] = useState(INITIAL_FORM_STATE.stockQuantity);
-    const [mediaFiles, setMediaFiles] = useState(INITIAL_FORM_STATE.mediaFiles);
-    const [errors, setErrors] = useState(INITIAL_FORM_STATE.errors);
+    const [productId, setProductId] = useState(INITIAL_FORM_STATE_PRODUCT.productId);
+    const [name, setName] = useState(INITIAL_FORM_STATE_PRODUCT.name);
+    const [description, setDescription] = useState(
+        INITIAL_FORM_STATE_PRODUCT.description,
+    );
+    const [author, setAuthor] = useState(INITIAL_FORM_STATE_PRODUCT.author);
+    const [publisher, setPublisher] = useState(INITIAL_FORM_STATE_PRODUCT.publisher);
+    const [weight, setWeight] = useState(INITIAL_FORM_STATE_PRODUCT.weight);
+    const [length, setLength] = useState(INITIAL_FORM_STATE_PRODUCT.length);
+    const [width, setWidth] = useState(INITIAL_FORM_STATE_PRODUCT.width);
+    const [height, setHeight] = useState(INITIAL_FORM_STATE_PRODUCT.height);
+    const [price, setPrice] = useState(INITIAL_FORM_STATE_PRODUCT.price);
+    const [taxPercent, setTaxPercent] = useState(INITIAL_FORM_STATE_PRODUCT.taxPercent);
+    const [discountValue, setDiscountValue] = useState(
+        INITIAL_FORM_STATE_PRODUCT.discountValue,
+    );
+    const [categoryId, setCategoryId] = useState(INITIAL_FORM_STATE_PRODUCT.categoryId);
+    const [publicationDate, setPublicationDate] = useState(
+        INITIAL_FORM_STATE_PRODUCT.publicationDate,
+    );
+    const [stockQuantity, setStockQuantity] = useState(
+        INITIAL_FORM_STATE_PRODUCT.stockQuantity,
+    );
+    const [mediaFiles, setMediaFiles] = useState(INITIAL_FORM_STATE_PRODUCT.mediaFiles);
+    const [errors, setErrors] = useState(INITIAL_FORM_STATE_PRODUCT.errors);
     const [categories, setCategories] = useState([]);
 
     // ========== Helper Functions ==========
@@ -43,25 +56,25 @@ export default function AddProductPage() {
     const resetForm = useCallback(() => {
         try {
             formRef.current?.reset();
-        } catch (_) { }
+        } catch (_) {}
         // Reset tất cả fields về giá trị ban đầu từ constants
-        setProductId(INITIAL_FORM_STATE.productId);
-        setName(INITIAL_FORM_STATE.name);
-        setDescription(INITIAL_FORM_STATE.description);
-        setAuthor(INITIAL_FORM_STATE.author);
-        setPublisher(INITIAL_FORM_STATE.publisher);
-        setWeight(INITIAL_FORM_STATE.weight);
-        setLength(INITIAL_FORM_STATE.length);
-        setWidth(INITIAL_FORM_STATE.width);
-        setHeight(INITIAL_FORM_STATE.height);
-        setPrice(INITIAL_FORM_STATE.price);
-        setTaxPercent(INITIAL_FORM_STATE.taxPercent);
-        setDiscountValue(INITIAL_FORM_STATE.discountValue);
-        setCategoryId(INITIAL_FORM_STATE.categoryId);
-        setPublicationDate(INITIAL_FORM_STATE.publicationDate);
-        setStockQuantity(INITIAL_FORM_STATE.stockQuantity);
-        setMediaFiles(INITIAL_FORM_STATE.mediaFiles);
-        setErrors(INITIAL_FORM_STATE.errors);
+        setProductId(INITIAL_FORM_STATE_PRODUCT.productId);
+        setName(INITIAL_FORM_STATE_PRODUCT.name);
+        setDescription(INITIAL_FORM_STATE_PRODUCT.description);
+        setAuthor(INITIAL_FORM_STATE_PRODUCT.author);
+        setPublisher(INITIAL_FORM_STATE_PRODUCT.publisher);
+        setWeight(INITIAL_FORM_STATE_PRODUCT.weight);
+        setLength(INITIAL_FORM_STATE_PRODUCT.length);
+        setWidth(INITIAL_FORM_STATE_PRODUCT.width);
+        setHeight(INITIAL_FORM_STATE_PRODUCT.height);
+        setPrice(INITIAL_FORM_STATE_PRODUCT.price);
+        setTaxPercent(INITIAL_FORM_STATE_PRODUCT.taxPercent);
+        setDiscountValue(INITIAL_FORM_STATE_PRODUCT.discountValue);
+        setCategoryId(INITIAL_FORM_STATE_PRODUCT.categoryId);
+        setPublicationDate(INITIAL_FORM_STATE_PRODUCT.publicationDate);
+        setStockQuantity(INITIAL_FORM_STATE_PRODUCT.stockQuantity);
+        setMediaFiles(INITIAL_FORM_STATE_PRODUCT.mediaFiles);
+        setErrors(INITIAL_FORM_STATE_PRODUCT.errors);
     }, []);
 
     // ========== Data Fetching ==========
@@ -121,7 +134,11 @@ export default function AddProductPage() {
                 newErrors.weight = 'Trọng lượng tối thiểu là 0.';
             }
         }
-        if (stockQuantity !== undefined && stockQuantity !== null && stockQuantity !== '') {
+        if (
+            stockQuantity !== undefined &&
+            stockQuantity !== null &&
+            stockQuantity !== ''
+        ) {
             const stockNum = Number(stockQuantity);
             if (Number.isNaN(stockNum) || stockNum < 0) {
                 newErrors.stockQuantity = 'Số lượng tồn kho tối thiểu là 0.';
@@ -164,7 +181,7 @@ export default function AddProductPage() {
                 localStorage.setItem('refreshToken', responseData.token);
                 return responseData.token;
             }
-        } catch (_) { }
+        } catch (_) {}
         return null;
     }, [getStoredToken]);
 
@@ -242,7 +259,9 @@ export default function AddProductPage() {
             videoUrls: videoUrls.length ? videoUrls : undefined,
             defaultMediaUrl: defaultUrl || undefined,
             stockQuantity:
-                stockQuantity !== undefined && stockQuantity !== null && stockQuantity !== ''
+                stockQuantity !== undefined &&
+                stockQuantity !== null &&
+                stockQuantity !== ''
                     ? Number(stockQuantity)
                     : undefined,
         }),
@@ -312,7 +331,7 @@ export default function AddProductPage() {
                 return;
             }
 
-            // Upload media files first (if any) 
+            // Upload media files first (if any)
             const { imageUrls, videoUrls, defaultUrl } = await uploadMediaFiles(
                 mediaFiles,
                 token,
@@ -343,7 +362,8 @@ export default function AddProductPage() {
                 success('Thêm sản phẩm thành công.');
                 resetForm();
             } else {
-                const errorMessage = data?.message || 'Không thể thêm sản phẩm. Vui lòng thử lại.';
+                const errorMessage =
+                    data?.message || 'Không thể thêm sản phẩm. Vui lòng thử lại.';
                 notifyError(errorMessage);
             }
         } catch (err) {
@@ -684,12 +704,17 @@ export default function AddProductPage() {
                                 inputMode="numeric"
                                 value={stockQuantity}
                                 onChange={(e) => {
-                                    const cleaned = (e.target.value || '').replace(/[^0-9]/g, '');
+                                    const cleaned = (e.target.value || '').replace(
+                                        /[^0-9]/g,
+                                        '',
+                                    );
                                     setStockQuantity(cleaned);
                                 }}
                             />
                             {errors.stockQuantity && (
-                                <div className={cx('errorText')}>{errors.stockQuantity}</div>
+                                <div className={cx('errorText')}>
+                                    {errors.stockQuantity}
+                                </div>
                             )}
                         </div>
                         <div className={cx('row')}>

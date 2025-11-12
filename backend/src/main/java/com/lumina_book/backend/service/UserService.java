@@ -264,7 +264,7 @@ public class UserService {
     // @EnableMethodSecurity trong SecurityConfig
     @PreAuthorize("hasRole('ADMIN')") // Spring tạo ra 1 proxy ngay trước khi tạo hàm. Sử dụng được nhờ khai báo
     public List<UserResponse> getUsers() {
-        log.info("In method get Users");
+//        log.info("In method get Users");
         return userRepository.findAll().stream().map(userMapper::toUserResponse).toList();
     }
 

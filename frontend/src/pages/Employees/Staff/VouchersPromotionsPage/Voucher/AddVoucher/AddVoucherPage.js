@@ -1,168 +1,427 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import classNames from 'classnames/bind';
+
 import styles from './AddVoucherPage.module.scss';
+import { useNotification } from '../../../../../../components/Common/Notification';
+import {
+    createVoucher,
+    getActiveCategories,
+    getActiveProducts,
+    getStoredToken,
+    uploadProductMedia,
+    DISCOUNT_VALUE_TYPES,
+    APPLY_SCOPE_OPTIONS,
+    INITIAL_FORM_STATE_VOUCHER,
+} from '../../../../../../services';
+import useDebounce from '../../../../../../hooks/useDebounce';
 
 const cx = classNames.bind(styles);
 
-const API_BASE_URL = 'http://localhost:8080/lumina_book';
-
-// Mock data cho dropdown loại sách
-const bookTypes = [
-    { value: '', label: '-- Chọn loại sách --' },
-    { value: 'sach-giao-duc', label: 'Sách giáo dục' },
-    { value: 'sach-van-hoc', label: 'Sách văn học' },
-    { value: 'sach-thieu-nhi', label: 'Sách thiếu nhi' },
-    { value: 'sach-ky-nang-song', label: 'Sách kỹ năng sống' },
-    { value: 'sach-quan-ly-kinh-doanh', label: 'Sách quản lý kinh doanh' },
-];
-
 export default function AddVoucherPage() {
     const navigate = useNavigate();
+    const { success, error: notifyError } = useNotification();
 
-    const [formData, setFormData] = useState({
-        campaignName: '',
-        voucherCode: '',
-        value: '',
-        orderValueFrom: '',
-        applyType: 'by-book-type', // 'by-book-type' hoặc 'by-specific-book'
-        bookType: '',
-        limit: '',
-        quantity: '',
-        startDate: '',
-        endDate: '',
-        image: null,
-        notes: '',
-    });
-
+    const [formState, setFormState] = useState({ ...INITIAL_FORM_STATE_VOUCHER });
     const [errors, setErrors] = useState({});
-    const [selectedFileName, setSelectedFileName] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
+    const [categories, setCategories] = useState([]);
+    const [products, setProducts] = useState([]);
+    const [imageFile, setImageFile] = useState(null);
     const [imagePreview, setImagePreview] = useState(null);
+    const [isDragging, setIsDragging] = useState(false);
+    const [productSearchQuery, setProductSearchQuery] = useState('');
+    const debouncedProductSearchQuery = useDebounce(productSearchQuery, 300);
+    const [visibleProductCount, setVisibleProductCount] = useState(50);
 
-    const handleInputChange = (field, value) => {
-        setFormData(prev => ({
-            ...prev,
-            [field]: value
-        }));
-        // Clear error khi user nhập
-        if (errors[field]) {
-            setErrors(prev => ({
+    const resetForm = useCallback(() => {
+        setFormState({ ...INITIAL_FORM_STATE_VOUCHER });
+        setErrors({});
+        setImageFile(null);
+        setImagePreview(null);
+        setProductSearchQuery('');
+    }, []);
+
+    useEffect(() => {
+        let isMounted = true;
+        async function fetchOptions() {
+            try {
+                setIsLoading(true);
+                const token = getStoredToken();
+                const [categoryData, productData] = await Promise.all([
+                    getActiveCategories(token),
+                    getActiveProducts(token),
+                ]);
+
+                if (!isMounted) return;
+
+                setCategories(Array.isArray(categoryData) ? categoryData : []);
+                setProducts(Array.isArray(productData) ? productData : []);
+            } catch (err) {
+                if (isMounted) {
+                    notifyError('Không thể tải danh sách danh mục / sản phẩm. Vui lòng thử lại sau.');
+                }
+            } finally {
+                if (isMounted) {
+                    setIsLoading(false);
+                }
+            }
+        }
+        fetchOptions();
+        return () => {
+            isMounted = false;
+        };
+    }, [notifyError]);
+
+    const categoryOptions = useMemo(
+        () =>
+            categories.map((category) => ({
+                value: category.id,
+                label: category.name,
+            })),
+        [categories],
+    );
+
+    const productOptions = useMemo(
+        () =>
+            products.map((product) => ({
+                value: product.id,
+                label: product.name,
+                code: product.code || '',
+            })),
+        [products],
+    );
+
+    const filteredProductOptions = useMemo(() => {
+        if (!debouncedProductSearchQuery?.trim()) {
+            return productOptions;
+        }
+        const query = debouncedProductSearchQuery.toLowerCase().trim();
+        return productOptions.filter((option) => {
+            const nameMatch = option.label?.toLowerCase().includes(query);
+            const codeMatch = option.code?.toLowerCase().includes(query);
+            return Boolean(nameMatch || codeMatch);
+        });
+    }, [productOptions, debouncedProductSearchQuery]);
+
+    useEffect(() => {
+        setVisibleProductCount(50);
+    }, [debouncedProductSearchQuery]);
+
+    const handleChange = (field, value) => {
+        setFormState((prev) => {
+            if (field === 'discountValueType') {
+                return {
+                    ...prev,
+                    discountValueType: value,
+                    maxDiscountValue: value === 'AMOUNT' ? '' : prev.maxDiscountValue,
+                };
+            }
+            if (field === 'applyScope') {
+                return {
+                    ...prev,
+                    applyScope: value,
+                    categoryIds: value === 'CATEGORY' ? prev.categoryIds : [],
+                    productIds: value === 'PRODUCT' ? prev.productIds : [],
+                };
+            }
+            return {
                 ...prev,
-                [field]: ''
+                [field]: value,
+            };
+        });
+        if (errors[field]) {
+            setErrors((prev) => ({ ...prev, [field]: undefined }));
+        }
+        // Clear related errors when scope changes
+        if (field === 'applyScope') {
+            setErrors((prev) => ({
+                ...prev,
+                categoryIds: undefined,
+                productIds: undefined,
             }));
         }
     };
 
-    const handleFileChange = (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            setSelectedFileName(file.name);
-            setFormData(prev => ({ ...prev, image: file }));
-
-            // Tạo preview
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setImagePreview(reader.result);
+    const handleToggleId = (field, id) => {
+        setFormState((prev) => {
+            const current = new Set(prev[field]);
+            if (current.has(id)) {
+                current.delete(id);
+            } else {
+                current.add(id);
+            }
+            return {
+                ...prev,
+                [field]: Array.from(current),
             };
-            reader.readAsDataURL(file);
-        }
-    };
-
-    const handleReset = () => {
-        setFormData({
-            campaignName: '',
-            voucherCode: '',
-            value: '',
-            orderValueFrom: '',
-            applyType: 'by-book-type',
-            bookType: '',
-            limit: '',
-            quantity: '',
-            startDate: '',
-            endDate: '',
-            image: null,
-            notes: '',
         });
-        setErrors({});
-        setSelectedFileName('');
-        setImagePreview(null);
-        // Reset file input
-        const fileInput = document.getElementById('voucher-image-input');
-        if (fileInput) fileInput.value = '';
     };
 
-    const validateForm = () => {
-        const newErrors = {};
-
-        if (!formData.campaignName.trim()) {
-            newErrors.campaignName = 'Vui lòng nhập tên chương trình';
-        }
-        if (!formData.voucherCode.trim()) {
-            newErrors.voucherCode = 'Vui lòng nhập mã voucher';
-        }
-        if (!formData.value.trim()) {
-            newErrors.value = 'Vui lòng nhập giá trị';
-        }
-        if (!formData.orderValueFrom.trim()) {
-            newErrors.orderValueFrom = 'Vui lòng nhập giá trị đơn từ';
-        }
-        if (formData.applyType === 'by-book-type' && !formData.bookType) {
-            newErrors.bookType = 'Vui lòng chọn loại sách';
-        }
-        if (!formData.limit.trim()) {
-            newErrors.limit = 'Vui lòng nhập hạn mức';
-        }
-        if (!formData.quantity.trim()) {
-            newErrors.quantity = 'Vui lòng nhập số lượng voucher';
-        }
-        if (!formData.startDate) {
-            newErrors.startDate = 'Vui lòng chọn ngày bắt đầu';
-        }
-        if (!formData.endDate) {
-            newErrors.endDate = 'Vui lòng chọn ngày kết thúc';
-        }
-
-        setErrors(newErrors);
-        return Object.keys(newErrors).length === 0;
-    };
-
-    const handleSubmit = async () => {
-        if (!validateForm()) {
+    const handleImageFile = (file) => {
+        if (!file) return;
+        if (!file.type.startsWith('image/')) {
+            notifyError('Vui lòng chọn file ảnh hợp lệ');
             return;
         }
-
-        try {
-            // TODO: Gọi API để tạo voucher
-            // const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-            // const formDataToSend = new FormData();
-            // Object.keys(formData).forEach(key => {
-            //     if (key === 'image' && formData[key]) {
-            //         formDataToSend.append('image', formData[key]);
-            //     } else if (formData[key]) {
-            //         formDataToSend.append(key, formData[key]);
-            //     }
-            // });
-            // 
-            // const resp = await fetch(`${API_BASE_URL}/vouchers`, {
-            //     method: 'POST',
-            //     headers: {
-            //         Authorization: `Bearer ${token}`,
-            //     },
-            //     body: formDataToSend,
-            // });
-
-            alert('Gửi duyệt thành công!');
-            navigate('/staff/vouchers');
-        } catch (error) {
-            alert('Có lỗi xảy ra khi gửi duyệt.');
+        if (file.size > 5 * 1024 * 1024) {
+            notifyError('Kích thước ảnh không được vượt quá 5MB');
+            return;
         }
+        setImageFile(file);
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            setImagePreview(reader.result);
+        };
+        reader.readAsDataURL(file);
+    };
+
+    const handleDragOver = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragging(true);
+    };
+
+    const handleDragLeave = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragging(false);
+    };
+
+    const handleDrop = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragging(false);
+        const file = e.dataTransfer.files[0];
+        if (file) {
+            handleImageFile(file);
+        }
+    };
+
+    const handleFileInputChange = (e) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            handleImageFile(file);
+        }
+    };
+
+    const handleRemoveImage = () => {
+        setImageFile(null);
+        setImagePreview(null);
+        setFormState((prev) => ({ ...prev, imageUrl: '' }));
+    };
+
+    const validate = useCallback(() => {
+        const validationErrors = {};
+        if (!formState.name.trim()) {
+            validationErrors.name = 'Vui lòng nhập tên voucher';
+        }
+        if (!formState.code.trim()) {
+            validationErrors.code = 'Vui lòng nhập mã voucher';
+        }
+        const discountValueNum = parseFloat(String(formState.discountValue).replace(/[^\d.]/g, ''));
+        if (!formState.discountValue || isNaN(discountValueNum) || discountValueNum <= 0) {
+            validationErrors.discountValue = 'Giá trị giảm phải lớn hơn 0';
+        }
+        if (!formState.startDate) {
+            validationErrors.startDate = 'Vui lòng chọn ngày bắt đầu';
+        }
+        if (!formState.expiryDate) {
+            validationErrors.expiryDate = 'Vui lòng chọn ngày kết thúc';
+        }
+        if (formState.startDate && formState.expiryDate && formState.startDate > formState.expiryDate) {
+            validationErrors.expiryDate = 'Ngày kết thúc phải sau ngày bắt đầu';
+        }
+        if (!formState.usageLimit || Number(formState.usageLimit) <= 0) {
+            validationErrors.usageLimit = 'Giới hạn sử dụng phải lớn hơn 0';
+        }
+        if (formState.applyScope === 'CATEGORY' && (!formState.categoryIds || formState.categoryIds.length === 0)) {
+            validationErrors.categoryIds = 'Vui lòng chọn loại sách';
+        }
+        if (formState.applyScope === 'PRODUCT' && formState.productIds.length === 0) {
+            validationErrors.productIds = 'Vui lòng chọn ít nhất một sản phẩm';
+        }
+        setErrors(validationErrors);
+        return Object.keys(validationErrors).length === 0;
+    }, [formState]);
+
+    const preparePayload = async () => {
+        let imageUrl = formState.imageUrl.trim() || null;
+
+        // Nếu có file ảnh được chọn, upload ảnh lên server
+        if (imageFile) {
+            try {
+                const token = getStoredToken();
+                const { ok, url, message } = await uploadProductMedia(imageFile, token);
+                if (ok && url) {
+                    imageUrl = url;
+                } else {
+                    throw new Error(message || 'Không thể upload ảnh');
+                }
+            } catch (err) {
+                throw new Error('Không thể upload ảnh. Vui lòng thử lại.');
+            }
+        }
+
+        // Chuyển đổi giá trị giảm giá từ chuỗi thành số
+        const discountValueText = String(formState.discountValue).replace(/[^\d.]/g, '');
+        const discountValueNum = parseFloat(discountValueText) || 0;
+
+        const payload = {
+            name: formState.name.trim(),
+            code: formState.code.trim().toUpperCase(),
+            imageUrl: imageUrl,
+            description: formState.description.trim() || null,
+            discountValue: discountValueNum,
+            discountValueType: formState.discountValueType,
+            minOrderValue: formState.minOrderValue ? Number(formState.minOrderValue) : null,
+            maxDiscountValue:
+                formState.discountValueType === 'PERCENTAGE' && formState.maxDiscountValue
+                    ? Number(formState.maxDiscountValue)
+                    : null,
+            startDate: formState.startDate,
+            expiryDate: formState.expiryDate,
+            usageLimit: Number(formState.usageLimit),
+            applyScope: formState.applyScope,
+            categoryIds: formState.applyScope === 'CATEGORY' ? (Array.isArray(formState.categoryIds) ? formState.categoryIds : [formState.categoryIds].filter(Boolean)) : [],
+            productIds: formState.applyScope === 'PRODUCT' ? formState.productIds : [],
+        };
+        return payload;
+    };
+
+    const handleSubmit = async (event) => {
+        event.preventDefault();
+        if (!validate()) {
+            return;
+        }
+        try {
+            setIsSubmitting(true);
+            const token = getStoredToken();
+            const payload = await preparePayload();
+            const { ok, data } = await createVoucher(payload, token);
+            if (!ok) {
+                const message = data?.message || 'Không thể tạo voucher. Vui lòng thử lại.';
+                notifyError(message);
+                return;
+            }
+            success('Đã gửi duyệt voucher thành công!');
+            resetForm();
+            navigate('/staff/vouchers-promotions');
+        } catch (err) {
+            const message =
+                err?.data?.message || err?.message || 'Có lỗi xảy ra khi gửi duyệt voucher.';
+            notifyError(message);
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const renderScopeFields = () => {
+        if (formState.applyScope === 'ORDER') {
+            return (
+                <p className={cx('helper-text')}>
+                    Voucher áp dụng cho toàn bộ đơn hàng, không giới hạn danh mục hoặc sản phẩm cụ thể.
+                </p>
+            );
+        }
+        if (formState.applyScope === 'CATEGORY') {
+            return (
+                <select
+                    className={cx('form-select')}
+                    value={formState.categoryIds.length > 0 ? formState.categoryIds[0] : ''}
+                    onChange={(e) => {
+                        const selectedId = e.target.value;
+                        if (selectedId) {
+                            handleChange('categoryIds', [selectedId]);
+                        } else {
+                            handleChange('categoryIds', []);
+                        }
+                    }}
+                >
+                    <option value="">-- Chọn loại sách --</option>
+                    {categoryOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                            {option.label}
+                        </option>
+                    ))}
+                </select>
+            );
+        }
+        if (formState.applyScope === 'PRODUCT') {
+            return (
+                <div className={cx('option-section')}>
+                    <div className={cx('search-box')}>
+                        <input
+                            type="text"
+                            value={productSearchQuery}
+                            onChange={(e) => setProductSearchQuery(e.target.value)}
+                            className={cx('search-input')}
+                            placeholder="Tìm kiếm sản phẩm theo tên..."
+                        />
+                        {productSearchQuery && (
+                            <button
+                                type="button"
+                                className={cx('clear-search-btn')}
+                                onClick={() => setProductSearchQuery('')}
+                            >
+                                ✕
+                            </button>
+                        )}
+                    </div>
+                    <div className={cx('options-grid')}>
+                        {filteredProductOptions.length === 0 ? (
+                            <p className={cx('empty-text')}>
+                                {debouncedProductSearchQuery
+                                    ? 'Không tìm thấy sản phẩm phù hợp.'
+                                    : 'Chưa có sản phẩm phù hợp.'}
+                            </p>
+                        ) : (
+                            filteredProductOptions.slice(0, visibleProductCount).map((option) => (
+                                <label key={option.value} className={cx('option-item')}>
+                                    <input
+                                        type="checkbox"
+                                        checked={formState.productIds.includes(option.value)}
+                                        onChange={() => handleToggleId('productIds', option.value)}
+                                    />
+                                    <span>{option.label}</span>
+                                </label>
+                            ))
+                        )}
+                    </div>
+                    {filteredProductOptions.length > visibleProductCount && (
+                        <div className={cx('load-more')}>
+                            <button
+                                type="button"
+                                className={cx('btn', 'btn-load-more')}
+                                onClick={() => setVisibleProductCount((c) => c + 50)}
+                            >
+                                Hiển thị thêm
+                            </button>
+                        </div>
+                    )}
+                    {formState.productIds.length > 0 && (
+                        <div className={cx('selected-count')}>
+                            Đã chọn: {formState.productIds.length} sản phẩm
+                        </div>
+                    )}
+                    {errors.productIds && <span className={cx('error-text')}>{errors.productIds}</span>}
+                </div>
+            );
+        }
+        return (
+            <p className={cx('helper-text')}>
+                Voucher áp dụng cho toàn bộ đơn hàng, không giới hạn danh mục hoặc sản phẩm cụ thể.
+            </p>
+        );
     };
 
     return (
-        <div className={cx('wrap')}>
+        <div>
+            {/* Header tách riêng như trang danh sách */}
             <div className={cx('header')}>
                 <div className={cx('header-left')}>
-                    <span className={cx('header-text')}>Voucher & Khuyến mãi</span>
+                    <span className={cx('header-text')}>Voucher &amp; Khuyến mãi</span>
                 </div>
                 <button className={cx('dashboard-btn')} onClick={() => navigate('/staff')}>
                     <span className={cx('icon-left')}>
@@ -180,262 +439,338 @@ export default function AddVoucherPage() {
                 </button>
             </div>
 
-            <button className={cx('back-arrow-btn')} onClick={() => navigate('/staff/vouchers-promotions')}>
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                    <path
-                        d="M15 18L9 12L15 6"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                    />
-                </svg>
-            </button>
-
-            <h1 className={cx('title')}>Thêm Voucher</h1>
-
-            <div className={cx('form-container')}>
-                <div className={cx('form-card')}>
-                    <div className={cx('form-group')}>
-                        <label className={cx('form-label')}>Tên chương trình</label>
-                        <input
-                            type="text"
-                            className={cx('form-input', { error: errors.campaignName })}
-                            placeholder="VD: Giảm tối đa 50k cho đơn từ 400k"
-                            value={formData.campaignName}
-                            onChange={(e) => handleInputChange('campaignName', e.target.value)}
+            {/* Nội dung chính */}
+            <div className={cx('wrap')}>
+                <button className={cx('back-arrow-btn')} onClick={() => navigate('/staff/vouchers-promotions')}>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                        <path
+                            d="M15 18L9 12L15 6"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
                         />
-                        {errors.campaignName && (
-                            <span className={cx('error-text')}>{errors.campaignName}</span>
-                        )}
-                    </div>
+                    </svg>
+                </button>
 
-                    <div className={cx('form-row')}>
-                        <div className={cx('form-group', 'form-group-half')}>
-                            <label className={cx('form-label')}>Mã voucher</label>
+                <h1 className={cx('title')}>Thêm Voucher</h1>
+
+                <form className={cx('form-container')} onSubmit={handleSubmit}>
+                    <div className={cx('form-card')}>
+                        {/* 1. Tên chương trình */}
+                        <div className={cx('form-group')}>
+                            <label className={cx('form-label')}>Tên chương trình *</label>
                             <input
                                 type="text"
-                                className={cx('form-input', { error: errors.voucherCode })}
-                                placeholder="VD: VC_MAX50"
-                                value={formData.voucherCode}
-                                onChange={(e) => handleInputChange('voucherCode', e.target.value)}
+                                value={formState.name}
+                                onChange={(e) => handleChange('name', e.target.value)}
+                                className={cx('form-input', { error: errors.name })}
+                                placeholder="VD: Giảm tối đa 50k cho đơn từ 400k"
                             />
-                            {errors.voucherCode && (
-                                <span className={cx('error-text')}>{errors.voucherCode}</span>
-                            )}
+                            {errors.name && <span className={cx('error-text')}>{errors.name}</span>}
                         </div>
 
-                        <div className={cx('form-group', 'form-group-half')}>
-                            <label className={cx('form-label')}>Giá trị</label>
-                            <input
-                                type="text"
-                                className={cx('form-input', { error: errors.value })}
-                                placeholder="VD: Giảm 10% hoặc 50.000₫"
-                                value={formData.value}
-                                onChange={(e) => handleInputChange('value', e.target.value)}
-                            />
-                            {errors.value && (
-                                <span className={cx('error-text')}>{errors.value}</span>
-                            )}
-                        </div>
-                    </div>
-
-                    <div className={cx('form-group')}>
-                        <label className={cx('form-label')}>Điều kiện áp dụng</label>
-
-                        <div className={cx('condition-row')}>
-                            <label className={cx('condition-label')}>Giá trị đơn từ (VNĐ):</label>
-                            <input
-                                type="text"
-                                className={cx('form-input', 'condition-input', { error: errors.orderValueFrom })}
-                                placeholder="VD: 400000"
-                                value={formData.orderValueFrom}
-                                onChange={(e) => handleInputChange('orderValueFrom', e.target.value)}
-                            />
-                        </div>
-
-                        <div className={cx('radio-group')}>
-                            <label className={cx('radio-label')}>
+                        {/* 2. Mã voucher và Giá trị (2 cột) */}
+                        <div className={cx('form-row')}>
+                            <div className={cx('form-group')}>
+                                <label className={cx('form-label')}>Mã voucher *</label>
                                 <input
-                                    type="radio"
-                                    name="applyType"
-                                    value="by-book-type"
-                                    checked={formData.applyType === 'by-book-type'}
-                                    onChange={(e) => handleInputChange('applyType', e.target.value)}
-                                    className={cx('radio-input')}
+                                    type="text"
+                                    value={formState.code}
+                                    onChange={(e) => handleChange('code', e.target.value)}
+                                    className={cx('form-input', { error: errors.code })}
+                                    placeholder="VD: VC_MAX50"
                                 />
-                                <span className={cx('radio-text')}>Theo loại sách</span>
-                            </label>
-                            <label className={cx('radio-label')}>
-                                <input
-                                    type="radio"
-                                    name="applyType"
-                                    value="by-specific-book"
-                                    checked={formData.applyType === 'by-specific-book'}
-                                    onChange={(e) => handleInputChange('applyType', e.target.value)}
-                                    className={cx('radio-input')}
-                                />
-                                <span className={cx('radio-text')}>Theo sách cụ thể</span>
-                            </label>
-                        </div>
+                                {errors.code && <span className={cx('error-text')}>{errors.code}</span>}
+                            </div>
 
-                    </div>
-
-                    <div className={cx('form-row')}>
-                        {formData.applyType === 'by-book-type' && (
-                            <div className={cx('form-group', 'form-group-half')}>
-                                <label className={cx('form-label')}>Loại sách áp dụng</label>
+                            <div className={cx('form-group')}>
+                                <label className={cx('form-label')}>Loại giảm giá *</label>
                                 <select
-                                    className={cx('form-select', { error: errors.bookType })}
-                                    value={formData.bookType}
-                                    onChange={(e) => handleInputChange('bookType', e.target.value)}
+                                    className={cx('form-select')}
+                                    value={formState.discountValueType}
+                                    onChange={(e) => handleChange('discountValueType', e.target.value)}
                                 >
-                                    {bookTypes.map((type) => (
-                                        <option key={type.value} value={type.value}>
-                                            {type.label}
+                                    {DISCOUNT_VALUE_TYPES.map((opt) => (
+                                        <option key={opt.value} value={opt.value}>
+                                            {opt.label}
                                         </option>
                                     ))}
                                 </select>
-                                {errors.bookType && (
-                                    <span className={cx('error-text')}>{errors.bookType}</span>
+                            </div>
+
+                            <div className={cx('form-group')}>
+                                <label className={cx('form-label')}>Giá trị *</label>
+                                <input
+                                    type="text"
+                                    value={formState.discountValue}
+                                    onChange={(e) => handleChange('discountValue', e.target.value)}
+                                    className={cx('form-input', { error: errors.discountValue })}
+                                    placeholder={
+                                        formState.discountValueType === 'PERCENTAGE'
+                                            ? 'VD: 10 (tức 10%)'
+                                            : 'VD: 50000 (giảm 50.000₫)'
+                                    }
+                                />
+                                {errors.discountValue && (
+                                    <span className={cx('error-text')}>{errors.discountValue}</span>
                                 )}
                             </div>
-                        )}
-
-                        <div className={cx('form-group', 'form-group-half')}>
-                            <label className={cx('form-label')}>Hạn mức</label>
-                            <input
-                                type="text"
-                                className={cx('form-input', { error: errors.limit })}
-                                placeholder="VD: Tối đa 50.000₫ / don"
-                                value={formData.limit}
-                                onChange={(e) => handleInputChange('limit', e.target.value)}
-                            />
-                            {errors.limit && (
-                                <span className={cx('error-text')}>{errors.limit}</span>
-                            )}
-                        </div>
-                    </div>
-
-                    <div className={cx('form-row', 'form-row-three')}>
-                        <div className={cx('form-group', 'form-group-third')}>
-                            <label className={cx('form-label')}>Số lượng voucher</label>
-                            <input
-                                type="text"
-                                className={cx('form-input', { error: errors.quantity })}
-                                placeholder="VD: 200"
-                                value={formData.quantity}
-                                onChange={(e) => handleInputChange('quantity', e.target.value)}
-                            />
-                            {errors.quantity && (
-                                <span className={cx('error-text')}>{errors.quantity}</span>
-                            )}
                         </div>
 
-                        <div className={cx('form-group', 'form-group-third')}>
-                            <label className={cx('form-label')}>Ngày bắt đầu</label>
-                            <div className={cx('date-input-wrapper')}>
+                        {/* 3. Điều kiện áp dụng - Giá trị đơn từ */}
+                        <div className={cx('form-group')}>
+                            <label className={cx('form-label')}>Điều kiện áp dụng</label>
+                            <div className={cx('condition-row')}>
+                                <label className={cx('condition-label')}>Giá trị đơn từ (VNĐ):</label>
                                 <input
                                     type="text"
-                                    className={cx('form-input', 'date-input', { error: errors.startDate })}
-                                    placeholder="dd/mm/yyyy"
-                                    value={formData.startDate}
-                                    onChange={(e) => handleInputChange('startDate', e.target.value)}
+                                    className={cx('form-input', 'condition-input')}
+                                    placeholder="VD: 400000"
+                                    value={formState.minOrderValue}
+                                    onChange={(e) => handleChange('minOrderValue', e.target.value)}
                                 />
-                                <button type="button" className={cx('calendar-btn')}>
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                                        <path
-                                            d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"
-                                            stroke="currentColor"
-                                            strokeWidth="2"
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                        />
-                                    </svg>
-                                </button>
                             </div>
-                            {errors.startDate && (
-                                <span className={cx('error-text')}>{errors.startDate}</span>
-                            )}
                         </div>
 
-                        <div className={cx('form-group', 'form-group-third')}>
-                            <label className={cx('form-label')}>Ngày kết thúc</label>
-                            <div className={cx('date-input-wrapper')}>
+                        {/* 4. Radio buttons: Toàn sàn / Theo loại sách / Theo sách cụ thể */}
+                        <div className={cx('form-group')}>
+                            <div className={cx('radio-group')}>
+                                <label className={cx('radio-label')}>
+                                    <input
+                                        type="radio"
+                                        name="applyType"
+                                        value="ORDER"
+                                        checked={formState.applyScope === 'ORDER'}
+                                        onChange={() => handleChange('applyScope', 'ORDER')}
+                                        className={cx('radio-input')}
+                                    />
+                                    <span className={cx('radio-text')}>Toàn sàn</span>
+                                </label>
+                                <label className={cx('radio-label')}>
+                                    <input
+                                        type="radio"
+                                        name="applyType"
+                                        value="CATEGORY"
+                                        checked={formState.applyScope === 'CATEGORY'}
+                                        onChange={() => handleChange('applyScope', 'CATEGORY')}
+                                        className={cx('radio-input')}
+                                    />
+                                    <span className={cx('radio-text')}>Theo loại sách</span>
+                                </label>
+                                <label className={cx('radio-label')}>
+                                    <input
+                                        type="radio"
+                                        name="applyType"
+                                        value="PRODUCT"
+                                        checked={formState.applyScope === 'PRODUCT'}
+                                        onChange={() => handleChange('applyScope', 'PRODUCT')}
+                                        className={cx('radio-input')}
+                                    />
+                                    <span className={cx('radio-text')}>Theo sách cụ thể</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        {/* 5. Hạn mức và Loại sách áp dụng (2 cột) - chỉ hiện khi chọn "Theo loại sách" hoặc "Toàn sàn" */}
+                        {formState.applyScope === 'ORDER' && formState.discountValueType === 'PERCENTAGE' && (
+                            <div className={cx('form-row')}>
+                                <div className={cx('form-group')}>
+                                    <label className={cx('form-label')}>Hạn mức</label>
+                                    <input
+                                        type="text"
+                                        className={cx('form-input')}
+                                        placeholder="VD: Tối đa 50.000₫ /đơn"
+                                        value={formState.maxDiscountValue}
+                                        onChange={(e) => handleChange('maxDiscountValue', e.target.value)}
+                                    />
+                                </div>
+                            </div>
+                        )}
+                        {formState.applyScope === 'CATEGORY' && (
+                            <div className={cx('form-row')}>
+                                {formState.discountValueType === 'PERCENTAGE' && (
+                                    <div className={cx('form-group')}>
+                                        <label className={cx('form-label')}>Hạn mức</label>
+                                        <input
+                                            type="text"
+                                            className={cx('form-input')}
+                                            placeholder="VD: Tối đa 50.000₫ /đơn"
+                                            value={formState.maxDiscountValue}
+                                            onChange={(e) => handleChange('maxDiscountValue', e.target.value)}
+                                        />
+                                    </div>
+                                )}
+                                <div className={cx('form-group')}>
+                                    <label className={cx('form-label')}>Loại sách áp dụng</label>
+                                    {isLoading ? (
+                                        <p className={cx('loading-text')}>Đang tải...</p>
+                                    ) : (
+                                        <>
+                                            {renderScopeFields()}
+                                            {errors.categoryIds && (
+                                                <span className={cx('error-text')}>{errors.categoryIds}</span>
+                                            )}
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Hiển thị phạm vi áp dụng khi chọn "Theo sách cụ thể" */}
+                        {formState.applyScope === 'PRODUCT' && (
+                            <div className={cx('form-row')}>
+                                {formState.discountValueType === 'PERCENTAGE' && (
+                                    <div className={cx('form-group')}>
+                                        <label className={cx('form-label')}>Hạn mức</label>
+                                        <input
+                                            type="text"
+                                            className={cx('form-input')}
+                                            placeholder="VD: Tối đa 50.000₫ /đơn"
+                                            value={formState.maxDiscountValue}
+                                            onChange={(e) => handleChange('maxDiscountValue', e.target.value)}
+                                        />
+                                    </div>
+                                )}
+                                <div className={cx('form-group')}>
+                                    <label className={cx('form-label')}>Sản phẩm áp dụng</label>
+                                    {isLoading ? (
+                                        <p className={cx('loading-text')}>Đang tải...</p>
+                                    ) : (
+                                        <>
+                                            {renderScopeFields()}
+                                            {errors.productIds && (
+                                                <span className={cx('error-text')}>{errors.productIds}</span>
+                                            )}
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* 6. Số lượng voucher, Ngày bắt đầu, Ngày kết thúc (3 cột) */}
+                        <div className={cx('form-row', 'form-row-three')}>
+                            <div className={cx('form-group', 'form-group-third')}>
+                                <label className={cx('form-label')}>Số lượng voucher *</label>
                                 <input
                                     type="text"
-                                    className={cx('form-input', 'date-input', { error: errors.endDate })}
-                                    placeholder="dd/mm/yyyy"
-                                    value={formData.endDate}
-                                    onChange={(e) => handleInputChange('endDate', e.target.value)}
+                                    value={formState.usageLimit}
+                                    onChange={(e) => handleChange('usageLimit', e.target.value)}
+                                    className={cx('form-input', { error: errors.usageLimit })}
+                                    placeholder="VD: 200"
                                 />
-                                <button type="button" className={cx('calendar-btn')}>
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                                        <path
-                                            d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"
-                                            stroke="currentColor"
-                                            strokeWidth="2"
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
+                                {errors.usageLimit && <span className={cx('error-text')}>{errors.usageLimit}</span>}
+                            </div>
+
+                            <div className={cx('form-group', 'form-group-third')}>
+                                <label className={cx('form-label')}>Ngày bắt đầu *</label>
+                                <div className={cx('date-input-wrapper')}>
+                                    <input
+                                        type="date"
+                                        value={formState.startDate}
+                                        onChange={(e) => handleChange('startDate', e.target.value)}
+                                        className={cx('form-input', 'date-input', { error: errors.startDate })}
+                                        min={new Date().toISOString().split('T')[0]}
+                                    />
+                                </div>
+                                {errors.startDate && <span className={cx('error-text')}>{errors.startDate}</span>}
+                            </div>
+
+                            <div className={cx('form-group', 'form-group-third')}>
+                                <label className={cx('form-label')}>Ngày kết thúc *</label>
+                                <div className={cx('date-input-wrapper')}>
+                                    <input
+                                        type="date"
+                                        value={formState.expiryDate}
+                                        onChange={(e) => handleChange('expiryDate', e.target.value)}
+                                        className={cx('form-input', 'date-input', { error: errors.expiryDate })}
+                                        min={formState.startDate || new Date().toISOString().split('T')[0]}
+                                    />
+                                </div>
+                                {errors.expiryDate && <span className={cx('error-text')}>{errors.expiryDate}</span>}
+                            </div>
+                        </div>
+
+                        {/* 7. Ảnh voucher */}
+                        <div className={cx('form-group')}>
+                            <label className={cx('form-label')}>Ảnh voucher</label>
+                            <div
+                                className={cx('image-upload-area', { dragging: isDragging, hasImage: imagePreview })}
+                                onDragOver={handleDragOver}
+                                onDragLeave={handleDragLeave}
+                                onDrop={handleDrop}
+                            >
+                                {imagePreview ? (
+                                    <div className={cx('image-preview-container')}>
+                                        <img src={imagePreview} alt="Preview" className={cx('preview-image')} />
+                                        <button
+                                            type="button"
+                                            className={cx('remove-image-btn')}
+                                            onClick={handleRemoveImage}
+                                        >
+                                            ✕
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            onChange={handleFileInputChange}
+                                            className={cx('file-input')}
+                                            id="voucher-image-upload"
                                         />
-                                    </svg>
-                                </button>
+                                        <label htmlFor="voucher-image-upload" className={cx('upload-label')}>
+                                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none">
+                                                <path
+                                                    d="M12 15V3M12 3L8 7M12 3L16 7"
+                                                    stroke="currentColor"
+                                                    strokeWidth="2"
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                />
+                                                <path
+                                                    d="M2 17L2 19C2 20.1046 2.89543 21 4 21L20 21C21.1046 21 22 20.1046 22 19L22 17"
+                                                    stroke="currentColor"
+                                                    strokeWidth="2"
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                />
+                                            </svg>
+                                            <span className={cx('upload-text')}>
+                                                Kéo thả ảnh vào đây hoặc <span className={cx('upload-link')}>chọn file</span>
+                                            </span>
+                                            <span className={cx('upload-hint')}>JPG, PNG (tối đa 5MB)</span>
+                                        </label>
+                                    </>
+                                )}
                             </div>
-                            {errors.endDate && (
-                                <span className={cx('error-text')}>{errors.endDate}</span>
-                            )}
+                        </div>
+
+                        {/* 8. Ghi chú / Lý do đề xuất */}
+                        <div className={cx('form-group', 'form-group-notes')}>
+                            <label className={cx('form-label')}>Ghi chú / Lý do đề xuất</label>
+                            <textarea
+                                value={formState.description}
+                                onChange={(e) => handleChange('description', e.target.value)}
+                                className={cx('form-textarea')}
+                                rows={4}
+                                placeholder="VD: Đề xuất cho chiến dịch cuối năm, ưu tiên khách hàng mới."
+                            />
+                        </div>
+
+                        {/* 9. Nút Reset và Gửi duyệt */}
+                        <div className={cx('form-actions')}>
+                            <button type="button" className={cx('btn', 'btn-reset')} onClick={resetForm} disabled={isSubmitting}>
+                                Reset
+                            </button>
+                            <button type="submit" className={cx('btn', 'btn-submit')} disabled={isSubmitting}>
+                                {isSubmitting ? 'Đang gửi...' : 'Gửi duyệt'}
+                            </button>
                         </div>
                     </div>
-
-                    <div className={cx('form-group')}>
-                        <label className={cx('form-label')}>Ảnh voucher</label>
-                        <div className={cx('file-upload-section')}>
-                            <label className={cx('file-upload-btn')}>
-                                <input
-                                    id="voucher-image-input"
-                                    type="file"
-                                    accept="image/*"
-                                    onChange={handleFileChange}
-                                    className={cx('file-input')}
-                                />
-                                Chọn tệp
-                            </label>
-                            <span className={cx('file-name')}>
-                                {selectedFileName || 'Chưa có tệp nào được chọn'}
-                            </span>
-                        </div>
-                        {imagePreview && (
-                            <div className={cx('image-preview')}>
-                                <img src={imagePreview} alt="Preview" />
-                            </div>
-                        )}
-                        {!imagePreview && (
-                            <div className={cx('image-placeholder')}></div>
-                        )}
-                    </div>
-
-                    <div className={cx('form-group', 'form-group-notes')}>
-                        <label className={cx('form-label')}>Ghi chú / Lý do đề xuất</label>
-                        <textarea
-                            className={cx('form-textarea')}
-                            placeholder="VD: Đề xuất cho chiến dịch cuối năm, ưu tiên khách hàng mới."
-                            value={formData.notes}
-                            onChange={(e) => handleInputChange('notes', e.target.value)}
-                            rows={4}
-                        />
-                    </div>
-
-                    <div className={cx('form-actions')}>
-                        <button className={cx('btn', 'btn-reset')} onClick={handleReset}>
-                            Reset
-                        </button>
-                        <button className={cx('btn', 'btn-submit')} onClick={handleSubmit}>
-                            Gửi duyệt
-                        </button>
-                    </div>
-                </div>
+                </form>
             </div>
         </div>
     );
 }
-

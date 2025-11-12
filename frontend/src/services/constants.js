@@ -35,7 +35,8 @@ export const STATUS_MAP = {
     pending: 'Chờ duyệt',
     approved: 'Đã duyệt',
     rejected: 'Từ chối',
-    disabled: 'Vô hiệu hóa',
+    disabled: 'Tạm dừng',
+    expired: 'Hết hạn',
 };
 
 export const STATUS_TO_CLASS = {
@@ -43,12 +44,65 @@ export const STATUS_TO_CLASS = {
     'Đã duyệt': 'approved',
     'Từ chối': 'rejected',
     'Không được duyệt': 'rejected',
-    'Vô hiệu hóa': 'disabled',
+    'Tạm dừng': 'disabled',
+    'Hết hạn': 'expired',
+};
+
+// =========== Voucher & Promotion Status Constants ===========
+
+export const STATUS_FILTER_MAP = {
+    all: 'all',
+    pending: 'pending',
+    approved: 'approved',
+    rejected: 'rejected',
+    disabled: 'disabled',
+    expired: 'expired',
+};
+
+export const VOUCHER_PROMOTION_SORT_OPTIONS = [
+    { value: 'all', label: 'Tất cả trạng thái' },
+    { value: 'pending', label: 'Chờ duyệt' },
+    { value: 'approved', label: 'Đã duyệt' },
+    { value: 'rejected', label: 'Từ chối' },
+    { value: 'disabled', label: 'Tạm dừng' },
+    { value: 'expired', label: 'Hết hạn' },
+];
+
+// Status mapping functions
+export const mapPromotionStatus = (status) => {
+    switch (status) {
+        case 'APPROVED':
+            return { label: 'Đã duyệt', filterKey: 'approved' };
+        case 'REJECTED':
+            return { label: 'Từ chối', filterKey: 'rejected' };
+        case 'CANCELLED':
+            return { label: 'Tạm dừng', filterKey: 'disabled' };
+        case 'EXPIRED':
+            return { label: 'Hết hạn', filterKey: 'expired' };
+        case 'PENDING':
+        default:
+            return { label: 'Chờ duyệt', filterKey: 'pending' };
+    }
+};
+
+export const mapVoucherStatus = (status) => {
+    switch (status) {
+        case 'APPROVED':
+            return { label: 'Đã duyệt', filterKey: 'approved' };
+        case 'REJECTED':
+            return { label: 'Từ chối', filterKey: 'rejected' };
+        case 'DISABLED':
+            return { label: 'Tạm dừng', filterKey: 'disabled' };
+        case 'EXPIRED':
+            return { label: 'Hết hạn', filterKey: 'expired' };
+        case 'PENDING_APPROVAL':
+        default:
+            return { label: 'Chờ duyệt', filterKey: 'pending' };
+    }
 };
 
 export const FALLBACK_THUMB =
     'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><rect width="40" height="40" fill="%23e5e7eb"/><path d="M8 28l6-7 5 6 4-5 9 10H8z" fill="%23cbd5e1"/><circle cx="14" cy="14" r="4" fill="%23cbd5e1"/></svg>';
-
 
 // =========== Sort Constants ===========
 
@@ -60,7 +114,6 @@ export const SORT_OPTIONS = {
     POPULAR: 'popular',
 };
 
-
 // =========== Error Messages ===========
 
 export const ERROR_MESSAGES = {
@@ -70,10 +123,23 @@ export const ERROR_MESSAGES = {
     SERVER_ERROR: 'Lỗi máy chủ',
 };
 
+// =========== Discount Constants ===========
+
+export const DISCOUNT_VALUE_TYPES = [
+    { value: 'PERCENTAGE', label: 'Giảm theo %' },
+    { value: 'AMOUNT', label: 'Giảm số tiền cố định' },
+];
+
+export const APPLY_SCOPE_OPTIONS = [
+    { value: 'ORDER', label: 'Toàn bộ đơn hàng' },
+    { value: 'CATEGORY', label: 'Theo danh mục sách' },
+    { value: 'PRODUCT', label: 'Theo sách cụ thể' },
+];
+
 // =========== Initial Form State ===========
 
 // Trạng thái ban đầu của form thêm sản phẩm
-export const INITIAL_FORM_STATE = {
+export const INITIAL_FORM_STATE_PRODUCT = {
     productId: '',
     name: '',
     description: '',
@@ -92,4 +158,40 @@ export const INITIAL_FORM_STATE = {
     mediaFiles: [],
     defaultMediaUrl: '',
     errors: {},
+};
+
+// Trạng thái ban đầu của form thêm voucher
+export const INITIAL_FORM_STATE_VOUCHER = {
+    name: '',
+    code: '',
+    imageUrl: '',
+    description: '',
+    discountValue: '',
+    discountValueType: 'PERCENTAGE',
+    minOrderValue: '',
+    maxDiscountValue: '',
+    startDate: '',
+    expiryDate: '',
+    usageLimit: '',
+    applyScope: 'CATEGORY', // Default to CATEGORY to match image
+    categoryIds: [],
+    productIds: [],
+};
+
+// Trạng thái ban đầu của form thêm promotion
+export const INITIAL_FORM_STATE_PROMOTION = {
+    name: '',
+    code: '',
+    imageUrl: '',
+    description: '',
+    discountValue: '',
+    discountValueType: 'PERCENTAGE',
+    minOrderValue: '',
+    maxDiscountValue: '',
+    startDate: '',
+    expiryDate: '',
+    usageLimit: '',
+    applyScope: 'CATEGORY',
+    categoryIds: [],
+    productIds: [],
 };

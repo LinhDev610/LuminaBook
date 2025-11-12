@@ -2,11 +2,14 @@ package com.lumina_book.backend.entity;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 
 import jakarta.persistence.*;
 
 import com.lumina_book.backend.enums.VoucherStatus;
+import com.lumina_book.backend.enums.DiscountApplyScope;
+import com.lumina_book.backend.enums.DiscountValueType;
 
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -18,6 +21,7 @@ import lombok.experimental.FieldDefaults;
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @Entity
+@Table(name = "vouchers")
 public class Voucher {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -27,7 +31,13 @@ public class Voucher {
     String code;
 
     String name;
-    String discountType; // ap dung theo sach cu the hoac theo loai sach
+    @Enumerated(EnumType.STRING)
+    @Column(name = "discount_value_type", nullable = false)
+    DiscountValueType discountValueType;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "apply_scope", nullable = false)
+    DiscountApplyScope applyScope;
 
     Double minOrderValue;
     Double maxOrderValue;
@@ -38,9 +48,13 @@ public class Voucher {
     LocalDate expiryDate;
 
     String imageUrl;
-    String comment;
+
+    @Column(name = "comment", columnDefinition = "TEXT")
+    String description;
     Integer usageLimit;
-    Integer usageCount;
+    
+    @Builder.Default
+    Integer usageCount = 0;
 
     Boolean isActive;
 
@@ -67,15 +81,17 @@ public class Voucher {
 
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
-            name = "voucher_categories",
-            joinColumns = @JoinColumn(name = "voucher_id"),
-            inverseJoinColumns = @JoinColumn(name = "category_id"))
-    List<Category> categoryApply;
+        name = "voucher_categories",
+        joinColumns = @JoinColumn(name = "voucher_id"),
+        inverseJoinColumns = @JoinColumn(name = "category_id"))
+    @Builder.Default
+    Set<Category> categoryApply = new HashSet<>();
 
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
-            name = "voucher_products",
-            joinColumns = @JoinColumn(name = "voucher_id"),
-            inverseJoinColumns = @JoinColumn(name = "product_id"))
-    List<Product> productApply;
+        name = "voucher_products",
+        joinColumns = @JoinColumn(name = "voucher_id"),
+        inverseJoinColumns = @JoinColumn(name = "product_id"))
+    @Builder.Default
+    Set<Product> productApply = new HashSet<>();
 }

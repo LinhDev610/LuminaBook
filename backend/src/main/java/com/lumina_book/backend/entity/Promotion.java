@@ -2,11 +2,14 @@ package com.lumina_book.backend.entity;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.HashSet;
 import java.util.Set;
 
 import jakarta.persistence.*;
 
 import com.lumina_book.backend.enums.PromotionStatus;
+import com.lumina_book.backend.enums.DiscountApplyScope;
+import com.lumina_book.backend.enums.DiscountValueType;
 
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -33,6 +36,10 @@ public class Promotion {
     String imageUrl;
     String description;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "discount_value_type", nullable = false)
+    DiscountValueType discountValueType;
+
     @Column(name = "discount_value", nullable = false)
     Double discountValue;
 
@@ -49,13 +56,15 @@ public class Promotion {
     LocalDate expiryDate;
 
     @Column(name = "usage_count")
-    Integer usageCount;
-
-    @Column(name = "usage_limit")
-    Integer usageLimit;
+    @Builder.Default
+    Integer usageCount = 0;
 
     @Column(name = "is_active")
     Boolean isActive;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "apply_scope", nullable = false)
+    DiscountApplyScope applyScope;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
@@ -79,9 +88,19 @@ public class Promotion {
     String rejectionReason;
 
     // Promotion application scope
-    @OneToMany(mappedBy = "promotionApply")
-    Set<Category> categoryApply;
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "promotion_categories",
+            joinColumns = @JoinColumn(name = "promotion_id"),
+            inverseJoinColumns = @JoinColumn(name = "category_id"))
+    @Builder.Default
+    Set<Category> categoryApply = new HashSet<>();
 
-    @OneToMany(mappedBy = "promotionApply")
-    Set<Product> productApply;
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "promotion_products",
+            joinColumns = @JoinColumn(name = "promotion_id"),
+            inverseJoinColumns = @JoinColumn(name = "product_id"))
+    @Builder.Default
+    Set<Product> productApply = new HashSet<>();
 }

@@ -3,10 +3,12 @@ package com.lumina_book.backend.mapper;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.mapstruct.BeanMapping;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
 import org.mapstruct.Named;
+import org.mapstruct.NullValuePropertyMappingStrategy;
 
 import com.lumina_book.backend.dto.request.PromotionCreationRequest;
 import com.lumina_book.backend.dto.request.PromotionUpdateRequest;
@@ -29,6 +31,7 @@ public interface PromotionMapper {
     Promotion toPromotion(PromotionCreationRequest request);
 
     // Update Entity
+    @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "status", ignore = true)
     @Mapping(target = "submittedBy", ignore = true)

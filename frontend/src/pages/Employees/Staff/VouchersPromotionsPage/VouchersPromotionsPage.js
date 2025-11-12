@@ -1,94 +1,132 @@
-import { useState, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import classNames from 'classnames/bind';
 import styles from './VouchersPromotionsPage.module.scss';
 import { useSearchAndFilter } from '../../../../hooks';
 import StatusBadge from '../../../../components/Common/StatusBadge';
+import { useNotification } from '../../../../components/Common/Notification';
+import { getStaffPromotions, getStaffVouchers, getStoredToken } from '../../../../services';
+import {
+    STATUS_FILTER_MAP,
+    VOUCHER_PROMOTION_SORT_OPTIONS,
+    mapPromotionStatus,
+    mapVoucherStatus,
+} from '../../../../services/constants';
 
 const cx = classNames.bind(styles);
 
-// Dữ liệu mẫu - sau này sẽ thay bằng API
-const mockVouchers = [
-    {
-        id: 1,
-        code: 'VC_MAX50',
-        name: 'Giảm tối đa 50k cho đơn từ 400k',
-        type: 'Voucher',
-        createDate: '01/11/2025',
-        status: 'Chờ duyệt',
-    },
-    {
-        id: 2,
-        code: 'KM_10OFF',
-        name: 'Giảm 10% tất cả sản phẩm',
-        type: 'Khuyến mãi',
-        createDate: '01/10/2025',
-        status: 'Đã duyệt',
-    },
-    {
-        id: 3,
-        code: 'VC_B1G1',
-        name: 'Mua 1 tặng 1 sách kỹ năng sống',
-        type: 'Voucher',
-        createDate: '15/10/2025',
-        status: 'Chờ duyệt',
-    },
-    {
-        id: 4,
-        code: 'KM_TN20',
-        name: 'Giảm 20% sách thiếu nhi',
-        type: 'Khuyến mãi',
-        createDate: '05/11/2025',
-        status: 'Chờ duyệt',
-    },
-    {
-        id: 5,
-        code: 'VC_TECH15',
-        name: 'Giảm 15% sách kỹ thuật',
-        type: 'Voucher',
-        createDate: '10/11/2025',
-        status: 'Đã duyệt',
-    },
-    {
-        id: 6,
-        code: 'KM_NOVSALE',
-        name: 'Khuyến mãi tháng 11 - Tất cả sản phẩm',
-        type: 'Khuyến mãi',
-        createDate: '01/11/2025',
-        status: 'Đã duyệt',
-    },
-    {
-        id: 7,
-        code: 'VC_COMBO5',
-        name: 'Voucher combo 5 sách',
-        type: 'Voucher',
-        createDate: '12/11/2025',
-        status: 'Chờ duyệt',
-    },
-];
+const formatDateTime = (value) => {
+    if (!value) return '--';
+    try {
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return '--';
+        return new Intl.DateTimeFormat('vi-VN', {
+            dateStyle: 'short',
+            timeStyle: 'short',
+        }).format(date);
+    } catch (err) {
+        return '--';
+    }
+};
 
 export default function VouchersPromotionsPage() {
     const navigate = useNavigate();
+    const { error: notifyError } = useNotification();
     const [searchQuery, setSearchQuery] = useState('');
     const [dateFilter, setDateFilter] = useState('');
     const [sortFilter, setSortFilter] = useState('all');
-    const [vouchers] = useState(mockVouchers);
+    const [records, setRecords] = useState([]);
+    const [isLoading, setIsLoading] = useState(false);
+
+    useEffect(() => {
+        let isMounted = true;
+        async function fetchData() {
+            try {
+                setIsLoading(true);
+                const token = getStoredToken();
+                const [voucherData, promotionData] = await Promise.all([
+                    getStaffVouchers(token),
+                    getStaffPromotions(token),
+                ]);
+                if (!isMounted) return;
+
+                const normalizedVouchers = (voucherData || []).map((item) => {
+                    const { label, filterKey } = mapVoucherStatus(item.status);
+                    const dateValue = item.submittedAt || item.createdAt;
+                    return {
+                        id: item.id,
+                        code: item.code,
+                        name: item.name,
+                        type: 'Voucher',
+                        statusLabel: label,
+                        statusFilterKey: filterKey,
+                        createdAt: formatDateTime(dateValue),
+                        createdAtRaw: dateValue ? new Date(dateValue).getTime() : 0,
+                        createdBy: item.submittedBy || '--',
+                        entity: 'voucher',
+                    };
+                });
+
+                const normalizedPromotions = (promotionData || []).map((item) => {
+                    const { label, filterKey } = mapPromotionStatus(item.status);
+                    const dateValue = item.submittedAt || item.createdAt;
+                    return {
+                        id: item.id,
+                        code: item.code,
+                        name: item.name,
+                        type: 'Khuyến mãi',
+                        statusLabel: label,
+                        statusFilterKey: filterKey,
+                        createdAt: formatDateTime(dateValue),
+                        createdAtRaw: dateValue ? new Date(dateValue).getTime() : 0,
+                        createdBy: item.submittedBy || '--',
+                        entity: 'promotion',
+                    };
+                });
+
+                setRecords([...normalizedVouchers, ...normalizedPromotions]);
+            } catch (err) {
+                if (isMounted) {
+                    notifyError('Không thể tải danh sách voucher / khuyến mãi. Vui lòng thử lại sau.');
+                }
+            } finally {
+                if (isMounted) {
+                    setIsLoading(false);
+                }
+            }
+        }
+        fetchData();
+        return () => {
+            isMounted = false;
+        };
+    }, [notifyError]);
 
     // Sử dụng hook dùng chung để filter
-    const filtered = useSearchAndFilter(vouchers, {
+    const filtered = useSearchAndFilter(records, {
         searchQuery,
         statusFilter: sortFilter,
         dateFilter,
         searchFields: ['code', 'name'], // Tìm kiếm theo mã và tên
-        statusField: 'status',
+        statusField: 'statusFilterKey',
         statusMap: {
-            pending: 'Chờ duyệt',
-            approved: 'Đã duyệt',
+            ...STATUS_FILTER_MAP,
         },
     });
 
-    const handleViewDetail = (id) => {
-        navigate(`/staff/vouchers/${id}`);
+    // Sắp xếp theo ngày tạo (mới nhất trước)
+    const sortedAndFiltered = useMemo(() => {
+        return [...filtered].sort((a, b) => {
+            // Sắp xếp giảm dần (mới nhất trước)
+            return (b.createdAtRaw || 0) - (a.createdAtRaw || 0);
+        });
+    }, [filtered]);
+
+    const handleViewDetail = (record) => {
+        if (record.entity === 'promotion') {
+            navigate(`/staff/promotions/${record.id}`);
+        } else {
+            navigate(`/staff/vouchers/${record.id}`);
+        }
     };
 
     const handleAddVoucher = () => {
@@ -99,14 +137,7 @@ export default function VouchersPromotionsPage() {
         navigate('/staff/promotions/new');
     };
 
-    const sortOptions = useMemo(
-        () => [
-            { value: 'all', label: 'Tất cả trạng thái' },
-            { value: 'pending', label: 'Chờ duyệt' },
-            { value: 'approved', label: 'Đã duyệt' },
-        ],
-        [],
-    );
+    const sortOptions = useMemo(() => VOUCHER_PROMOTION_SORT_OPTIONS, []);
 
     return (
         <div>
@@ -197,31 +228,39 @@ export default function VouchersPromotionsPage() {
                                 <th>Tên</th>
                                 <th>Loại</th>
                                 <th>Ngày tạo</th>
+                                <th>Người tạo</th>
                                 <th>Trạng thái</th>
                                 <th>Hành động</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {filtered.length === 0 ? (
+                            {isLoading ? (
                                 <tr>
-                                    <td colSpan={6} className={cx('empty')}>
+                                    <td colSpan={7} className={cx('empty')}>
+                                        Đang tải dữ liệu...
+                                    </td>
+                                </tr>
+                            ) : sortedAndFiltered.length === 0 ? (
+                                <tr>
+                                    <td colSpan={7} className={cx('empty')}>
                                         Không có voucher/khuyến mãi phù hợp.
                                     </td>
                                 </tr>
                             ) : (
-                                filtered.map((voucher) => (
-                                    <tr key={voucher.id}>
-                                        <td className={cx('code-cell')}>{voucher.code}</td>
-                                        <td className={cx('name-cell')}>{voucher.name}</td>
-                                        <td>{voucher.type}</td>
-                                        <td>{voucher.createDate}</td>
+                                sortedAndFiltered.map((record) => (
+                                    <tr key={`${record.entity}-${record.id}`}>
+                                        <td className={cx('code-cell')}>{record.code}</td>
+                                        <td className={cx('name-cell')}>{record.name}</td>
+                                        <td>{record.type}</td>
+                                        <td>{record.createdAt}</td>
+                                        <td>{record.createdBy}</td>
                                         <td>
-                                            <StatusBadge status={voucher.status} />
+                                            <StatusBadge status={record.statusLabel} />
                                         </td>
                                         <td>
                                             <button
                                                 className={cx('btn', 'view-btn')}
-                                                onClick={() => handleViewDetail(voucher.id)}
+                                                onClick={() => handleViewDetail(record)}
                                             >
                                                 Xem
                                             </button>

@@ -1,4 +1,7 @@
-import { getApiBaseUrl, getStoredToken as getStoredTokenUtil } from '../../../../../services/utils';
+import {
+    getApiBaseUrl,
+    getStoredToken as getStoredTokenUtil,
+} from '../../../../../services/utils';
 import { normalizeMediaUrl } from '../../../../../services/productUtils';
 import { useMemo, useRef, useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -91,8 +94,15 @@ function UpdateProductPage() {
                 setTaxPercent(product.tax ? String(Math.round(product.tax * 100)) : '0');
                 setDiscountValue(product.discountValue || 0.0);
                 setCategoryId(product.categoryId || '');
-                setPublicationDate(product.publicationDate ? product.publicationDate.split('T')[0] : '');
-                setAvailableQuantity(product.availableQuantity !== undefined && product.availableQuantity !== null ? String(product.availableQuantity) : '');
+                setPublicationDate(
+                    product.publicationDate ? product.publicationDate.split('T')[0] : '',
+                );
+                setAvailableQuantity(
+                    product.availableQuantity !== undefined &&
+                        product.availableQuantity !== null
+                        ? String(product.availableQuantity)
+                        : '',
+                );
                 setStatus(product.status || 'PENDING');
 
                 // Set existing media
@@ -104,7 +114,6 @@ function UpdateProductPage() {
                         setDefaultMediaUrl(product.mediaUrls[0]);
                     }
                 }
-
             } catch (err) {
                 console.error('Error fetching product:', err);
                 setNotifyType('error');
@@ -182,7 +191,11 @@ function UpdateProductPage() {
                 newErrors.weight = 'Trọng lượng tối thiểu là 0.';
             }
         }
-        if (availableQuantity !== undefined && availableQuantity !== null && availableQuantity !== '') {
+        if (
+            availableQuantity !== undefined &&
+            availableQuantity !== null &&
+            availableQuantity !== ''
+        ) {
             const quantityNum = Number(availableQuantity);
             if (Number.isNaN(quantityNum) || quantityNum < 0) {
                 newErrors.availableQuantity = 'Số lượng tồn kho tối thiểu là 0.';
@@ -222,7 +235,7 @@ function UpdateProductPage() {
             const resp = await fetch(`${API_BASE_URL}/auth/refresh`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ token: refreshToken })
+                body: JSON.stringify({ token: refreshToken }),
             });
             const data = await resp.json().catch(() => ({}));
             if (resp.ok && data?.result?.token) {
@@ -230,7 +243,7 @@ function UpdateProductPage() {
                 localStorage.setItem('refreshToken', data.result.token);
                 return data.result.token;
             }
-        } catch (_) { }
+        } catch (_) {}
         return null;
     };
 
@@ -271,18 +284,23 @@ function UpdateProductPage() {
                 description: (description || '').trim() || null,
                 author: (author || '').trim(),
                 publisher: (publisher || '').trim(),
-                weight: (weight && Number(weight) > 0) ? Number(weight) : null,
-                length: (length && Number(length) >= 1) ? Number(length) : null,
-                width: (width && Number(width) >= 1) ? Number(width) : null,
-                height: (height && Number(height) >= 1) ? Number(height) : null,
+                weight: weight && Number(weight) > 0 ? Number(weight) : null,
+                length: length && Number(length) >= 1 ? Number(length) : null,
+                width: width && Number(width) >= 1 ? Number(width) : null,
+                height: height && Number(height) >= 1 ? Number(height) : null,
                 price: Number(price) || 0,
                 tax: taxDecimal || 0,
-                discountValue: (discountValue && Number(discountValue) > 0) ? Number(discountValue) : null,
+                discountValue:
+                    discountValue && Number(discountValue) > 0
+                        ? Number(discountValue)
+                        : null,
                 categoryId: (categoryId || '').trim(),
                 publicationDate: publicationDate || null,
                 status: 'PENDING', // Luôn đặt về PENDING khi gửi lại để duyệt
                 stockQuantity:
-                    availableQuantity !== undefined && availableQuantity !== null && availableQuantity !== ''
+                    availableQuantity !== undefined &&
+                    availableQuantity !== null &&
+                    availableQuantity !== ''
                         ? Number(availableQuantity)
                         : undefined,
             };
@@ -340,7 +358,9 @@ function UpdateProductPage() {
             // Kiểm tra response sau khi retry
             if (response.ok) {
                 setNotifyType('success');
-                setNotifyMsg('Cập nhật sản phẩm thành công. Sản phẩm đã được gửi lại để duyệt.');
+                setNotifyMsg(
+                    'Cập nhật sản phẩm thành công. Sản phẩm đã được gửi lại để duyệt.',
+                );
                 setNotifyOpen(true);
                 // Navigate back to product detail after 1.5 seconds
                 setTimeout(() => {
@@ -350,7 +370,8 @@ function UpdateProductPage() {
                 // Extract error message from response
                 const serverMsg = data?.message || data?.error || data?.result || '';
 
-                let errorMessage = serverMsg || 'Cập nhật sản phẩm thất bại. Vui lòng thử lại.';
+                let errorMessage =
+                    serverMsg || 'Cập nhật sản phẩm thất bại. Vui lòng thử lại.';
 
                 if (response.status === 403) {
                     errorMessage = 'Bạn không có quyền thực hiện hành động này.';
@@ -360,7 +381,8 @@ function UpdateProductPage() {
                     if (serverMsg) {
                         errorMessage = `Dữ liệu không hợp lệ: ${serverMsg}`;
                     } else {
-                        errorMessage = 'Dữ liệu không hợp lệ. Vui lòng kiểm tra lại thông tin.';
+                        errorMessage =
+                            'Dữ liệu không hợp lệ. Vui lòng kiểm tra lại thông tin.';
                     }
                 } else if (response.status >= 500) {
                     errorMessage = 'Lỗi máy chủ. Vui lòng thử lại sau.';
@@ -529,7 +551,10 @@ function UpdateProductPage() {
                                 onChange={(e) => {
                                     const raw = (e.target.value || '').replace(',', '.');
                                     const cleaned = raw.replace(/[^0-9.]/g, '');
-                                    if (cleaned === '') { setLength(''); return; }
+                                    if (cleaned === '') {
+                                        setLength('');
+                                        return;
+                                    }
                                     const n = Number(cleaned);
                                     setLength(Number.isNaN(n) ? 0 : n);
                                 }}
@@ -543,7 +568,10 @@ function UpdateProductPage() {
                                 onChange={(e) => {
                                     const raw = (e.target.value || '').replace(',', '.');
                                     const cleaned = raw.replace(/[^0-9.]/g, '');
-                                    if (cleaned === '') { setWidth(''); return; }
+                                    if (cleaned === '') {
+                                        setWidth('');
+                                        return;
+                                    }
                                     const n = Number(cleaned);
                                     setWidth(Number.isNaN(n) ? 0 : n);
                                 }}
@@ -557,7 +585,10 @@ function UpdateProductPage() {
                                 onChange={(e) => {
                                     const raw = (e.target.value || '').replace(',', '.');
                                     const cleaned = raw.replace(/[^0-9.]/g, '');
-                                    if (cleaned === '') { setHeight(''); return; }
+                                    if (cleaned === '') {
+                                        setHeight('');
+                                        return;
+                                    }
                                     const n = Number(cleaned);
                                     setHeight(Number.isNaN(n) ? 0 : n);
                                 }}
@@ -622,7 +653,10 @@ function UpdateProductPage() {
                                 }));
                                 setMediaFiles((prev) => {
                                     const next = [...prev, ...mapped];
-                                    if (next.length > 0 && !next.some(m => m.isDefault)) {
+                                    if (
+                                        next.length > 0 &&
+                                        !next.some((m) => m.isDefault)
+                                    ) {
                                         next[0].isDefault = true;
                                     }
                                     return next;
@@ -632,35 +666,67 @@ function UpdateProductPage() {
                         {/* Show existing media */}
                         {existingMediaUrls.length > 0 && (
                             <div className={cx('existingMedia')}>
-                                <div className={cx('existingMediaLabel')}>Ảnh/video hiện tại:</div>
+                                <div className={cx('existingMediaLabel')}>
+                                    Ảnh/video hiện tại:
+                                </div>
                                 <div className={cx('mediaList')}>
                                     {existingMediaUrls.map((url, idx) => {
-                                        const normalizedUrl = normalizeMediaUrl(url, API_BASE_URL);
-                                        const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(url);
+                                        const normalizedUrl = normalizeMediaUrl(
+                                            url,
+                                            API_BASE_URL,
+                                        );
+                                        const isImage =
+                                            /\.(jpg|jpeg|png|gif|webp)$/i.test(url);
                                         return (
                                             <div key={idx} className={cx('mediaItem')}>
                                                 {isImage ? (
-                                                    <img src={normalizedUrl} alt="existing" className={cx('mediaPreview')} />
+                                                    <img
+                                                        src={normalizedUrl}
+                                                        alt="existing"
+                                                        className={cx('mediaPreview')}
+                                                    />
                                                 ) : (
-                                                    <video src={normalizedUrl} className={cx('mediaPreview')} controls />
+                                                    <video
+                                                        src={normalizedUrl}
+                                                        className={cx('mediaPreview')}
+                                                        controls
+                                                    />
                                                 )}
                                                 <div className={cx('mediaActions')}>
-                                                    <label className={cx('defaultToggle')}>
+                                                    <label
+                                                        className={cx('defaultToggle')}
+                                                    >
                                                         <input
                                                             type="radio"
                                                             name="defaultMedia"
-                                                            checked={defaultMediaUrl === url}
+                                                            checked={
+                                                                defaultMediaUrl === url
+                                                            }
                                                             onChange={async () => {
                                                                 try {
-                                                                    setDefaultMediaUrl(url);
-                                                                    const token = getStoredToken('token');
-                                                                    await fetch(`${API_BASE_URL}/products/${id}/default-media?mediaUrl=${encodeURIComponent(url)}`, {
-                                                                        method: 'POST',
-                                                                        headers: {
-                                                                            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                                                                    setDefaultMediaUrl(
+                                                                        url,
+                                                                    );
+                                                                    const token =
+                                                                        getStoredToken(
+                                                                            'token',
+                                                                        );
+                                                                    await fetch(
+                                                                        `${API_BASE_URL}/products/${id}/default-media?mediaUrl=${encodeURIComponent(
+                                                                            url,
+                                                                        )}`,
+                                                                        {
+                                                                            method: 'POST',
+                                                                            headers: {
+                                                                                ...(token
+                                                                                    ? {
+                                                                                          Authorization: `Bearer ${token}`,
+                                                                                      }
+                                                                                    : {}),
+                                                                            },
                                                                         },
-                                                                    });
-                                                                } catch (_) { }
+                                                                    );
+                                                                } catch (_) {}
                                                             }}
                                                         />
                                                         Mặc định
@@ -678,9 +744,17 @@ function UpdateProductPage() {
                                 {mediaFiles.map((m, idx) => (
                                     <div key={idx} className={cx('mediaItem')}>
                                         {m.type === 'IMAGE' ? (
-                                            <img src={m.preview} alt="preview" className={cx('mediaPreview')} />
+                                            <img
+                                                src={m.preview}
+                                                alt="preview"
+                                                className={cx('mediaPreview')}
+                                            />
                                         ) : (
-                                            <video src={m.preview} className={cx('mediaPreview')} controls />
+                                            <video
+                                                src={m.preview}
+                                                className={cx('mediaPreview')}
+                                                controls
+                                            />
                                         )}
                                         <div className={cx('mediaActions')}>
                                             <label className={cx('defaultToggle')}>
@@ -689,7 +763,12 @@ function UpdateProductPage() {
                                                     name="defaultMedia"
                                                     checked={m.isDefault}
                                                     onChange={() => {
-                                                        setMediaFiles((prev) => prev.map((x, i) => ({ ...x, isDefault: i === idx })));
+                                                        setMediaFiles((prev) =>
+                                                            prev.map((x, i) => ({
+                                                                ...x,
+                                                                isDefault: i === idx,
+                                                            })),
+                                                        );
                                                     }}
                                                 />
                                                 Mặc định
@@ -699,8 +778,13 @@ function UpdateProductPage() {
                                                 className={cx('btn', 'muted')}
                                                 onClick={() => {
                                                     setMediaFiles((prev) => {
-                                                        const next = prev.filter((_, i) => i !== idx);
-                                                        if (next.length > 0 && !next.some(n => n.isDefault)) {
+                                                        const next = prev.filter(
+                                                            (_, i) => i !== idx,
+                                                        );
+                                                        if (
+                                                            next.length > 0 &&
+                                                            !next.some((n) => n.isDefault)
+                                                        ) {
                                                             next[0].isDefault = true;
                                                         }
                                                         return next;
@@ -734,12 +818,17 @@ function UpdateProductPage() {
                                 placeholder="VD: 100"
                                 value={availableQuantity}
                                 onChange={(e) => {
-                                    const cleaned = (e.target.value || '').replace(/[^0-9]/g, '');
+                                    const cleaned = (e.target.value || '').replace(
+                                        /[^0-9]/g,
+                                        '',
+                                    );
                                     setAvailableQuantity(cleaned);
                                 }}
                             />
                             {errors.availableQuantity && (
-                                <div className={cx('errorText')}>{errors.availableQuantity}</div>
+                                <div className={cx('errorText')}>
+                                    {errors.availableQuantity}
+                                </div>
                             )}
                         </div>
                         <div className={cx('row')}>
@@ -781,8 +870,8 @@ function UpdateProductPage() {
                     notifyType === 'success'
                         ? 'Thành công'
                         : notifyType === 'error'
-                            ? 'Lỗi'
-                            : 'Thông báo'
+                        ? 'Lỗi'
+                        : 'Thông báo'
                 }
                 message={notifyMsg}
                 onClose={() => setNotifyOpen(false)}

@@ -37,7 +37,7 @@ public class ExpirationService {
     @Scheduled(cron = "0 0 * * * *")
     @Transactional
     public void moveExpiredItems() {
-        log.info("Bắt đầu kiểm tra và chuyển voucher/promotion hết hạn...");
+        // log.info("Bắt đầu kiểm tra và chuyển voucher/promotion hết hạn...");
         LocalDate today = LocalDate.now();
         LocalDateTime now = LocalDateTime.now();
 
@@ -47,7 +47,7 @@ public class ExpirationService {
         // Xử lý promotions hết hạn
         processExpiredPromotions(today, now);
 
-        log.info("Hoàn tất kiểm tra voucher/promotion hết hạn");
+        // log.info("Hoàn tất kiểm tra voucher/promotion hết hạn");
     }
 
     private void processExpiredVouchers(LocalDate today, LocalDateTime now) {
@@ -60,7 +60,8 @@ public class ExpirationService {
                         .id(voucher.getId())
                         .code(voucher.getCode())
                         .name(voucher.getName())
-                        .discountType(voucher.getDiscountType())
+                        .discountValueType(voucher.getDiscountValueType())
+                        .applyScope(voucher.getApplyScope())
                         .minOrderValue(voucher.getMinOrderValue())
                         .maxOrderValue(voucher.getMaxOrderValue())
                         .discountValue(voucher.getDiscountValue())
@@ -68,7 +69,7 @@ public class ExpirationService {
                         .startDate(voucher.getStartDate())
                         .expiryDate(voucher.getExpiryDate())
                         .imageUrl(voucher.getImageUrl())
-                        .comment(voucher.getComment())
+                        .description(voucher.getDescription())
                         .usageLimit(voucher.getUsageLimit())
                         .usageCount(voucher.getUsageCount())
                         .isActive(voucher.getIsActive())

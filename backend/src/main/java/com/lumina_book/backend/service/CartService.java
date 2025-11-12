@@ -13,6 +13,8 @@ import com.lumina_book.backend.repository.CartRepository;
 import com.lumina_book.backend.repository.ProductRepository;
 import com.lumina_book.backend.repository.PromotionRepository;
 import com.lumina_book.backend.repository.UserRepository;
+import com.lumina_book.backend.enums.DiscountValueType;
+import com.lumina_book.backend.enums.DiscountApplyScope;
 import com.lumina_book.backend.repository.VoucherRepository;
 
 import lombok.AccessLevel;
@@ -134,26 +136,73 @@ public class CartService {
         }
 
         recalcCartTotals(cart);
-        double subtotal = cart.getSubtotal();
-        if (voucher.getMinOrderValue() > 0 && subtotal < voucher.getMinOrderValue()) {
+        
+        // Tính tổng giá trị đơn hàng có thể áp dụng voucher
+        double applicableSubtotal = calculateApplicableSubtotal(cart, voucher);
+        
+        // Nếu giá trị đơn hàng có thể áp dụng voucher nhỏ hơn giá trị tối thiểu của voucher, throw error
+        if (voucher.getMinOrderValue() != null && voucher.getMinOrderValue() > 0 
+                && applicableSubtotal < voucher.getMinOrderValue()) {
             throw new AppException(ErrorCode.INVALID_VOUCHER_MINIUM);
         }
 
+        // Tính giá trị giảm giá dựa trên loại giảm giá của voucher
         double discountValue = voucher.getDiscountValue();
         double discount;
-        if ("PERCENT".equalsIgnoreCase(voucher.getDiscountType())) {
-            discount = subtotal * (discountValue / 100.0);
+        if (voucher.getDiscountValueType() == DiscountValueType.PERCENTAGE) {
+            discount = applicableSubtotal * (discountValue / 100.0);
         } else {
             discount = discountValue;
         }
-        if (voucher.getMaxDiscountValue() > 0) {
+        
+        // Nếu giá trị giảm giá vượt quá giá trị giảm giá tối đa của voucher, set giá trị giảm giá tối đa của voucher
+        if (voucher.getMaxDiscountValue() != null && voucher.getMaxDiscountValue() > 0) {
             discount = Math.min(discount, voucher.getMaxDiscountValue());
         }
-        discount = Math.min(discount, subtotal);
+        
+        // Nếu giá trị giảm giá vượt quá giá trị đơn hàng có thể áp dụng voucher, set giá trị giảm giá tối đa của voucher
+        discount = Math.min(discount, applicableSubtotal);
+        
+        // Lấy tổng giá trị đơn hàng để tính toán cuối cùng
+        double fullSubtotal = cart.getSubtotal();
 
         cart.setAppliedVoucherCode(voucher.getCode());
         cart.setVoucherDiscount(discount);
-        cart.setTotalAmount(Math.max(0.0, subtotal - discount));
+        cart.setTotalAmount(Math.max(0.0, fullSubtotal - discount));
         return cartRepository.save(cart);
+    }
+
+    // Tính tổng giá trị đơn hàng có thể áp dụng voucher dựa trên phạm vi áp dụng của voucher
+    private double calculateApplicableSubtotal(Cart cart, Voucher voucher) {
+        if (voucher.getApplyScope() == null || voucher.getApplyScope() == DiscountApplyScope.ORDER) {
+            // Áp dụng cho toàn bộ đơn hàng
+            return cart.getSubtotal();
+        }
+
+        return cart.getCartItems().stream()
+                .filter(item -> {
+                    Product product = item.getProduct();
+                    if (product == null) {
+                        return false;
+                    }
+
+                    DiscountApplyScope scope = voucher.getApplyScope();
+                    if (scope == DiscountApplyScope.PRODUCT) {
+                        // Nếu sản phẩm có nằm trong danh sách sản phẩm của voucher, return true
+                        return voucher.getProductApply() != null
+                                && voucher.getProductApply().stream()
+                                        .anyMatch(vp -> vp.getId().equals(product.getId()));
+                    } else if (scope == DiscountApplyScope.CATEGORY) {
+                        // Nếu danh mục sản phẩm có nằm trong danh sách danh mục của voucher, return true
+                        Category productCategory = product.getCategory();
+                        return productCategory != null
+                                && voucher.getCategoryApply() != null
+                                && voucher.getCategoryApply().stream()
+                                        .anyMatch(vc -> vc.getId().equals(productCategory.getId()));
+                    }
+                    return false;
+                })
+                .mapToDouble(CartItem::getFinalPrice)
+                .sum();
     }
 }

@@ -273,7 +273,92 @@ export async function uploadMedia(file, token = null) {
 
 export async function uploadProductMedia(file, token = null) {
     const formData = new FormData();
-    formData.append('file', file);
-    const { data, ok } = await apiRequest('/media/upload-product', { method: 'POST', body: formData, token, isFormData: true });
+    // Backend expects 'files' part name
+    formData.append('files', file);
+    const { data, ok, status } = await apiRequest('/media/upload-product', {
+        method: 'POST',
+        body: formData,
+        token,
+        isFormData: true,
+    });
+    // API returns ApiResponse<List<String>> with result being array of URLs
+    const urls = extractResult(data, true);
+    const url = Array.isArray(urls) ? urls[0] : null;
+    const message =
+        data?.message ||
+        data?.error ||
+        (status && !ok ? `Upload failed with status ${status}` : null);
+    return { ok, status, url, message };
+}
+
+// ========== VOUCHER API ==========
+export async function getStaffVouchers(token = null) {
+    const { data } = await apiRequest('/vouchers/my', { token });
+    return extractResult(data, true);
+}
+
+export async function getActiveVouchers(token = null) {
+    const { data } = await apiRequest('/vouchers/active', { token });
+    return extractResult(data, true);
+}
+
+export async function getVoucherById(voucherId, token = null) {
+    const { data } = await apiRequest(`/vouchers/${voucherId}`, { token });
+    return extractResult(data);
+}
+
+export async function createVoucher(voucherData, token = null) {
+    const { data, ok } = await apiRequest('/vouchers', { method: 'POST', body: voucherData, token });
+    return { ok, data: extractResult(data) };
+}
+
+export async function updateVoucher(voucherId, voucherData, token = null) {
+    const { data, ok } = await apiRequest(`/vouchers/${voucherId}`, { method: 'PUT', body: voucherData, token });
+    return { ok, data: extractResult(data) };
+}
+
+export async function deleteVoucher(voucherId, token = null) {
+    const { data, ok } = await apiRequest(`/vouchers/${voucherId}`, { method: 'DELETE', token });
+    return { ok, data: extractResult(data) };
+}
+
+export async function approveVoucher(approvalData, token = null) {
+    const { data, ok } = await apiRequest('/vouchers/approve', { method: 'POST', body: approvalData, token });
+    return { ok, data: extractResult(data) };
+}
+
+// ========== PROMOTION API ==========
+export async function getStaffPromotions(token = null) {
+    const { data } = await apiRequest('/promotions/my-promotions', { token });
+    return extractResult(data, true);
+}
+
+export async function getActivePromotions(token = null) {
+    const { data } = await apiRequest('/promotions/active', { token });
+    return extractResult(data, true);
+}
+
+export async function getPromotionById(promotionId, token = null) {
+    const { data } = await apiRequest(`/promotions/${promotionId}`, { token });
+    return extractResult(data);
+}
+
+export async function createPromotion(promotionData, token = null) {
+    const { data, ok, status } = await apiRequest('/promotions', { method: 'POST', body: promotionData, token });
+    return { ok, status, data, result: extractResult(data) };
+}
+
+export async function updatePromotion(promotionId, promotionData, token = null) {
+    const { data, ok } = await apiRequest(`/promotions/${promotionId}`, { method: 'PUT', body: promotionData, token });
+    return { ok, data: extractResult(data) };
+}
+
+export async function deletePromotion(promotionId, token = null) {
+    const { data, ok } = await apiRequest(`/promotions/${promotionId}`, { method: 'DELETE', token });
+    return { ok, data: extractResult(data) };
+}
+
+export async function approvePromotion(approvalData, token = null) {
+    const { data, ok } = await apiRequest('/promotions/approve', { method: 'POST', body: approvalData, token });
     return { ok, data: extractResult(data) };
 }

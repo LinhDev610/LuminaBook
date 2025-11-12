@@ -2,7 +2,9 @@ package com.lumina_book.backend.entity;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import jakarta.persistence.*;
 
@@ -121,8 +123,12 @@ public class Product {
     @ManyToMany(mappedBy = "products")
     List<Banner> banners;
 
-    // Promotion
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "promotion")
-    Promotion promotionApply;
+    // Promotions / Vouchers
+    @ManyToMany(mappedBy = "productApply", fetch = FetchType.LAZY)
+    @Builder.Default
+    Set<Promotion> promotions = new HashSet<>();
+
+    @ManyToMany(mappedBy = "productApply", fetch = FetchType.LAZY)
+    @Builder.Default
+    Set<Voucher> vouchers = new HashSet<>();
 }

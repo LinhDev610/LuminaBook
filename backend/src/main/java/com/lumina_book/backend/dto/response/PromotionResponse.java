@@ -5,6 +5,8 @@ import java.time.LocalDateTime;
 import java.util.Set;
 
 import com.lumina_book.backend.enums.PromotionStatus;
+import com.lumina_book.backend.enums.DiscountApplyScope;
+import com.lumina_book.backend.enums.DiscountValueType;
 
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -24,6 +26,8 @@ public class PromotionResponse {
     Double discountValue;
     Double minOrderValue;
     Double maxDiscountValue;
+    DiscountValueType discountValueType;
+    DiscountApplyScope applyScope;
     LocalDate startDate;
     LocalDate expiryDate;
     Integer usageCount;

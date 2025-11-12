@@ -11,8 +11,8 @@ import {
     filterByStatus,
     filterByDate,
     sortByDate,
-} from '../../../../services/productUtils';
-import { STATUS_MAP, FALLBACK_THUMB } from '../../../../services/constants';
+    STATUS_MAP, FALLBACK_THUMB
+} from '../../../../services';
 import SearchAndSort from '../../../../components/Common/SearchAndSort';
 import StatusBadge from '../../../../components/Common/StatusBadge';
 

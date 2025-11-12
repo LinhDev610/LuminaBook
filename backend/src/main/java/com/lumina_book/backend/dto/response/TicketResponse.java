@@ -21,7 +21,8 @@ public class TicketResponse {
     String phone;
     String content;
     String handlerNote;
-    w
+    String handlerId;
+    String handlerName;
     TicketStatus status;
     TicketAssignee assignedTo;
     LocalDateTime createdAt;

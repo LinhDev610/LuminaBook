@@ -29,6 +29,22 @@ public class MediaController {
                 .collect(Collectors.toList());
         return ApiResponse.<List<String>>builder().result(urls).build();
     }
+
+    @PostMapping(value = "/upload-voucher", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ApiResponse<List<String>> uploadVoucherMedia(@RequestPart("files") List<MultipartFile> files) {
+        List<String> urls = files.stream()
+                .map(fileStorageService::storeVoucherMedia)
+                .collect(Collectors.toList());
+        return ApiResponse.<List<String>>builder().result(urls).build();
+    }
+
+    @PostMapping(value = "/upload-promotion", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ApiResponse<List<String>> uploadPromotionMedia(@RequestPart("files") List<MultipartFile> files) {
+        List<String> urls = files.stream()
+                .map(fileStorageService::storePromotionMedia)
+                .collect(Collectors.toList());
+        return ApiResponse.<List<String>>builder().result(urls).build();
+    }
 }
 
 

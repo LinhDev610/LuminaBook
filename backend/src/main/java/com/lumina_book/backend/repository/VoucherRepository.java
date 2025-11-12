@@ -27,6 +27,8 @@ public interface VoucherRepository extends JpaRepository<Voucher, String> {
             + "AND (v.expiryDate IS NULL OR v.expiryDate >= :today)")
     List<Voucher> findActiveVouchers(@Param("today") LocalDate today);
 
+    long countByImageUrl(String imageUrl);
+
     // Tìm các voucher đã hết hạn nhưng chưa được chuyển vào bảng hết hạn
     @Query("SELECT v FROM Voucher v WHERE v.expiryDate < :today AND v.status != :expiredStatus")
     List<Voucher> findExpiredVouchers(@Param("today") LocalDate today, @Param("expiredStatus") VoucherStatus expiredStatus);

@@ -62,9 +62,6 @@ public class PromotionCreationRequest {
     @Future(message = "Ngày kết thúc phải là ngày trong tương lai")
     LocalDate expiryDate;
 
-    @Min(value = 1, message = "Giới hạn sử dụng phải lớn hơn 0")
-    Integer usageLimit;
-
     // Áp dụng theo danh mục
     Set<String> categoryIds;
 

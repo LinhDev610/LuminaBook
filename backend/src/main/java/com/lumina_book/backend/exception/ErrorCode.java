@@ -28,6 +28,7 @@ public enum ErrorCode {
     PROMOTION_CODE_ALREADY_EXISTS(2002, "Mã khuyến mãi đã tồn tại", HttpStatus.BAD_REQUEST),
     PROMOTION_NOT_PENDING(2003, "Khuyến mãi không ở trạng thái chờ duyệt", HttpStatus.BAD_REQUEST),
     INVALID_PROMOTION_SCOPE(2004, "Phạm vi áp dụng khuyến mãi không hợp lệ", HttpStatus.BAD_REQUEST),
+    PROMOTION_PRODUCT_CONFLICT(2005, "Một số sản phẩm đã có khuyến mãi đang hoạt động", HttpStatus.BAD_REQUEST),
 
     // Voucher
     VOUCHER_NOT_EXISTED(3001, "Voucher không tồn tại", HttpStatus.NOT_FOUND),
@@ -55,7 +56,10 @@ public enum ErrorCode {
     // ORDER - SHIPMENT - CART
     CART_ITEM_NOT_EXISTED(7001, "Không tồn tại sản phẩm trong giỏ hàng", HttpStatus.NOT_FOUND),
     ORDER_NOT_EXISTED(7002, "Đơn hàng không tồn tại", HttpStatus.NOT_FOUND),
-    EXTERNAL_SERVICE_ERROR(7003, "Lỗi kết nối dịch vụ vận chuyển", HttpStatus.BAD_GATEWAY);
+    EXTERNAL_SERVICE_ERROR(7003, "Lỗi kết nối dịch vụ vận chuyển", HttpStatus.BAD_GATEWAY),
+
+    // FILE UPLOAD
+    FILE_UPLOAD_FAILED(8001, "Không thể upload file", HttpStatus.INTERNAL_SERVER_ERROR);
 
     ErrorCode(int code, String message, HttpStatusCode statusCode) {
         this.code = code;

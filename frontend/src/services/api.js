@@ -264,7 +264,7 @@ export async function setProductDefaultMedia(productId, mediaUrl, token = null) 
 }
 
 // ========== MEDIA API ==========
-export async function uploadMedia(file, token = null) {
+export async function uploadMediaProfile(file, token = null) {
     const formData = new FormData();
     formData.append('file', file);
     const { data, ok } = await apiRequest('/media/upload', { method: 'POST', body: formData, token, isFormData: true });
@@ -276,6 +276,44 @@ export async function uploadProductMedia(file, token = null) {
     // Backend expects 'files' part name
     formData.append('files', file);
     const { data, ok, status } = await apiRequest('/media/upload-product', {
+        method: 'POST',
+        body: formData,
+        token,
+        isFormData: true,
+    });
+    // API returns ApiResponse<List<String>> with result being array of URLs
+    const urls = extractResult(data, true);
+    const url = Array.isArray(urls) ? urls[0] : null;
+    const message =
+        data?.message ||
+        data?.error ||
+        (status && !ok ? `Upload failed with status ${status}` : null);
+    return { ok, status, url, message };
+}
+export async function uploadVoucherMedia(file, token = null) {
+    const formData = new FormData();
+    // Backend expects 'files' part name
+    formData.append('files', file);
+    const { data, ok, status } = await apiRequest('/media/upload-voucher', {
+        method: 'POST',
+        body: formData,
+        token,
+        isFormData: true,
+    });
+    // API returns ApiResponse<List<String>> with result being array of URLs
+    const urls = extractResult(data, true);
+    const url = Array.isArray(urls) ? urls[0] : null;
+    const message =
+        data?.message ||
+        data?.error ||
+        (status && !ok ? `Upload failed with status ${status}` : null);
+    return { ok, status, url, message };
+}
+export async function uploadPromotionMedia(file, token = null) {
+    const formData = new FormData();
+    // Backend expects 'files' part name
+    formData.append('files', file);
+    const { data, ok, status } = await apiRequest('/media/upload-promotion', {
         method: 'POST',
         body: formData,
         token,
@@ -327,6 +365,16 @@ export async function approveVoucher(approvalData, token = null) {
     return { ok, data: extractResult(data) };
 }
 
+export async function getPendingVouchers(token = null) {
+    const { data } = await apiRequest('/vouchers/pending', { token });
+    return extractResult(data, true);
+}
+
+export async function getVouchersByStatus(status, token = null) {
+    const { data } = await apiRequest(`/vouchers/status/${status}`, { token });
+    return extractResult(data, true);
+}
+
 // ========== PROMOTION API ==========
 export async function getStaffPromotions(token = null) {
     const { data } = await apiRequest('/promotions/my-promotions', { token });
@@ -361,4 +409,14 @@ export async function deletePromotion(promotionId, token = null) {
 export async function approvePromotion(approvalData, token = null) {
     const { data, ok } = await apiRequest('/promotions/approve', { method: 'POST', body: approvalData, token });
     return { ok, data: extractResult(data) };
+}
+
+export async function getPendingPromotions(token = null) {
+    const { data } = await apiRequest('/promotions/pending', { token });
+    return extractResult(data, true);
+}
+
+export async function getPromotionsByStatus(status, token = null) {
+    const { data } = await apiRequest(`/promotions/status/${status}`, { token });
+    return extractResult(data, true);
 }

@@ -81,4 +81,7 @@ public interface ProductRepository extends JpaRepository<Product, String> {
 
     // Tính số lượng products submitted bởi user cụ thể
     long countBySubmittedBy(User submittedBy);
+
+    // Tìm products theo promotion
+    List<Product> findByPromotionId(String promotionId);
 }

@@ -123,11 +123,12 @@ public class Product {
     @ManyToMany(mappedBy = "products")
     List<Banner> banners;
 
-    // Promotions / Vouchers
-    @ManyToMany(mappedBy = "productApply", fetch = FetchType.LAZY)
-    @Builder.Default
-    Set<Promotion> promotions = new HashSet<>();
+    // Promotions
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "promotion_id")
+    Promotion promotion;
 
+    // Vouchers
     @ManyToMany(mappedBy = "productApply", fetch = FetchType.LAZY)
     @Builder.Default
     Set<Voucher> vouchers = new HashSet<>();

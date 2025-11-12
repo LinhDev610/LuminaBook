@@ -47,9 +47,6 @@ public class ExpiredPromotion {
     @Column(name = "usage_count")
     Integer usageCount;
 
-    @Column(name = "usage_limit")
-    Integer usageLimit;
-
     @Column(name = "is_active")
     Boolean isActive;
 

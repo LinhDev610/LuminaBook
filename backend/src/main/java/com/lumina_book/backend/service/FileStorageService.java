@@ -8,13 +8,20 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
+import com.lumina_book.backend.exception.AppException;
+import com.lumina_book.backend.exception.ErrorCode;
+
 import lombok.extern.slf4j.Slf4j;
 
 @Service
 @Slf4j
 public class FileStorageService {
 
-    private static final String PRODUCT_MEDIA_DIR = "uploads/product_media"; // relative to project root (working dir)
+    private static final String PRODUCT_MEDIA_DIR = "uploads/product_media";
+    private static final String VOUCHER_MEDIA_DIR = "uploads/vouchers";
+    private static final String PROMOTION_MEDIA_DIR = "uploads/promotions";
+    private static final String VOUCHER_MEDIA_URL = "/voucher_media/";
+    private static final String PROMOTION_MEDIA_URL = "/promotion_media/";
 
     /**
      * Lưu file media của product vào thư mục product_media/
@@ -23,6 +30,24 @@ public class FileStorageService {
      */
     public String storeProductMedia(MultipartFile file) {
         return storeFile(file, PRODUCT_MEDIA_DIR, "/product_media/");
+    }
+
+    /**
+     * Lưu file media của voucher vào thư mục vouchers/
+     * @param file File cần lưu
+     * @return URL của file đã lưu
+     */
+    public String storeVoucherMedia(MultipartFile file) {
+        return storeFile(file, VOUCHER_MEDIA_DIR, VOUCHER_MEDIA_URL);
+    }
+
+    /**
+     * Lưu file media của promotion vào thư mục promotions/
+     * @param file File cần lưu
+     * @return URL của file đã lưu
+     */
+    public String storePromotionMedia(MultipartFile file) {
+        return storeFile(file, PROMOTION_MEDIA_DIR, PROMOTION_MEDIA_URL);
     }
 
     /**
@@ -53,10 +78,11 @@ public class FileStorageService {
                     .path(filename)
                     .build()
                     .toUriString();
+            log.debug("File stored successfully: {}", url);
             return url;
         } catch (IOException e) {
-            log.error("Failed to store file", e);
-            throw new RuntimeException("Failed to store file", e);
+            log.error("Failed to store file: {}", e.getMessage(), e);
+            throw new AppException(ErrorCode.FILE_UPLOAD_FAILED);
         }
     }
 }

@@ -25,6 +25,9 @@ import ManageProductsPage from '../pages/Admin/ManageProduct';
 import AdminProductDetailPage from '../pages/Admin/ManageProduct/ProductDetail/ProductDetailPage';
 import CategoryDetailPage from '../pages/Admin/ManageCategories/CategoryDetail';
 import UpdateCategoryPage from '../pages/Admin/ManageCategories/UpdateCategory';
+import ManageVouchersPromotionsPage from '../pages/Admin/ManageVouchersPromotions';
+import AdminVoucherDetailPage from '../pages/Admin/ManageVouchersPromotions/VoucherDetail';
+import AdminPromotionDetailPage from '../pages/Admin/ManageVouchersPromotions/PromotionDetail';
 
 import StaffMainPage from '../pages/Employees/Staff/StaffMain';
 import ProfileStaffPage from '../pages/Employees/Staff/ProfileStaff';
@@ -73,7 +76,9 @@ const privateRoutes = [
     { path: '/admin/categories/:id', component: CategoryDetailPage, layout: AdminLayout },
     { path: '/admin/categories/:id/update', component: UpdateCategoryPage, layout: AdminLayout },
     { path: '/admin/orders', component: ManageStaffAccountsPage, layout: AdminLayout },
-    { path: '/admin/vouchers', component: ManageStaffAccountsPage, layout: AdminLayout },
+    { path: '/admin/vouchers-promotions', component: ManageVouchersPromotionsPage, layout: AdminLayout },
+    { path: '/admin/vouchers/:id', component: AdminVoucherDetailPage, layout: AdminLayout },
+    { path: '/admin/promotions/:id', component: AdminPromotionDetailPage, layout: AdminLayout },
     { path: '/admin/complaints', component: ManageStaffAccountsPage, layout: AdminLayout },
     { path: '/admin/content', component: ManageStaffAccountsPage, layout: AdminLayout },
     { path: '/admin/reports', component: ManageStaffAccountsPage, layout: AdminLayout },

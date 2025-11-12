@@ -31,6 +31,7 @@ public class ExpirationService {
     private final PromotionRepository promotionRepository;
     private final ExpiredVoucherRepository expiredVoucherRepository;
     private final ExpiredPromotionRepository expiredPromotionRepository;
+    private final PromotionService promotionService;
 
     // Chạy mỗi giờ để kiểm tra và chuyển voucher/promotion hết hạn vào bảng hết hạn
     // Cron expression: giây phút giờ ngày tháng thứ (0 0 * * * * = mỗi giờ)
@@ -111,7 +112,6 @@ public class ExpirationService {
                         .startDate(promotion.getStartDate())
                         .expiryDate(promotion.getExpiryDate())
                         .usageCount(promotion.getUsageCount())
-                        .usageLimit(promotion.getUsageLimit())
                         .isActive(promotion.getIsActive())
                         .status(promotion.getStatus().name())
                         .submittedBy(promotion.getSubmittedBy() != null ? promotion.getSubmittedBy().getId() : null)
@@ -123,6 +123,7 @@ public class ExpirationService {
                         .build();
 
                 expiredPromotionRepository.save(expiredPromotion);
+                promotionService.detachPromotionFromProducts(promotion);
                 
                 // Cập nhật status của promotion gốc thành EXPIRED
                 promotion.setStatus(PromotionStatus.EXPIRED);

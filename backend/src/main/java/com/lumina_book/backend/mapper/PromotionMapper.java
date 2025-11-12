@@ -9,6 +9,7 @@ import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
 import org.mapstruct.Named;
 import org.mapstruct.NullValuePropertyMappingStrategy;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import com.lumina_book.backend.dto.request.PromotionCreationRequest;
 import com.lumina_book.backend.dto.request.PromotionUpdateRequest;
@@ -25,6 +26,7 @@ public interface PromotionMapper {
     @Mapping(target = "approvedBy", source = "approvedBy.id")
     @Mapping(target = "categoryIds", source = "categoryApply", qualifiedByName = "mapCategoryListToIds")
     @Mapping(target = "productIds", source = "productApply", qualifiedByName = "mapProductListToIds")
+    @Mapping(target = "imageUrl", source = "imageUrl", qualifiedByName = "normalizeImageUrl")
     PromotionResponse toResponse(Promotion promotion);
 
     // Request to Entity
@@ -55,5 +57,38 @@ public interface PromotionMapper {
     default Set<String> mapProductListToIds(Set<Product> products) {
         if (products == null) return null;
         return products.stream().map(Product::getId).collect(Collectors.toSet());
+    }
+
+    @Named("normalizeImageUrl")
+    default String normalizeImageUrl(String url) {
+        if (url == null || url.isBlank()) return url;
+        // Nếu URL đã là absolute, giữ nguyên nhưng đảm bảo sử dụng prefix mới
+        String lower = url.toLowerCase();
+        if (lower.startsWith("http://") || lower.startsWith("https://")) {
+            return replaceLegacyPromotionPath(url);
+        }
+        // Nếu URL bắt đầu với /promotion_media, thêm context path
+        if (url.startsWith("/promotion_media")) {
+            String base = ServletUriComponentsBuilder.fromCurrentContextPath().build().toUriString();
+            return base + url;
+        }
+        // Legacy path support: /promotions
+        if (url.startsWith("/promotions")) {
+            String base = ServletUriComponentsBuilder.fromCurrentContextPath().build().toUriString();
+            String converted = url.replaceFirst("/promotions", "/promotion_media");
+            return base + converted;
+        }
+        // Nếu URL không phải là absolute và không bắt đầu với /promotions, mount dưới /promotions/
+        String base = ServletUriComponentsBuilder.fromCurrentContextPath().path("/promotion_media/").build().toUriString();
+        if (base.endsWith("/")) return base + url;
+        return base + "/" + url;
+    }
+
+    private String replaceLegacyPromotionPath(String url) {
+        if (url == null) return null;
+        if (url.contains("/promotions/") && !url.contains("/promotion_media/")) {
+            return url.replace("/promotions/", "/promotion_media/");
+        }
+        return url;
     }
 }

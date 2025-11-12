@@ -49,6 +49,8 @@ public interface PromotionRepository extends JpaRepository<Promotion, String> {
     List<Promotion> findPromotionsExpiringSoon(
             @Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate);
 
+    long countByImageUrl(String imageUrl);
+
     // Category and Product based queries
     @Query("SELECT p FROM Promotion p JOIN p.categoryApply c WHERE c.id = :categoryId AND p.status = 'APPROVED'")
     List<Promotion> findByCategoryId(@Param("categoryId") String categoryId);

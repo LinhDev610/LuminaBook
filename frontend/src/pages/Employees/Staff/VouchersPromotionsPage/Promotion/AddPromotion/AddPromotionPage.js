@@ -9,7 +9,7 @@ import {
     getActiveCategories,
     getActiveProducts,
     getStoredToken,
-    uploadProductMedia,
+    uploadPromotionMedia,
     DISCOUNT_VALUE_TYPES,
     APPLY_SCOPE_OPTIONS,
     INITIAL_FORM_STATE_PROMOTION,
@@ -256,13 +256,13 @@ export default function AddPromotionPage() {
     }, [formState]);
 
     const preparePayload = async () => {
-        let imageUrl = formState.imageUrl.trim() || null;
+        let imageUrl = null;
 
         // Nếu có file ảnh được chọn, upload ảnh lên server
         if (imageFile) {
             try {
                 const token = getStoredToken();
-                const { ok, url, message } = await uploadProductMedia(imageFile, token);
+                const { ok, url, message } = await uploadPromotionMedia(imageFile, token);
                 if (ok && url) {
                     imageUrl = url;
                 } else {
@@ -271,6 +271,9 @@ export default function AddPromotionPage() {
             } catch (err) {
                 throw new Error(err?.message || 'Không thể upload ảnh. Vui lòng thử lại.');
             }
+        } else if (formState.imageUrl && formState.imageUrl.trim()) {
+            // Nếu không có file mới nhưng đã có URL từ trước, sử dụng URL đó
+            imageUrl = formState.imageUrl.trim();
         }
 
         // Chuyển đổi giá trị giảm giá từ chuỗi thành số
@@ -292,17 +295,25 @@ export default function AddPromotionPage() {
             startDate: formState.startDate,
             expiryDate: formState.expiryDate,
             applyScope: formState.applyScope,
-            categoryIds: formState.applyScope === 'CATEGORY' ? (Array.isArray(formState.categoryIds) ? formState.categoryIds : [formState.categoryIds].filter(Boolean)) : [],
-            productIds: formState.applyScope === 'PRODUCT' ? formState.productIds : [],
+            categoryIds: formState.applyScope === 'CATEGORY' ? (Array.isArray(formState.categoryIds) ? formState.categoryIds : [formState.categoryIds].filter(Boolean)) : null,
+            productIds: formState.applyScope === 'PRODUCT' ? formState.productIds : null,
         };
         return payload;
     };
 
     const handleSubmit = async (event) => {
         event.preventDefault();
+        event.stopPropagation();
+
+        // Prevent double submit
+        if (isSubmitting) {
+            return;
+        }
+
         if (!validate()) {
             return;
         }
+
         try {
             setIsSubmitting(true);
             const token = getStoredToken();
@@ -311,6 +322,7 @@ export default function AddPromotionPage() {
             if (!ok) {
                 const message = data?.message || result?.message || (status ? `Lỗi ${status}` : '') || 'Không thể tạo khuyến mãi. Vui lòng thử lại.';
                 notifyError(message);
+                setIsSubmitting(false);
                 return;
             }
             success('Đã gửi duyệt khuyến mãi thành công!');
@@ -320,7 +332,6 @@ export default function AddPromotionPage() {
             const message =
                 err?.data?.message || err?.message || 'Có lỗi xảy ra khi gửi duyệt khuyến mãi.';
             notifyError(message);
-        } finally {
             setIsSubmitting(false);
         }
     };

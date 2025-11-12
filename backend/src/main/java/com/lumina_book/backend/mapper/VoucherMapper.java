@@ -9,6 +9,7 @@ import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
 import org.mapstruct.Named;
 import org.mapstruct.NullValuePropertyMappingStrategy;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import com.lumina_book.backend.dto.request.VoucherCreationRequest;
 import com.lumina_book.backend.dto.request.VoucherUpdateRequest;
@@ -24,6 +25,7 @@ public interface VoucherMapper {
     @Mapping(target = "approvedBy", source = "approvedBy.id")
     @Mapping(target = "categoryIds", source = "categoryApply", qualifiedByName = "mapCategoryListToIds")
     @Mapping(target = "productIds", source = "productApply", qualifiedByName = "mapProductListToIds")
+    @Mapping(target = "imageUrl", source = "imageUrl", qualifiedByName = "normalizeImageUrl")
     VoucherResponse toResponse(Voucher voucher);
 
     @Mapping(target = "id", ignore = true)
@@ -65,6 +67,39 @@ public interface VoucherMapper {
     default Set<String> mapProductListToIds(Set<Product> products) {
         if (products == null) return null;
         return products.stream().map(Product::getId).collect(Collectors.toSet());
+    }
+
+    @Named("normalizeImageUrl")
+    default String normalizeImageUrl(String url) {
+        if (url == null || url.isBlank()) return url;
+        // Nếu URL đã là absolute, giữ nguyên
+        String lower = url.toLowerCase();
+        if (lower.startsWith("http://") || lower.startsWith("https://")) {
+            return replaceLegacyVoucherPath(url);
+        }
+        // Nếu URL bắt đầu với /voucher_media, thêm context path
+        if (url.startsWith("/voucher_media")) {
+            String base = ServletUriComponentsBuilder.fromCurrentContextPath().build().toUriString();
+            return base + url;
+        }
+        // Legacy path support: /vouchers
+        if (url.startsWith("/vouchers")) {
+            String base = ServletUriComponentsBuilder.fromCurrentContextPath().build().toUriString();
+            String converted = url.replaceFirst("/vouchers", "/voucher_media");
+            return base + converted;
+        }
+        // Nếu URL không phải là absolute và không bắt đầu với /vouchers, mount dưới /vouchers/
+        String base = ServletUriComponentsBuilder.fromCurrentContextPath().path("/voucher_media/").build().toUriString();
+        if (base.endsWith("/")) return base + url;
+        return base + "/" + url;
+    }
+
+    private String replaceLegacyVoucherPath(String url) {
+        if (url == null) return null;
+        if (url.contains("/vouchers/") && !url.contains("/voucher_media/")) {
+            return url.replace("/vouchers/", "/voucher_media/");
+        }
+        return url;
     }
 }
 

@@ -1,7 +1,13 @@
 package com.lumina_book.backend.service;
 
+import java.net.URI;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -20,6 +26,7 @@ import com.lumina_book.backend.entity.Product;
 import com.lumina_book.backend.entity.Promotion;
 import com.lumina_book.backend.entity.User;
 import com.lumina_book.backend.enums.DiscountApplyScope;
+import com.lumina_book.backend.enums.ProductStatus;
 import com.lumina_book.backend.enums.PromotionStatus;
 import com.lumina_book.backend.exception.AppException;
 import com.lumina_book.backend.exception.ErrorCode;
@@ -93,12 +100,14 @@ public class PromotionService {
             promotion.setApprovedBy(admin);
             promotion.setApprovedAt(LocalDateTime.now());
             promotion.setIsActive(true);
+            applyPromotionToTargets(promotion);
             // log.info("Promotion approved: {} by admin: {}", promotion.getId(), admin.getId());
         } else if ("REJECT".equals(request.getAction())) {
             promotion.setStatus(PromotionStatus.REJECTED);
             promotion.setApprovedBy(admin);
             promotion.setApprovedAt(LocalDateTime.now());
             promotion.setRejectionReason(request.getReason());
+            promotion.setIsActive(false);
             // log.info("Promotion rejected: {} by admin: {}", promotion.getId(), admin.getId());
         }
 
@@ -166,6 +175,12 @@ public class PromotionService {
             throw new AppException(ErrorCode.PROMOTION_CODE_ALREADY_EXISTS);
         }
 
+        boolean wasApprovedAndActive = promotion.getStatus() == PromotionStatus.APPROVED
+                && Boolean.TRUE.equals(promotion.getIsActive());
+        if (wasApprovedAndActive) {
+            clearPromotionPricing(promotion);
+        }
+
         // Update promotion using mapper
         promotionMapper.updatePromotion(promotion, request);
 
@@ -177,6 +192,9 @@ public class PromotionService {
         }
 
         Promotion savedPromotion = promotionRepository.save(promotion);
+        if (wasApprovedAndActive) {
+            applyPromotionToTargets(savedPromotion);
+        }
         // log.info("Promotion updated: {} by user: {}", promotionId, currentUserId);
 
         return promotionMapper.toResponse(savedPromotion);
@@ -200,6 +218,12 @@ public class PromotionService {
         if (!isAdmin && !promotion.getSubmittedBy().getId().equals(currentUserId)) {
             throw new AppException(ErrorCode.UNAUTHORIZED);
         }
+
+        // Khôi phục giá các sản phẩm đang áp dụng promotion này (nếu có)
+        clearPromotionPricing(promotion);
+
+        // Xóa file media vật lý trong thư mục promotions (nếu có)
+        deleteMediaFileIfExists(promotion);
 
         promotionRepository.delete(promotion);
         // log.info("Promotion deleted: {} by user: {}", promotionId, currentUserId);
@@ -264,5 +288,232 @@ public class PromotionService {
                         .findById(productId)
                         .orElseThrow(() -> new AppException(ErrorCode.PRODUCT_NOT_EXISTED)))
                 .collect(Collectors.toSet());
+    }
+
+    private void applyPromotionToTargets(Promotion promotion) {
+        // Chỉ áp dụng promotion đã được duyệt (APPROVED)
+        if (promotion.getStatus() != PromotionStatus.APPROVED) {
+            log.warn("Cannot apply promotion {} because it is not approved. Status: {}", 
+                    promotion.getId(), promotion.getStatus());
+            return;
+        }
+        
+        if (promotion.getApplyScope() == DiscountApplyScope.ORDER) {
+            return; 
+        }
+        List<Product> targetProducts = resolveTargetProducts(promotion);
+        if (targetProducts.isEmpty()) {
+            return;
+        }
+
+        ensureProductsAvailableForPromotion(targetProducts, promotion);
+        applyPricingForProducts(promotion, targetProducts);
+    }
+
+    private List<Product> resolveTargetProducts(Promotion promotion) {
+        if (promotion.getApplyScope() == DiscountApplyScope.PRODUCT) {
+            Set<String> productIds = promotion.getProductApply().stream()
+                    .map(Product::getId)
+                    .collect(Collectors.toSet());
+            if (productIds.isEmpty()) {
+                return Collections.emptyList();
+            }
+            return productRepository.findAllById(productIds).stream()
+                    .filter(product -> product.getStatus() == ProductStatus.APPROVED)
+                    .collect(Collectors.toList());
+        } else if (promotion.getApplyScope() == DiscountApplyScope.CATEGORY) {
+            Set<String> categoryIds = promotion.getCategoryApply().stream()
+                    .map(Category::getId)
+                    .collect(Collectors.toSet());
+            if (categoryIds.isEmpty()) {
+                return Collections.emptyList();
+            }
+            Set<Product> products = new HashSet<>();
+            for (String categoryId : categoryIds) {
+                products.addAll(productRepository.findByCategoryId(categoryId));
+            }
+            return products.stream()
+                    .filter(product -> product.getStatus() == ProductStatus.APPROVED)
+                    .collect(Collectors.toList());
+        }
+        return Collections.emptyList();
+    }
+
+    private void ensureProductsAvailableForPromotion(List<Product> products, Promotion promotion) {
+        List<String> conflicted = products.stream()
+                .filter(p -> p.getPromotion() != null
+                        && !promotion.getId().equals(p.getPromotion().getId()))
+                .map(Product::getId)
+                .toList();
+        if (!conflicted.isEmpty()) {
+            // Lấy tên sản phẩm để hiển thị trong error message
+            List<String> conflictedNames = products.stream()
+                    .filter(p -> p.getPromotion() != null
+                            && !promotion.getId().equals(p.getPromotion().getId()))
+                    .map(Product::getName)
+                    .toList();
+            log.warn("Cannot apply promotion {} due to conflicts on products {}", promotion.getId(), conflicted);
+            String errorMessage = String.format(
+                    "Không thể áp dụng khuyến mãi. Các sản phẩm sau đã có khuyến mãi đang hoạt động: %s",
+                    String.join(", ", conflictedNames));
+            throw new AppException(ErrorCode.PROMOTION_PRODUCT_CONFLICT, errorMessage);
+        }
+    }
+
+    private void applyPricingForProducts(Promotion promotion, List<Product> products) {
+        if (products.isEmpty()) return;
+
+        for (Product product : products) {
+            double unitPrice = product.getUnitPrice() != null ? product.getUnitPrice() : 0.0;
+            double taxAmount = product.getTax() != null ? product.getTax() : 0.0;
+            
+            // Tính discountValue từ promotion
+            double discountAmount = calculateDiscountAmount(promotion, unitPrice);
+            
+            // Tính price = unitPrice + tax - discountValue
+            double finalPrice = Math.max(0, unitPrice + taxAmount - discountAmount);
+
+            product.setDiscountValue(discountAmount);
+            product.setPrice(finalPrice);
+            product.setPromotion(promotion);
+        }
+
+        productRepository.saveAll(products);
+    }
+
+    private double calculateDiscountAmount(Promotion promotion, double basePrice) {
+        if (basePrice <= 0) return 0;
+        double discountValue = promotion.getDiscountValue() != null ? promotion.getDiscountValue() : 0;
+        double discountAmount = 0;
+
+        switch (promotion.getDiscountValueType()) {
+            case PERCENTAGE -> {
+                discountAmount = basePrice * (discountValue / 100.0);
+                Double maxDiscount = promotion.getMaxDiscountValue();
+                if (maxDiscount != null && maxDiscount > 0) {
+                    discountAmount = Math.min(discountAmount, maxDiscount);
+                }
+            }
+            case AMOUNT -> discountAmount = discountValue;
+        }
+        return Math.min(discountAmount, basePrice);
+    }
+
+    private void clearPromotionPricing(Promotion promotion) {
+        List<Product> products = productRepository.findByPromotionId(promotion.getId());
+        if (products.isEmpty()) {
+            return;
+        }
+        for (Product product : products) {
+            double unitPrice = product.getUnitPrice() != null ? product.getUnitPrice() : 0.0;
+            double taxAmount = product.getTax() != null ? product.getTax() : 0.0;
+            
+            // Khôi phục: discountValue = 0, price = unitPrice + tax
+            product.setDiscountValue(0.0);
+            product.setPrice(unitPrice + taxAmount);
+            product.setPromotion(null);
+        }
+        productRepository.saveAll(products);
+    }
+
+    @Transactional
+    public void detachPromotionFromProducts(Promotion promotion) {
+        clearPromotionPricing(promotion);
+        promotion.setIsActive(false);
+        promotionRepository.save(promotion);
+    }
+
+    private void deleteMediaFileIfExists(Promotion promotion) {
+        try {
+            if (promotion.getImageUrl() != null && !promotion.getImageUrl().isBlank()) {
+                long totalUsages = promotionRepository.countByImageUrl(promotion.getImageUrl());
+                if (totalUsages > 1) {
+                    log.debug("Skip deleting promotion media {} because it is still referenced by {} records",
+                            promotion.getImageUrl(), totalUsages - 1);
+                    return;
+                }
+                deletePhysicalFileByUrl(promotion.getImageUrl());
+            }
+        } catch (Exception e) {
+            log.warn("Failed to delete media file for promotion {}: {}", promotion.getId(), e.getMessage());
+        }
+    }
+
+    private void deletePhysicalFileByUrl(String url) {
+        if (url == null || url.isBlank()) return;
+        try {
+            String filename = null;
+            try {
+                URI uri = URI.create(url);
+                String path = uri.getPath();
+                if (path != null && !path.isBlank()) {
+                    // Loại bỏ context path nếu có (ví dụ: /lumina_book)
+                    if (path.startsWith("/lumina_book")) {
+                        path = path.substring("/lumina_book".length());
+                    }
+                    // Tìm phần path sau /promotion_media/ hoặc legacy /promotions/
+                    if (path.contains("/promotion_media/")) {
+                        int promotionsIndex = path.indexOf("/promotion_media/");
+                        filename = path.substring(promotionsIndex + "/promotion_media/".length());
+                    } else if (path.contains("/promotions/")) {
+                        int promotionsIndex = path.indexOf("/promotions/");
+                        filename = path.substring(promotionsIndex + "/promotions/".length());
+                    } else {
+                        // Nếu không có /promotions/, lấy filename từ cuối path
+                        int lastSlash = path.lastIndexOf('/');
+                        if (lastSlash >= 0 && lastSlash < path.length() - 1) {
+                            filename = path.substring(lastSlash + 1);
+                        }
+                    }
+                }
+            } catch (IllegalArgumentException ignored) { }
+
+            if (filename == null) {
+                String path = url;
+                // Loại bỏ protocol và domain nếu có
+                if (path.startsWith("http://") || path.startsWith("https://")) {
+                    try {
+                        java.net.URI uri = java.net.URI.create(path);
+                        path = uri.getPath();
+                    } catch (Exception ignored) { }
+                }
+                // Loại bỏ context path nếu có
+                if (path.startsWith("/lumina_book")) {
+                    path = path.substring("/lumina_book".length());
+                }
+                if (path.startsWith("/")) path = path.substring(1);
+                if (path.startsWith("uploads/promotions/")) {
+                    filename = path.substring("uploads/promotions/".length());
+                } else if (path.startsWith("promotion_media/")) {
+                    filename = path.substring("promotion_media/".length());
+                } else if (path.startsWith("promotions/")) {
+                    filename = path.substring("promotions/".length());
+                }
+            }
+
+            if (filename == null && !url.contains("/")) {
+                filename = url;
+            }
+
+            if (filename == null || filename.isBlank()) return;
+
+            // Xác định thư mục dựa trên URL (mặc định là uploads/promotions)
+            Path targetDir = Paths.get("uploads", "promotions");
+            Path filePath = targetDir.resolve(filename);
+            boolean deleted = Files.deleteIfExists(filePath);
+
+            if (!deleted) {
+                Path legacyDir = Paths.get("promotions");
+                Path legacyPath = legacyDir.resolve(filename);
+                deleted = Files.deleteIfExists(legacyPath);
+                // if (deleted) {
+                //     log.info("Deleted media file from legacy folder: {}", legacyPath.toAbsolutePath());
+                // }
+            } else {
+                log.info("Deleted media file: {}", filePath.toAbsolutePath());
+            }
+        } catch (Exception e) {
+            log.warn("Could not delete media file for url {}: {}", url, e.getMessage());
+        }
     }
 }

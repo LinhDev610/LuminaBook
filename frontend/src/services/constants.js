@@ -172,7 +172,6 @@ export const INITIAL_FORM_STATE_VOUCHER = {
     maxDiscountValue: '',
     startDate: '',
     expiryDate: '',
-    usageLimit: '',
     applyScope: 'CATEGORY', // Default to CATEGORY to match image
     categoryIds: [],
     productIds: [],
@@ -190,7 +189,6 @@ export const INITIAL_FORM_STATE_PROMOTION = {
     maxDiscountValue: '',
     startDate: '',
     expiryDate: '',
-    usageLimit: '',
     applyScope: 'CATEGORY',
     categoryIds: [],
     productIds: [],

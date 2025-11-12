@@ -79,7 +79,16 @@ public class GlobalExceptionHandler {
             log.info(attributes.toString());
 
         } catch (IllegalArgumentException ex) {
-
+            // Nếu không tìm thấy ErrorCode enum, sử dụng message từ validation annotation
+            if (exception.getFieldError() != null) {
+                String validationMessage = exception.getFieldError().getDefaultMessage();
+                log.warn("Validation error - field: {}, message: {}", 
+                    exception.getFieldError().getField(), validationMessage);
+                ApiResponse<?> apiResponse = new ApiResponse();
+                apiResponse.setCode(ErrorCode.INVALID_KEY.getCode());
+                apiResponse.setMessage(validationMessage);
+                return ResponseEntity.badRequest().body(apiResponse);
+            }
         }
 
         ApiResponse<?> apiResponse = new ApiResponse();

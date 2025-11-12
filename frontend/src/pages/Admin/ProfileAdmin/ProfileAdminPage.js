@@ -5,7 +5,7 @@ import styles from './ProfileAdminPage.module.scss';
 import guestAvatar from '../../../assets/icons/icon_img_guest.png';
 import Notification from '../../../components/Common/Notification/Notification';
 import ConfirmDialog from '../../../layouts/components/ConfirmDialog';
-import { getMyInfo, updateUser, changePassword, uploadMedia } from '../../../services';
+import { getMyInfo, updateUser, changePassword, uploadMediaProfile } from '../../../services';
 
 const cx = classNames.bind(styles);
 
@@ -214,7 +214,7 @@ function ProfileAdminPage() {
                                         // Upload to server to obtain persistent URL
                                         setUploadingAvatar(true);
                                         const token = getStoredToken();
-                                        const { ok: uploadOk, data: uploadData } = await uploadMedia(file, token);
+                                        const { ok: uploadOk, data: uploadData } = await uploadMediaProfile(file, token);
                                         if (uploadOk && Array.isArray(uploadData?.result) && uploadData.result.length > 0) {
                                             const uploadedUrl = uploadData.result[0];
                                             // Update user avatar URL

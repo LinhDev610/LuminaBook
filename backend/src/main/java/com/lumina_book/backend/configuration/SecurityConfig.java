@@ -42,8 +42,13 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity httpSecurity) throws Exception {
         httpSecurity.authorizeHttpRequests(request -> request
-                // Cho phép truy cập file media của product không cần token
-                .requestMatchers(HttpMethod.GET, "/product_media/**").permitAll()
+                // Cho phép truy cập file media không cần token
+                .requestMatchers(HttpMethod.GET,
+                        "/product_media/**",
+                        "/voucher_media/**",
+                        "/promotion_media/**",
+                        "/vouchers/**",
+                        "/promotions/**").permitAll()
                 // Các endpoint public theo danh sách (POST)
                 .requestMatchers(HttpMethod.POST, PUBLIC_ENDPOINTS).permitAll()
                 .anyRequest()

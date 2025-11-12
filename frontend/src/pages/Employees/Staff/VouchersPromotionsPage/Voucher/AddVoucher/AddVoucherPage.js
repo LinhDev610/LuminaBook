@@ -9,7 +9,7 @@ import {
     getActiveCategories,
     getActiveProducts,
     getStoredToken,
-    uploadProductMedia,
+    uploadVoucherMedia,
     DISCOUNT_VALUE_TYPES,
     APPLY_SCOPE_OPTIONS,
     INITIAL_FORM_STATE_VOUCHER,
@@ -247,13 +247,13 @@ export default function AddVoucherPage() {
     }, [formState]);
 
     const preparePayload = async () => {
-        let imageUrl = formState.imageUrl.trim() || null;
+        let imageUrl = null;
 
         // Nếu có file ảnh được chọn, upload ảnh lên server
         if (imageFile) {
             try {
                 const token = getStoredToken();
-                const { ok, url, message } = await uploadProductMedia(imageFile, token);
+                const { ok, url, message } = await uploadVoucherMedia(imageFile, token);
                 if (ok && url) {
                     imageUrl = url;
                 } else {
@@ -262,6 +262,9 @@ export default function AddVoucherPage() {
             } catch (err) {
                 throw new Error('Không thể upload ảnh. Vui lòng thử lại.');
             }
+        } else if (formState.imageUrl && formState.imageUrl.trim()) {
+            // Nếu không có file mới nhưng đã có URL từ trước, sử dụng URL đó
+            imageUrl = formState.imageUrl.trim();
         }
 
         // Chuyển đổi giá trị giảm giá từ chuỗi thành số
@@ -284,17 +287,25 @@ export default function AddVoucherPage() {
             expiryDate: formState.expiryDate,
             usageLimit: Number(formState.usageLimit),
             applyScope: formState.applyScope,
-            categoryIds: formState.applyScope === 'CATEGORY' ? (Array.isArray(formState.categoryIds) ? formState.categoryIds : [formState.categoryIds].filter(Boolean)) : [],
-            productIds: formState.applyScope === 'PRODUCT' ? formState.productIds : [],
+            categoryIds: formState.applyScope === 'CATEGORY' ? (Array.isArray(formState.categoryIds) ? formState.categoryIds : [formState.categoryIds].filter(Boolean)) : null,
+            productIds: formState.applyScope === 'PRODUCT' ? formState.productIds : null,
         };
         return payload;
     };
 
     const handleSubmit = async (event) => {
         event.preventDefault();
+        event.stopPropagation();
+
+        // Prevent double submit
+        if (isSubmitting) {
+            return;
+        }
+
         if (!validate()) {
             return;
         }
+
         try {
             setIsSubmitting(true);
             const token = getStoredToken();
@@ -303,6 +314,7 @@ export default function AddVoucherPage() {
             if (!ok) {
                 const message = data?.message || 'Không thể tạo voucher. Vui lòng thử lại.';
                 notifyError(message);
+                setIsSubmitting(false);
                 return;
             }
             success('Đã gửi duyệt voucher thành công!');
@@ -312,7 +324,6 @@ export default function AddVoucherPage() {
             const message =
                 err?.data?.message || err?.message || 'Có lỗi xảy ra khi gửi duyệt voucher.';
             notifyError(message);
-        } finally {
             setIsSubmitting(false);
         }
     };

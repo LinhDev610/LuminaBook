@@ -1,5 +1,8 @@
 package com.lumina_book.backend.service;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -185,8 +188,11 @@ public class VoucherService {
             throw new AppException(ErrorCode.UNAUTHORIZED);
         }
 
+        // Xóa file media vật lý trong thư mục vouchers (nếu có)
+        deleteMediaFileIfExists(voucher);
+
         voucherRepository.delete(voucher);
-//        log.info("Voucher deleted: {} by user: {}", voucherId, currentUserId);
+        // log.info("Voucher deleted: {} by user: {}", voucherId, currentUserId);
     }
 
     private User getCurrentUser() {
@@ -252,6 +258,100 @@ public class VoucherService {
                         .findById(productId)
                         .orElseThrow(() -> new AppException(ErrorCode.PRODUCT_NOT_EXISTED)))
                 .collect(Collectors.toSet());
+    }
+
+    private void deleteMediaFileIfExists(Voucher voucher) {
+        try {
+            if (voucher.getImageUrl() != null && !voucher.getImageUrl().isBlank()) {
+                long totalUsages = voucherRepository.countByImageUrl(voucher.getImageUrl());
+                if (totalUsages > 1) {
+                    log.debug("Skip deleting voucher media {} because it is still referenced by {} records",
+                            voucher.getImageUrl(), totalUsages - 1);
+                    return;
+                }
+                deletePhysicalFileByUrl(voucher.getImageUrl());
+            }
+        } catch (Exception e) {
+            log.warn("Failed to delete media file for voucher {}: {}", voucher.getId(), e.getMessage());
+        }
+    }
+
+    private void deletePhysicalFileByUrl(String url) {
+        if (url == null || url.isBlank()) return;
+        try {
+            String filename = null;
+            try {
+                java.net.URI uri = java.net.URI.create(url);
+                String path = uri.getPath();
+                if (path != null && !path.isBlank()) {
+                    // Loại bỏ context path nếu có (ví dụ: /lumina_book)
+                    if (path.startsWith("/lumina_book")) {
+                        path = path.substring("/lumina_book".length());
+                    }
+                    // Tìm phần path sau /voucher_media/ hoặc legacy /vouchers/
+                    if (path.contains("/voucher_media/")) {
+                        int vouchersIndex = path.indexOf("/voucher_media/");
+                        filename = path.substring(vouchersIndex + "/voucher_media/".length());
+                    } else if (path.contains("/vouchers/")) {
+                        int vouchersIndex = path.indexOf("/vouchers/");
+                        filename = path.substring(vouchersIndex + "/vouchers/".length());
+                    } else {
+                        // Nếu không có /vouchers/, lấy filename từ cuối path
+                        int lastSlash = path.lastIndexOf('/');
+                        if (lastSlash >= 0 && lastSlash < path.length() - 1) {
+                            filename = path.substring(lastSlash + 1);
+                        }
+                    }
+                }
+            } catch (IllegalArgumentException ignored) { }
+
+            if (filename == null) {
+                String path = url;
+                // Loại bỏ protocol và domain nếu có
+                if (path.startsWith("http://") || path.startsWith("https://")) {
+                    try {
+                        java.net.URI uri = java.net.URI.create(path);
+                        path = uri.getPath();
+                    } catch (Exception ignored) { }
+                }
+                // Loại bỏ context path nếu có
+                if (path.startsWith("/lumina_book")) {
+                    path = path.substring("/lumina_book".length());
+                }
+                if (path.startsWith("/")) path = path.substring(1);
+                if (path.startsWith("uploads/vouchers/")) {
+                    filename = path.substring("uploads/vouchers/".length());
+                } else if (path.startsWith("voucher_media/")) {
+                    filename = path.substring("voucher_media/".length());
+                } else if (path.startsWith("vouchers/")) {
+                    filename = path.substring("vouchers/".length());
+                }
+            }
+
+            if (filename == null && !url.contains("/")) {
+                filename = url;
+            }
+
+            if (filename == null || filename.isBlank()) return;
+
+            // Xác định thư mục dựa trên URL (mặc định là uploads/vouchers)
+            Path targetDir = Paths.get("uploads", "vouchers");
+            Path filePath = targetDir.resolve(filename);
+            boolean deleted = Files.deleteIfExists(filePath);
+
+            if (!deleted) {
+                Path legacyDir = Paths.get("vouchers");
+                Path legacyPath = legacyDir.resolve(filename);
+                deleted = Files.deleteIfExists(legacyPath);
+                // if (deleted) {
+                //     log.info("Deleted media file from legacy folder: {}", legacyPath.toAbsolutePath());
+                // }
+            } else {
+                log.info("Deleted media file: {}", filePath.toAbsolutePath());
+            }
+        } catch (Exception e) {
+            log.warn("Could not delete media file for url {}: {}", url, e.getMessage());
+        }
     }
 }
 

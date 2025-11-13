@@ -7,9 +7,9 @@ import { useNotification } from '../../../../../components/Common/Notification';
 import {
     getStoredToken as getStoredTokenUtil,
     refreshToken as refreshTokenAPI,
-    getApiBaseUrl,
     getActiveCategories,
     createProduct,
+    uploadProductMedia,
     INITIAL_FORM_STATE_PRODUCT,
 } from '../../../../../services';
 
@@ -52,11 +52,23 @@ export default function AddProductPage() {
     // ========== Helper Functions ==========
     const getStoredToken = useCallback((key) => getStoredTokenUtil(key), []);
 
+    // Hàm xử lý số thập phân (cho length, width, height, weight)
+    const handleDecimalInput = useCallback((value, setter) => {
+        const raw = (value || '').replace(',', '.');
+        const cleaned = raw.replace(/[^0-9.]/g, '');
+        if (cleaned === '') {
+            setter('');
+            return;
+        }
+        const n = Number(cleaned);
+        setter(Number.isNaN(n) ? 0 : n);
+    }, []);
+
     // Reset form về trạng thái ban đầu
     const resetForm = useCallback(() => {
         try {
             formRef.current?.reset();
-        } catch (_) {}
+        } catch (_) { }
         // Reset tất cả fields về giá trị ban đầu từ constants
         setProductId(INITIAL_FORM_STATE_PRODUCT.productId);
         setName(INITIAL_FORM_STATE_PRODUCT.name);
@@ -181,7 +193,7 @@ export default function AddProductPage() {
                 localStorage.setItem('refreshToken', responseData.token);
                 return responseData.token;
             }
-        } catch (_) {}
+        } catch (_) { }
         return null;
     }, [getStoredToken]);
 
@@ -192,30 +204,24 @@ export default function AddProductPage() {
         }
 
         try {
-            // Upload multiple files - backend endpoint supports multiple files
-            const formData = new FormData();
-            files.forEach((m) => formData.append('files', m.file));
+            const fileArray = files.map((m) => m.file);
+            const { ok, urls, message } = await uploadProductMedia(fileArray, token);
 
-            const uploadResp = await fetch(`${getApiBaseUrl()}/media/upload-product`, {
-                method: 'POST',
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                },
-                body: formData,
-            });
-
-            if (!uploadResp.ok) {
-                throw new Error('Upload media thất bại');
+            if (!ok || !urls || urls.length === 0) {
+                throw new Error(message || 'Upload media thất bại');
             }
 
-            const uploadData = await uploadResp.json().catch(() => ({}));
-            const urls = Array.isArray(uploadData?.result) ? uploadData.result : [];
+            // Validate số lượng URLs khớp với số lượng files
+            if (urls.length !== files.length) {
+                throw new Error(
+                    `Số lượng URLs (${urls.length}) không khớp với số lượng files (${files.length})`,
+                );
+            }
 
             // Map uploaded URLs back to media files
-            let idx = 0;
-            const mapped = files.map((m) => ({
+            const mapped = files.map((m, index) => ({
                 ...m,
-                uploadedUrl: urls[idx++],
+                uploadedUrl: urls[index],
             }));
 
             const imageUrls = mapped
@@ -260,8 +266,8 @@ export default function AddProductPage() {
             defaultMediaUrl: defaultUrl || undefined,
             stockQuantity:
                 stockQuantity !== undefined &&
-                stockQuantity !== null &&
-                stockQuantity !== ''
+                    stockQuantity !== null &&
+                    stockQuantity !== ''
                     ? Number(stockQuantity)
                     : undefined,
         }),
@@ -283,26 +289,6 @@ export default function AddProductPage() {
             stockQuantity,
         ],
     );
-
-    // Handle API error response
-    const handleApiError = useCallback((response, data) => {
-        const serverMsg = data?.message || data?.error || data?.result || '';
-        let errorMessage = serverMsg || 'Thêm sản phẩm thất bại. Vui lòng thử lại.';
-
-        if (response.status === 403) {
-            errorMessage = 'Bạn không có quyền thực hiện hành động này.';
-        } else if (response.status === 401) {
-            errorMessage = 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.';
-        } else if (response.status === 400) {
-            errorMessage = serverMsg
-                ? `Dữ liệu không hợp lệ: ${serverMsg}`
-                : 'Dữ liệu không hợp lệ. Vui lòng kiểm tra lại thông tin.';
-        } else if (response.status >= 500) {
-            errorMessage = 'Lỗi máy chủ. Vui lòng thử lại sau.';
-        }
-
-        return errorMessage;
-    }, []);
 
     // ========== Event Handlers ==========
     const handleReset = resetForm;
@@ -519,17 +505,7 @@ export default function AddProductPage() {
                                 step="0.01"
                                 placeholder="Dài (cm)"
                                 value={length}
-                                onChange={(e) => {
-                                    const raw = (e.target.value || '').replace(',', '.');
-                                    // loại bỏ ký tự không hợp lệ (khoảng trắng, chữ cái, ký hiệu) trước khi chuyển sang số thập phân.
-                                    const cleaned = raw.replace(/[^0-9.]/g, '');
-                                    if (cleaned === '') {
-                                        setLength('');
-                                        return;
-                                    }
-                                    const n = Number(cleaned); // Chuỗi số -> số thực
-                                    setLength(Number.isNaN(n) ? 0 : n); // Đổi thất bại gán 0
-                                }}
+                                onChange={(e) => handleDecimalInput(e.target.value, setLength)}
                             />
                             <input
                                 type="number"
@@ -537,16 +513,7 @@ export default function AddProductPage() {
                                 step="0.01"
                                 placeholder="Rộng (cm)"
                                 value={width}
-                                onChange={(e) => {
-                                    const raw = (e.target.value || '').replace(',', '.');
-                                    const cleaned = raw.replace(/[^0-9.]/g, '');
-                                    if (cleaned === '') {
-                                        setWidth('');
-                                        return;
-                                    }
-                                    const n = Number(cleaned);
-                                    setWidth(Number.isNaN(n) ? 0 : n);
-                                }}
+                                onChange={(e) => handleDecimalInput(e.target.value, setWidth)}
                             />
                             <input
                                 type="number"
@@ -554,16 +521,7 @@ export default function AddProductPage() {
                                 step="0.01"
                                 placeholder="Cao (cm)"
                                 value={height}
-                                onChange={(e) => {
-                                    const raw = (e.target.value || '').replace(',', '.');
-                                    const cleaned = raw.replace(/[^0-9.]/g, '');
-                                    if (cleaned === '') {
-                                        setHeight('');
-                                        return;
-                                    }
-                                    const n = Number(cleaned);
-                                    setHeight(Number.isNaN(n) ? 0 : n);
-                                }}
+                                onChange={(e) => handleDecimalInput(e.target.value, setHeight)}
                             />
                             <input
                                 type="number"
@@ -571,17 +529,7 @@ export default function AddProductPage() {
                                 step="0.01"
                                 placeholder="Trọng lượng (g)"
                                 value={weight}
-                                onChange={(e) => {
-                                    const raw = (e.target.value || '').replace(',', '.');
-                                    const cleaned = raw.replace(/[^0-9.]/g, '');
-                                    // Cho phép chuỗi rỗng để người dùng tiếp tục nhập
-                                    if (cleaned === '') {
-                                        setWeight('');
-                                        return;
-                                    }
-                                    const n = Number(cleaned);
-                                    setWeight(Number.isNaN(n) ? 0 : n);
-                                }}
+                                onChange={(e) => handleDecimalInput(e.target.value, setWeight)}
                             />
                         </div>
                         <div className={cx('grid4')}>

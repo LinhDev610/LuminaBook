@@ -271,62 +271,41 @@ export async function uploadMediaProfile(file, token = null) {
     return { ok, data: extractResult(data) };
 }
 
+async function uploadMediaFiles(endpoint, file, token = null) {
+    const formData = new FormData();
+    // Backend expects 'files' part name
+    // Support both single file and array of files
+    if (Array.isArray(file)) {
+        file.forEach((f) => formData.append('files', f));
+    } else {
+        formData.append('files', file);
+    }
+    const { data, ok, status } = await apiRequest(endpoint, {
+        method: 'POST',
+        body: formData,
+        token,
+        isFormData: true,
+    });
+    // API returns ApiResponse<List<String>> with result being array of URLs
+    const urls = extractResult(data, true);
+    const url = Array.isArray(urls) ? urls[0] : null;
+    const message =
+        data?.message ||
+        data?.error ||
+        (status && !ok ? `Upload failed with status ${status}` : null);
+    return { ok, status, url, urls: Array.isArray(urls) ? urls : [], message };
+}
+
 export async function uploadProductMedia(file, token = null) {
-    const formData = new FormData();
-    // Backend expects 'files' part name
-    formData.append('files', file);
-    const { data, ok, status } = await apiRequest('/media/upload-product', {
-        method: 'POST',
-        body: formData,
-        token,
-        isFormData: true,
-    });
-    // API returns ApiResponse<List<String>> with result being array of URLs
-    const urls = extractResult(data, true);
-    const url = Array.isArray(urls) ? urls[0] : null;
-    const message =
-        data?.message ||
-        data?.error ||
-        (status && !ok ? `Upload failed with status ${status}` : null);
-    return { ok, status, url, message };
+    return uploadMediaFiles('/media/upload-product', file, token);
 }
+
 export async function uploadVoucherMedia(file, token = null) {
-    const formData = new FormData();
-    // Backend expects 'files' part name
-    formData.append('files', file);
-    const { data, ok, status } = await apiRequest('/media/upload-voucher', {
-        method: 'POST',
-        body: formData,
-        token,
-        isFormData: true,
-    });
-    // API returns ApiResponse<List<String>> with result being array of URLs
-    const urls = extractResult(data, true);
-    const url = Array.isArray(urls) ? urls[0] : null;
-    const message =
-        data?.message ||
-        data?.error ||
-        (status && !ok ? `Upload failed with status ${status}` : null);
-    return { ok, status, url, message };
+    return uploadMediaFiles('/media/upload-voucher', file, token);
 }
+
 export async function uploadPromotionMedia(file, token = null) {
-    const formData = new FormData();
-    // Backend expects 'files' part name
-    formData.append('files', file);
-    const { data, ok, status } = await apiRequest('/media/upload-promotion', {
-        method: 'POST',
-        body: formData,
-        token,
-        isFormData: true,
-    });
-    // API returns ApiResponse<List<String>> with result being array of URLs
-    const urls = extractResult(data, true);
-    const url = Array.isArray(urls) ? urls[0] : null;
-    const message =
-        data?.message ||
-        data?.error ||
-        (status && !ok ? `Upload failed with status ${status}` : null);
-    return { ok, status, url, message };
+    return uploadMediaFiles('/media/upload-promotion', file, token);
 }
 
 // ========== VOUCHER API ==========

@@ -21,7 +21,7 @@ import org.springframework.web.filter.CorsFilter;
 @EnableMethodSecurity
 public class SecurityConfig {
     // API không cần xác thực (ai cũng có thể gọi được).
-    private static final String[] PUBLIC_ENDPOINTS = {
+    private static final String[] PUBLIC_POST_ENDPOINTS = {
         "/users",
         "/auth/token",
         "/auth/introspect",
@@ -30,6 +30,16 @@ public class SecurityConfig {
         "/auth/send-otp",
         "/auth/verify-otp",
         "/auth/reset-password"
+    };
+
+    private static final String[] PUBLIC_GET_ENDPOINTS = {
+        "/product_media/**",
+        "/voucher_media/**",
+        "/promotion_media/**",
+        "/vouchers/**",
+        "/promotions/**",
+        "/uploads/**",
+        "/banners/active"
     };
 
     private final CustomJwtDecoder customJwtDecoder;
@@ -42,15 +52,8 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity httpSecurity) throws Exception {
         httpSecurity.authorizeHttpRequests(request -> request
-                // Cho phép truy cập file media không cần token
-                .requestMatchers(HttpMethod.GET,
-                        "/product_media/**",
-                        "/voucher_media/**",
-                        "/promotion_media/**",
-                        "/vouchers/**",
-                        "/promotions/**").permitAll()
-                // Các endpoint public theo danh sách (POST)
-                .requestMatchers(HttpMethod.POST, PUBLIC_ENDPOINTS).permitAll()
+                .requestMatchers(HttpMethod.GET,PUBLIC_GET_ENDPOINTS).permitAll()
+                .requestMatchers(HttpMethod.POST, PUBLIC_POST_ENDPOINTS).permitAll()
                 .anyRequest()
                 .authenticated()); // Tất cả request khác đề buộc phải có JWT hợp lệ
 

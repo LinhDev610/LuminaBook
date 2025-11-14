@@ -1,0 +1,149 @@
+.admin-page {
+    padding: 24px;
+    background: #f2ebdd;
+    min-height: 100vh;
+}
+
+.page-title {
+    font-size: 30px;
+    font-weight: 700;
+    color: #1b2b34;
+    margin: 0 0 24px 0;
+}
+
+.tabs {
+    display: flex;
+    gap: 0;
+    margin-bottom: 24px;
+}
+
+.tab {
+    padding: 12px 24px;
+    background: transparent;
+    border: none;
+    font-size: 16px;
+    font-weight: 600;
+    color: #1b2b34;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border-radius: 8px 8px 0 0;
+}
+
+.tab:hover {
+    color: #1A3C5A;
+    background: rgba(26, 60, 90, 0.05);
+}
+
+.tab.active {
+    color: #fff;
+    background: #1A3C5A;
+    border-radius: 8px;
+}
+
+.table-container {
+    background: #fff;
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.table-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: #1b2b34;
+    margin: 0 0 20px 0;
+}
+
+.content-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.content-table thead {
+    background: #1A3C5A;
+}
+
+.content-table th {
+    padding: 12px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 16px;
+    color: #fff;
+    border-bottom: 2px solid #0f2a3f;
+}
+
+.content-table td {
+    padding: 12px;
+    font-size: 16px;
+    color: #374151;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.content-table tbody tr:hover {
+    background: #f9fafb;
+}
+
+.odd-row {
+    background: #fafafa;
+}
+
+.title-cell {
+    font-weight: 500;
+    color: #1b2b34;
+}
+
+.link-cell {
+    color: #7c3aed;
+}
+
+.link-text {
+    color: #7c3aed;
+    text-decoration: underline;
+    cursor: pointer;
+    transition: color 0.2s ease;
+}
+
+.link-text:hover {
+    color: #6d28d9;
+}
+
+.status-tag {
+    display: inline-block;
+    padding: 5px 14px;
+    border-radius: 16px;
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.status-tag.status-pending {
+    background: #fbbf24;
+    color: #78350f;
+}
+
+.status-tag.status-approved {
+    background: #10b981;
+    color: #064e3b;
+}
+
+.status-tag.status-rejected {
+    background: #ef4444;
+    color: #7f1d1d;
+}
+
+.view-btn {
+    background: #1A3C5A;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 7px 14px;
+    font-size: 15px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background 0.2s ease;
+}
+
+.view-btn:hover {
+    background: #0f2a3f;
+}
+

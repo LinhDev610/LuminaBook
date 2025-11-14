@@ -7,6 +7,8 @@ import AdminRedirectHandler from '../../components/AdminRedirectHandler';
 
 import styles from './Home.module.scss';
 import ProductList from '../../components/Common/ProductList/ProductList';
+import { getApiBaseUrl } from '../../services/utils';
+import { normalizeMediaUrl } from '../../services/productUtils';
 
 // Import images
 import heroImage from '../../assets/images/img_qc.png';
@@ -178,6 +180,30 @@ function Home() {
         };
     }, [hasToken, token]);
 
+    const API_BASE_URL = getApiBaseUrl();
+    const [activeBannerImages, setActiveBannerImages] = useState([]);
+
+    useEffect(() => {
+        let canceled = false;
+        const fetchActiveBanners = async () => {
+            try {
+                const resp = await fetch(`${API_BASE_URL}/banners/active`);
+                const data = await resp.json();
+                if (!resp.ok) return;
+                const images = (data?.result || [])
+                    .filter((b) => b?.imageUrl)
+                    .map((b) => normalizeMediaUrl(b.imageUrl, API_BASE_URL));
+                if (!canceled) setActiveBannerImages(images);
+            } catch (e) {
+                // silent fail for public home
+            }
+        };
+        fetchActiveBanners();
+        return () => {
+            canceled = true;
+        };
+    }, [API_BASE_URL]);
+
     return (
         <div className={cx('home-wrapper')}>
             <AdminRedirectHandler />
@@ -185,7 +211,7 @@ function Home() {
                 <main className={cx('home-content')}>
                 {/* Main Content Area - 2 columns layout */}
                 <Banner1
-                    heroImage={heroImage}
+                    heroImages={activeBannerImages.length ? activeBannerImages : [heroImage]}
                     promos={[
                         { image: promoImage1, alt: 'Sách kĩ năng sống' },
                         { image: promoImage2, alt: 'Sách tài chính' },

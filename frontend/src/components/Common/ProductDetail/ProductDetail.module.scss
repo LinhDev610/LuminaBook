@@ -344,6 +344,35 @@
     }
   }
 
+  .rejectionBox {
+    background: #fee2e2;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 16px;
+    border-left: 4px solid #dc2626;
+  }
+
+  .rejectionTitle {
+    font-size: 16px;
+    font-weight: 700;
+    color: #dc2626;
+    margin: 0 0 8px 0;
+  }
+
+  .rejectionText {
+    font-size: 14px;
+    color: #000;
+    margin: 0 0 8px 0;
+    line-height: 1.5;
+  }
+
+  .rejectionDate {
+    font-size: 14px;
+    font-weight: 600;
+    color: #000;
+    margin: 0;
+  }
+
   .productDetails {
     background: white;
     padding: 25px;

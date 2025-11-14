@@ -37,6 +37,8 @@ public interface BannerMapper {
     @Mapping(target = "updatedAt", ignore = true)
     @Mapping(target = "createdBy", ignore = true)
     @Mapping(target = "products", ignore = true)
+    @Mapping(target = "rejectionReason", ignore = true) // Giữ nguyên rejectionReason, chỉ admin mới có thể thay đổi qua service
+    @Mapping(target = "pendingReview", ignore = true)
     void updateBanner(@MappingTarget Banner banner, BannerUpdateRequest request);
 
     @Named("mapProductIds")

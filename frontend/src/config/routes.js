@@ -2,7 +2,7 @@ const routes = {
     home: '/',
     cart: '/cart',
     contact: '/contact',
-    customerSupport: '/customer-support',
+    customerSupport: '/support',
     login: './login',
     register: './register',
     forgotPassword: './forgot-password',

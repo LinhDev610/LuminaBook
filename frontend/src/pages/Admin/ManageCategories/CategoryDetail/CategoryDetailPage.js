@@ -203,6 +203,30 @@ function CategoryDetailPage() {
                         </div>
                     </div>
                 </div>
+                {isAdmin && (
+                    <div className={cx('actions')}>
+                        {isEditing ? (
+                            <>
+                                <button
+                                    className={cx('btn', 'muted')}
+                                    onClick={handleToggleEdit}
+                                    disabled={saving}
+                                >
+                                    Hủy
+                                </button>
+                                <button
+                                    className={cx('btn', 'primary')}
+                                    onClick={handleSave}
+                                    disabled={saving}
+                                >
+                                    {saving ? 'Đang lưu...' : 'Lưu thay đổi'}
+                                </button>
+                            </>
+                        ) : (
+                            <button className={cx('btn', 'primary')} onClick={handleToggleEdit}>Chỉnh sửa</button>
+                        )}
+                    </div>
+                )}
             </div>
 
             <div className={cx('card')}>

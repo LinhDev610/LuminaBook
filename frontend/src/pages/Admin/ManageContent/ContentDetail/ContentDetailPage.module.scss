@@ -1,0 +1,593 @@
+.content-detail-page {
+    padding: 24px;
+    background: #f2ebdd;
+    min-height: 100vh;
+}
+
+.page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.back-btn {
+    background: none;
+    border: none;
+    font-size: 32px;
+    color: #1b2b34;
+    cursor: pointer;
+    padding: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    border-radius: 8px;
+    transition: background 0.2s ease;
+    font-weight: bold;
+}
+
+.back-btn:hover {
+    background: #e5e7eb;
+}
+
+.page-title {
+    font-size: 30px;
+    font-weight: 700;
+    color: #1b2b34;
+    margin: 0;
+}
+
+/* removed separate preview card; image now lives inside form-container header */
+
+/* legacy title style kept if needed elsewhere */
+
+.banner-preview {
+    width: 100%;
+    max-width: 1100px; /* widened preview */
+    margin: 0 auto; /* center preview */
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid #e5e7eb;
+    background: #f9fafb;
+    position: relative; /* allow overlay if needed */
+}
+
+.banner-title {
+    color: #1A3C5A;
+    font-size: 18px;
+    font-weight: 700;
+    padding: 12px 16px 6px 16px;
+}
+
+.banner-preview img {
+    width: 100%;
+    height: auto;
+    max-height: 1000px; /* increased height for larger image */
+    object-fit: contain; /* keep aspect ratio without cropping */
+    display: block;
+}
+
+.banner-title-overlay {
+    position: absolute;
+    left: 16px;
+    top: 12px;
+    padding: 0;
+    background: transparent;
+    color: #1A3C5A; /* brand color */
+    border-radius: 0;
+    font-size: 18px;
+    font-weight: 700;
+    max-width: 80%;
+    line-height: 1.4;
+    backdrop-filter: none;
+}
+
+.form-container {
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 32px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.form-group {
+    margin-bottom: 24px;
+}
+
+.form-label {
+    display: block;
+    font-weight: 600;
+    font-size: 15px;
+    color: #1b2b34;
+    margin-bottom: 8px;
+}
+
+.form-value {
+    padding: 12px 16px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 15px;
+    color: #1b2b34;
+    background: #f9fafb;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+}
+
+.description-value {
+    min-height: auto;
+    padding: 12px 16px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+}
+
+.title-value {
+    color: #1A3C5A;
+    font-weight: 700;
+}
+
+.status-badge {
+    display: inline-block;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.status-badge.pending {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.status-badge.approved {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.status-badge.rejected {
+    background: #fee2e2; /* light red */
+    color: #991b1b; /* dark red text */
+}
+
+.file-upload-section {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.file-upload-btn {
+    display: inline-block;
+    padding: 10px 20px;
+    background: #e5e7eb;
+    color: #374151;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.file-upload-btn:hover {
+    background: #d1d5db;
+}
+
+.file-input {
+    display: none;
+}
+
+.file-name {
+    font-size: 14px;
+    color: #6b7280;
+}
+
+.image-preview-wrapper {
+    margin-top: 12px;
+}
+
+.image-preview {
+    position: relative;
+    max-width: 500px;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid #e5e7eb;
+    background: #f9fafb;
+}
+
+.image-preview img {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+.image-actions {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+    padding: 6px;
+    background: linear-gradient(transparent, rgba(0, 0, 0, 0.55));
+}
+
+.image-actions .btn.muted {
+    background: rgba(255, 255, 255, 0.9);
+    color: #111827;
+    padding: 6px 8px;
+    border-radius: 6px;
+}
+
+.image-actions .btn.muted:hover {
+    background: #fff;
+}
+
+.product-link-section {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.product-link {
+    color: #1A3C5A;
+    background: transparent;
+    border: none;
+    padding: 0;
+    font-size: 15px;
+    cursor: pointer;
+    display: inline-block;
+    margin-bottom: 8px;
+    font-weight: 600;
+}
+
+.product-link:hover {
+    color: #10263b;
+}
+
+.product-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.product-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+}
+
+.product-name {
+    font-size: 15px;
+    color: #1b2b34;
+    flex: 1;
+}
+
+.btn {
+    border: none;
+    border-radius: 8px;
+    padding: 10px 14px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.btn.muted {
+    background: #c7ccd1;
+    color: #111827;
+    padding: 6px 8px;
+    border-radius: 6px;
+}
+
+.btn.muted:hover {
+    background: #b0b5ba;
+}
+
+.add-product-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    background: #10b981;
+    color: #ffffff;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.add-product-btn:hover {
+    background: #059669;
+}
+
+.plus-icon {
+    font-size: 18px;
+    font-weight: bold;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 32px;
+    padding-top: 32px;
+    border-top: 1px solid #e5e7eb;
+}
+
+.btn-edit {
+    background: #1A3C5A;
+    color: #fff;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: none;
+    min-width: 120px;
+}
+
+.btn-edit:hover:not(:disabled) {
+    background: #0f2a3f;
+}
+
+.btn-approve {
+    background: #10b981;
+    color: #fff;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: none;
+    min-width: 120px;
+}
+
+.btn-approve:hover:not(:disabled) {
+    background: #059669;
+}
+
+.btn-reject {
+    background: #ffffff;
+    color: #333;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1px solid #d1d5db;
+    min-width: 120px;
+}
+
+.btn-reject:hover:not(:disabled) {
+    background: #f9fafb;
+}
+
+.btn-delete {
+    background: #dc2626;
+    color: #fff;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: none;
+    min-width: 180px;
+}
+
+.btn-delete:hover:not(:disabled) {
+    background: #b91c1c;
+}
+
+.btn-confirm-delete {
+    background: #dc2626;
+    color: #fff;
+}
+
+.btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Modal */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal {
+    background: #ffffff;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 500px;
+    max-height: 80vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+}
+
+.modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 24px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.modal-title {
+    font-size: 22px;
+    font-weight: 700;
+    color: #1A3C5A;
+    margin: 0;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 28px;
+    color: #6b7280;
+    cursor: pointer;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    transition: background 0.2s ease;
+}
+
+.modal-close:hover {
+    background: #f3f4f6;
+}
+
+.modal-content {
+    padding: 20px 24px;
+    overflow-y: auto;
+    max-height: calc(80vh - 80px);
+    text-align: center;
+}
+
+.modal-message {
+    font-size: 18px;
+    color: #374151;
+    line-height: 1.6;
+    margin-bottom: 10px;
+}
+
+.modal-message:last-of-type {
+    margin-bottom: 0;
+}
+
+.banner-title-highlight {
+    color: #1A3C5A;
+    font-weight: 700;
+}
+
+.modal-input-section {
+    margin-bottom: 12px;
+}
+
+.modal-label {
+    display: block;
+    font-weight: 600;
+    font-size: 14px;
+    margin-bottom: 6px;
+}
+
+.modal-textarea {
+    width: 100%;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 14px;
+    resize: vertical;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    background: #f9fafb;
+}
+
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 10px;
+    padding: 0 24px 20px 24px;
+}
+
+.btn-confirm-reject {
+    background: #dc2626;
+    color: #fff;
+}
+
+/* Rejection reason box look consistent with other read-only fields */
+.rejection-value {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 8px;
+    padding: 12px 16px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-break: break-word;
+    color: #991b1b; /* red text */
+}
+
+.rejection-box {
+    background: #fee2e2;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 24px;
+    border-left: 4px solid #dc2626;
+}
+
+.rejection-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: #dc2626;
+    margin: 0 0 8px 0;
+}
+
+.rejection-text {
+    font-size: 14px;
+    color: #000;
+    margin: 0 0 8px 0;
+    line-height: 1.5;
+    white-space: pre-wrap;
+}
+
+.rejection-date {
+    font-size: 14px;
+    font-weight: 600;
+    color: #000;
+    margin: 0;
+}
+
+.product-option {
+    padding: 12px 16px;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    font-size: 15px;
+    color: #1b2b34;
+    transition: all 0.2s ease;
+}
+
+.product-option:hover {
+    background: #f9fafb;
+    border-color: #1A3C5A;
+}
+
+.no-products {
+    text-align: center;
+    color: #6b7280;
+    font-size: 14px;
+    padding: 20px;
+}
+

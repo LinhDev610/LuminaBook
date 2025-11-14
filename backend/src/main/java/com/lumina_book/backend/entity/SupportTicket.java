@@ -45,6 +45,9 @@ public class SupportTicket {
     @Column(name = "assigned_to", nullable = false)
     TicketAssignee assignedTo;
 
+    @Column(name = "handler_id")
+    String handlerId; // ID of the CSKH/Admin who is handling this ticket
+
     @Column(name = "created_at", nullable = false)
     LocalDateTime createdAt;
 

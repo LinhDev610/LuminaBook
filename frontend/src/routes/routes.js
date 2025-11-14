@@ -14,6 +14,7 @@ import Account from '../pages/CustomerAccount';
 import CustomerAccountLayout from '../layouts/CustomerAccountLayout';
 import AdminLayout from '../layouts/AdminLayout';
 import StaffLayout from '../layouts/StaffLayout';
+import CustomerSupportLayout from '../layouts/CustomerSupportLayout';
 import ManageStaffAccountsPage from '../pages/Admin/ManageStaffAccounts';
 import StaffDetailPage from '../pages/Admin/ManageStaffAccounts/StaffDetail';
 import ManageCustomerAccountsPage from '../pages/Admin/ManageCustomerAccounts';
@@ -37,11 +38,25 @@ import StaffAddProductPage from '../pages/Employees/Staff/ProductManagement/AddP
 import StaffProductDetailPage from '../pages/Employees/Staff/ProductManagement/ProductDetail/ProductDetailPage';
 import StaffUpdateProductPage from '../pages/Employees/Staff/ProductManagement/UpdateProduct/UpdateProductPage';
 import ContentManagementPage from '../pages/Employees/Staff/ContentManagement';
+import AddBannerPage from '../pages/Employees/Staff/ContentManagement/AddBanner';
+import BannerDetailPage from '../pages/Employees/Staff/ContentManagement/BannerDetail';
+import BannerBookListPage from '../pages/Employees/Staff/ContentManagement/BannerDetail/BannerBookList';
+import UpdateContentPage from '../pages/Employees/Staff/ContentManagement/UpdateContent';
 import VouchersPromotionsPage from '../pages/Employees/Staff/VouchersPromotionsPage';
 import AddVoucherPage from '../pages/Employees/Staff/VouchersPromotionsPage/Voucher/AddVoucher/AddVoucherPage';
 import AddPromotionPage from '../pages/Employees/Staff/VouchersPromotionsPage/Promotion/AddPromotion';
 import VoucherDetailPage from '../pages/Employees/Staff/VouchersPromotionsPage/Voucher/VoucherDetail';
 import PromotionDetailPage from '../pages/Employees/Staff/VouchersPromotionsPage/Promotion/PromotionDetail';
+import CategoryDetailPage from '../pages/Admin/ManageCategories/CategoryDetail';
+import UpdateCategoryPage from '../pages/Admin/ManageCategories/UpdateCategory';
+import CustomerSupportMainPage from '../pages/Employees/CustomerSupport/CustomerSupportMain';
+import ComplaintManagementPage from '../pages/Employees/CustomerSupport/ComplaintManagement';
+import ReviewCommentManagementPage from '../pages/Employees/CustomerSupport/ReviewCommentManagement';
+import ProfileCustomerSupportPage from '../pages/Employees/CustomerSupport/ProfileCustomerSupport';
+import ManageComplaintsPage from '../pages/Admin/ManageComplaints';
+import ComplaintsDetailPage from '../pages/Admin/ManageComplaints/ComplaintsDetail';
+import ManageContentPage from '../pages/Admin/ManageContent';
+import ContentDetailPage from '../pages/Admin/ManageContent/ContentDetail';
 
 // Public routes
 const publicRoutes = [
@@ -49,7 +64,7 @@ const publicRoutes = [
     { path: '/promotion', component: PromotionPage },
     { path: '/newbook', component: NewBookPage },
     { path: '/contact', component: Contact },
-    { path: '/customer-support', component: CustomerService },
+    { path: '/support', component: CustomerService },
     { path: '/product/:id', component: ProductDetailPage },
     { path: '/login', component: Login },
     { path: '/register', component: Register },
@@ -76,10 +91,14 @@ const privateRoutes = [
     { path: '/admin/categories/:id', component: CategoryDetailPage, layout: AdminLayout },
     { path: '/admin/categories/:id/update', component: UpdateCategoryPage, layout: AdminLayout },
     { path: '/admin/orders', component: ManageStaffAccountsPage, layout: AdminLayout },
+    { path: '/admin/complaints', component: ManageComplaintsPage, layout: AdminLayout },
+    { path: '/admin/complaints/:id', component: ComplaintsDetailPage, layout: AdminLayout },
+    { path: '/admin/content', component: ManageContentPage, layout: AdminLayout },
+    { path: '/admin/content/:id', component: ContentDetailPage, layout: AdminLayout },
+    { path: '/admin/content/:id/books', component: BannerBookListPage, layout: AdminLayout },
     { path: '/admin/vouchers-promotions', component: ManageVouchersPromotionsPage, layout: AdminLayout },
     { path: '/admin/vouchers/:id', component: AdminVoucherDetailPage, layout: AdminLayout },
     { path: '/admin/promotions/:id', component: AdminPromotionDetailPage, layout: AdminLayout },
-    { path: '/admin/complaints', component: ManageStaffAccountsPage, layout: AdminLayout },
     { path: '/admin/content', component: ManageStaffAccountsPage, layout: AdminLayout },
     { path: '/admin/reports', component: ManageStaffAccountsPage, layout: AdminLayout },
     { path: '/admin/profile', component: ProfileAdminPage, layout: AdminLayout },
@@ -91,6 +110,11 @@ const privateRoutes = [
     { path: '/staff/products/:id', component: StaffProductDetailPage, layout: StaffLayout },
     { path: '/staff/products/:id/update', component: StaffUpdateProductPage, layout: StaffLayout },
     { path: '/staff/content', component: ContentManagementPage, layout: StaffLayout },
+    { path: '/staff/content/add-banner', component: AddBannerPage, layout: StaffLayout },
+    { path: '/staff/content/:id', component: BannerDetailPage, layout: StaffLayout },
+    { path: '/staff/content/:id/edit', component: UpdateContentPage, layout: StaffLayout },
+    { path: '/staff/content/:id/books', component: BannerBookListPage, layout: StaffLayout },
+    { path: '/staff/vouchers', component: VouchersPromotionsPage, layout: StaffLayout },
     { path: '/staff/vouchers-promotions', component: VouchersPromotionsPage, layout: StaffLayout },
     { path: '/staff/vouchers/new', component: AddVoucherPage, layout: StaffLayout },
     { path: '/staff/vouchers/:id', component: VoucherDetailPage, layout: StaffLayout },
@@ -98,6 +122,12 @@ const privateRoutes = [
     { path: '/staff/promotions/:id', component: PromotionDetailPage, layout: StaffLayout },
     { path: '/staff/orders', component: VouchersPromotionsPage, layout: StaffLayout },
     { path: '/staff/profile', component: ProfileStaffPage, layout: StaffLayout },
+
+    // Customer Support routes
+    { path: '/customer-support', component: CustomerSupportMainPage, layout: CustomerSupportLayout },
+    { path: '/customer-support/complaints', component: ComplaintManagementPage, layout: CustomerSupportLayout },
+    { path: '/customer-support/reviews', component: ReviewCommentManagementPage, layout: CustomerSupportLayout },
+    { path: '/customer-support/profile', component: ProfileCustomerSupportPage, layout: CustomerSupportLayout },
 ];
 
 export { publicRoutes, privateRoutes };

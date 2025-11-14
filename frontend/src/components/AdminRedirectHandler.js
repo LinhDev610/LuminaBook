@@ -27,7 +27,7 @@ function AdminRedirectHandler() {
         }
 
         // Set flag NGAY LẬP TỨC nếu có token và đang ở trang public (trước khi async check)
-        if (hasToken && (currentPath === '/' || (!currentPath.startsWith('/admin') && !currentPath.startsWith('/staff')))) {
+        if (hasToken && (currentPath === '/' || (!currentPath.startsWith('/admin') && !currentPath.startsWith('/staff') && !currentPath.startsWith('/customer-support') && !currentPath.startsWith('/customer-account')))) {
             sessionStorage.setItem('_checking_role', '1');
         }
 
@@ -73,15 +73,22 @@ function AdminRedirectHandler() {
                         }
                         return;
                     }
-                    if (userRole === 'STAFF' || userRole === 'CUSTOMER_SUPPORT') {
+                    if (userRole === 'CUSTOMER_SUPPORT') {
+                        // Nếu đang không ở /customer-support, redirect
+                        if (currentPath !== '/customer-support' && !currentPath.startsWith('/customer-support/')) {
+                            navigate('/customer-support', { replace: true });
+                        }
+                        return;
+                    }
+                    if (userRole === 'STAFF') {
                         // Nếu đang không ở /staff, redirect
                         if (currentPath !== '/staff' && !currentPath.startsWith('/staff/')) {
                             navigate('/staff', { replace: true });
                         }
                         return;
                     }
-                    // Nếu là CUSTOMER nhưng đang ở /admin hoặc /staff, về trang chủ
-                    if ((currentPath.startsWith('/admin') || currentPath.startsWith('/staff')) && !userRole) {
+                    // Nếu là CUSTOMER hoặc không có role, đang ở trang admin/staff/customer-support thì về trang chủ
+                    if ((currentPath.startsWith('/admin') || currentPath.startsWith('/staff') || currentPath.startsWith('/customer-support')) && (!userRole || userRole === 'CUSTOMER')) {
                         navigate('/', { replace: true });
                     }
                 } catch (_e) {

@@ -53,6 +53,8 @@ public class ProductResponse {
     // Promotion info
     String promotionId;
     String promotionName;
+    LocalDate promotionStartDate; // Ngày bắt đầu áp dụng promotion
+    LocalDate promotionExpiryDate; // Ngày kết thúc áp dụng promotion
 
     // Media info
     List<String> mediaUrls;

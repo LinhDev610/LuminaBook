@@ -12,7 +12,8 @@ import {
     approvePromotion,
     deletePromotion,
     getPromotionImageUrl,
-    normalizePromotionImageUrl
+    normalizePromotionImageUrl,
+    getProductsByIds
 } from '../../../../services';
 import { useNotification } from '../../../../components/Common/Notification';
 
@@ -32,6 +33,7 @@ function PromotionDetailPage() {
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [rejectReason, setRejectReason] = useState('');
     const [processing, setProcessing] = useState(false);
+    const [productNames, setProductNames] = useState([]);
 
     // Check if admin or staff
     const isAdmin = location.pathname.startsWith('/admin');
@@ -47,6 +49,19 @@ function PromotionDetailPage() {
                 console.log('Promotion data from API:', promotionData);
                 console.log('ImageUrl from API:', promotionData?.imageUrl);
                 setPromotion(promotionData);
+                if (promotionData?.productNames && Array.isArray(promotionData.productNames)) {
+                    setProductNames(promotionData.productNames);
+                } else if (promotionData?.applyScope === 'PRODUCT' && promotionData?.productIds && promotionData.productIds.length > 0) {
+                    try {
+                        const products = await getProductsByIds(Array.from(promotionData.productIds), token);
+                        setProductNames(products.map(p => p.name).filter(Boolean));
+                    } catch (e) {
+                        console.error('Error fetching product names:', e);
+                        setProductNames([]);
+                    }
+                } else {
+                    setProductNames([]);
+                }
             } catch (e) {
                 setError(e?.message || 'Không thể tải thông tin chương trình khuyến mãi');
                 setPromotion(null);
@@ -285,16 +300,35 @@ function PromotionDetailPage() {
                     {/* Điều kiện áp dụng */}
                     <div className={cx('form-row')}>
                         <label className={cx('form-label')}>Điều kiện áp dụng</label>
-                        <input
-                            type="text"
-                            className={cx('form-input')}
-                            value={
-                                promotion.minOrderValue && promotion.minOrderValue > 0
-                                    ? `Giá trị đơn hàng từ ${formatPrice(promotion.minOrderValue)} trở lên`
-                                    : ''
-                            }
-                            readOnly
-                        />
+                        <div className={cx('conditions-list')}>
+                            {promotion.minOrderValue && promotion.minOrderValue > 0 && (
+                                <div className={cx('condition-item')}>
+                                    Giá trị đơn tối thiểu: {formatPrice(promotion.minOrderValue)}
+                                </div>
+                            )}
+                            {promotion.applyScope === 'CATEGORY' && promotion.categoryNames && promotion.categoryNames.length > 0 && (
+                                <div className={cx('condition-item')}>
+                                    Áp dụng theo loại sách: {promotion.categoryNames.join(', ')}
+                                </div>
+                            )}
+                            {promotion.applyScope === 'PRODUCT' && productNames.length > 0 && (
+                                <div className={cx('condition-item')}>
+                                    Áp dụng theo sách: {productNames.join(', ')}
+                                </div>
+                            )}
+                            {promotion.applyScope === 'ORDER' && (
+                                <div className={cx('condition-item')}>
+                                    Áp dụng cho toàn bộ đơn hàng
+                                </div>
+                            )}
+                            {(!promotion.minOrderValue || promotion.minOrderValue <= 0) &&
+                                (!promotion.applyScope ||
+                                    (promotion.applyScope !== 'CATEGORY' &&
+                                        promotion.applyScope !== 'PRODUCT' &&
+                                        promotion.applyScope !== 'ORDER')) && (
+                                    <div className={cx('condition-item')}>-</div>
+                                )}
+                        </div>
                     </div>
 
                     {/* Áp dụng theo */}
@@ -331,41 +365,18 @@ function PromotionDetailPage() {
                         </div>
                     </div>
 
-                    {/* Tên sách cụ thể (nếu applyScope là PRODUCT) */}
-                    {promotion.applyScope === 'PRODUCT' && promotion.productIds && (
-                        <div className={cx('form-row')}>
-                            <label className={cx('form-label')}>Tên sách cụ thể</label>
-                            <input
-                                type="text"
-                                className={cx('form-input')}
-                                value={`${promotion.productIds.length} sản phẩm đã chọn`}
-                                readOnly
-                            />
-                        </div>
-                    )}
-
                     {/* Hạn mức */}
-                    {promotion.maxDiscountValue && promotion.maxDiscountValue > 0 && (
-                        <div className={cx('form-row')}>
-                            <label className={cx('form-label')}>Hạn mức</label>
-                            <input
-                                type="text"
-                                className={cx('form-input')}
-                                value={`Tối đa ${formatPrice(promotion.maxDiscountValue)} / đơn`}
-                                readOnly
-                            />
-                        </div>
-                    )}
-
-                    {/* Loại sách áp dụng (nếu applyScope là CATEGORY) */}
-                    {promotion.applyScope === 'CATEGORY' && promotion.categoryIds && (
-                        <div className={cx('form-row')}>
-                            <label className={cx('form-label')}>Loại sách áp dụng</label>
-                            <select className={cx('form-select')} disabled>
-                                <option>{promotion.categoryIds.length} danh mục đã chọn</option>
-                            </select>
-                        </div>
-                    )}
+                    <div className={cx('form-row')}>
+                        <label className={cx('form-label')}>Hạn mức</label>
+                        <input
+                            type="text"
+                            className={cx('form-input')}
+                            value={promotion.maxDiscountValue && promotion.maxDiscountValue > 0
+                                ? `Tối đa ${formatPrice(promotion.maxDiscountValue)} / đơn`
+                                : ''}
+                            readOnly
+                        />
+                    </div>
 
                     {/* Thời gian áp dụng */}
                     <div className={cx('form-row')}>

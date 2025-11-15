@@ -84,4 +84,13 @@ public interface ProductRepository extends JpaRepository<Product, String> {
 
     // Tìm products theo promotion
     List<Product> findByPromotionId(String promotionId);
+
+    // Find product by ID with promotion, category, and other relationships loaded
+    @Query("SELECT p FROM Product p " +
+           "LEFT JOIN FETCH p.promotion " +
+           "LEFT JOIN FETCH p.category " +
+           "LEFT JOIN FETCH p.submittedBy " +
+           "LEFT JOIN FETCH p.approvedBy " +
+           "WHERE p.id = :productId")
+    java.util.Optional<Product> findByIdWithRelations(@Param("productId") String productId);
 }

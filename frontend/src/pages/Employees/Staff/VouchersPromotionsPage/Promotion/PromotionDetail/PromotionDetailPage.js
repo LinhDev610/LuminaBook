@@ -10,7 +10,8 @@ import {
     getApiBaseUrl,
     APPLY_SCOPE_OPTIONS,
     getPromotionImageUrl,
-    normalizePromotionImageUrl
+    normalizePromotionImageUrl,
+    getProductsByIds
 } from '../../../../../../services';
 
 const cx = classNames.bind(styles);
@@ -22,6 +23,7 @@ function PromotionDetailPage() {
     const [promotion, setPromotion] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const [productNames, setProductNames] = useState([]);
 
     // Fetch promotion detail
     useEffect(() => {
@@ -34,6 +36,21 @@ function PromotionDetailPage() {
                 // console.log('Promotion data from API:', promotionData);
                 // console.log('ImageUrl from API:', promotionData?.imageUrl);
                 setPromotion(promotionData);
+
+                if (promotionData?.productNames && Array.isArray(promotionData.productNames)) {
+                    setProductNames(promotionData.productNames);
+                } else if (promotionData?.applyScope === 'PRODUCT' && promotionData?.productIds && promotionData.productIds.length > 0) {
+                    // Fallback: Fetch product names if not in response
+                    try {
+                        const products = await getProductsByIds(Array.from(promotionData.productIds), token);
+                        setProductNames(products.map(p => p.name).filter(Boolean));
+                    } catch (e) {
+                        console.error('Error fetching product names:', e);
+                        setProductNames([]);
+                    }
+                } else {
+                    setProductNames([]);
+                }
             } catch (e) {
                 setError(e?.message || 'Không thể tải thông tin chương trình khuyến mãi');
                 setPromotion(null);
@@ -109,10 +126,10 @@ function PromotionDetailPage() {
             conditions.push(`Giá trị đơn tối thiểu: ${formatPrice(promotion.minOrderValue)}`);
         }
 
-        if (promotion.applyScope === 'CATEGORY' && promotion.categoryIds && promotion.categoryIds.length > 0) {
-            conditions.push(`Áp dụng theo loại sách: ${promotion.categoryIds.length} danh mục`);
-        } else if (promotion.applyScope === 'PRODUCT' && promotion.productIds && promotion.productIds.length > 0) {
-            conditions.push(`Áp dụng theo sách: ${promotion.productIds.length} sản phẩm`);
+        if (promotion.applyScope === 'CATEGORY' && promotion.categoryNames && promotion.categoryNames.length > 0) {
+            conditions.push(`Áp dụng theo loại sách: ${promotion.categoryNames.join(', ')}`);
+        } else if (promotion.applyScope === 'PRODUCT' && productNames.length > 0) {
+            conditions.push(`Áp dụng theo sách: ${productNames.join(', ')}`);
         } else if (promotion.applyScope === 'ORDER') {
             conditions.push('Áp dụng cho toàn bộ đơn hàng');
         }
@@ -228,14 +245,15 @@ function PromotionDetailPage() {
                                 </div>
                             </div>
 
-                            {promotion.maxDiscountValue && promotion.maxDiscountValue > 0 && (
-                                <div className={cx('info-row')}>
-                                    <span className={cx('info-label')}>Hạn mức khuyến mãi:</span>
-                                    <span className={cx('info-value')}>
-                                        Tối đa {formatPrice(promotion.maxDiscountValue)} / đơn
-                                    </span>
-                                </div>
-                            )}
+
+                            <div className={cx('info-row')}>
+                                <span className={cx('info-label')}>Hạn mức khuyến mãi:</span>
+                                <span className={cx('info-value')}>
+                                    {promotion.maxDiscountValue && promotion.maxDiscountValue > 0
+                                        ? `Tối đa ${formatPrice(promotion.maxDiscountValue)} / đơn`
+                                        : '-'}
+                                </span>
+                            </div>
 
                             <div className={cx('info-row')}>
                                 <span className={cx('info-label')}>Thời gian áp dụng:</span>

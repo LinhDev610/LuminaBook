@@ -1,5 +1,6 @@
 package com.lumina_book.backend.mapper;
 
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -22,9 +23,13 @@ import com.lumina_book.backend.entity.Voucher;
 public interface VoucherMapper {
 
     @Mapping(target = "submittedBy", source = "submittedBy.id")
+    @Mapping(target = "submittedByName", source = "submittedBy.fullName")
     @Mapping(target = "approvedBy", source = "approvedBy.id")
+    @Mapping(target = "approvedByName", source = "approvedBy.fullName")
     @Mapping(target = "categoryIds", source = "categoryApply", qualifiedByName = "mapCategoryListToIds")
+    @Mapping(target = "categoryNames", source = "categoryApply", qualifiedByName = "mapCategoryListToNames")
     @Mapping(target = "productIds", source = "productApply", qualifiedByName = "mapProductListToIds")
+    @Mapping(target = "productNames", source = "productApply", qualifiedByName = "mapProductListToNames")
     @Mapping(target = "imageUrl", source = "imageUrl", qualifiedByName = "normalizeImageUrl")
     VoucherResponse toResponse(Voucher voucher);
 
@@ -63,10 +68,22 @@ public interface VoucherMapper {
         return categories.stream().map(Category::getId).collect(Collectors.toSet());
     }
 
+    @Named("mapCategoryListToNames")
+    default List<String> mapCategoryListToNames(Set<Category> categories) {
+        if (categories == null) return null;
+        return categories.stream().map(Category::getName).filter(name -> name != null && !name.isBlank()).collect(Collectors.toList());
+    }
+
     @Named("mapProductListToIds")
     default Set<String> mapProductListToIds(Set<Product> products) {
         if (products == null) return null;
         return products.stream().map(Product::getId).collect(Collectors.toSet());
+    }
+
+    @Named("mapProductListToNames")
+    default List<String> mapProductListToNames(Set<Product> products) {
+        if (products == null) return null;
+        return products.stream().map(Product::getName).filter(name -> name != null && !name.isBlank()).collect(Collectors.toList());
     }
 
     @Named("normalizeImageUrl")

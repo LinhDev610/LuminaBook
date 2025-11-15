@@ -9,6 +9,7 @@ import lombok.experimental.FieldDefaults;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Set;
 
 @Data
@@ -38,12 +39,16 @@ public class VoucherResponse {
 
     // Approval workflow info
     String submittedBy;
+    String submittedByName; // Tên người tạo
     String approvedBy;
+    String approvedByName; // Tên người duyệt
     LocalDateTime submittedAt;
     LocalDateTime approvedAt;
     String rejectionReason;
 
     // Application scope
     Set<String> categoryIds;
+    List<String> categoryNames;
     Set<String> productIds;
+    List<String> productNames;
 }

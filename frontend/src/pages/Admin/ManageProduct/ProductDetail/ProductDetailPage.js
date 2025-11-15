@@ -53,6 +53,14 @@ function ProductDetailPage() {
                 }
 
                 setProduct(productData);
+                // Debug: Log promotion info
+                console.log('Product data:', productData);
+                console.log('Promotion info:', {
+                    promotionId: productData.promotionId,
+                    promotionName: productData.promotionName,
+                    promotionStartDate: productData.promotionStartDate,
+                    promotionExpiryDate: productData.promotionExpiryDate
+                });
             } catch (e) {
                 if (!isMounted || abortController.signal.aborted) return;
                 setError(e?.message || 'Không thể tải thông tin sản phẩm');
@@ -337,12 +345,17 @@ function ProductDetailPage() {
                                     </span>
                                 </div>
                             )}
-                            {product.promotionName && (
+                            {(product.promotionId || product.promotionName) && (
                                 <div className={cx('info-row')}>
-                                    <span className={cx('info-label')}>Chương trình giảm giá:</span>
-                                    <span className={cx('info-value')}>
-                                        {product.promotionName}
-                                    </span>
+                                    <span className={cx('info-label')}>Chương trình khuyến mãi:</span>
+                                    <div className={cx('info-value')}>
+                                        <div>{product.promotionName || `Promotion ID: ${product.promotionId}`}</div>
+                                        {product.promotionStartDate && product.promotionExpiryDate && (
+                                            <div className={cx('promotion-dates')}>
+                                                Thời gian áp dụng: {new Date(product.promotionStartDate).toLocaleDateString('vi-VN')} - {new Date(product.promotionExpiryDate).toLocaleDateString('vi-VN')}
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                             )}
                             <div className={cx('info-row')}>
@@ -435,7 +448,7 @@ function ProductDetailPage() {
                             )}
                             {product.weight !== undefined && product.weight !== null && (
                                 <div className={cx('info-row')}>
-                                    <span className={cx('info-label')}>Trọng lượng:</span>
+                                    <span className={cx('info-label')}>Khối lượng:</span>
                                     <span className={cx('info-value')}>
                                         {product.weight} g
                                     </span>

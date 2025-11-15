@@ -2,6 +2,7 @@ package com.lumina_book.backend.dto.response;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Set;
 
 import com.lumina_book.backend.enums.PromotionStatus;
@@ -36,12 +37,16 @@ public class PromotionResponse {
 
     // Approval workflow info
     String submittedBy;
+    String submittedByName; 
     String approvedBy;
+    String approvedByName;
     LocalDateTime submittedAt;
     LocalDateTime approvedAt;
     String rejectionReason;
 
     // Application scope
     Set<String> categoryIds;
+    List<String> categoryNames;
     Set<String> productIds;
+    List<String> productNames;
 }

@@ -3,9 +3,12 @@ package com.lumina_book.backend.service;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Comparator;
+
+import java.time.LocalDateTime;
+import java.time.LocalDate;
 
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -20,6 +23,7 @@ import com.lumina_book.backend.dto.request.ProductCreationRequest;
 import com.lumina_book.backend.dto.request.ProductUpdateRequest;
 import com.lumina_book.backend.dto.response.ProductResponse;
 import com.lumina_book.backend.enums.ProductStatus;
+import com.lumina_book.backend.enums.PromotionStatus;
 import com.lumina_book.backend.exception.AppException;
 import com.lumina_book.backend.exception.ErrorCode;
 import com.lumina_book.backend.mapper.ProductMapper;
@@ -222,9 +226,78 @@ public class ProductService {
     // ========== READ OPERATIONS ==========
     public ProductResponse getProductById(String productId) {
         Product product = productRepository
-                .findById(productId)
+                .findByIdWithRelations(productId)
                 .orElseThrow(() -> new AppException(ErrorCode.PRODUCT_NOT_EXISTED));
+        
+        // Tìm promotion active cho sản phẩm này
+        Promotion activePromotion = findActivePromotionForProduct(product);
+        
+        // Nếu có promotion active, set vào product
+        if (activePromotion != null) {
+            product.setPromotion(activePromotion);
+        } else {
+            // Nếu không có promotion active, set null
+            product.setPromotion(null);
+        }
+        
         return productMapper.toResponse(product);
+    }
+
+    // Tìm promotion đang active cho sản phẩm (theo product trực tiếp hoặc theo category)
+    private Promotion findActivePromotionForProduct(Product product) {
+        LocalDate today = LocalDate.now();
+        List<Promotion> activePromotions = new ArrayList<>();
+        
+        // 1. Kiểm tra promotion trực tiếp của product
+        if (product.getPromotion() != null) {
+            Promotion directPromo = product.getPromotion();
+            if (isPromotionActive(directPromo, today)) {
+                activePromotions.add(directPromo);
+            }
+        }
+        
+        // 2. Tìm promotion active theo product ID (từ promotion_products table)
+        if (product.getId() != null) {
+            List<Promotion> productPromotions = promotionRepository.findActiveByProductId(product.getId(), today);
+            activePromotions.addAll(productPromotions);
+        }
+        
+        // 3. Tìm promotion active theo category
+        if (product.getCategory() != null && product.getCategory().getId() != null) {
+            List<Promotion> categoryPromotions = promotionRepository.findActiveByCategoryId(product.getCategory().getId(), today);
+            activePromotions.addAll(categoryPromotions);
+        }
+        
+        // Loại bỏ trùng lặp và lấy promotion có startDate sớm nhất (ưu tiên promotion bắt đầu sớm hơn)
+        return activePromotions.stream()
+                .distinct()
+                .filter(p -> isPromotionActive(p, today))
+                .min(Comparator.comparing(Promotion::getStartDate, 
+                        Comparator.nullsLast(Comparator.naturalOrder())))
+                .orElse(null);
+    }
+
+    // Kiểm tra promotion có đang active không
+    private boolean isPromotionActive(Promotion promotion, LocalDate today) {
+        if (promotion == null) return false;
+        
+        // Phải là APPROVED và isActive = true
+        if (promotion.getStatus() != PromotionStatus.APPROVED) {
+            return false;
+        }
+        if (!promotion.getIsActive()) {
+            return false;
+        }
+        
+        // Kiểm tra thời gian: startDate <= today <= expiryDate
+        if (promotion.getStartDate() != null && promotion.getStartDate().isAfter(today)) {
+            return false; // Chưa đến ngày bắt đầu
+        }
+        if (promotion.getExpiryDate() != null && promotion.getExpiryDate().isBefore(today)) {
+            return false; // Đã hết hạn
+        }
+        
+        return true;
     }
 
     public List<ProductResponse> getAllProducts() {

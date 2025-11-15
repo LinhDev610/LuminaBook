@@ -13,6 +13,7 @@ import com.lumina_book.backend.dto.request.ProductUpdateRequest;
 import com.lumina_book.backend.dto.response.ProductResponse;
 import com.lumina_book.backend.entity.Product;
 import com.lumina_book.backend.entity.ProductMedia;
+import com.lumina_book.backend.entity.Promotion;
 import com.lumina_book.backend.entity.Review;
 
 @Mapper(componentModel = "spring")
@@ -25,8 +26,10 @@ public interface ProductMapper {
     @Mapping(target = "approvedByName", source = "approvedBy.fullName")
     @Mapping(target = "categoryId", source = "category.id")
     @Mapping(target = "categoryName", source = "category.name")
-    @Mapping(target = "promotionId", source = "promotion.id")
-    @Mapping(target = "promotionName", source = "promotion.name")
+    @Mapping(target = "promotionId", source = "promotion", qualifiedByName = "mapPromotionId")
+    @Mapping(target = "promotionName", source = "promotion", qualifiedByName = "mapPromotionName")
+    @Mapping(target = "promotionStartDate", source = "promotion", qualifiedByName = "mapPromotionStartDate")
+    @Mapping(target = "promotionExpiryDate", source = "promotion", qualifiedByName = "mapPromotionExpiryDate")
     @Mapping(target = "mediaUrls", source = "mediaList", qualifiedByName = "mapMediaUrls")
     @Mapping(target = "defaultMediaUrl", source = "defaultMedia.mediaUrl", qualifiedByName = "normalizeUrl")
     @Mapping(target = "reviewCount", source = "reviews", qualifiedByName = "mapReviewCount")
@@ -98,5 +101,25 @@ public interface ProductMapper {
     default Double mapAverageRating(List<Review> reviews) {
         if (reviews == null || reviews.isEmpty()) return 0.0;
         return reviews.stream().mapToDouble(Review::getRating).average().orElse(0.0);
+    }
+
+    @Named("mapPromotionId")
+    default String mapPromotionId(Promotion promotion) {
+        return promotion != null ? promotion.getId() : null;
+    }
+
+    @Named("mapPromotionName")
+    default String mapPromotionName(Promotion promotion) {
+        return promotion != null ? promotion.getName() : null;
+    }
+
+    @Named("mapPromotionStartDate")
+    default java.time.LocalDate mapPromotionStartDate(Promotion promotion) {
+        return promotion != null ? promotion.getStartDate() : null;
+    }
+
+    @Named("mapPromotionExpiryDate")
+    default java.time.LocalDate mapPromotionExpiryDate(Promotion promotion) {
+        return promotion != null ? promotion.getExpiryDate() : null;
     }
 }

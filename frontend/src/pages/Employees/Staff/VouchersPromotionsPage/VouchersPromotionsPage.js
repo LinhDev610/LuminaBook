@@ -62,7 +62,7 @@ export default function VouchersPromotionsPage() {
                         statusFilterKey: filterKey,
                         createdAt: formatDateTime(dateValue),
                         createdAtRaw: dateValue ? new Date(dateValue).getTime() : 0,
-                        createdBy: item.submittedBy || '--',
+                        createdBy: item.submittedByName || item.submittedBy || '--',
                         entity: 'voucher',
                     };
                 });
@@ -78,7 +78,7 @@ export default function VouchersPromotionsPage() {
                         statusFilterKey: filterKey,
                         createdAt: formatDateTime(dateValue),
                         createdAtRaw: dateValue ? new Date(dateValue).getTime() : 0,
-                        createdBy: item.submittedBy || '--',
+                        createdBy: item.submittedByName || item.submittedBy || '--',
                         entity: 'promotion',
                     };
                 });

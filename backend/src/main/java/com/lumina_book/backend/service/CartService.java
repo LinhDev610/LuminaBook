@@ -16,6 +16,9 @@ import com.lumina_book.backend.repository.UserRepository;
 import com.lumina_book.backend.enums.DiscountValueType;
 import com.lumina_book.backend.enums.DiscountApplyScope;
 import com.lumina_book.backend.repository.VoucherRepository;
+import com.lumina_book.backend.repository.OrderRepository;
+
+import java.time.LocalDate;
 
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +35,7 @@ public class CartService {
     ProductRepository productRepository;
     PromotionRepository promotionRepository;
     VoucherRepository voucherRepository;
+    OrderRepository orderRepository;
 
     @Transactional
     @PreAuthorize("hasAuthority('CUSTOMER')")
@@ -129,12 +133,36 @@ public class CartService {
         if (!voucher.getIsActive() || voucher.getStatus() != com.lumina_book.backend.enums.VoucherStatus.APPROVED) {
             throw new AppException(ErrorCode.VOUCHER_NOT_EXISTED);
         }
-        var today = java.time.LocalDate.now();
+        LocalDate today = LocalDate.now();
         if ((voucher.getStartDate() != null && today.isBefore(voucher.getStartDate()))
                 || (voucher.getExpiryDate() != null && today.isAfter(voucher.getExpiryDate()))) {
             throw new AppException(ErrorCode.VOUCHER_NOT_EXISTED);
         }
-
+        
+        // Lấy current user
+        User currentUser = cart.getUser();
+        if (currentUser == null) {
+            String userEmail = SecurityContextHolder.getContext().getAuthentication().getName();
+            currentUser = userRepository.findByEmail(userEmail)
+                    .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+        }
+        
+        // Lưu userId vào biến final để sử dụng trong lambda
+        final String userId = currentUser.getId();
+        
+        // Kiểm tra usagePerUser: số lần user đã dùng voucher này
+        if (voucher.getUsagePerUser() != null && voucher.getUsagePerUser() > 0) {
+            long userUsageCount = orderRepository.findAll().stream()
+                    .filter(order -> order.getUser() != null && userId.equals(order.getUser().getId()))
+                    .filter(order -> order.getCart() != null && order.getCart().getAppliedVoucherCode() != null)
+                    .filter(order -> voucher.getCode().equals(order.getCart().getAppliedVoucherCode()))
+                    .count();
+            
+            if (userUsageCount >= voucher.getUsagePerUser()) {
+                throw new AppException(ErrorCode.VOUCHER_USAGE_LIMIT_EXCEEDED);
+            }
+        }
+        
         recalcCartTotals(cart);
         
         // Tính tổng giá trị đơn hàng có thể áp dụng voucher

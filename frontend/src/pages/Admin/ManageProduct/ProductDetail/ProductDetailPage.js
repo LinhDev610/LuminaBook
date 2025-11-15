@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import classNames from 'classnames/bind';
 import styles from './ProductDetailPage.module.scss';
@@ -7,7 +7,8 @@ import {
     getApiBaseUrl,
     getStoredToken,
     formatDateTime,
-} from '../../../../services/utils';
+    getProductById,
+} from '../../../../services';
 import { useNotification } from '../../../../components/Common/Notification';
 
 const cx = classNames.bind(styles);
@@ -28,41 +29,48 @@ function ProductDetailPage() {
     const [rejectReason, setRejectReason] = useState('');
     const [processing, setProcessing] = useState(false);
 
-    // Fetch product detail
     useEffect(() => {
+        if (!id) {
+            setError('Không có ID sản phẩm');
+            setLoading(false);
+            return;
+        }
+
+        let isMounted = true;
+        const abortController = new AbortController();
+
         const fetchProduct = async () => {
             try {
                 setLoading(true);
                 setError('');
                 const token = getStoredToken('token');
-                const resp = await fetch(`${API_BASE_URL}/products/${id}`, {
-                    method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-                    },
-                });
+                const productData = await getProductById(id, token);
 
-                if (!resp.ok) {
-                    const text = await resp.text().catch(() => '');
-                    throw new Error(text || `HTTP ${resp.status}`);
+                if (!isMounted || abortController.signal.aborted) return;
+
+                if (!productData) {
+                    throw new Error('Không tìm thấy sản phẩm');
                 }
 
-                const data = await resp.json().catch(() => ({}));
-                const productData = data?.result || data;
                 setProduct(productData);
             } catch (e) {
+                if (!isMounted || abortController.signal.aborted) return;
                 setError(e?.message || 'Không thể tải thông tin sản phẩm');
                 setProduct(null);
             } finally {
-                setLoading(false);
+                if (isMounted && !abortController.signal.aborted) {
+                    setLoading(false);
+                }
             }
         };
 
-        if (id) {
-            fetchProduct();
-        }
-    }, [id, API_BASE_URL]);
+        fetchProduct();
+
+        return () => {
+            isMounted = false;
+            abortController.abort();
+        };
+    }, [id]);
 
     const handleApprove = async () => {
         try {
@@ -166,12 +174,13 @@ function ProductDetailPage() {
         navigate('/admin/products');
     };
 
-    const formatPrice = (price) => {
+    const formatPrice = useCallback((price) => {
+        if (!price && price !== 0) return '0 ₫';
         return new Intl.NumberFormat('vi-VN', {
             style: 'currency',
             currency: 'VND',
         }).format(price);
-    };
+    }, []);
 
     const getStatusClass = (status) => {
         switch (status) {
@@ -312,12 +321,30 @@ function ProductDetailPage() {
                                     {product.name || '-'}
                                 </span>
                             </div>
-                            <div className={cx('info-row')}>
-                                <span className={cx('info-label')}>Danh mục:</span>
-                                <span className={cx('info-value')}>
-                                    {product.categoryName || '-'}
-                                </span>
-                            </div>
+                            {product.categoryId && (
+                                <div className={cx('info-row')}>
+                                    <span className={cx('info-label')}>Mã danh mục:</span>
+                                    <span className={cx('info-value')}>
+                                        {product.categoryId}
+                                    </span>
+                                </div>
+                            )}
+                            {product.categoryName && (
+                                <div className={cx('info-row')}>
+                                    <span className={cx('info-label')}>Danh mục:</span>
+                                    <span className={cx('info-value')}>
+                                        {product.categoryName}
+                                    </span>
+                                </div>
+                            )}
+                            {product.promotionName && (
+                                <div className={cx('info-row')}>
+                                    <span className={cx('info-label')}>Chương trình giảm giá:</span>
+                                    <span className={cx('info-value')}>
+                                        {product.promotionName}
+                                    </span>
+                                </div>
+                            )}
                             <div className={cx('info-row')}>
                                 <span className={cx('info-label')}>Tác giả:</span>
                                 <span className={cx('info-value')}>
@@ -330,8 +357,24 @@ function ProductDetailPage() {
                                     {product.publisher || '-'}
                                 </span>
                             </div>
+                            {product.size && (
+                                <div className={cx('info-row')}>
+                                    <span className={cx('info-label')}>Kích thước sách:</span>
+                                    <span className={cx('info-value')}>
+                                        {product.size}
+                                    </span>
+                                </div>
+                            )}
+                            {product.unitPrice !== undefined && product.unitPrice !== null && (
+                                <div className={cx('info-row')}>
+                                    <span className={cx('info-label')}>Giá niêm yết:</span>
+                                    <span className={cx('info-value')}>
+                                        {formatPrice(product.unitPrice)}
+                                    </span>
+                                </div>
+                            )}
                             <div className={cx('info-row')}>
-                                <span className={cx('info-label')}>Giá niêm yết:</span>
+                                <span className={cx('info-label')}>Giá bán:</span>
                                 <span className={cx('info-value')}>
                                     {formatPrice(product.price || 0)}
                                 </span>
@@ -356,6 +399,16 @@ function ProductDetailPage() {
                                         </span>
                                     </div>
                                 )}
+                            {product.unitPrice && product.price && product.unitPrice > product.price && (
+                                <div className={cx('info-row')}>
+                                    <span className={cx('info-label')}>
+                                        Phần trăm giảm:
+                                    </span>
+                                    <span className={cx('info-value')}>
+                                        {Math.round(((product.unitPrice - product.price) / product.unitPrice) * 100)}%
+                                    </span>
+                                </div>
+                            )}
                             {product.publicationDate && (
                                 <div className={cx('info-row')}>
                                     <span className={cx('info-label')}>
@@ -474,21 +527,21 @@ function ProductDetailPage() {
                                 (product.reviewCount !== undefined &&
                                     product.reviewCount !== null &&
                                     product.reviewCount > 0)) && (
-                                <div className={cx('info-row')}>
-                                    <span className={cx('info-label')}>Đánh giá:</span>
-                                    <span className={cx('info-value')}>
-                                        {product.averageRating !== undefined &&
-                                        product.averageRating !== null
-                                            ? `${product.averageRating.toFixed(1)}/5.0`
-                                            : '-'}
-                                        {product.reviewCount !== undefined &&
-                                        product.reviewCount !== null &&
-                                        product.reviewCount > 0
-                                            ? ` (${product.reviewCount} đánh giá)`
-                                            : ''}
-                                    </span>
-                                </div>
-                            )}
+                                    <div className={cx('info-row')}>
+                                        <span className={cx('info-label')}>Đánh giá:</span>
+                                        <span className={cx('info-value')}>
+                                            {product.averageRating !== undefined &&
+                                                product.averageRating !== null
+                                                ? `${product.averageRating.toFixed(1)}/5.0`
+                                                : '-'}
+                                            {product.reviewCount !== undefined &&
+                                                product.reviewCount !== null &&
+                                                product.reviewCount > 0
+                                                ? ` (${product.reviewCount} đánh giá)`
+                                                : ''}
+                                        </span>
+                                    </div>
+                                )}
                             <div className={cx('info-row', 'description-row')}>
                                 <span className={cx('info-label')}>Mô tả:</span>
                                 <span className={cx('info-value', 'description')}>

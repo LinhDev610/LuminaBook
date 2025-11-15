@@ -1,7 +1,7 @@
 import { DefaultHeader } from '../components/Header';
 import AuthModals from '../../components/AuthModals';
 import Footer from '../components/Footer';
-import Navbar from '../components/Navbar';
+import Navbar from '../components/NavBar';
 
 function DefaultLayout({ children }) {
     return (

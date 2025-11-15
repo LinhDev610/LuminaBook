@@ -68,7 +68,7 @@ const ProductDetail = ({ productId }) => {
         longDescription: "Nếu phát huy được những khả năng còn tiềm ẩn ở bán cầu não phải bấy lâu, thì con sẽ trở thành những đứa trẻ sở hữu tư duy sáng tạo và nguồn cảm hứng dồi dào. Và chính cha mẹ sẽ là người khai phá tài năng của trẻ.",
         images: [
             "/assets/images/img_kinangsong.png",
-            "/assets/images/img_kinangsong.png", 
+            "/assets/images/img_kinangsong.png",
             "/assets/images/img_kinangsong.png",
             "/assets/images/img_kinangsong.png",
             "/assets/images/img_kinangsong.png"
@@ -141,7 +141,7 @@ const ProductDetail = ({ productId }) => {
         for (let i = 0; i < fullStars; i++) {
             stars.push(<span key={i} className={styles.star}>★</span>);
         }
-        
+
         if (hasHalfStar) {
             stars.push(<span key="half" className={styles.star}>☆</span>);
         }
@@ -185,7 +185,7 @@ const ProductDetail = ({ productId }) => {
                     {/* Product Images */}
                     <div className={styles.productImages}>
                         <div className={styles.mainImage}>
-                            <img 
+                            <img
                                 src={defaultImage}
                                 alt={displayProduct.name}
                                 onError={(e) => {
@@ -223,7 +223,7 @@ const ProductDetail = ({ productId }) => {
                     {/* Product Info */}
                     <div className={styles.productInfo}>
                         <h1 className={styles.productName}>{displayProduct.name}</h1>
-                        
+
                         <div className={styles.productMeta}>
                             <div className={styles.metaRow}>
                                 <span><strong>Nhà xuất bản:</strong> {displayProduct.publisher || '-'}</span>
@@ -287,20 +287,20 @@ const ProductDetail = ({ productId }) => {
                         <div className={styles.quantitySection}>
                             <label>Số lượng:</label>
                             <div className={styles.quantityControls}>
-                                <button 
+                                <button
                                     onClick={() => setQuantity(Math.max(1, quantity - 1))}
                                     disabled={quantity <= 1}
                                 >
                                     -
                                 </button>
-                                <input 
-                                    type="number" 
-                                    value={quantity} 
+                                <input
+                                    type="number"
+                                    value={quantity}
                                     onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
                                     min="1"
                                     max={product.stock}
                                 />
-                                <button 
+                                <button
                                     onClick={() => setQuantity(Math.min(product.stock, quantity + 1))}
                                     disabled={quantity >= product.stock}
                                 >
@@ -311,14 +311,14 @@ const ProductDetail = ({ productId }) => {
 
                         {/* Action Buttons */}
                         <div className={styles.actionButtons}>
-                            <button 
+                            <button
                                 className={styles.addToCartBtn}
                                 onClick={handleAddToCart}
                                 disabled={product.stock === 0}
                             >
                                 🛒 Thêm vào giỏ hàng
                             </button>
-                            <button 
+                            <button
                                 className={styles.buyNowBtn}
                                 onClick={handleBuyNow}
                                 disabled={product.stock === 0}

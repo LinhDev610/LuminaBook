@@ -39,7 +39,8 @@ public class SecurityConfig {
         "/vouchers/**",
         "/promotions/**",
         "/uploads/**",
-        "/banners/active"
+        "/banners/active",
+        "/error"  // Allow error endpoint to be accessed without authentication
     };
 
     private final CustomJwtDecoder customJwtDecoder;

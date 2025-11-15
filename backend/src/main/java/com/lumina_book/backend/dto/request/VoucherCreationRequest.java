@@ -64,6 +64,9 @@ public class VoucherCreationRequest {
 
     @Min(value = 1, message = "Giới hạn sử dụng phải lớn hơn 0")
     Integer usageLimit;
+    
+    @Min(value = 1, message = "Số lần mỗi user được dùng phải lớn hơn 0")
+    Integer usagePerUser; // Số lần mỗi user được dùng voucher này
 
     // Áp dụng theo danh mục
     Set<String> categoryIds;

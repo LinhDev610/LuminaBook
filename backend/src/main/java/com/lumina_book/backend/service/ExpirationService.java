@@ -42,6 +42,9 @@ public class ExpirationService {
         LocalDate today = LocalDate.now();
         LocalDateTime now = LocalDateTime.now();
 
+        // Xử lý promotions cần activate (đã đến startDate)
+        processPromotionsToActivate(today);
+
         // Xử lý vouchers hết hạn
         processExpiredVouchers(today, now);
 
@@ -49,6 +52,26 @@ public class ExpirationService {
         processExpiredPromotions(today, now);
 
         // log.info("Hoàn tất kiểm tra voucher/promotion hết hạn");
+    }
+
+    // Xử lý các promotion đã đến startDate - tự động activate và apply vào sản phẩm
+    private void processPromotionsToActivate(LocalDate today) {
+        List<Promotion> promotionsToActivate = promotionRepository.findPromotionsToActivate(today);
+
+        for (Promotion promotion : promotionsToActivate) {
+            try {
+                // Activate promotion
+                promotion.setIsActive(true);
+                promotionRepository.save(promotion);
+
+                // Apply promotion vào các sản phẩm target
+                promotionService.applyPromotionToTargets(promotion);
+
+                log.info("Đã tự động kích hoạt và áp dụng promotion {} ({}) cho sản phẩm", promotion.getName(), promotion.getId());
+            } catch (Exception e) {
+                log.error("Lỗi khi kích hoạt promotion {} ({}): {}", promotion.getName(), promotion.getId(), e.getMessage(), e);
+            }
+        }
     }
 
     private void processExpiredVouchers(LocalDate today, LocalDateTime now) {
@@ -102,7 +125,6 @@ public class ExpirationService {
             if (!expiredPromotionRepository.existsById(promotion.getId())) {
                 ExpiredPromotion expiredPromotion = ExpiredPromotion.builder()
                         .id(promotion.getId())
-                        .code(promotion.getCode())
                         .name(promotion.getName())
                         .imageUrl(promotion.getImageUrl())
                         .description(promotion.getDescription())
@@ -129,7 +151,7 @@ public class ExpirationService {
                 promotion.setStatus(PromotionStatus.EXPIRED);
                 promotionRepository.save(promotion);
                 
-                log.info("Đã chuyển promotion {} vào bảng hết hạn", promotion.getCode());
+                log.info("Đã chuyển promotion {} ({}) vào bảng hết hạn", promotion.getName(), promotion.getId());
             }
         }
     }

@@ -55,6 +55,9 @@ public class Voucher {
     
     @Builder.Default
     Integer usageCount = 0;
+    
+    @Column(name = "usage_per_user")
+    Integer usagePerUser; // Số lần mỗi user được dùng voucher này
 
     Boolean isActive;
 

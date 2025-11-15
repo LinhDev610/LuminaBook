@@ -180,7 +180,6 @@ export const INITIAL_FORM_STATE_VOUCHER = {
 // Trạng thái ban đầu của form thêm promotion
 export const INITIAL_FORM_STATE_PROMOTION = {
     name: '',
-    code: '',
     imageUrl: '',
     description: '',
     discountValue: '',

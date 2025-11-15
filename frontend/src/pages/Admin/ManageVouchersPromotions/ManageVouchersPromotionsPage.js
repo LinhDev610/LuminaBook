@@ -114,7 +114,6 @@ function ManageVouchersPromotionsPage() {
                 const { label, filterKey } = mapPromotionStatus(p.status);
                 return {
                     id: p.id || '',
-                    code: p.code || '',
                     name: p.name || '',
                     discountValue: p.discountValue || 0,
                     discountValueType: p.discountValueType || 'PERCENTAGE',
@@ -191,7 +190,6 @@ function ManageVouchersPromotionsPage() {
             );
             filteredP = filteredP.filter(
                 (p) =>
-                    p.code.toLowerCase().includes(searchLower) ||
                     p.name.toLowerCase().includes(searchLower),
             );
         }
@@ -421,7 +419,6 @@ function ManageVouchersPromotionsPage() {
                     <table className={cx('data-table')}>
                         <thead>
                             <tr className={cx('table-header')}>
-                                <th>Mã CTKM</th>
                                 <th>Tên chương trình</th>
                                 <th>Loại ưu đãi</th>
                                 <th>Thời gian áp dụng</th>
@@ -434,7 +431,7 @@ function ManageVouchersPromotionsPage() {
                             {filteredPromotions.length === 0 ? (
                                 <tr>
                                     <td
-                                        colSpan={7}
+                                        colSpan={6}
                                         style={{ textAlign: 'center', padding: '20px' }}
                                     >
                                         {allPromotions.length === 0
@@ -445,7 +442,6 @@ function ManageVouchersPromotionsPage() {
                             ) : (
                                 filteredPromotions.map((promotion) => (
                                     <tr key={promotion.id} className={cx('table-row')}>
-                                        <td>{promotion.code}</td>
                                         <td>{promotion.name}</td>
                                         <td>
                                             {getDiscountValueText(promotion)} - {getApplyScopeText(promotion.applyScope)}

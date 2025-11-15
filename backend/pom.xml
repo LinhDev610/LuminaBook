@@ -253,8 +253,14 @@
                     </path>
                 </annotationProcessorPaths>
                 <compilerArgs>
+                    <!-- 
+                        Tắt timestamp trong file code được MapStruct generate. 
+                        Khi timestamp thay đổi → Git báo file thay đổi → khó review.
+                    -->
                     <arg>-Amapstruct.suppressGeneratorTimestamp=true</arg>
+                    <!-- Mặc định tất cả mapper sẽ dùng Spring Bean. -->
                     <arg>-Amapstruct.defaultComponentModel=spring</arg>
+                    <!-- Bật log chi tiết để debug -->
                     <arg>-Amapstruct.verbose=true</arg>
                 </compilerArgs>
             </configuration>

@@ -20,7 +20,6 @@ public class PromotionResponse {
 
     String id;
     String name;
-    String code;
     String imageUrl;
     String description;
     Double discountValue;

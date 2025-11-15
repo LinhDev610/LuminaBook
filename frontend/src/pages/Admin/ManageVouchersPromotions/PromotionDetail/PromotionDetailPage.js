@@ -271,17 +271,6 @@ function PromotionDetailPage() {
                         />
                     </div>
 
-                    {/* Mã CTKM */}
-                    <div className={cx('form-row')}>
-                        <label className={cx('form-label')}>Mã CTKM</label>
-                        <input
-                            type="text"
-                            className={cx('form-input')}
-                            value={promotion.code || ''}
-                            readOnly
-                        />
-                    </div>
-
                     {/* Loại ưu đãi */}
                     <div className={cx('form-row')}>
                         <label className={cx('form-label')}>Loại ưu đãi</label>

@@ -30,9 +30,6 @@ public class Promotion {
     @Column(name = "name", nullable = false)
     String name;
 
-    @Column(name = "code", unique = true, nullable = false)
-    String code;
-
     String imageUrl;
     String description;
 

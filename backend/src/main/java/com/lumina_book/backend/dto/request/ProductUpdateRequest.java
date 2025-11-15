@@ -42,8 +42,8 @@ public class ProductUpdateRequest {
     @Min(value = 1, message = "Chiều cao phải lớn hơn hoặc bằng 1")
     Double height;
 
-    @DecimalMin(value = "0.0", message = "Giá sản phẩm phải lớn hơn hoặc bằng 0")
-    Double price;
+    @DecimalMin(value = "0.0", message = "Giá niêm yết (giá gốc) phải lớn hơn hoặc bằng 0")
+    Double unitPrice;
 
     @DecimalMin(value = "0.0", message = "Thuế phải lớn hơn hoặc bằng 0")
     Double tax;
@@ -54,6 +54,9 @@ public class ProductUpdateRequest {
     LocalDate publicationDate;
 
     String categoryId;
+
+    // Promotion (optional)
+    String promotionId;
 
     ProductStatus status;
 

@@ -18,13 +18,6 @@ import com.lumina_book.backend.enums.PromotionStatus;
 @Repository
 public interface PromotionRepository extends JpaRepository<Promotion, String> {
 
-    // Basic queries
-    Optional<Promotion> findByCode(String code);
-
-    Optional<Promotion> findByCodeAndIsActiveTrue(String code);
-
-    boolean existsByCode(String code);
-
     // Status-based queries
     List<Promotion> findByStatus(PromotionStatus status);
 
@@ -72,4 +65,9 @@ public interface PromotionRepository extends JpaRepository<Promotion, String> {
     // Tìm các promotion đã hết hạn nhưng chưa được chuyển vào bảng hết hạn
     @Query("SELECT p FROM Promotion p WHERE p.expiryDate < :today AND p.status != :expiredStatus")
     List<Promotion> findExpiredPromotions(@Param("today") LocalDate today, @Param("expiredStatus") PromotionStatus expiredStatus);
+
+    // Tìm các promotion đã được approve nhưng chưa active và đã đến startDate
+    @Query("SELECT p FROM Promotion p WHERE p.status = 'APPROVED' AND (p.isActive = false OR p.isActive IS NULL) " +
+           "AND p.startDate <= :today AND (p.expiryDate IS NULL OR p.expiryDate >= :today)")
+    List<Promotion> findPromotionsToActivate(@Param("today") LocalDate today);
 }

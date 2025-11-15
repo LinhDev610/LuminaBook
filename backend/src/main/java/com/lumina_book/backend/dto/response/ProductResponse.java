@@ -26,6 +26,7 @@ public class ProductResponse {
     Double length;
     Double width;
     Double height;
+    Double unitPrice;
     Double price;
     Double tax;
     Double discountValue;
@@ -48,6 +49,10 @@ public class ProductResponse {
     // Category info
     String categoryId;
     String categoryName;
+
+    // Promotion info
+    String promotionId;
+    String promotionName;
 
     // Media info
     List<String> mediaUrls;

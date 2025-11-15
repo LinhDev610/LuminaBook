@@ -219,9 +219,6 @@ export default function AddPromotionPage() {
         if (!formState.name.trim()) {
             validationErrors.name = 'Vui lòng nhập tên khuyến mãi';
         }
-        if (!formState.code.trim()) {
-            validationErrors.code = 'Vui lòng nhập mã khuyến mãi';
-        }
         const discountValueNum = parseFloat(String(formState.discountValue).replace(/[^\d.]/g, ''));
         if (!formState.discountValue || isNaN(discountValueNum) || discountValueNum <= 0) {
             validationErrors.discountValue = 'Giá trị giảm phải lớn hơn 0';
@@ -282,7 +279,6 @@ export default function AddPromotionPage() {
 
         const payload = {
             name: formState.name.trim(),
-            code: formState.code.trim().toUpperCase(),
             imageUrl: imageUrl,
             description: formState.description.trim() || null,
             discountValue: discountValueNum,
@@ -489,20 +485,8 @@ export default function AddPromotionPage() {
                             {errors.name && <span className={cx('error-text')}>{errors.name}</span>}
                         </div>
 
-                        {/* 2. Mã khuyến mãi và Giá trị (2 cột) */}
+                        {/* 2. Loại giảm giá và Giá trị (2 cột) */}
                         <div className={cx('form-row')}>
-                            <div className={cx('form-group')}>
-                                <label className={cx('form-label')}>Mã khuyến mãi *</label>
-                                <input
-                                    type="text"
-                                    value={formState.code}
-                                    onChange={(e) => handleChange('code', e.target.value)}
-                                    className={cx('form-input', { error: errors.code })}
-                                    placeholder="VD: KM_MAX50"
-                                />
-                                {errors.code && <span className={cx('error-text')}>{errors.code}</span>}
-                            </div>
-
                             <div className={cx('form-group')}>
                                 <label className={cx('form-label')}>Loại giảm giá *</label>
                                 <select

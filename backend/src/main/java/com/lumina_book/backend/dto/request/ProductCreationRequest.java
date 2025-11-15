@@ -45,9 +45,9 @@ public class ProductCreationRequest {
     @DecimalMin(value = "0.0", message = "Chiều cao phải lớn hơn hoặc bằng 0")
     Double height;
 
-    @NotNull(message = "Giá sản phẩm không được để trống")
-    @DecimalMin(value = "0.0", message = "Giá sản phẩm phải lớn hơn hoặc bằng 0")
-    Double price;
+    @NotNull(message = "Giá niêm yết (giá gốc) không được để trống")
+    @DecimalMin(value = "0.0", message = "Giá niêm yết phải lớn hơn hoặc bằng 0")
+    Double unitPrice;
 
     @DecimalMin(value = "0.0", message = "Thuế phải lớn hơn hoặc bằng 0")
     Double tax;
@@ -60,6 +60,9 @@ public class ProductCreationRequest {
 
     @NotBlank(message = "Danh mục không được để trống")
     String categoryId;
+
+    // Promotion (optional)
+    String promotionId;
 
     // Media fields
     List<String> imageUrls;

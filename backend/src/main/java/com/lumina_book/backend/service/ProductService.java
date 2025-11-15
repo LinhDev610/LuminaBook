@@ -26,6 +26,7 @@ import com.lumina_book.backend.mapper.ProductMapper;
 import com.lumina_book.backend.repository.ProductMediaRepository;
 import com.lumina_book.backend.repository.CategoryRepository;
 import com.lumina_book.backend.repository.ProductRepository;
+import com.lumina_book.backend.repository.PromotionRepository;
 import com.lumina_book.backend.repository.UserRepository;
 
 import lombok.AccessLevel;
@@ -43,6 +44,7 @@ public class ProductService {
     CategoryRepository categoryRepository;
     UserRepository userRepository;
     ProductMediaRepository productMediaRepository;
+    PromotionRepository promotionRepository;
     ProductMapper productMapper;
 
     // ========== CREATE OPERATIONS ==========
@@ -59,22 +61,31 @@ public class ProductService {
                 .findById(request.getCategoryId())
                 .orElseThrow(() -> new AppException(ErrorCode.CATEGORY_NOT_EXISTED));
 
+        // Validate và lấy promotion nếu có
+        Promotion promotion = null;
+        if (request.getPromotionId() != null && !request.getPromotionId().isEmpty()) {
+            promotion = promotionRepository
+                    .findById(request.getPromotionId())
+                    .orElseThrow(() -> new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION));
+        }
+
         // Tạo product entity từ request
         Product product = productMapper.toProduct(request);
         product.setId(request.getId());
         product.setSubmittedBy(user);
         product.setCategory(category);
+        product.setPromotion(promotion);
         product.setCreatedAt(LocalDateTime.now());
         product.setUpdatedAt(LocalDateTime.now());
         product.setQuantitySold(0);
         product.setStatus(ProductStatus.PENDING);
 
         // Tính toán giá sản phẩm
-        if (request.getPrice() == null || request.getPrice() < 0) {
+        if (request.getUnitPrice() == null || request.getUnitPrice() < 0) {
             throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION);
         }
-        product.setUnitPrice(request.getPrice());
-        product.setPrice(computeFinalPrice(request.getPrice(), request.getTax(), request.getDiscountValue()));
+        product.setUnitPrice(request.getUnitPrice());
+        product.setPrice(computeFinalPrice(request.getUnitPrice(), request.getTax(), request.getDiscountValue()));
 
         // Gắn media (ảnh/video) từ request
         attachMediaFromRequest(product, request);
@@ -120,12 +131,37 @@ public class ProductService {
         productMapper.updateProduct(product, request);
         product.setUpdatedAt(LocalDateTime.now());
 
+        // Tính lại giá nếu unitPrice, tax, hoặc discountValue được cập nhật
+        if (request.getUnitPrice() != null || request.getTax() != null || request.getDiscountValue() != null) {
+            Double unitPrice = request.getUnitPrice() != null ? request.getUnitPrice() : product.getUnitPrice();
+            Double tax = request.getTax() != null ? request.getTax() : product.getTax();
+            Double discountValue = request.getDiscountValue() != null ? request.getDiscountValue() : product.getDiscountValue();
+            
+            if (unitPrice != null && unitPrice >= 0) {
+                product.setUnitPrice(unitPrice);
+                product.setPrice(computeFinalPrice(unitPrice, tax, discountValue));
+            }
+        }
+
         // Cập nhật category nếu có
         if (request.getCategoryId() != null && !request.getCategoryId().isEmpty()) {
             Category category = categoryRepository
                     .findById(request.getCategoryId())
                     .orElseThrow(() -> new AppException(ErrorCode.CATEGORY_NOT_EXISTED));
             product.setCategory(category);
+        }
+
+        // Cập nhật promotion nếu có
+        if (request.getPromotionId() != null) {
+            if (request.getPromotionId().isEmpty()) {
+                // Nếu promotionId là chuỗi rỗng, xóa promotion
+                product.setPromotion(null);
+            } else {
+                Promotion promotion = promotionRepository
+                        .findById(request.getPromotionId())
+                        .orElseThrow(() -> new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION));
+                product.setPromotion(promotion);
+            }
         }
 
         // Cập nhật inventory nếu có

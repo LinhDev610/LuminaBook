@@ -25,10 +25,9 @@ public enum ErrorCode {
 
     // Promotion
     PROMOTION_NOT_EXISTED(2001, "Khuyến mãi không tồn tại", HttpStatus.NOT_FOUND),
-    PROMOTION_CODE_ALREADY_EXISTS(2002, "Mã khuyến mãi đã tồn tại", HttpStatus.BAD_REQUEST),
-    PROMOTION_NOT_PENDING(2003, "Khuyến mãi không ở trạng thái chờ duyệt", HttpStatus.BAD_REQUEST),
-    INVALID_PROMOTION_SCOPE(2004, "Phạm vi áp dụng khuyến mãi không hợp lệ", HttpStatus.BAD_REQUEST),
-    PROMOTION_PRODUCT_CONFLICT(2005, "Một số sản phẩm đã có khuyến mãi đang hoạt động", HttpStatus.BAD_REQUEST),
+    PROMOTION_NOT_PENDING(2002, "Khuyến mãi không ở trạng thái chờ duyệt", HttpStatus.BAD_REQUEST),
+    INVALID_PROMOTION_SCOPE(2003, "Phạm vi áp dụng khuyến mãi không hợp lệ", HttpStatus.BAD_REQUEST),
+    PROMOTION_PRODUCT_CONFLICT(2004, "Một số sản phẩm đã có khuyến mãi đang hoạt động", HttpStatus.BAD_REQUEST),
 
     // Voucher
     VOUCHER_NOT_EXISTED(3001, "Voucher không tồn tại", HttpStatus.NOT_FOUND),
@@ -38,6 +37,7 @@ public enum ErrorCode {
     VOUCHER_SOLD_OUT(3005, "Voucher đã hết lượt sử dụng", HttpStatus.BAD_REQUEST),
     INVALID_VOUCHER_MINIUM(3006, "Không thỏa mãn giá trị tối thiểu của voucher", HttpStatus.BAD_REQUEST),
     INVALID_VOUCHER_SCOPE(3007, "Phạm vi áp dụng voucher không hợp lệ", HttpStatus.BAD_REQUEST),
+    VOUCHER_USAGE_LIMIT_EXCEEDED(3008, "Bạn đã sử dụng hết số lần được phép dùng voucher này", HttpStatus.BAD_REQUEST),
 
     // Banner
     BANNER_NOT_EXISTED(4001, "Banner không tồn tại", HttpStatus.NOT_FOUND),

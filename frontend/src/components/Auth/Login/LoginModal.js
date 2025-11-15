@@ -117,7 +117,7 @@ export default function LoginModal({ open = false, onClose }) {
 
                 try {
                     // console.log('Calling /users/my-info with token:', loginData.token);
-                    const       = await getMyInfo(loginData.token);
+                    const meData = await getMyInfo(loginData.token);
                     // console.log('API call result:', meData);
 
                     // Debug: Log API response để kiểm tra cấu trúc

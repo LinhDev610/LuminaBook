@@ -72,7 +72,6 @@ export default function VouchersPromotionsPage() {
                     const dateValue = item.submittedAt || item.createdAt;
                     return {
                         id: item.id,
-                        code: item.code,
                         name: item.name,
                         type: 'Khuyến mãi',
                         statusLabel: label,
@@ -249,7 +248,7 @@ export default function VouchersPromotionsPage() {
                             ) : (
                                 sortedAndFiltered.map((record) => (
                                     <tr key={`${record.entity}-${record.id}`}>
-                                        <td className={cx('code-cell')}>{record.code}</td>
+                                        <td className={cx('code-cell')}>{record.entity === 'voucher' ? record.code : '-'}</td>
                                         <td className={cx('name-cell')}>{record.name}</td>
                                         <td>{record.type}</td>
                                         <td>{record.createdAt}</td>

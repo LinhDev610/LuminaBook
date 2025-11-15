@@ -82,6 +82,7 @@ public class UserService {
 
         // Tạo mật khẩu tự động
         String generatedPassword = passwordGeneratorService.generateSecurePassword();
+        log.info("Password for staff: {}", generatedPassword);
         log.info("Generated password for staff: {}", request.getEmail());
 
         // Tạo user entity

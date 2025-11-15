@@ -226,9 +226,25 @@ public class PromotionService {
         // Khôi phục giá các sản phẩm đang áp dụng promotion này (nếu có)
         clearPromotionPricing(promotion);
 
-        // Xóa file media vật lý trong thư mục promotions (nếu có)
+        // 1. Xóa product khỏi promotion.productApply (bảng promotion_products)
+        // Lấy tất cả products trong productApply để xóa quan hệ
+        Set<Product> productsInPromotion = new HashSet<>(promotion.getProductApply());
+        promotion.getProductApply().clear();
+        promotionRepository.save(promotion);
+
+        // 2. Set product.promotion = null cho các products có promotion này trực tiếp
+        List<Product> productsWithDirectPromotion = productRepository.findByPromotionId(promotionId);
+        for (Product product : productsWithDirectPromotion) {
+            if (product.getPromotion() != null && product.getPromotion().getId().equals(promotionId)) {
+                product.setPromotion(null);
+                productRepository.save(product);
+            }
+        }
+
+        // 3. Xóa file media vật lý trong thư mục promotions (nếu có)
         deleteMediaFileIfExists(promotion);
 
+        // 4. Xóa promotion
         promotionRepository.delete(promotion);
         // log.info("Promotion deleted: {} by user: {}", promotionId, currentUserId);
     }

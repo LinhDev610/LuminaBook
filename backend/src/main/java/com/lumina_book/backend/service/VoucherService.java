@@ -188,9 +188,16 @@ public class VoucherService {
             throw new AppException(ErrorCode.UNAUTHORIZED);
         }
 
-        // Xóa file media vật lý trong thư mục vouchers (nếu có)
+        // 1. Xóa product khỏi voucher.productApply (bảng voucher_products)
+        // Clear quan hệ Many-to-Many trước khi xóa voucher
+        voucher.getProductApply().clear();
+        voucher.getCategoryApply().clear();
+        voucherRepository.save(voucher);
+
+        // 2. Xóa file media vật lý trong thư mục vouchers (nếu có)
         deleteMediaFileIfExists(voucher);
 
+        // 3. Xóa voucher
         voucherRepository.delete(voucher);
         // log.info("Voucher deleted: {} by user: {}", voucherId, currentUserId);
     }

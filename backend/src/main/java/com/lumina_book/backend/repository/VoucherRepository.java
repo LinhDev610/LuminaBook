@@ -32,4 +32,8 @@ public interface VoucherRepository extends JpaRepository<Voucher, String> {
     // Tìm các voucher đã hết hạn nhưng chưa được chuyển vào bảng hết hạn
     @Query("SELECT v FROM Voucher v WHERE v.expiryDate < :today AND v.status != :expiredStatus")
     List<Voucher> findExpiredVouchers(@Param("today") LocalDate today, @Param("expiredStatus") VoucherStatus expiredStatus);
+
+    // Tìm các voucher có product này trong productApply
+    @Query("SELECT v FROM Voucher v JOIN v.productApply pr WHERE pr.id = :productId")
+    List<Voucher> findByProductId(@Param("productId") String productId);
 }

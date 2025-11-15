@@ -31,6 +31,7 @@ import com.lumina_book.backend.repository.ProductMediaRepository;
 import com.lumina_book.backend.repository.CategoryRepository;
 import com.lumina_book.backend.repository.ProductRepository;
 import com.lumina_book.backend.repository.PromotionRepository;
+import com.lumina_book.backend.repository.VoucherRepository;
 import com.lumina_book.backend.repository.UserRepository;
 
 import lombok.AccessLevel;
@@ -49,6 +50,7 @@ public class ProductService {
     UserRepository userRepository;
     ProductMediaRepository productMediaRepository;
     PromotionRepository promotionRepository;
+    VoucherRepository voucherRepository;
     ProductMapper productMapper;
 
     // ========== CREATE OPERATIONS ==========
@@ -216,9 +218,31 @@ public class ProductService {
                 .findById(productId)
                 .orElseThrow(() -> new AppException(ErrorCode.PRODUCT_NOT_EXISTED));
 
-        // Xóa file media vật lý trong thư mục product_media (nếu có)
+        // 1. Xóa product khỏi tất cả Promotion.productApply (bảng promotion_products)
+        List<Promotion> promotionsWithProduct = promotionRepository.findByProductId(productId);
+        for (Promotion promotion : promotionsWithProduct) {
+            promotion.getProductApply().remove(product);
+            promotionRepository.save(promotion);
+        }
+
+        // 2. Xóa product khỏi tất cả Voucher.productApply (bảng voucher_products)
+        // Tìm tất cả vouchers có product này
+        List<Voucher> vouchersWithProduct = voucherRepository.findByProductId(productId);
+        for (Voucher voucher : vouchersWithProduct) {
+            voucher.getProductApply().remove(product);
+            voucherRepository.save(voucher);
+        }
+
+        // 3. Set product.promotion = null (nếu có promotion trực tiếp)
+        if (product.getPromotion() != null) {
+            product.setPromotion(null);
+            productRepository.save(product);
+        }
+
+        // 4. Xóa file media vật lý trong thư mục product_media (nếu có)
         deleteMediaFilesIfExists(product);
 
+        // 5. Xóa product
         productRepository.delete(product);
         log.info("Product deleted: {} by user: {}", productId, user.getEmail());
     }

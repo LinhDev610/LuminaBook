@@ -48,8 +48,13 @@ public interface PromotionRepository extends JpaRepository<Promotion, String> {
     @Query("SELECT p FROM Promotion p JOIN p.categoryApply c WHERE c.id = :categoryId AND p.status = 'APPROVED'")
     List<Promotion> findByCategoryId(@Param("categoryId") String categoryId);
 
-    @Query("SELECT p FROM Promotion p JOIN p.productApply pr WHERE pr.id = :productId AND p.status = 'APPROVED'")
+    // Tìm các promotion có product này trong productApply (không phân biệt status)
+    @Query("SELECT p FROM Promotion p JOIN p.productApply pr WHERE pr.id = :productId")
     List<Promotion> findByProductId(@Param("productId") String productId);
+    
+    // Tìm các promotion approved có product này trong productApply
+    @Query("SELECT p FROM Promotion p JOIN p.productApply pr WHERE pr.id = :productId AND p.status = 'APPROVED'")
+    List<Promotion> findApprovedByProductId(@Param("productId") String productId);
 
     // Active by product/category (approved, active, not expired)
     @Query("SELECT p FROM Promotion p JOIN p.productApply pr "

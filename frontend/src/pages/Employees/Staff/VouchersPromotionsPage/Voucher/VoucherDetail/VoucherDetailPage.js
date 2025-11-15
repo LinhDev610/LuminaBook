@@ -10,7 +10,8 @@ import {
     mapVoucherStatus,
     APPLY_SCOPE_OPTIONS,
     getVoucherImageUrl,
-    normalizeVoucherImageUrl
+    normalizeVoucherImageUrl,
+    getProductsByIds
 } from '../../../../../../services';
 
 const cx = classNames.bind(styles);
@@ -22,6 +23,7 @@ function VoucherDetailPage() {
     const [voucher, setVoucher] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const [productNames, setProductNames] = useState([]);
 
     // Fetch voucher detail
     useEffect(() => {
@@ -32,6 +34,20 @@ function VoucherDetailPage() {
                 const token = getStoredToken();
                 const voucherData = await getVoucherById(id, token);
                 setVoucher(voucherData);
+
+                if (voucherData?.productNames && Array.isArray(voucherData.productNames)) {
+                    setProductNames(voucherData.productNames);
+                } else if (voucherData?.applyScope === 'PRODUCT' && voucherData?.productIds && voucherData.productIds.length > 0) {
+                    try {
+                        const products = await getProductsByIds(Array.from(voucherData.productIds), token);
+                        setProductNames(products.map(p => p.name).filter(Boolean));
+                    } catch (e) {
+                        console.error('Error fetching product names:', e);
+                        setProductNames([]);
+                    }
+                } else {
+                    setProductNames([]);
+                }
             } catch (e) {
                 setError(e?.message || 'Không thể tải thông tin voucher');
                 setVoucher(null);
@@ -111,10 +127,10 @@ function VoucherDetailPage() {
             conditions.push(`Giá trị đơn tối đa: ${formatPrice(voucher.maxOrderValue)}`);
         }
 
-        if (voucher.applyScope === 'CATEGORY' && voucher.categoryIds && voucher.categoryIds.length > 0) {
-            conditions.push(`Áp dụng theo loại sách: ${voucher.categoryIds.length} danh mục`);
-        } else if (voucher.applyScope === 'PRODUCT' && voucher.productIds && voucher.productIds.length > 0) {
-            conditions.push(`Áp dụng theo sách: ${voucher.productIds.length} sản phẩm`);
+        if (voucher.applyScope === 'CATEGORY' && voucher.categoryNames && voucher.categoryNames.length > 0) {
+            conditions.push(`Áp dụng theo loại sách: ${voucher.categoryNames.join(', ')}`);
+        } else if (voucher.applyScope === 'PRODUCT' && productNames.length > 0) {
+            conditions.push(`Áp dụng theo sách: ${productNames.join(', ')}`);
         } else if (voucher.applyScope === 'ORDER') {
             conditions.push('Áp dụng cho toàn bộ đơn hàng');
         }
@@ -226,14 +242,15 @@ function VoucherDetailPage() {
                                 </div>
                             </div>
 
-                            {voucher.maxDiscountValue && voucher.maxDiscountValue > 0 && (
-                                <div className={cx('info-row')}>
-                                    <span className={cx('info-label')}>Hạn mức giảm giá:</span>
-                                    <span className={cx('info-value')}>
-                                        Tối đa {formatPrice(voucher.maxDiscountValue)} / đơn
-                                    </span>
-                                </div>
-                            )}
+
+                            <div className={cx('info-row')}>
+                                <span className={cx('info-label')}>Hạn mức giảm giá:</span>
+                                <span className={cx('info-value')}>
+                                    {voucher.maxDiscountValue && voucher.maxDiscountValue > 0
+                                        ? `Tối đa ${formatPrice(voucher.maxDiscountValue)} / đơn`
+                                        : '-'}
+                                </span>
+                            </div>
 
                             <div className={cx('info-row')}>
                                 <span className={cx('info-label')}>Thời gian áp dụng:</span>

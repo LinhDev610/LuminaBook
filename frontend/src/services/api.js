@@ -218,6 +218,15 @@ export async function getProductById(productId, token = null) {
     return extractResult(data);
 }
 
+// Get products by IDs (for displaying product names in promotions/vouchers)
+export async function getProductsByIds(productIds, token = null) {
+    if (!productIds || productIds.length === 0) return [];
+    // Fetch all products and filter by IDs (backend doesn't have a bulk endpoint)
+    const { data } = await apiRequest('/products', { token });
+    const allProducts = extractResult(data, true) || [];
+    return allProducts.filter(p => productIds.includes(p.id));
+}
+
 export async function getMyProducts(token = null) {
     const { data } = await apiRequest('/products/my-products', { token });
     return extractResult(data, true);

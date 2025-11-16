@@ -60,13 +60,18 @@ public class PromotionService {
         // Get current user from security context
         User staff = getCurrentUser();
 
+        // Check code uniqueness
+        if (promotionRepository.existsByCode(request.getCode())) {
+            throw new AppException(ErrorCode.PROMOTION_CODE_ALREADY_EXISTS);
+        }
+
         // Create promotion entity using mapper
         Promotion promotion = promotionMapper.toPromotion(request);
 
         // Set workflow fields
         promotion.setUsageCount(0);
         promotion.setIsActive(false); // Chưa active cho đến khi được approve
-        promotion.setStatus(PromotionStatus.PENDING);
+        promotion.setStatus(PromotionStatus.PENDING_APPROVAL);
         promotion.setSubmittedBy(staff);
         promotion.setSubmittedAt(LocalDateTime.now());
 
@@ -89,7 +94,7 @@ public class PromotionService {
                 .findById(request.getPromotionId())
                 .orElseThrow(() -> new AppException(ErrorCode.PROMOTION_NOT_EXISTED));
 
-        if (promotion.getStatus() != PromotionStatus.PENDING) {
+        if (promotion.getStatus() != PromotionStatus.PENDING_APPROVAL) {
             throw new AppException(ErrorCode.PROMOTION_NOT_PENDING);
         }
 
@@ -141,7 +146,7 @@ public class PromotionService {
 
     @PreAuthorize("hasRole('ADMIN')")
     public List<PromotionResponse> getPendingPromotions() {
-        List<Promotion> pendingPromotions = promotionRepository.findByStatus(PromotionStatus.PENDING);
+        List<Promotion> pendingPromotions = promotionRepository.findByStatus(PromotionStatus.PENDING_APPROVAL);
 
         return pendingPromotions.stream().map(promotionMapper::toResponse).collect(Collectors.toList());
     }
@@ -178,6 +183,12 @@ public class PromotionService {
             throw new AppException(ErrorCode.UNAUTHORIZED);
         }
 
+        // Check code uniqueness if code is being updated
+        if (request.getCode() != null && !request.getCode().equals(promotion.getCode())) {
+            if (promotionRepository.existsByCode(request.getCode())) {
+                throw new AppException(ErrorCode.PROMOTION_CODE_ALREADY_EXISTS);
+            }
+        }
 
         boolean wasApprovedAndActive = promotion.getStatus() == PromotionStatus.APPROVED
                 && Boolean.TRUE.equals(promotion.getIsActive());

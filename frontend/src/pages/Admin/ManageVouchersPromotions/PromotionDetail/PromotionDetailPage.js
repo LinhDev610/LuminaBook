@@ -247,7 +247,7 @@ function PromotionDetailPage() {
 
     const statusInfo = getStatusInfo(promotion.status);
     const statusClass = getStatusClass(promotion.status);
-    const isPending = promotion.status === 'PENDING';
+    const isPending = promotion.status === 'PENDING_APPROVAL';
 
     return (
         <div className={cx('wrap')}>
@@ -282,6 +282,17 @@ function PromotionDetailPage() {
                             type="text"
                             className={cx('form-input')}
                             value={promotion.name || ''}
+                            readOnly
+                        />
+                    </div>
+
+                    {/* Mã khuyến mãi */}
+                    <div className={cx('form-row')}>
+                        <label className={cx('form-label')}>Mã khuyến mãi</label>
+                        <input
+                            type="text"
+                            className={cx('form-input')}
+                            value={promotion.code || ''}
                             readOnly
                         />
                     </div>

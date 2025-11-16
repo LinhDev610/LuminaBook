@@ -18,6 +18,10 @@ import com.lumina_book.backend.enums.PromotionStatus;
 @Repository
 public interface PromotionRepository extends JpaRepository<Promotion, String> {
 
+    Optional<Promotion> findByCode(String code);
+
+    boolean existsByCode(String code);
+
     // Status-based queries
     List<Promotion> findByStatus(PromotionStatus status);
 

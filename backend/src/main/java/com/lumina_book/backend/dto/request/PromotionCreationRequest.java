@@ -9,6 +9,7 @@ import com.lumina_book.backend.enums.DiscountApplyScope;
 import com.lumina_book.backend.enums.DiscountValueType;
 import com.lumina_book.backend.validator.PromotionDateConstraint;
 import com.lumina_book.backend.validator.PromotionScopeConstraint;
+import com.lumina_book.backend.validator.PromotionCodeConstraint;
 
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -25,6 +26,12 @@ public class PromotionCreationRequest {
     @NotBlank(message = "Tên khuyến mãi không được để trống")
     @Size(max = 255, message = "Tên khuyến mãi không được vượt quá 255 ký tự")
     String name;
+
+    @NotBlank(message = "Mã khuyến mãi không được để trống")
+    @Size(max = 50, message = "Mã khuyến mãi không được vượt quá 50 ký tự")
+    @Pattern(regexp = "^[A-Z0-9_-]+$", message = "Mã khuyến mãi chỉ được chứa chữ hoa, số, dấu gạch ngang và gạch dưới")
+    @PromotionCodeConstraint // Validate mã khuyến mãi unique
+    String code;
 
     String imageUrl;
 

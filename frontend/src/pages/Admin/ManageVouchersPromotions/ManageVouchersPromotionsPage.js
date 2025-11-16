@@ -2,14 +2,12 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import classNames from 'classnames/bind';
 import styles from './ManageVouchersPromotionsPage.module.scss';
-import { formatDateTime } from '../../../services/utils';
 import {
-    getVouchersByStatus,
-    getPromotionsByStatus,
     getStoredToken,
     mapVoucherStatus,
     mapPromotionStatus,
     VOUCHER_PROMOTION_SORT_OPTIONS,
+    fetchAllItemsByStatus,
 } from '../../../services';
 
 const cx = classNames.bind(styles);
@@ -31,53 +29,9 @@ function ManageVouchersPromotionsPage() {
     const [error, setError] = useState('');
 
     // ========== Data Fetching ==========
-    const fetchAllVouchers = async (token) => {
-        try {
-            const statuses = ['PENDING_APPROVAL', 'APPROVED', 'REJECTED', 'DISABLED', 'EXPIRED'];
-            const allResults = [];
-
-            for (const status of statuses) {
-                try {
-                    const vouchers = await getVouchersByStatus(status, token);
-                    if (Array.isArray(vouchers)) {
-                        allResults.push(...vouchers);
-                    }
-                } catch (e) {
-                    // Ignore errors for individual status calls
-                    console.warn(`Failed to fetch vouchers with status ${status}:`, e);
-                }
-            }
-
-            return allResults;
-        } catch (e) {
-            console.error('Error fetching vouchers:', e);
-            return [];
-        }
-    };
-
-    const fetchAllPromotions = async (token) => {
-        try {
-            const statuses = ['PENDING', 'APPROVED', 'REJECTED', 'CANCELLED', 'EXPIRED'];
-            const allResults = [];
-
-            for (const status of statuses) {
-                try {
-                    const promotions = await getPromotionsByStatus(status, token);
-                    if (Array.isArray(promotions)) {
-                        allResults.push(...promotions);
-                    }
-                } catch (e) {
-                    // Ignore errors for individual status calls
-                    console.warn(`Failed to fetch promotions with status ${status}:`, e);
-                }
-            }
-
-            return allResults;
-        } catch (e) {
-            console.error('Error fetching promotions:', e);
-            return [];
-        }
-    };
+    // Sử dụng helper function chung để fetch tất cả items
+    const fetchAllVouchers = (token) => fetchAllItemsByStatus('voucher', token);
+    const fetchAllPromotions = (token) => fetchAllItemsByStatus('promotion', token);
 
     const fetchData = async () => {
         try {
@@ -121,7 +75,7 @@ function ManageVouchersPromotionsPage() {
                     startDate: p.startDate || '',
                     expiryDate: p.expiryDate || '',
                     submittedBy: p.submittedByName || p.submittedBy || '-',
-                    status: p.status || 'PENDING',
+                    status: p.status || 'PENDING_APPROVAL',
                     statusLabel: label,
                     statusFilterKey: filterKey,
                 };
@@ -419,6 +373,7 @@ function ManageVouchersPromotionsPage() {
                     <table className={cx('data-table')}>
                         <thead>
                             <tr className={cx('table-header')}>
+                                <th>Mã CTKM</th>
                                 <th>Tên chương trình</th>
                                 <th>Loại ưu đãi</th>
                                 <th>Thời gian áp dụng</th>
@@ -431,7 +386,7 @@ function ManageVouchersPromotionsPage() {
                             {filteredPromotions.length === 0 ? (
                                 <tr>
                                     <td
-                                        colSpan={6}
+                                        colSpan={7}
                                         style={{ textAlign: 'center', padding: '20px' }}
                                     >
                                         {allPromotions.length === 0
@@ -442,6 +397,7 @@ function ManageVouchersPromotionsPage() {
                             ) : (
                                 filteredPromotions.map((promotion) => (
                                     <tr key={promotion.id} className={cx('table-row')}>
+                                        <td>{promotion.code || '-'}</td>
                                         <td>{promotion.name}</td>
                                         <td>
                                             {getDiscountValueText(promotion)} - {getApplyScopeText(promotion.applyScope)}

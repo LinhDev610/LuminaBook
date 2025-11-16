@@ -219,6 +219,14 @@ export default function AddPromotionPage() {
         if (!formState.name.trim()) {
             validationErrors.name = 'Vui lòng nhập tên khuyến mãi';
         }
+        if (!formState.code.trim()) {
+            validationErrors.code = 'Vui lòng nhập mã khuyến mãi';
+        } else {
+            const codePattern = /^[A-Z0-9_-]+$/;
+            if (!codePattern.test(formState.code.trim())) {
+                validationErrors.code = 'Mã khuyến mãi chỉ được chứa chữ hoa, số, dấu gạch ngang và gạch dưới';
+            }
+        }
         const discountValueNum = parseFloat(String(formState.discountValue).replace(/[^\d.]/g, ''));
         if (!formState.discountValue || isNaN(discountValueNum) || discountValueNum <= 0) {
             validationErrors.discountValue = 'Giá trị giảm phải lớn hơn 0';
@@ -279,6 +287,7 @@ export default function AddPromotionPage() {
 
         const payload = {
             name: formState.name.trim(),
+            code: formState.code.trim().toUpperCase(),
             imageUrl: imageUrl,
             description: formState.description.trim() || null,
             discountValue: discountValueNum,
@@ -483,6 +492,20 @@ export default function AddPromotionPage() {
                                 placeholder="VD: Giảm tối đa 50k cho đơn từ 400k"
                             />
                             {errors.name && <span className={cx('error-text')}>{errors.name}</span>}
+                        </div>
+
+                        {/* 2. Mã khuyến mãi */}
+                        <div className={cx('form-group')}>
+                            <label className={cx('form-label')}>Mã khuyến mãi *</label>
+                            <input
+                                type="text"
+                                value={formState.code}
+                                onChange={(e) => handleChange('code', e.target.value.toUpperCase())}
+                                className={cx('form-input', { error: errors.code })}
+                                placeholder="VD: PROMO50K"
+                                maxLength={50}
+                            />
+                            {errors.code && <span className={cx('error-text')}>{errors.code}</span>}
                         </div>
 
                         {/* 2. Loại giảm giá và Giá trị (2 cột) */}

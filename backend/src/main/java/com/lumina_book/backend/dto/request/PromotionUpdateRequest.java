@@ -21,6 +21,10 @@ public class PromotionUpdateRequest {
     @Size(max = 255, message = "Tên khuyến mãi không được vượt quá 255 ký tự")
     String name;
 
+    @Size(max = 50, message = "Mã khuyến mãi không được vượt quá 50 ký tự")
+    @Pattern(regexp = "^[A-Z0-9_-]+$", message = "Mã khuyến mãi chỉ được chứa chữ hoa, số, dấu gạch ngang và gạch dưới")
+    String code;
+
     String imageUrl;
 
     @Size(max = 1000, message = "Mô tả không được vượt quá 1000 ký tự")

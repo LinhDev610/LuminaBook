@@ -216,6 +216,13 @@ function PromotionDetailPage() {
                                 </span>
                             </div>
 
+                            <div className={cx('info-row')}>
+                                <span className={cx('info-label')}>Mã khuyến mãi:</span>
+                                <span className={cx('info-value')}>
+                                    {promotion.code || '-'}
+                                </span>
+                            </div>
+
                             <div className={cx('info-row', 'description-row')}>
                                 <span className={cx('info-label')}>Mô tả chi tiết:</span>
                                 <span className={cx('info-value', 'description')}>

@@ -20,6 +20,7 @@ import lombok.experimental.FieldDefaults;
 public class PromotionResponse {
 
     String id;
+    String code;
     String name;
     String imageUrl;
     String description;

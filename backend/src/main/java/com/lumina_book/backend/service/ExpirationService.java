@@ -125,6 +125,7 @@ public class ExpirationService {
             if (!expiredPromotionRepository.existsById(promotion.getId())) {
                 ExpiredPromotion expiredPromotion = ExpiredPromotion.builder()
                         .id(promotion.getId())
+                        .code(promotion.getCode())
                         .name(promotion.getName())
                         .imageUrl(promotion.getImageUrl())
                         .description(promotion.getDescription())

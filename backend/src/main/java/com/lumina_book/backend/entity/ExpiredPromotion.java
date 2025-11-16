@@ -20,6 +20,8 @@ public class ExpiredPromotion {
     @Id
     String id;
 
+    String code;
+
     @Column(name = "name", nullable = false)
     String name;
 

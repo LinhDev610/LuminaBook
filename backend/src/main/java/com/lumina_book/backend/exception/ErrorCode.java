@@ -28,6 +28,7 @@ public enum ErrorCode {
     PROMOTION_NOT_PENDING(2002, "Khuyến mãi không ở trạng thái chờ duyệt", HttpStatus.BAD_REQUEST),
     INVALID_PROMOTION_SCOPE(2003, "Phạm vi áp dụng khuyến mãi không hợp lệ", HttpStatus.BAD_REQUEST),
     PROMOTION_PRODUCT_CONFLICT(2004, "Một số sản phẩm đã có khuyến mãi đang hoạt động", HttpStatus.BAD_REQUEST),
+    PROMOTION_CODE_ALREADY_EXISTS(2005, "Mã khuyến mãi đã tồn tại", HttpStatus.BAD_REQUEST),
 
     // Voucher
     VOUCHER_NOT_EXISTED(3001, "Voucher không tồn tại", HttpStatus.NOT_FOUND),

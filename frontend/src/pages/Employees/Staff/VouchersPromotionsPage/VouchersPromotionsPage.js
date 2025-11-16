@@ -5,7 +5,10 @@ import styles from './VouchersPromotionsPage.module.scss';
 import { useSearchAndFilter } from '../../../../hooks';
 import StatusBadge from '../../../../components/Common/StatusBadge';
 import { useNotification } from '../../../../components/Common/Notification';
-import { getStaffPromotions, getStaffVouchers, getStoredToken } from '../../../../services';
+import {
+    getStoredToken,
+    fetchAllItemsByStatus
+} from '../../../../services';
 import {
     STATUS_FILTER_MAP,
     VOUCHER_PROMOTION_SORT_OPTIONS,
@@ -44,13 +47,16 @@ export default function VouchersPromotionsPage() {
             try {
                 setIsLoading(true);
                 const token = getStoredToken();
-                const [voucherData, promotionData] = await Promise.all([
-                    getStaffVouchers(token),
-                    getStaffPromotions(token),
+
+                // Lấy tất cả voucher và promotion theo tất cả các status (dùng helper function chung)
+                const [uniqueVouchers, uniquePromotions] = await Promise.all([
+                    fetchAllItemsByStatus('voucher', token),
+                    fetchAllItemsByStatus('promotion', token),
                 ]);
+
                 if (!isMounted) return;
 
-                const normalizedVouchers = (voucherData || []).map((item) => {
+                const normalizedVouchers = uniqueVouchers.map((item) => {
                     const { label, filterKey } = mapVoucherStatus(item.status);
                     const dateValue = item.submittedAt || item.createdAt;
                     return {
@@ -62,23 +68,22 @@ export default function VouchersPromotionsPage() {
                         statusFilterKey: filterKey,
                         createdAt: formatDateTime(dateValue),
                         createdAtRaw: dateValue ? new Date(dateValue).getTime() : 0,
-                        createdBy: item.submittedByName || item.submittedBy || '--',
                         entity: 'voucher',
                     };
                 });
 
-                const normalizedPromotions = (promotionData || []).map((item) => {
+                const normalizedPromotions = uniquePromotions.map((item) => {
                     const { label, filterKey } = mapPromotionStatus(item.status);
                     const dateValue = item.submittedAt || item.createdAt;
                     return {
                         id: item.id,
+                        code: item.code,
                         name: item.name,
                         type: 'Khuyến mãi',
                         statusLabel: label,
                         statusFilterKey: filterKey,
                         createdAt: formatDateTime(dateValue),
                         createdAtRaw: dateValue ? new Date(dateValue).getTime() : 0,
-                        createdBy: item.submittedByName || item.submittedBy || '--',
                         entity: 'promotion',
                     };
                 });
@@ -227,7 +232,6 @@ export default function VouchersPromotionsPage() {
                                 <th>Tên</th>
                                 <th>Loại</th>
                                 <th>Ngày tạo</th>
-                                <th>Người tạo</th>
                                 <th>Trạng thái</th>
                                 <th>Hành động</th>
                             </tr>
@@ -235,24 +239,23 @@ export default function VouchersPromotionsPage() {
                         <tbody>
                             {isLoading ? (
                                 <tr>
-                                    <td colSpan={7} className={cx('empty')}>
+                                    <td colSpan={6} className={cx('empty')}>
                                         Đang tải dữ liệu...
                                     </td>
                                 </tr>
                             ) : sortedAndFiltered.length === 0 ? (
                                 <tr>
-                                    <td colSpan={7} className={cx('empty')}>
+                                    <td colSpan={6} className={cx('empty')}>
                                         Không có voucher/khuyến mãi phù hợp.
                                     </td>
                                 </tr>
                             ) : (
                                 sortedAndFiltered.map((record) => (
                                     <tr key={`${record.entity}-${record.id}`}>
-                                        <td className={cx('code-cell')}>{record.entity === 'voucher' ? record.code : '-'}</td>
+                                        <td className={cx('code-cell')}>{record.code || '-'}</td>
                                         <td className={cx('name-cell')}>{record.name}</td>
                                         <td>{record.type}</td>
                                         <td>{record.createdAt}</td>
-                                        <td>{record.createdBy}</td>
                                         <td>
                                             <StatusBadge status={record.statusLabel} />
                                         </td>
@@ -261,7 +264,7 @@ export default function VouchersPromotionsPage() {
                                                 className={cx('btn', 'view-btn')}
                                                 onClick={() => handleViewDetail(record)}
                                             >
-                                                Xem
+                                                Xem chi tiết
                                             </button>
                                         </td>
                                     </tr>

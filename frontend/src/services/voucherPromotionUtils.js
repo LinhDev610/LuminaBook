@@ -1,5 +1,7 @@
 // Voucher and Promotion utilities
 import { getApiBaseUrl } from './utils';
+import { VOUCHER_PROMOTION_STATUSES } from './constants';
+import { getVouchersByStatus, getPromotionsByStatus } from './api';
 
 // Lấy image URL từ voucher
 export const getVoucherImageUrl = (voucher) => {
@@ -87,3 +89,28 @@ export const normalizePromotionImageUrl = (url, apiBaseUrl = null) => {
     return `${baseUrl}/promotion_media/${url}`;
 };
 
+/**
+ * Fetch all items (vouchers or promotions) by all statuses
+ * @param {'voucher' | 'promotion'} type - Type of item to fetch
+ * @param {string|null} token - Authentication token
+ * @returns {Promise<Array>} Array of items (deduplicated by id)
+ */
+export async function fetchAllItemsByStatus(type, token = null) {
+    try {
+        const fetchFunction = type === 'voucher' ? getVouchersByStatus : getPromotionsByStatus;
+        const results = await Promise.all(
+            VOUCHER_PROMOTION_STATUSES.map(status =>
+                fetchFunction(status, token).catch(() => [])
+            )
+        );
+
+        // Merge và loại bỏ duplicate dựa trên id
+        const allItems = results.flat();
+        return Array.from(
+            new Map(allItems.map(item => [item.id, item])).values()
+        );
+    } catch (error) {
+        console.error(`Error fetching all ${type}s:`, error);
+        return [];
+    }
+}

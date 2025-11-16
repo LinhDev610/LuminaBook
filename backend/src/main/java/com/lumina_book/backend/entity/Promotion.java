@@ -27,6 +27,9 @@ public class Promotion {
     @GeneratedValue(strategy = GenerationType.UUID)
     String id;
 
+    @Column(unique = true, nullable = false)
+    String code;
+
     @Column(name = "name", nullable = false)
     String name;
 

@@ -168,6 +168,12 @@ public class VoucherService {
             voucher.setApplyScope(scope);
         }
 
+        // Nếu staff cập nhật voucher bị từ chối, tự động chuyển về chờ duyệt
+        if (!isAdmin && voucher.getStatus() == VoucherStatus.REJECTED) {
+            voucher.setStatus(VoucherStatus.PENDING_APPROVAL);
+            voucher.setRejectionReason(null); // Xóa lý do từ chối khi gửi lại
+        }
+
         Voucher savedVoucher = voucherRepository.save(voucher);
         log.info("Voucher updated: {} by user: {}", voucherId, currentUserId);
 

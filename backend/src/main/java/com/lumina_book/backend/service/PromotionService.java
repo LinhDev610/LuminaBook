@@ -206,6 +206,12 @@ public class PromotionService {
             promotion.setApplyScope(scope);
         }
 
+        // Nếu staff cập nhật promotion bị từ chối, tự động chuyển về chờ duyệt
+        if (!isAdmin && promotion.getStatus() == PromotionStatus.REJECTED) {
+            promotion.setStatus(PromotionStatus.PENDING_APPROVAL);
+            promotion.setRejectionReason(null); // Xóa lý do từ chối khi gửi lại
+        }
+
         Promotion savedPromotion = promotionRepository.save(promotion);
         if (wasApprovedAndActive) {
             applyPromotionToTargets(savedPromotion);

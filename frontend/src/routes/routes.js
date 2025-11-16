@@ -10,12 +10,12 @@ import ForgotPassword from '../components/Auth/ForgotPassword';
 import VerifyCode from '../components/Auth/VerifyCode';
 
 import Account from '../pages/CustomerAccount';
-
 import CustomerAccountLayout from '../layouts/CustomerAccountLayout';
 import AdminLayout from '../layouts/AdminLayout';
 import StaffLayout from '../layouts/StaffLayout';
 import CustomerSupportLayout from '../layouts/CustomerSupportLayout';
 import ManageStaffAccountsPage from '../pages/Admin/ManageStaffAccounts';
+
 import StaffDetailPage from '../pages/Admin/ManageStaffAccounts/StaffDetail';
 import ManageCustomerAccountsPage from '../pages/Admin/ManageCustomerAccounts';
 import CustomerDetailPage from '../pages/Admin/ManageCustomerAccounts/CustomerDetail';
@@ -51,6 +51,8 @@ import AddVoucherPage from '../pages/Employees/Staff/VouchersPromotionsPage/Vouc
 import AddPromotionPage from '../pages/Employees/Staff/VouchersPromotionsPage/Promotion/AddPromotion';
 import VoucherDetailPage from '../pages/Employees/Staff/VouchersPromotionsPage/Voucher/VoucherDetail';
 import PromotionDetailPage from '../pages/Employees/Staff/VouchersPromotionsPage/Promotion/PromotionDetail';
+import UpdateVoucherPage from '../pages/Employees/Staff/VouchersPromotionsPage/Voucher/UpdateVoucher';
+import UpdatePromotionPage from '../pages/Employees/Staff/VouchersPromotionsPage/Promotion/UpdatePromotion';
 import CustomerSupportMainPage from '../pages/Employees/CustomerSupport/CustomerSupportMain';
 import ComplaintManagementPage from '../pages/Employees/CustomerSupport/ComplaintManagement';
 import ReviewCommentManagementPage from '../pages/Employees/CustomerSupport/ReviewCommentManagement';
@@ -137,44 +139,27 @@ const privateRoutes = [
     { path: '/staff', component: StaffMainPage, layout: StaffLayout },
     { path: '/staff/products', component: StaffProductsPage, layout: StaffLayout },
     { path: '/staff/products/new', component: StaffAddProductPage, layout: StaffLayout },
-    {
-        path: '/staff/products/:id',
-        component: StaffProductDetailPage,
-        layout: StaffLayout,
-    },
-    {
-        path: '/staff/products/:id/update',
-        component: StaffUpdateProductPage,
-        layout: StaffLayout,
-    },
+    { path: '/staff/products/:id', component: StaffProductDetailPage, layout: StaffLayout },
+    { path: '/staff/products/:id/update', component: StaffUpdateProductPage, layout: StaffLayout },
+
     { path: '/staff/content', component: ContentManagementPage, layout: StaffLayout },
     { path: '/staff/content/add-banner', component: AddBannerPage, layout: StaffLayout },
     { path: '/staff/content/:id', component: BannerDetailPage, layout: StaffLayout },
-    {
-        path: '/staff/content/:id/edit',
-        component: UpdateContentPage,
-        layout: StaffLayout,
-    },
-    {
-        path: '/staff/content/:id/books',
-        component: BannerBookListPage,
-        layout: StaffLayout,
-    },
+    { path: '/staff/content/:id/edit', component: UpdateContentPage, layout: StaffLayout },
+    { path: '/staff/content/:id/books', component: BannerBookListPage, layout: StaffLayout },
+
     { path: '/staff/vouchers', component: VouchersPromotionsPage, layout: StaffLayout },
-    {
-        path: '/staff/vouchers-promotions',
-        component: VouchersPromotionsPage,
-        layout: StaffLayout,
-    },
+    { path: '/staff/vouchers-promotions', component: VouchersPromotionsPage, layout: StaffLayout },
     { path: '/staff/vouchers/new', component: AddVoucherPage, layout: StaffLayout },
     { path: '/staff/vouchers/:id', component: VoucherDetailPage, layout: StaffLayout },
+    { path: '/staff/vouchers/:id/update', component: UpdateVoucherPage, layout: StaffLayout },
+
     { path: '/staff/promotions/new', component: AddPromotionPage, layout: StaffLayout },
-    {
-        path: '/staff/promotions/:id',
-        component: PromotionDetailPage,
-        layout: StaffLayout,
-    },
+    { path: '/staff/promotions/:id', component: PromotionDetailPage, layout: StaffLayout },
+    { path: '/staff/promotions/:id/update', component: UpdatePromotionPage, layout: StaffLayout },
+
     { path: '/staff/orders', component: VouchersPromotionsPage, layout: StaffLayout },
+
     { path: '/staff/profile', component: ProfileStaffPage, layout: StaffLayout },
 
     // Customer Support routes

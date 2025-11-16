@@ -468,6 +468,14 @@ function VoucherDetailPage() {
 
                 {/* Action Buttons */}
                 <div className={cx('action-buttons')}>
+                    {voucher.status === 'REJECTED' && (
+                        <button
+                            className={cx('btn', 'btn-edit')}
+                            onClick={() => navigate(`/staff/vouchers/${id}/update`)}
+                        >
+                            Sửa lại
+                        </button>
+                    )}
                     <button className={cx('btn', 'btn-back')} onClick={handleBack}>
                         Quay lại
                     </button>

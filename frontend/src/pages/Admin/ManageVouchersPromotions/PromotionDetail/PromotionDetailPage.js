@@ -533,13 +533,6 @@ function PromotionDetailPage() {
 
                 {/* Action Buttons */}
                 <div className={cx('action-buttons')}>
-                    <button
-                        className={cx('btn', 'btn-cancel')}
-                        onClick={handleBack}
-                        disabled={processing}
-                    >
-                        Hủy
-                    </button>
                     {isAdmin && isPending && (
                         <>
                             <button
@@ -558,7 +551,7 @@ function PromotionDetailPage() {
                             </button>
                         </>
                     )}
-                    {!isPending && (
+                    {isAdmin && promotion.status === 'APPROVED' && (
                         <button
                             className={cx('btn', 'btn-edit')}
                             onClick={() => navigate(`/admin/promotions/${id}/edit`)}
@@ -567,6 +560,13 @@ function PromotionDetailPage() {
                             Chỉnh sửa
                         </button>
                     )}
+                    <button
+                        className={cx('btn', 'btn-delete')}
+                        onClick={() => setShowDeleteModal(true)}
+                        disabled={processing}
+                    >
+                        Xóa chương trình khuyến mãi
+                    </button>
                 </div>
             </div>
 

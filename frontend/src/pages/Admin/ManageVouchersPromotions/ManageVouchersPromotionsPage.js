@@ -68,6 +68,7 @@ function ManageVouchersPromotionsPage() {
                 const { label, filterKey } = mapPromotionStatus(p.status);
                 return {
                     id: p.id || '',
+                    code: p.code || '',
                     name: p.name || '',
                     discountValue: p.discountValue || 0,
                     discountValueType: p.discountValueType || 'PERCENTAGE',

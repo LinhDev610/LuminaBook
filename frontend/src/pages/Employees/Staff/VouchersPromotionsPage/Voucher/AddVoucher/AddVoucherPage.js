@@ -14,7 +14,6 @@ import {
     APPLY_SCOPE_OPTIONS,
     INITIAL_FORM_STATE_VOUCHER,
 } from '../../../../../../services';
-import useDebounce from '../../../../../../hooks/useDebounce';
 
 const cx = classNames.bind(styles);
 
@@ -31,16 +30,16 @@ export default function AddVoucherPage() {
     const [imageFile, setImageFile] = useState(null);
     const [imagePreview, setImagePreview] = useState(null);
     const [isDragging, setIsDragging] = useState(false);
-    const [productSearchQuery, setProductSearchQuery] = useState('');
-    const debouncedProductSearchQuery = useDebounce(productSearchQuery, 300);
-    const [visibleProductCount, setVisibleProductCount] = useState(50);
+    const [specificProductName, setSpecificProductName] = useState('');
+    const [isOrderByMinValue, setIsOrderByMinValue] = useState(false);
 
     const resetForm = useCallback(() => {
         setFormState({ ...INITIAL_FORM_STATE_VOUCHER });
         setErrors({});
         setImageFile(null);
         setImagePreview(null);
-        setProductSearchQuery('');
+        setSpecificProductName('');
+        setIsOrderByMinValue(false);
     }, []);
 
     useEffect(() => {
@@ -83,31 +82,24 @@ export default function AddVoucherPage() {
         [categories],
     );
 
-    const productOptions = useMemo(
-        () =>
-            products.map((product) => ({
-                value: product.id,
-                label: product.name,
-                code: product.code || '',
-            })),
-        [products],
-    );
-
-    const filteredProductOptions = useMemo(() => {
-        if (!debouncedProductSearchQuery?.trim()) {
-            return productOptions;
+    // Helper function để tìm sản phẩm theo tên
+    const findProductByName = useCallback((productName) => {
+        if (!productName || !productName.trim()) {
+            return null;
         }
-        const query = debouncedProductSearchQuery.toLowerCase().trim();
-        return productOptions.filter((option) => {
-            const nameMatch = option.label?.toLowerCase().includes(query);
-            const codeMatch = option.code?.toLowerCase().includes(query);
-            return Boolean(nameMatch || codeMatch);
-        });
-    }, [productOptions, debouncedProductSearchQuery]);
+        const searchQuery = productName.trim().toLowerCase();
+        const matchedProducts = products.filter(
+            (product) => product.name?.toLowerCase().includes(searchQuery)
+        );
+        if (matchedProducts.length === 0) {
+            return { error: 'Không tìm thấy sản phẩm với tên này' };
+        }
+        if (matchedProducts.length > 1) {
+            return { error: `Tìm thấy ${matchedProducts.length} sản phẩm. Vui lòng nhập tên chính xác hơn.` };
+        }
+        return { product: matchedProducts[0] };
+    }, [products]);
 
-    useEffect(() => {
-        setVisibleProductCount(50);
-    }, [debouncedProductSearchQuery]);
 
     const handleChange = (field, value) => {
         setFormState((prev) => {
@@ -115,7 +107,6 @@ export default function AddVoucherPage() {
                 return {
                     ...prev,
                     discountValueType: value,
-                    maxDiscountValue: value === 'AMOUNT' ? '' : prev.maxDiscountValue,
                 };
             }
             if (field === 'applyScope') {
@@ -125,6 +116,10 @@ export default function AddVoucherPage() {
                     categoryIds: value === 'CATEGORY' ? prev.categoryIds : [],
                     productIds: value === 'PRODUCT' ? prev.productIds : [],
                 };
+            }
+            if (field === 'isOrderByMinValue') {
+                setIsOrderByMinValue(value);
+                return prev;
             }
             return {
                 ...prev,
@@ -144,20 +139,6 @@ export default function AddVoucherPage() {
         }
     };
 
-    const handleToggleId = (field, id) => {
-        setFormState((prev) => {
-            const current = new Set(prev[field]);
-            if (current.has(id)) {
-                current.delete(id);
-            } else {
-                current.add(id);
-            }
-            return {
-                ...prev,
-                [field]: Array.from(current),
-            };
-        });
-    };
 
     const handleImageFile = (file) => {
         if (!file) return;
@@ -239,12 +220,20 @@ export default function AddVoucherPage() {
         if (formState.applyScope === 'CATEGORY' && (!formState.categoryIds || formState.categoryIds.length === 0)) {
             validationErrors.categoryIds = 'Vui lòng chọn loại sách';
         }
-        if (formState.applyScope === 'PRODUCT' && formState.productIds.length === 0) {
-            validationErrors.productIds = 'Vui lòng chọn ít nhất một sản phẩm';
+        if (formState.applyScope === 'PRODUCT') {
+            const productMatch = findProductByName(specificProductName);
+            if (!productMatch) {
+                validationErrors.productIds = 'Vui lòng nhập tên sách cụ thể';
+            } else if (productMatch.error) {
+                validationErrors.productIds = productMatch.error;
+            }
+        }
+        if (isOrderByMinValue && (!formState.minOrderValue || Number(formState.minOrderValue) <= 0)) {
+            validationErrors.minOrderValue = 'Vui lòng nhập giá trị tối thiểu đơn hàng lớn hơn 0';
         }
         setErrors(validationErrors);
         return Object.keys(validationErrors).length === 0;
-    }, [formState]);
+    }, [formState, specificProductName, isOrderByMinValue, findProductByName]);
 
     const preparePayload = async () => {
         let imageUrl = null;
@@ -279,16 +268,18 @@ export default function AddVoucherPage() {
             discountValue: discountValueNum,
             discountValueType: formState.discountValueType,
             minOrderValue: formState.minOrderValue ? Number(formState.minOrderValue) : null,
-            maxDiscountValue:
-                formState.discountValueType === 'PERCENTAGE' && formState.maxDiscountValue
-                    ? Number(formState.maxDiscountValue)
-                    : null,
+            maxDiscountValue: formState.maxDiscountValue ? Number(formState.maxDiscountValue) : null,
             startDate: formState.startDate,
             expiryDate: formState.expiryDate,
             usageLimit: Number(formState.usageLimit),
             applyScope: formState.applyScope,
-            categoryIds: formState.applyScope === 'CATEGORY' ? (Array.isArray(formState.categoryIds) ? formState.categoryIds : [formState.categoryIds].filter(Boolean)) : null,
-            productIds: formState.applyScope === 'PRODUCT' ? formState.productIds : null,
+            categoryIds: formState.applyScope === 'CATEGORY'
+                ? (Array.isArray(formState.categoryIds) ? formState.categoryIds : [formState.categoryIds].filter(Boolean))
+                : null,
+            productIds: formState.applyScope === 'PRODUCT' ? (() => {
+                const productMatch = findProductByName(specificProductName);
+                return productMatch?.product ? [productMatch.product.id] : null;
+            })() : null,
         };
         return payload;
     };
@@ -329,13 +320,6 @@ export default function AddVoucherPage() {
     };
 
     const renderScopeFields = () => {
-        if (formState.applyScope === 'ORDER') {
-            return (
-                <p className={cx('helper-text')}>
-                    Voucher áp dụng cho toàn bộ đơn hàng, không giới hạn danh mục hoặc sản phẩm cụ thể.
-                </p>
-            );
-        }
         if (formState.applyScope === 'CATEGORY') {
             return (
                 <select
@@ -361,70 +345,16 @@ export default function AddVoucherPage() {
         }
         if (formState.applyScope === 'PRODUCT') {
             return (
-                <div className={cx('option-section')}>
-                    <div className={cx('search-box')}>
-                        <input
-                            type="text"
-                            value={productSearchQuery}
-                            onChange={(e) => setProductSearchQuery(e.target.value)}
-                            className={cx('search-input')}
-                            placeholder="Tìm kiếm sản phẩm theo tên..."
-                        />
-                        {productSearchQuery && (
-                            <button
-                                type="button"
-                                className={cx('clear-search-btn')}
-                                onClick={() => setProductSearchQuery('')}
-                            >
-                                ✕
-                            </button>
-                        )}
-                    </div>
-                    <div className={cx('options-grid')}>
-                        {filteredProductOptions.length === 0 ? (
-                            <p className={cx('empty-text')}>
-                                {debouncedProductSearchQuery
-                                    ? 'Không tìm thấy sản phẩm phù hợp.'
-                                    : 'Chưa có sản phẩm phù hợp.'}
-                            </p>
-                        ) : (
-                            filteredProductOptions.slice(0, visibleProductCount).map((option) => (
-                                <label key={option.value} className={cx('option-item')}>
-                                    <input
-                                        type="checkbox"
-                                        checked={formState.productIds.includes(option.value)}
-                                        onChange={() => handleToggleId('productIds', option.value)}
-                                    />
-                                    <span>{option.label}</span>
-                                </label>
-                            ))
-                        )}
-                    </div>
-                    {filteredProductOptions.length > visibleProductCount && (
-                        <div className={cx('load-more')}>
-                            <button
-                                type="button"
-                                className={cx('btn', 'btn-load-more')}
-                                onClick={() => setVisibleProductCount((c) => c + 50)}
-                            >
-                                Hiển thị thêm
-                            </button>
-                        </div>
-                    )}
-                    {formState.productIds.length > 0 && (
-                        <div className={cx('selected-count')}>
-                            Đã chọn: {formState.productIds.length} sản phẩm
-                        </div>
-                    )}
-                    {errors.productIds && <span className={cx('error-text')}>{errors.productIds}</span>}
-                </div>
+                <input
+                    type="text"
+                    className={cx('form-input')}
+                    placeholder="Nhập tên sách cụ thể"
+                    value={specificProductName}
+                    onChange={(e) => setSpecificProductName(e.target.value)}
+                />
             );
         }
-        return (
-            <p className={cx('helper-text')}>
-                Voucher áp dụng cho toàn bộ đơn hàng, không giới hạn danh mục hoặc sản phẩm cụ thể.
-            </p>
-        );
+        return null;
     };
 
     return (
@@ -529,42 +459,36 @@ export default function AddVoucherPage() {
                             </div>
                         </div>
 
-                        {/* 3. Điều kiện áp dụng - Giá trị đơn từ */}
-                        <div className={cx('form-group')}>
-                            <label className={cx('form-label')}>Điều kiện áp dụng</label>
-                            <div className={cx('condition-row')}>
-                                <label className={cx('condition-label')}>Giá trị đơn từ (VNĐ):</label>
-                                <input
-                                    type="text"
-                                    className={cx('form-input', 'condition-input')}
-                                    placeholder="VD: 400000"
-                                    value={formState.minOrderValue}
-                                    onChange={(e) => handleChange('minOrderValue', e.target.value)}
-                                />
+                        {/* 3. Điều kiện áp dụng - Giá trị đơn từ (chỉ hiển thị khi không chọn "Tổng giá trị đơn hàng") */}
+                        {!isOrderByMinValue && (
+                            <div className={cx('form-group')}>
+                                <label className={cx('form-label')}>Điều kiện áp dụng</label>
+                                <div className={cx('condition-row')}>
+                                    <label className={cx('condition-label')}>Giá trị đơn từ (VNĐ):</label>
+                                    <input
+                                        type="text"
+                                        className={cx('form-input', 'condition-input')}
+                                        placeholder="VD: 400000"
+                                        value={formState.minOrderValue}
+                                        onChange={(e) => handleChange('minOrderValue', e.target.value)}
+                                    />
+                                </div>
                             </div>
-                        </div>
+                        )}
 
-                        {/* 4. Radio buttons: Toàn sàn / Theo loại sách / Theo sách cụ thể */}
+                        {/* 4. Radio buttons: Theo loại sách / Theo sách cụ thể / Toàn sàn / Tổng giá trị đơn hàng */}
                         <div className={cx('form-group')}>
                             <div className={cx('radio-group')}>
                                 <label className={cx('radio-label')}>
                                     <input
                                         type="radio"
                                         name="applyType"
-                                        value="ORDER"
-                                        checked={formState.applyScope === 'ORDER'}
-                                        onChange={() => handleChange('applyScope', 'ORDER')}
-                                        className={cx('radio-input')}
-                                    />
-                                    <span className={cx('radio-text')}>Toàn sàn</span>
-                                </label>
-                                <label className={cx('radio-label')}>
-                                    <input
-                                        type="radio"
-                                        name="applyType"
                                         value="CATEGORY"
-                                        checked={formState.applyScope === 'CATEGORY'}
-                                        onChange={() => handleChange('applyScope', 'CATEGORY')}
+                                        checked={formState.applyScope === 'CATEGORY' && !isOrderByMinValue}
+                                        onChange={() => {
+                                            handleChange('applyScope', 'CATEGORY');
+                                            setIsOrderByMinValue(false);
+                                        }}
                                         className={cx('radio-input')}
                                     />
                                     <span className={cx('radio-text')}>Theo loại sách</span>
@@ -574,94 +498,104 @@ export default function AddVoucherPage() {
                                         type="radio"
                                         name="applyType"
                                         value="PRODUCT"
-                                        checked={formState.applyScope === 'PRODUCT'}
-                                        onChange={() => handleChange('applyScope', 'PRODUCT')}
+                                        checked={formState.applyScope === 'PRODUCT' && !isOrderByMinValue}
+                                        onChange={() => {
+                                            handleChange('applyScope', 'PRODUCT');
+                                            setIsOrderByMinValue(false);
+                                        }}
                                         className={cx('radio-input')}
                                     />
                                     <span className={cx('radio-text')}>Theo sách cụ thể</span>
                                 </label>
+                                <label className={cx('radio-label')}>
+                                    <input
+                                        type="radio"
+                                        name="applyType"
+                                        value="ORDER"
+                                        checked={formState.applyScope === 'ORDER' && !isOrderByMinValue}
+                                        onChange={() => {
+                                            handleChange('applyScope', 'ORDER');
+                                            setIsOrderByMinValue(false);
+                                        }}
+                                        className={cx('radio-input')}
+                                    />
+                                    <span className={cx('radio-text')}>Toàn sàn</span>
+                                </label>
+                                <label className={cx('radio-label')}>
+                                    <input
+                                        type="radio"
+                                        name="applyType"
+                                        value="ORDER_MIN"
+                                        checked={isOrderByMinValue}
+                                        onChange={() => {
+                                            handleChange('applyScope', 'ORDER');
+                                            setIsOrderByMinValue(true);
+                                        }}
+                                        className={cx('radio-input')}
+                                    />
+                                    <span className={cx('radio-text')}>Tổng giá trị đơn hàng</span>
+                                </label>
                             </div>
                         </div>
 
-                        {/* 5. Hạn mức và Loại sách áp dụng (2 cột) - chỉ hiện khi chọn "Theo loại sách" hoặc "Toàn sàn" */}
-                        {formState.applyScope === 'ORDER' && formState.discountValueType === 'PERCENTAGE' && (
-                            <div className={cx('form-row')}>
-                                <div className={cx('form-group')}>
-                                    <label className={cx('form-label')}>Hạn mức</label>
-                                    <input
-                                        type="text"
-                                        className={cx('form-input')}
-                                        placeholder="VD: Tối đa 50.000₫ /đơn"
-                                        value={formState.maxDiscountValue}
-                                        onChange={(e) => handleChange('maxDiscountValue', e.target.value)}
-                                    />
-                                </div>
-                            </div>
-                        )}
-                        {formState.applyScope === 'CATEGORY' && (
-                            <div className={cx('form-row')}>
-                                {formState.discountValueType === 'PERCENTAGE' && (
-                                    <div className={cx('form-group')}>
-                                        <label className={cx('form-label')}>Hạn mức</label>
-                                        <input
-                                            type="text"
-                                            className={cx('form-input')}
-                                            placeholder="VD: Tối đa 50.000₫ /đơn"
-                                            value={formState.maxDiscountValue}
-                                            onChange={(e) => handleChange('maxDiscountValue', e.target.value)}
-                                        />
-                                    </div>
+                        {/* 5. Loại sách áp dụng - chỉ hiện khi chọn "Theo loại sách" */}
+                        {formState.applyScope === 'CATEGORY' && !isOrderByMinValue && (
+                            <div className={cx('form-group')}>
+                                <label className={cx('form-label')}>Loại sách áp dụng</label>
+                                {isLoading ? (
+                                    <p className={cx('loading-text')}>Đang tải...</p>
+                                ) : (
+                                    <>
+                                        {renderScopeFields()}
+                                        {errors.categoryIds && (
+                                            <span className={cx('error-text')}>{errors.categoryIds}</span>
+                                        )}
+                                    </>
                                 )}
-                                <div className={cx('form-group')}>
-                                    <label className={cx('form-label')}>Loại sách áp dụng</label>
-                                    {isLoading ? (
-                                        <p className={cx('loading-text')}>Đang tải...</p>
-                                    ) : (
-                                        <>
-                                            {renderScopeFields()}
-                                            {errors.categoryIds && (
-                                                <span className={cx('error-text')}>{errors.categoryIds}</span>
-                                            )}
-                                        </>
-                                    )}
-                                </div>
                             </div>
                         )}
 
-                        {/* Hiển thị phạm vi áp dụng khi chọn "Theo sách cụ thể" */}
-                        {formState.applyScope === 'PRODUCT' && (
-                            <div className={cx('form-row')}>
-                                {formState.discountValueType === 'PERCENTAGE' && (
-                                    <div className={cx('form-group')}>
-                                        <label className={cx('form-label')}>Hạn mức</label>
-                                        <input
-                                            type="text"
-                                            className={cx('form-input')}
-                                            placeholder="VD: Tối đa 50.000₫ /đơn"
-                                            value={formState.maxDiscountValue}
-                                            onChange={(e) => handleChange('maxDiscountValue', e.target.value)}
-                                        />
-                                    </div>
+                        {/* Tên sách cụ thể - chỉ hiện khi chọn "Theo sách cụ thể" */}
+                        {formState.applyScope === 'PRODUCT' && !isOrderByMinValue && (
+                            <div className={cx('form-group')}>
+                                <label className={cx('form-label')}>Tên sách cụ thể</label>
+                                {renderScopeFields()}
+                                {errors.productIds && (
+                                    <span className={cx('error-text')}>{errors.productIds}</span>
                                 )}
-                                <div className={cx('form-group')}>
-                                    <label className={cx('form-label')}>Sản phẩm áp dụng</label>
-                                    {isLoading ? (
-                                        <p className={cx('loading-text')}>Đang tải...</p>
-                                    ) : (
-                                        <>
-                                            {renderScopeFields()}
-                                            {errors.productIds && (
-                                                <span className={cx('error-text')}>{errors.productIds}</span>
-                                            )}
-                                        </>
-                                    )}
-                                </div>
                             </div>
                         )}
 
-                        {/* 6. Số lượng voucher, Ngày bắt đầu, Ngày kết thúc (3 cột) */}
-                        <div className={cx('form-row', 'form-row-three')}>
-                            <div className={cx('form-group', 'form-group-third')}>
+                        {/* Giá trị tối thiểu đơn hàng - chỉ hiện khi chọn "Tổng giá trị đơn hàng" */}
+                        {isOrderByMinValue && (
+                            <div className={cx('form-group')}>
+                                <label className={cx('form-label')}>Giá trị tối thiểu đơn hàng</label>
+                                <input
+                                    type="text"
+                                    className={cx('form-input', { error: errors.minOrderValue })}
+                                    placeholder="VD: 400000"
+                                    value={formState.minOrderValue}
+                                    onChange={(e) => handleChange('minOrderValue', e.target.value)}
+                                />
+                                {errors.minOrderValue && (
+                                    <span className={cx('error-text')}>{errors.minOrderValue}</span>
+                                )}
+                            </div>
+                        )}
+
+                        {/* 6. Hạn mức, Số lượng voucher, Ngày bắt đầu, Ngày kết thúc */}
+                        <div className={cx('form-row', 'form-row-four')}>
+                            <div className={cx('form-group', 'form-group-fourth')}>
+                                <label className={cx('form-label')}>Hạn mức</label>
+                                <input
+                                    type="text"
+                                    className={cx('form-input')}
+                                    placeholder="VD: 70.000₫ (giới hạn tổng giảm giá đơn hàng)"
+                                    value={formState.maxDiscountValue}
+                                    onChange={(e) => handleChange('maxDiscountValue', e.target.value)}
+                                />
+                            </div>
+                            <div className={cx('form-group', 'form-group-fourth')}>
                                 <label className={cx('form-label')}>Số lượng voucher *</label>
                                 <input
                                     type="text"
@@ -672,8 +606,7 @@ export default function AddVoucherPage() {
                                 />
                                 {errors.usageLimit && <span className={cx('error-text')}>{errors.usageLimit}</span>}
                             </div>
-
-                            <div className={cx('form-group', 'form-group-third')}>
+                            <div className={cx('form-group', 'form-group-fourth')}>
                                 <label className={cx('form-label')}>Ngày bắt đầu *</label>
                                 <div className={cx('date-input-wrapper')}>
                                     <input
@@ -686,8 +619,7 @@ export default function AddVoucherPage() {
                                 </div>
                                 {errors.startDate && <span className={cx('error-text')}>{errors.startDate}</span>}
                             </div>
-
-                            <div className={cx('form-group', 'form-group-third')}>
+                            <div className={cx('form-group', 'form-group-fourth')}>
                                 <label className={cx('form-label')}>Ngày kết thúc *</label>
                                 <div className={cx('date-input-wrapper')}>
                                     <input

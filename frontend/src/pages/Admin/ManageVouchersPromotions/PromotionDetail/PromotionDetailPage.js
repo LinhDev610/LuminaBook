@@ -9,11 +9,13 @@ import {
     getApiBaseUrl,
     mapPromotionStatus,
     APPLY_SCOPE_OPTIONS,
+    DISCOUNT_VALUE_TYPES,
     approvePromotion,
     deletePromotion,
     getPromotionImageUrl,
     normalizePromotionImageUrl,
-    getProductsByIds
+    getProductsByIds,
+    getActiveCategories
 } from '../../../../services';
 import { useNotification } from '../../../../components/Common/Notification';
 
@@ -34,21 +36,26 @@ function PromotionDetailPage() {
     const [rejectReason, setRejectReason] = useState('');
     const [processing, setProcessing] = useState(false);
     const [productNames, setProductNames] = useState([]);
+    const [categories, setCategories] = useState([]);
 
     // Check if admin or staff
     const isAdmin = location.pathname.startsWith('/admin');
 
-    // Fetch promotion detail
+    // Fetch promotion detail and categories
     useEffect(() => {
         const fetchPromotion = async () => {
             try {
                 setLoading(true);
                 setError('');
                 const token = getStoredToken('token');
-                const promotionData = await getPromotionById(id, token);
+                const [promotionData, categoryData] = await Promise.all([
+                    getPromotionById(id, token),
+                    getActiveCategories(token).catch(() => [])
+                ]);
                 console.log('Promotion data from API:', promotionData);
                 console.log('ImageUrl from API:', promotionData?.imageUrl);
                 setPromotion(promotionData);
+                setCategories(Array.isArray(categoryData) ? categoryData : []);
                 if (promotionData?.productNames && Array.isArray(promotionData.productNames)) {
                     setProductNames(promotionData.productNames);
                 } else if (promotionData?.applyScope === 'PRODUCT' && promotionData?.productIds && promotionData.productIds.length > 0) {
@@ -189,17 +196,22 @@ function PromotionDetailPage() {
 
     const getDiscountValueText = () => {
         if (!promotion) return '';
-        const { discountValue, discountValueType, maxDiscountValue } = promotion;
+        const { discountValue, discountValueType } = promotion;
 
         if (discountValueType === 'PERCENTAGE') {
-            const percentText = `Giảm ${discountValue}%`;
-            if (maxDiscountValue && maxDiscountValue > 0) {
-                return `${percentText} tối đa ${formatPrice(maxDiscountValue)}`;
-            }
-            return percentText;
+            return `${discountValue}%`;
         } else {
             return formatPrice(discountValue || 0);
         }
+    };
+
+    const getConditionText = () => {
+        if (!promotion) return '';
+        const conditions = [];
+        if (promotion.minOrderValue && promotion.minOrderValue > 0) {
+            conditions.push(`Đơn hàng từ ${formatPrice(promotion.minOrderValue)} trở lên`);
+        }
+        return conditions.join(', ') || '-';
     };
 
     const getApplyScopeText = () => {
@@ -248,11 +260,12 @@ function PromotionDetailPage() {
     const statusInfo = getStatusInfo(promotion.status);
     const statusClass = getStatusClass(promotion.status);
     const isPending = promotion.status === 'PENDING_APPROVAL';
+    const isRejected = promotion.status === 'REJECTED';
 
     return (
         <div className={cx('wrap')}>
-            {/* Header */}
-            <div className={cx('header')}>
+            {/* Top Header */}
+            <div className={cx('top-header')}>
                 <button className={cx('back-btn')} onClick={handleBack}>
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
                         <path
@@ -264,19 +277,36 @@ function PromotionDetailPage() {
                         />
                     </svg>
                 </button>
-                <h1 className={cx('title')}>Chi tiết Chương trình khuyến mãi</h1>
-                {statusInfo && (
-                    <span className={cx('status-badge', statusClass)}>
-                        {statusInfo.label}
-                    </span>
-                )}
             </div>
 
             {/* Promotion Detail Card */}
             <div className={cx('detail-card')}>
+                {/* Header with title and status badge */}
+                <div className={cx('card-header')}>
+                    <h1 className={cx('title')}>Chi tiết Chương trình Khuyến Mãi</h1>
+                    {statusInfo && (
+                        <span className={cx('status-badge', statusClass)}>
+                            {statusInfo.label}
+                        </span>
+                    )}
+                </div>
+
+                {/* Lý do từ chối */}
+                {promotion.rejectionReason && (
+                    <div className={cx('rejection-box', 'rejection-box-top')}>
+                        <h3 className={cx('rejection-title')}>Lý do không duyệt</h3>
+                        <p className={cx('rejection-text')}>{promotion.rejectionReason}</p>
+                        {promotion.approvedAt && (
+                            <p className={cx('rejection-date')}>
+                                Ngày giờ kiểm duyệt: {formatDateTime(promotion.approvedAt)}
+                            </p>
+                        )}
+                    </div>
+                )}
+
                 <div className={cx('form-content')}>
-                    {/* Tên chương trình */}
-                    <div className={cx('form-row')}>
+                    {/* 1. Tên chương trình */}
+                    <div className={cx('form-group')}>
                         <label className={cx('form-label')}>Tên chương trình</label>
                         <input
                             type="text"
@@ -286,8 +316,8 @@ function PromotionDetailPage() {
                         />
                     </div>
 
-                    {/* Mã khuyến mãi */}
-                    <div className={cx('form-row')}>
+                    {/* 2. Mã khuyến mãi */}
+                    <div className={cx('form-group')}>
                         <label className={cx('form-label')}>Mã khuyến mãi</label>
                         <input
                             type="text"
@@ -297,54 +327,45 @@ function PromotionDetailPage() {
                         />
                     </div>
 
-                    {/* Loại ưu đãi */}
+                    {/* 3. Loại giảm giá và Giá trị (2 cột) */}
                     <div className={cx('form-row')}>
-                        <label className={cx('form-label')}>Loại ưu đãi</label>
-                        <input
-                            type="text"
-                            className={cx('form-input')}
-                            value={`${getDiscountValueText()} - ${getApplyScopeText()}`}
-                            readOnly
-                        />
-                    </div>
-
-                    {/* Điều kiện áp dụng */}
-                    <div className={cx('form-row')}>
-                        <label className={cx('form-label')}>Điều kiện áp dụng</label>
-                        <div className={cx('conditions-list')}>
-                            {promotion.minOrderValue && promotion.minOrderValue > 0 && (
-                                <div className={cx('condition-item')}>
-                                    Giá trị đơn tối thiểu: {formatPrice(promotion.minOrderValue)}
-                                </div>
-                            )}
-                            {promotion.applyScope === 'CATEGORY' && promotion.categoryNames && promotion.categoryNames.length > 0 && (
-                                <div className={cx('condition-item')}>
-                                    Áp dụng theo loại sách: {promotion.categoryNames.join(', ')}
-                                </div>
-                            )}
-                            {promotion.applyScope === 'PRODUCT' && productNames.length > 0 && (
-                                <div className={cx('condition-item')}>
-                                    Áp dụng theo sách: {productNames.join(', ')}
-                                </div>
-                            )}
-                            {promotion.applyScope === 'ORDER' && (
-                                <div className={cx('condition-item')}>
-                                    Áp dụng cho toàn bộ đơn hàng
-                                </div>
-                            )}
-                            {(!promotion.minOrderValue || promotion.minOrderValue <= 0) &&
-                                (!promotion.applyScope ||
-                                    (promotion.applyScope !== 'CATEGORY' &&
-                                        promotion.applyScope !== 'PRODUCT' &&
-                                        promotion.applyScope !== 'ORDER')) && (
-                                    <div className={cx('condition-item')}>-</div>
-                                )}
+                        <div className={cx('form-group', 'form-group-half')}>
+                            <label className={cx('form-label')}>Loại giảm giá</label>
+                            <select className={cx('form-select')} value={promotion.discountValueType || ''} readOnly>
+                                {DISCOUNT_VALUE_TYPES.map((opt) => (
+                                    <option key={opt.value} value={opt.value}>
+                                        {opt.label}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className={cx('form-group', 'form-group-half')}>
+                            <label className={cx('form-label')}>Giá trị</label>
+                            <input
+                                type="text"
+                                className={cx('form-input')}
+                                value={getDiscountValueText()}
+                                readOnly
+                            />
                         </div>
                     </div>
 
-                    {/* Áp dụng theo */}
-                    <div className={cx('form-row')}>
-                        <label className={cx('form-label')}>Áp dụng theo</label>
+                    {/* 4. Điều kiện áp dụng - Giá trị đơn từ */}
+                    <div className={cx('form-group')}>
+                        <label className={cx('form-label')}>Điều kiện áp dụng</label>
+                        <div className={cx('condition-row')}>
+                            <label className={cx('condition-label')}>Giá trị đơn từ (VNĐ):</label>
+                            <input
+                                type="text"
+                                className={cx('form-input', 'condition-input')}
+                                value={promotion.minOrderValue ? formatPrice(promotion.minOrderValue) : ''}
+                                readOnly
+                            />
+                        </div>
+                    </div>
+
+                    {/* 5. Radio buttons: Theo loại sách / Theo sách cụ thể */}
+                    <div className={cx('form-group')}>
                         <div className={cx('radio-group')}>
                             <label className={cx('radio-label')}>
                                 <input
@@ -364,44 +385,98 @@ function PromotionDetailPage() {
                                 />
                                 <span>Theo sách cụ thể</span>
                             </label>
-                            <label className={cx('radio-label')}>
-                                <input
-                                    type="radio"
-                                    name="applyScope"
-                                    checked={promotion.applyScope === 'ORDER'}
-                                    readOnly
-                                />
-                                <span>Toàn sàn</span>
-                            </label>
                         </div>
                     </div>
 
-                    {/* Hạn mức */}
-                    <div className={cx('form-row')}>
-                        <label className={cx('form-label')}>Hạn mức</label>
-                        <input
-                            type="text"
-                            className={cx('form-input')}
-                            value={promotion.maxDiscountValue && promotion.maxDiscountValue > 0
-                                ? `Tối đa ${formatPrice(promotion.maxDiscountValue)} / đơn`
-                                : ''}
-                            readOnly
-                        />
+                    {/* 6. Hạn mức và Loại sách áp dụng (2 cột) - chỉ hiện khi chọn "Theo loại sách" */}
+                    {promotion.applyScope === 'CATEGORY' && (
+                        <div className={cx('form-row')}>
+                            {promotion.discountValueType === 'PERCENTAGE' && (
+                                <div className={cx('form-group', 'form-group-half')}>
+                                    <label className={cx('form-label')}>Hạn mức</label>
+                                    <input
+                                        type="text"
+                                        className={cx('form-input')}
+                                        value={promotion.maxDiscountValue && promotion.maxDiscountValue > 0
+                                            ? formatPrice(promotion.maxDiscountValue)
+                                            : ''}
+                                        readOnly
+                                    />
+                                </div>
+                            )}
+                            <div className={cx('form-group', 'form-group-half')}>
+                                <label className={cx('form-label')}>Loại sách áp dụng</label>
+                                <select className={cx('form-select')} value={promotion.categoryIds?.[0] || ''} readOnly>
+                                    <option value="">-- Chọn loại sách --</option>
+                                    {categories.map((category) => (
+                                        <option key={category.id} value={category.id}>
+                                            {category.name}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* 7. Hạn mức và Sản phẩm áp dụng (2 cột) - chỉ hiện khi chọn "Theo sách cụ thể" */}
+                    {promotion.applyScope === 'PRODUCT' && (
+                        <div className={cx('form-row')}>
+                            {promotion.discountValueType === 'PERCENTAGE' && (
+                                <div className={cx('form-group', 'form-group-half')}>
+                                    <label className={cx('form-label')}>Hạn mức</label>
+                                    <input
+                                        type="text"
+                                        className={cx('form-input')}
+                                        value={promotion.maxDiscountValue && promotion.maxDiscountValue > 0
+                                            ? formatPrice(promotion.maxDiscountValue)
+                                            : ''}
+                                        readOnly
+                                    />
+                                </div>
+                            )}
+                            <div className={cx('form-group', 'form-group-half')}>
+                                <label className={cx('form-label')}>Sản phẩm áp dụng</label>
+                                <div className={cx('product-list')}>
+                                    {productNames.length > 0 ? (
+                                        <div className={cx('product-names')}>
+                                            {productNames.map((name, index) => (
+                                                <div key={index} className={cx('product-item')}>
+                                                    {name}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <span className={cx('empty-text')}>Chưa có sản phẩm</span>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* 8. Ngày bắt đầu, Ngày kết thúc (2 cột) */}
+                    <div className={cx('form-row', 'form-row-three')}>
+                        <div className={cx('form-group', 'form-group-third')}>
+                            <label className={cx('form-label')}>Ngày bắt đầu</label>
+                            <input
+                                type="text"
+                                className={cx('form-input')}
+                                value={formatDate(promotion.startDate)}
+                                readOnly
+                            />
+                        </div>
+                        <div className={cx('form-group', 'form-group-third')}>
+                            <label className={cx('form-label')}>Ngày kết thúc</label>
+                            <input
+                                type="text"
+                                className={cx('form-input')}
+                                value={formatDate(promotion.expiryDate)}
+                                readOnly
+                            />
+                        </div>
                     </div>
 
-                    {/* Thời gian áp dụng */}
-                    <div className={cx('form-row')}>
-                        <label className={cx('form-label')}>Thời gian áp dụng</label>
-                        <input
-                            type="text"
-                            className={cx('form-input')}
-                            value={`${formatDate(promotion.startDate)} - ${formatDate(promotion.expiryDate)}`}
-                            readOnly
-                        />
-                    </div>
-
-                    {/* Ảnh khuyến mãi */}
-                    <div className={cx('form-row')}>
+                    {/* 9. Ảnh khuyến mãi */}
+                    <div className={cx('form-group')}>
                         <label className={cx('form-label')}>Ảnh khuyến mãi</label>
                         <div className={cx('image-container')}>
                             {imageUrl ? (
@@ -444,11 +519,9 @@ function PromotionDetailPage() {
                         </div>
                     </div>
 
-                    {/* Ghi chú / Lý do đề xuất */}
-                    <div className={cx('form-row')}>
-                        <label className={cx('form-label')}>
-                            Ghi chú / Lý do đề xuất
-                        </label>
+                    {/* 10. Ghi chú / Lý do đề xuất */}
+                    <div className={cx('form-group', 'form-group-notes')}>
+                        <label className={cx('form-label')}>Ghi chú / Lý do đề xuất</label>
                         <textarea
                             className={cx('form-textarea')}
                             value={promotion.description || ''}
@@ -456,25 +529,17 @@ function PromotionDetailPage() {
                             rows={4}
                         />
                     </div>
-
-                    {/* Lý do từ chối */}
-                    {promotion.rejectionReason && (
-                        <div className={cx('form-row')}>
-                            <label className={cx('form-label')}>Lý do từ chối</label>
-                            <div className={cx('rejection-box')}>
-                                <p>{promotion.rejectionReason}</p>
-                                {promotion.approvedAt && (
-                                    <p className={cx('rejection-date')}>
-                                        Ngày giờ kiểm duyệt: {formatDateTime(promotion.approvedAt)}
-                                    </p>
-                                )}
-                            </div>
-                        </div>
-                    )}
                 </div>
 
                 {/* Action Buttons */}
                 <div className={cx('action-buttons')}>
+                    <button
+                        className={cx('btn', 'btn-cancel')}
+                        onClick={handleBack}
+                        disabled={processing}
+                    >
+                        Hủy
+                    </button>
                     {isAdmin && isPending && (
                         <>
                             <button
@@ -493,13 +558,15 @@ function PromotionDetailPage() {
                             </button>
                         </>
                     )}
-                    <button
-                        className={cx('btn', 'btn-delete')}
-                        onClick={() => setShowDeleteModal(true)}
-                        disabled={processing}
-                    >
-                        Xóa chương trình khuyến mãi
-                    </button>
+                    {!isPending && (
+                        <button
+                            className={cx('btn', 'btn-edit')}
+                            onClick={() => navigate(`/admin/promotions/${id}/edit`)}
+                            disabled={processing}
+                        >
+                            Chỉnh sửa
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -616,4 +683,5 @@ function PromotionDetailPage() {
 }
 
 export default PromotionDetailPage;
+
 

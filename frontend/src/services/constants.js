@@ -83,7 +83,7 @@ export const mapVoucherPromotionStatus = (status) => {
         case 'APPROVED':
             return { label: 'Đã duyệt', filterKey: 'approved' };
         case 'REJECTED':
-            return { label: 'Từ chối', filterKey: 'rejected' };
+            return { label: 'Không được duyệt', filterKey: 'rejected' };
         case 'DISABLED':
             return { label: 'Tạm dừng', filterKey: 'disabled' };
         case 'EXPIRED':

@@ -9,11 +9,13 @@ import {
     getApiBaseUrl,
     mapVoucherStatus,
     APPLY_SCOPE_OPTIONS,
+    DISCOUNT_VALUE_TYPES,
     approveVoucher,
     deleteVoucher,
     getVoucherImageUrl,
     normalizeVoucherImageUrl,
-    getProductsByIds
+    getProductsByIds,
+    getActiveCategories
 } from '../../../../services';
 import { useNotification } from '../../../../components/Common/Notification';
 
@@ -34,20 +36,24 @@ function VoucherDetailPage() {
     const [rejectReason, setRejectReason] = useState('');
     const [processing, setProcessing] = useState(false);
     const [productNames, setProductNames] = useState([]);
+    const [categories, setCategories] = useState([]);
 
     // Check if admin or staff
     const isAdmin = location.pathname.startsWith('/admin');
 
-    // Fetch voucher detail
+    // Fetch voucher detail and categories
     useEffect(() => {
         const fetchVoucher = async () => {
             try {
                 setLoading(true);
                 setError('');
                 const token = getStoredToken('token');
-                const voucherData = await getVoucherById(id, token);
+                const [voucherData, categoryData] = await Promise.all([
+                    getVoucherById(id, token),
+                    getActiveCategories(token).catch(() => [])
+                ]);
                 setVoucher(voucherData);
-
+                setCategories(Array.isArray(categoryData) ? categoryData : []);
                 if (voucherData?.productNames && Array.isArray(voucherData.productNames)) {
                     setProductNames(voucherData.productNames);
                 } else if (voucherData?.applyScope === 'PRODUCT' && voucherData?.productIds && voucherData.productIds.length > 0) {
@@ -188,14 +194,10 @@ function VoucherDetailPage() {
 
     const getDiscountValueText = () => {
         if (!voucher) return '';
-        const { discountValue, discountValueType, maxDiscountValue } = voucher;
+        const { discountValue, discountValueType } = voucher;
 
         if (discountValueType === 'PERCENTAGE') {
-            const percentText = `Giảm ${discountValue}%`;
-            if (maxDiscountValue && maxDiscountValue > 0) {
-                return `${percentText} tối đa ${formatPrice(maxDiscountValue)}`;
-            }
-            return percentText;
+            return `${discountValue}%`;
         } else {
             return formatPrice(discountValue || 0);
         }
@@ -237,10 +239,14 @@ function VoucherDetailPage() {
     const imageUrl = normalizeVoucherImageUrl(voucherImageUrl, API_BASE_URL);
     const isPending = voucher.status === 'PENDING_APPROVAL';
 
+    // Xác định xem có phải "Tổng giá trị đơn hàng" không
+    // Khi applyScope === 'ORDER' và có minOrderValue thì đó là "Tổng giá trị đơn hàng"
+    const isOrderByMinValue = voucher?.applyScope === 'ORDER' && voucher?.minOrderValue && voucher.minOrderValue > 0;
+
     return (
         <div className={cx('wrap')}>
-            {/* Header */}
-            <div className={cx('header')}>
+            {/* Top Header */}
+            <div className={cx('top-header')}>
                 <button className={cx('back-btn')} onClick={handleBack}>
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
                         <path
@@ -252,19 +258,36 @@ function VoucherDetailPage() {
                         />
                     </svg>
                 </button>
-                <h1 className={cx('title')}>Chi tiết Voucher</h1>
-                {statusInfo && (
-                    <span className={cx('status-badge', statusClass)}>
-                        {statusInfo.label}
-                    </span>
-                )}
             </div>
 
             {/* Voucher Detail Card */}
             <div className={cx('detail-card')}>
+                {/* Header with title and status badge */}
+                <div className={cx('card-header')}>
+                    <h1 className={cx('title')}>Chi tiết Voucher</h1>
+                    {statusInfo && (
+                        <span className={cx('status-badge', statusClass)}>
+                            {statusInfo.label}
+                        </span>
+                    )}
+                </div>
+
+                {/* Lý do từ chối - Hiển thị ở trên cùng */}
+                {voucher.rejectionReason && (
+                    <div className={cx('rejection-box', 'rejection-box-top')}>
+                        <h3 className={cx('rejection-title')}>Lý do không duyệt</h3>
+                        <p className={cx('rejection-text')}>{voucher.rejectionReason}</p>
+                        {voucher.approvedAt && (
+                            <p className={cx('rejection-date')}>
+                                Ngày giờ kiểm duyệt: {formatDateTime(voucher.approvedAt)}
+                            </p>
+                        )}
+                    </div>
+                )}
+
                 <div className={cx('form-content')}>
-                    {/* Tên chương trình */}
-                    <div className={cx('form-row')}>
+                    {/* 1. Tên chương trình */}
+                    <div className={cx('form-group')}>
                         <label className={cx('form-label')}>Tên chương trình</label>
                         <input
                             type="text"
@@ -274,71 +297,62 @@ function VoucherDetailPage() {
                         />
                     </div>
 
-                    {/* Mã voucher */}
-                    <div className={cx('form-row')}>
-                        <label className={cx('form-label')}>Mã voucher</label>
-                        <input
-                            type="text"
-                            className={cx('form-input')}
-                            value={voucher.code || ''}
-                            readOnly
-                        />
-                    </div>
-
-                    {/* Giá trị */}
-                    <div className={cx('form-row')}>
-                        <label className={cx('form-label')}>Giá trị</label>
-                        <input
-                            type="text"
-                            className={cx('form-input')}
-                            value={getDiscountValueText()}
-                            readOnly
-                        />
-                    </div>
-
-                    {/* Điều kiện áp dụng */}
-                    <div className={cx('form-row')}>
-                        <label className={cx('form-label')}>Điều kiện áp dụng</label>
-                        <div className={cx('conditions-list')}>
-                            {voucher.minOrderValue && voucher.minOrderValue > 0 && (
-                                <div className={cx('condition-item')}>
-                                    Giá trị đơn tối thiểu: {formatPrice(voucher.minOrderValue)}
-                                </div>
-                            )}
-                            {voucher.applyScope === 'CATEGORY' && voucher.categoryNames && voucher.categoryNames.length > 0 && (
-                                <div className={cx('condition-item')}>
-                                    Áp dụng theo loại sách: {voucher.categoryNames.join(', ')}
-                                </div>
-                            )}
-                            {voucher.applyScope === 'PRODUCT' && productNames.length > 0 && (
-                                <div className={cx('condition-item')}>
-                                    Áp dụng theo sách: {productNames.join(', ')}
-                                </div>
-                            )}
-                            {voucher.applyScope === 'ORDER' && (
-                                <div className={cx('condition-item')}>
-                                    Áp dụng cho toàn bộ đơn hàng
-                                </div>
-                            )}
-                            {(!voucher.minOrderValue || voucher.minOrderValue <= 0) &&
-                                (!voucher.applyScope ||
-                                    (voucher.applyScope !== 'CATEGORY' &&
-                                        voucher.applyScope !== 'PRODUCT' &&
-                                        voucher.applyScope !== 'ORDER')) && (
-                                    <div className={cx('condition-item')}>-</div>
-                                )}
+                    {/* 2. Mã voucher, Loại giảm giá, Giá trị (3 cột) */}
+                    <div className={cx('form-row', 'form-row-four')}>
+                        <div className={cx('form-group', 'form-group-fourth')}>
+                            <label className={cx('form-label')}>Mã voucher</label>
+                            <input
+                                type="text"
+                                className={cx('form-input')}
+                                value={voucher.code || ''}
+                                readOnly
+                            />
+                        </div>
+                        <div className={cx('form-group', 'form-group-fourth')}>
+                            <label className={cx('form-label')}>Loại giảm giá</label>
+                            <select className={cx('form-select')} value={voucher.discountValueType || ''} readOnly>
+                                {DISCOUNT_VALUE_TYPES.map((opt) => (
+                                    <option key={opt.value} value={opt.value}>
+                                        {opt.label}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className={cx('form-group', 'form-group-fourth')}>
+                            <label className={cx('form-label')}>Giá trị</label>
+                            <input
+                                type="text"
+                                className={cx('form-input')}
+                                value={getDiscountValueText()}
+                                readOnly
+                            />
                         </div>
                     </div>
 
-                    {/* Áp dụng theo */}
-                    <div className={cx('form-row')}>
-                        <label className={cx('form-label')}>Áp dụng theo</label>
+                    {/* 3. Điều kiện áp dụng - Giá trị đơn từ (chỉ hiển thị khi không chọn "Tổng giá trị đơn hàng") */}
+                    {!isOrderByMinValue && (
+                        <div className={cx('form-group')}>
+                            <label className={cx('form-label')}>Điều kiện áp dụng</label>
+                            <div className={cx('condition-row')}>
+                                <label className={cx('condition-label')}>Giá trị đơn từ (VNĐ):</label>
+                                <input
+                                    type="text"
+                                    className={cx('form-input', 'condition-input')}
+                                    value={voucher.minOrderValue ? formatPrice(voucher.minOrderValue) : ''}
+                                    readOnly
+                                />
+                            </div>
+                        </div>
+                    )}
+
+                    {/* 4. Radio buttons: Theo loại sách / Theo sách cụ thể / Toàn sàn / Tổng giá trị đơn hàng */}
+                    <div className={cx('form-group')}>
                         <div className={cx('radio-group')}>
                             <label className={cx('radio-label')}>
                                 <input
                                     type="radio"
                                     name="applyScope"
-                                    checked={voucher.applyScope === 'CATEGORY'}
+                                    checked={voucher.applyScope === 'CATEGORY' && !isOrderByMinValue}
                                     readOnly
                                 />
                                 <span>Theo loại sách</span>
@@ -347,7 +361,7 @@ function VoucherDetailPage() {
                                 <input
                                     type="radio"
                                     name="applyScope"
-                                    checked={voucher.applyScope === 'PRODUCT'}
+                                    checked={voucher.applyScope === 'PRODUCT' && !isOrderByMinValue}
                                     readOnly
                                 />
                                 <span>Theo sách cụ thể</span>
@@ -356,64 +370,117 @@ function VoucherDetailPage() {
                                 <input
                                     type="radio"
                                     name="applyScope"
-                                    checked={voucher.applyScope === 'ORDER'}
+                                    checked={voucher.applyScope === 'ORDER' && !isOrderByMinValue}
                                     readOnly
                                 />
                                 <span>Toàn sàn</span>
                             </label>
+                            <label className={cx('radio-label')}>
+                                <input
+                                    type="radio"
+                                    name="applyScope"
+                                    checked={isOrderByMinValue}
+                                    readOnly
+                                />
+                                <span>Tổng giá trị đơn hàng</span>
+                            </label>
                         </div>
                     </div>
 
-                    {/* Hạn mức */}
-                    <div className={cx('form-row')}>
-                        <label className={cx('form-label')}>Hạn mức</label>
-                        <input
-                            type="text"
-                            className={cx('form-input')}
-                            value={voucher.maxDiscountValue && voucher.maxDiscountValue > 0
-                                ? `Tối đa ${formatPrice(voucher.maxDiscountValue)} / đơn`
-                                : ''}
-                            readOnly
-                        />
+                    {/* 5. Loại sách áp dụng - chỉ hiện khi chọn "Theo loại sách" */}
+                    {voucher.applyScope === 'CATEGORY' && !isOrderByMinValue && (
+                        <div className={cx('form-group')}>
+                            <label className={cx('form-label')}>Loại sách áp dụng</label>
+                            <select className={cx('form-select')} value={voucher.categoryIds?.[0] || ''} readOnly>
+                                <option value="">-- Chọn loại sách --</option>
+                                {categories.map((category) => (
+                                    <option key={category.id} value={category.id}>
+                                        {category.name}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
+
+                    {/* Tên sách cụ thể - chỉ hiện khi chọn "Theo sách cụ thể" */}
+                    {voucher.applyScope === 'PRODUCT' && !isOrderByMinValue && (
+                        <div className={cx('form-group')}>
+                            <label className={cx('form-label')}>Tên sách cụ thể</label>
+                            <div className={cx('product-list')}>
+                                {productNames.length > 0 ? (
+                                    <div className={cx('product-names')}>
+                                        {productNames.map((name, index) => (
+                                            <div key={index} className={cx('product-item')}>
+                                                {name}
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <span className={cx('empty-text')}>Chưa có sản phẩm</span>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Giá trị tối thiểu đơn hàng - chỉ hiện khi chọn "Tổng giá trị đơn hàng" */}
+                    {isOrderByMinValue && (
+                        <div className={cx('form-group')}>
+                            <label className={cx('form-label')}>Giá trị tối thiểu đơn hàng</label>
+                            <input
+                                type="text"
+                                className={cx('form-input')}
+                                value={voucher.minOrderValue ? formatPrice(voucher.minOrderValue) : ''}
+                                readOnly
+                            />
+                        </div>
+                    )}
+
+                    {/* 6. Hạn mức, Số lượng voucher, Ngày bắt đầu, Ngày kết thúc (4 cột) */}
+                    <div className={cx('form-row', 'form-row-four')}>
+                        <div className={cx('form-group', 'form-group-fourth')}>
+                            <label className={cx('form-label')}>Hạn mức</label>
+                            <input
+                                type="text"
+                                className={cx('form-input')}
+                                value={voucher.maxDiscountValue && voucher.maxDiscountValue > 0
+                                    ? formatPrice(voucher.maxDiscountValue)
+                                    : ''}
+                                readOnly
+                            />
+                        </div>
+                        <div className={cx('form-group', 'form-group-fourth')}>
+                            <label className={cx('form-label')}>Số lượng voucher</label>
+                            <input
+                                type="text"
+                                className={cx('form-input')}
+                                value={voucher.usageLimit !== null && voucher.usageLimit !== undefined
+                                    ? voucher.usageLimit
+                                    : ''}
+                                readOnly
+                            />
+                        </div>
+                        <div className={cx('form-group', 'form-group-fourth')}>
+                            <label className={cx('form-label')}>Ngày bắt đầu</label>
+                            <input
+                                type="text"
+                                className={cx('form-input')}
+                                value={formatDate(voucher.startDate)}
+                                readOnly
+                            />
+                        </div>
+                        <div className={cx('form-group', 'form-group-fourth')}>
+                            <label className={cx('form-label')}>Ngày kết thúc</label>
+                            <input
+                                type="text"
+                                className={cx('form-input')}
+                                value={formatDate(voucher.expiryDate)}
+                                readOnly
+                            />
+                        </div>
                     </div>
 
-                    {/* Số lượng voucher */}
-                    <div className={cx('form-row')}>
-                        <label className={cx('form-label')}>Số lượng voucher</label>
-                        <input
-                            type="text"
-                            className={cx('form-input')}
-                            value={voucher.usageLimit !== null && voucher.usageLimit !== undefined
-                                ? voucher.usageLimit
-                                : ''}
-                            readOnly
-                        />
-                    </div>
-
-                    {/* Ngày bắt đầu */}
-                    <div className={cx('form-row')}>
-                        <label className={cx('form-label')}>Ngày bắt đầu</label>
-                        <input
-                            type="text"
-                            className={cx('form-input')}
-                            value={formatDate(voucher.startDate)}
-                            readOnly
-                        />
-                    </div>
-
-                    {/* Ngày kết thúc */}
-                    <div className={cx('form-row')}>
-                        <label className={cx('form-label')}>Ngày kết thúc</label>
-                        <input
-                            type="text"
-                            className={cx('form-input')}
-                            value={formatDate(voucher.expiryDate)}
-                            readOnly
-                        />
-                    </div>
-
-                    {/* Ảnh voucher */}
-                    <div className={cx('form-row')}>
+                    {/* 7. Ảnh voucher */}
+                    <div className={cx('form-group')}>
                         <label className={cx('form-label')}>Ảnh voucher</label>
                         <div className={cx('image-container')}>
                             {imageUrl ? (
@@ -456,11 +523,9 @@ function VoucherDetailPage() {
                         </div>
                     </div>
 
-                    {/* Ghi chú / Lý do đề xuất */}
-                    <div className={cx('form-row')}>
-                        <label className={cx('form-label')}>
-                            Ghi chú / Lý do đề xuất
-                        </label>
+                    {/* 8. Ghi chú / Lý do đề xuất */}
+                    <div className={cx('form-group', 'form-group-notes')}>
+                        <label className={cx('form-label')}>Ghi chú / Lý do đề xuất</label>
                         <textarea
                             className={cx('form-textarea')}
                             value={voucher.description || ''}
@@ -468,21 +533,6 @@ function VoucherDetailPage() {
                             rows={4}
                         />
                     </div>
-
-                    {/* Lý do từ chối */}
-                    {voucher.rejectionReason && (
-                        <div className={cx('form-row')}>
-                            <label className={cx('form-label')}>Lý do từ chối</label>
-                            <div className={cx('rejection-box')}>
-                                <p>{voucher.rejectionReason}</p>
-                                {voucher.approvedAt && (
-                                    <p className={cx('rejection-date')}>
-                                        Ngày giờ kiểm duyệt: {formatDateTime(voucher.approvedAt)}
-                                    </p>
-                                )}
-                            </div>
-                        </div>
-                    )}
                 </div>
 
                 {/* Action Buttons */}

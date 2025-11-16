@@ -50,13 +50,17 @@ export default function VouchersPromotionsPage() {
 
                 // Lấy tất cả voucher và promotion theo tất cả các status (dùng helper function chung)
                 const [uniqueVouchers, uniquePromotions] = await Promise.all([
-                    fetchAllItemsByStatus('voucher', token),
-                    fetchAllItemsByStatus('promotion', token),
+                    fetchAllItemsByStatus('voucher', token).catch(() => []),
+                    fetchAllItemsByStatus('promotion', token).catch(() => []),
                 ]);
 
                 if (!isMounted) return;
 
-                const normalizedVouchers = uniqueVouchers.map((item) => {
+                // Đảm bảo là array trước khi map
+                const vouchersArray = Array.isArray(uniqueVouchers) ? uniqueVouchers : [];
+                const promotionsArray = Array.isArray(uniquePromotions) ? uniquePromotions : [];
+
+                const normalizedVouchers = vouchersArray.map((item) => {
                     const { label, filterKey } = mapVoucherStatus(item.status);
                     const dateValue = item.submittedAt || item.createdAt;
                     return {
@@ -72,7 +76,7 @@ export default function VouchersPromotionsPage() {
                     };
                 });
 
-                const normalizedPromotions = uniquePromotions.map((item) => {
+                const normalizedPromotions = promotionsArray.map((item) => {
                     const { label, filterKey } = mapPromotionStatus(item.status);
                     const dateValue = item.submittedAt || item.createdAt;
                     return {
@@ -87,6 +91,11 @@ export default function VouchersPromotionsPage() {
                         entity: 'promotion',
                     };
                 });
+
+                // Debug: Log để kiểm tra
+                // console.log('Vouchers:', normalizedVouchers.length);
+                // console.log('Promotions:', normalizedPromotions.length);
+                // console.log('All records:', normalizedVouchers.length + normalizedPromotions.length);
 
                 setRecords([...normalizedVouchers, ...normalizedPromotions]);
             } catch (err) {

@@ -35,6 +35,18 @@ public interface PromotionMapper {
     PromotionResponse toResponse(Promotion promotion);
 
     // Request to Entity
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "code", source = "code")
+    @Mapping(target = "status", ignore = true)
+    @Mapping(target = "submittedBy", ignore = true)
+    @Mapping(target = "approvedBy", ignore = true)
+    @Mapping(target = "submittedAt", ignore = true)
+    @Mapping(target = "approvedAt", ignore = true)
+    @Mapping(target = "rejectionReason", ignore = true)
+    @Mapping(target = "usageCount", ignore = true)
+    @Mapping(target = "isActive", ignore = true)
+    @Mapping(target = "categoryApply", ignore = true)
+    @Mapping(target = "productApply", ignore = true)
     Promotion toPromotion(PromotionCreationRequest request);
 
     // Update Entity

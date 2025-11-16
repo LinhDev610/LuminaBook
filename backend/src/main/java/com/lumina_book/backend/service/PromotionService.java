@@ -151,7 +151,7 @@ public class PromotionService {
         return pendingPromotions.stream().map(promotionMapper::toResponse).collect(Collectors.toList());
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
+    // Cho phép cả admin và staff xem promotions theo status
     public List<PromotionResponse> getPromotionsByStatus(PromotionStatus status) {
         List<Promotion> promotions = promotionRepository.findByStatus(status);
 
@@ -276,15 +276,11 @@ public class PromotionService {
 
         switch (scope) {
             case CATEGORY -> {
-                if (productIds != null && !productIds.isEmpty()) {
-                    throw new AppException(ErrorCode.INVALID_PROMOTION_SCOPE);
-                }
+                validateScopeInputs(categoryIds, productIds, true);
                 promotion.getCategoryApply().addAll(resolveCategories(categoryIds));
             }
             case PRODUCT -> {
-                if (categoryIds != null && !categoryIds.isEmpty()) {
-                    throw new AppException(ErrorCode.INVALID_PROMOTION_SCOPE);
-                }
+                validateScopeInputs(categoryIds, productIds, false);
                 promotion.getProductApply().addAll(resolveProducts(productIds));
             }
             case ORDER -> {
@@ -297,27 +293,35 @@ public class PromotionService {
         promotion.setApplyScope(scope);
     }
 
+    private void validateScopeInputs(Set<String> categoryIds, Set<String> productIds, boolean isCategory) {
+        if (isCategory) {
+            if (productIds != null && !productIds.isEmpty()) {
+                throw new AppException(ErrorCode.INVALID_PROMOTION_SCOPE);
+            }
+        } else {
+            if (categoryIds != null && !categoryIds.isEmpty()) {
+                throw new AppException(ErrorCode.INVALID_PROMOTION_SCOPE);
+            }
+        }
+    }
+
     private Set<Category> resolveCategories(Set<String> categoryIds) {
         if (categoryIds == null || categoryIds.isEmpty()) {
             throw new AppException(ErrorCode.INVALID_PROMOTION_SCOPE);
         }
-
-        return categoryIds.stream()
-                .map(categoryId -> categoryRepository
-                        .findById(categoryId)
-                        .orElseThrow(() -> new AppException(ErrorCode.CATEGORY_NOT_EXISTED)))
-                .collect(Collectors.toSet());
+        return resolveEntities(categoryIds, categoryRepository::findById, ErrorCode.CATEGORY_NOT_EXISTED);
     }
 
     private Set<Product> resolveProducts(Set<String> productIds) {
         if (productIds == null || productIds.isEmpty()) {
             throw new AppException(ErrorCode.INVALID_PROMOTION_SCOPE);
         }
+        return resolveEntities(productIds, productRepository::findById, ErrorCode.PRODUCT_NOT_EXISTED);
+    }
 
-        return productIds.stream()
-                .map(productId -> productRepository
-                        .findById(productId)
-                        .orElseThrow(() -> new AppException(ErrorCode.PRODUCT_NOT_EXISTED)))
+    private <T, ID> Set<T> resolveEntities(Set<ID> ids, java.util.function.Function<ID, java.util.Optional<T>> finder, ErrorCode notFoundError) {
+        return ids.stream()
+                .map(id -> finder.apply(id).orElseThrow(() -> new AppException(notFoundError)))
                 .collect(Collectors.toSet());
     }
 

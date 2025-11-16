@@ -117,6 +117,11 @@
     margin-bottom: 24px;
 }
 
+.form-row-four {
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    margin-bottom: 24px;
+}
+
 .form-group {
     display: flex;
     flex-direction: column;
@@ -134,6 +139,10 @@
 }
 
 .form-group-third {
+    margin-bottom: 0;
+}
+
+.form-group-fourth {
     margin-bottom: 0;
 }
 
@@ -628,6 +637,10 @@
     }
 
     .form-row-three {
+        grid-template-columns: 1fr;
+    }
+
+    .form-row-four {
         grid-template-columns: 1fr;
     }
 

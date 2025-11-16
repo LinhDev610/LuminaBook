@@ -8,6 +8,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.function.Function;
+import java.util.Optional;
 
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -218,52 +220,52 @@ public class VoucherService {
 
         switch (scope) {
             case CATEGORY -> {
-                if (productIds != null && !productIds.isEmpty()) {
-                    throw new AppException(ErrorCode.INVALID_VOUCHER_SCOPE);
-                }
+                validateScopeInputs(categoryIds, productIds, true);
                 voucher.getCategoryApply().addAll(resolveCategories(categoryIds));
-                voucher.getProductApply().clear();
             }
             case PRODUCT -> {
-                if (categoryIds != null && !categoryIds.isEmpty()) {
-                    throw new AppException(ErrorCode.INVALID_VOUCHER_SCOPE);
-                }
+                validateScopeInputs(categoryIds, productIds, false);
                 voucher.getProductApply().addAll(resolveProducts(productIds));
-                voucher.getCategoryApply().clear();
             }
             case ORDER -> {
                 if ((categoryIds != null && !categoryIds.isEmpty()) || (productIds != null && !productIds.isEmpty())) {
                     throw new AppException(ErrorCode.INVALID_VOUCHER_SCOPE);
                 }
-                voucher.getCategoryApply().clear();
-                voucher.getProductApply().clear();
             }
             default -> throw new AppException(ErrorCode.INVALID_VOUCHER_SCOPE);
         }
         voucher.setApplyScope(scope);
     }
 
+    private void validateScopeInputs(Set<String> categoryIds, Set<String> productIds, boolean isCategory) {
+        if (isCategory) {
+            if (productIds != null && !productIds.isEmpty()) {
+                throw new AppException(ErrorCode.INVALID_VOUCHER_SCOPE);
+            }
+        } else {
+            if (categoryIds != null && !categoryIds.isEmpty()) {
+                throw new AppException(ErrorCode.INVALID_VOUCHER_SCOPE);
+            }
+        }
+    }
+
     private Set<Category> resolveCategories(Set<String> categoryIds) {
         if (categoryIds == null || categoryIds.isEmpty()) {
             throw new AppException(ErrorCode.INVALID_VOUCHER_SCOPE);
         }
-
-        return categoryIds.stream()
-                .map(categoryId -> categoryRepository
-                        .findById(categoryId)
-                        .orElseThrow(() -> new AppException(ErrorCode.CATEGORY_NOT_EXISTED)))
-                .collect(Collectors.toSet());
+        return resolveEntities(categoryIds, categoryRepository::findById, ErrorCode.CATEGORY_NOT_EXISTED);
     }
 
     private Set<Product> resolveProducts(Set<String> productIds) {
         if (productIds == null || productIds.isEmpty()) {
             throw new AppException(ErrorCode.INVALID_VOUCHER_SCOPE);
         }
+        return resolveEntities(productIds, productRepository::findById, ErrorCode.PRODUCT_NOT_EXISTED);
+    }
 
-        return productIds.stream()
-                .map(productId -> productRepository
-                        .findById(productId)
-                        .orElseThrow(() -> new AppException(ErrorCode.PRODUCT_NOT_EXISTED)))
+    private <T, ID> Set<T> resolveEntities(Set<ID> ids, Function<ID, Optional<T>> finder, ErrorCode notFoundError) {
+        return ids.stream()
+                .map(id -> finder.apply(id).orElseThrow(() -> new AppException(notFoundError)))
                 .collect(Collectors.toSet());
     }
 

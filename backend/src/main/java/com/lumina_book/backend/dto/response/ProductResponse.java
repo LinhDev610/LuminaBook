@@ -65,5 +65,5 @@ public class ProductResponse {
     Double averageRating;
 
     // Inventory info
-    Integer availableQuantity;
+    Integer stockQuantity;
 }

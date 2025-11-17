@@ -236,6 +236,47 @@ function ProductDetailPage() {
 
     const productImage = getProductImage();
     const statusClass = getStatusClass(product.status);
+    const inventoryQuantity = product.stockQuantity ?? null;
+
+    // Giảm giá - tính toán giá trị giảm giá và phần trăm giảm giá
+    const discountAmount = (() => {
+        if (
+            product.discountValue !== undefined &&
+            product.discountValue !== null &&
+            product.discountValue > 0
+        ) {
+            return product.discountValue;
+        }
+        if (
+            product.unitPrice !== undefined &&
+            product.unitPrice !== null &&
+            product.price !== undefined &&
+            product.price !== null &&
+            product.unitPrice > product.price
+        ) {
+            return product.unitPrice - product.price;
+        }
+        return 0;
+    })();
+
+    const discountPercent = (() => {
+        if (
+            product.unitPrice === undefined ||
+            product.unitPrice === null ||
+            product.unitPrice <= 0 ||
+            discountAmount <= 0
+        ) {
+            return null;
+        }
+        return Math.round((discountAmount / product.unitPrice) * 100);
+    })();
+
+    const discountPercentDisplay = discountPercent !== null ? `${discountPercent}%` : '0%';
+    const hasUnitPrice =
+        product.unitPrice !== undefined && product.unitPrice !== null && product.unitPrice > 0;
+    const hasDiscountValue =
+        product.discountValue !== undefined && product.discountValue !== null;
+    const isShowDiscountRow = hasUnitPrice || hasDiscountValue || discountAmount > 0;
 
     return (
         <div className={cx('wrap')}>
@@ -400,25 +441,13 @@ function ProductDetailPage() {
                                     </span>
                                 </div>
                             )}
-                            {product.discountValue !== undefined &&
-                                product.discountValue !== null &&
-                                product.discountValue > 0 && (
-                                    <div className={cx('info-row')}>
-                                        <span className={cx('info-label')}>
-                                            Giảm giá:
-                                        </span>
-                                        <span className={cx('info-value')}>
-                                            {formatPrice(product.discountValue)}
-                                        </span>
-                                    </div>
-                                )}
-                            {product.unitPrice && product.price && product.unitPrice > product.price && (
+                            {isShowDiscountRow && (
                                 <div className={cx('info-row')}>
                                     <span className={cx('info-label')}>
-                                        Phần trăm giảm:
+                                        Giảm giá:
                                     </span>
                                     <span className={cx('info-value')}>
-                                        {Math.round(((product.unitPrice - product.price) / product.unitPrice) * 100)}%
+                                        {`${formatPrice(discountAmount)} - ${discountPercentDisplay}`}
                                     </span>
                                 </div>
                             )}
@@ -454,17 +483,16 @@ function ProductDetailPage() {
                                     </span>
                                 </div>
                             )}
-                            {product.availableQuantity !== undefined &&
-                                product.availableQuantity !== null && (
-                                    <div className={cx('info-row')}>
-                                        <span className={cx('info-label')}>
-                                            Số lượng tồn kho:
-                                        </span>
-                                        <span className={cx('info-value')}>
-                                            {product.availableQuantity}
-                                        </span>
-                                    </div>
-                                )}
+                            <div className={cx('info-row')}>
+                                <span className={cx('info-label')}>
+                                    Số lượng tồn kho:
+                                </span>
+                                <span className={cx('info-value')}>
+                                    {inventoryQuantity !== null && inventoryQuantity !== undefined
+                                        ? inventoryQuantity
+                                        : 'Chưa cập nhật'}
+                                </span>
+                            </div>
                             {product.quantitySold !== undefined &&
                                 product.quantitySold !== null && (
                                     <div className={cx('info-row')}>

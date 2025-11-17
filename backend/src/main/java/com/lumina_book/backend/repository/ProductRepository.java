@@ -91,6 +91,7 @@ public interface ProductRepository extends JpaRepository<Product, String> {
            "LEFT JOIN FETCH p.category " +
            "LEFT JOIN FETCH p.submittedBy " +
            "LEFT JOIN FETCH p.approvedBy " +
+           "LEFT JOIN FETCH p.inventory " +
            "WHERE p.id = :productId")
     java.util.Optional<Product> findByIdWithRelations(@Param("productId") String productId);
 }

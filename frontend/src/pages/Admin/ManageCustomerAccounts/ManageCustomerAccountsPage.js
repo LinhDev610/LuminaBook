@@ -1,11 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import classNames from 'classnames/bind';
 import styles from './ManageCustomerAccountsPage.module.scss';
 import SearchAndSort from '../../../components/Common/SearchAndSort';
-import ConfirmDialog from '../../../layouts/components/ConfirmDialog';
+import ConfirmDialog from '../../../components/Common/ConfirmDialog/DeleteAccountDialog';
 import Notification from '../../../components/Common/Notification/Notification';
-import { getStoredToken } from '../../../services/utils';
 import { getAllUsers, updateUser, deleteUser } from '../../../services';
 
 const cx = classNames.bind(styles);

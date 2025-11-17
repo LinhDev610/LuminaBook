@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import classNames from 'classnames/bind';
 import styles from './ProfileAdminPage.module.scss';
 import guestAvatar from '../../../assets/icons/icon_img_guest.png';

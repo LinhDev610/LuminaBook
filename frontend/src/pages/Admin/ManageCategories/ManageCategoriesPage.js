@@ -4,6 +4,8 @@ import classNames from 'classnames/bind';
 import useLocalStorage from '../../../hooks/useLocalStorage';
 import styles from './ManageCategoriesPage.module.scss';
 import SearchAndSort from '../../../components/Common/SearchAndSort';
+import DeleteCategoryDialog from '../../../components/Common/ConfirmDialog/DeleteCategoryDialog';
+import SetStatusCategoryDialog from '../../../components/Common/ConfirmDialog/SetStatusCategoryDialog';
 import { getStoredToken } from '../../../services/utils';
 import { getAllCategories, getCategoryById, deleteCategory, updateCategory } from '../../../services';
 import { useNotification } from '../../../components/Common/Notification';
@@ -21,10 +23,17 @@ function ManageCategoriesPage() {
     const [filteredCategories, setFilteredCategories] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [deleteDialog, setDeleteDialog] = useState({ open: false, category: null, loading: false });
+    const [statusDialog, setStatusDialog] = useState({
+        open: false,
+        category: null,
+        targetStatus: true,
+        loading: false,
+    });
 
     // ========== Helper Functions ==========
     // Dùng utils để đọc token thống nhất với các trang chi tiết
-    const readToken = () => getStoredToken('token') || token;
+    const getToken = () => getStoredToken('token') || token;
 
     // Chuẩn hóa id danh mục từ object trả về API (hỗ trợ nhiều schema)
     const resolveCategoryId = useCallback((category) => {
@@ -42,7 +51,7 @@ function ManageCategoriesPage() {
                 setError(null);
 
                 // Get token properly (handle JSON.stringify from useLocalStorage)
-                const tokenToUse = readToken();
+                const tokenToUse = getToken();
 
                 if (!tokenToUse) {
                     setError('Vui lòng đăng nhập để xem danh sách danh mục');
@@ -133,15 +142,13 @@ function ManageCategoriesPage() {
     };
 
     // ========== Category Actions ==========
-    const handleDeleteCategory = async (id) => {
+    const performDeleteCategory = async (id) => {
         if (!id) return;
-        if (!window.confirm('Bạn có chắc chắn muốn xóa danh mục này?')) return;
         try {
-            const tokenToUse = readToken();
-            // Resolve real backend identifier before delete
+            const tokenToUse = getToken();
             let resolvedId = String(id).trim();
             try {
-                const cat = await getCategoryById(resolvedId, tokenToUse) || {};
+                const cat = (await getCategoryById(resolvedId, tokenToUse)) || {};
                 resolvedId = resolveCategoryId(cat) || resolvedId;
             } catch (_) { }
 
@@ -149,20 +156,18 @@ function ManageCategoriesPage() {
             if (!ok) {
                 throw new Error('Không thể xóa danh mục');
             }
-            // Cập nhật danh sách local
-            const next = allCategories.filter(
-                (c) => resolveCategoryId(c) !== String(resolvedId),
-            );
+            const next = allCategories.filter((c) => resolveCategoryId(c) !== String(resolvedId));
             setAllCategories(next);
             applyFilters(searchTerm, sortBy);
             success('Xóa danh mục thành công');
         } catch (e) {
             notifyError(e?.message || 'Không thể xóa danh mục');
+            throw e;
         }
     };
 
     const updateCategoryStatus = async (id, newStatus) => {
-        const tokenToUse = readToken();
+        const tokenToUse = getToken();
         // Lấy dữ liệu đầy đủ hiện tại để tránh backend yêu cầu các trường bắt buộc (ví dụ: name không được null)
         const cat = await getCategoryById(id, tokenToUse) || {};
 
@@ -181,33 +186,69 @@ function ManageCategoriesPage() {
         return data || {};
     };
 
-    const handleLockCategory = async (id) => {
+    const applyStatusChange = async (id, newStatus) => {
         if (!id) return;
         try {
-            const updated = await updateCategoryStatus(id, false);
+            await updateCategoryStatus(id, newStatus);
             const next = allCategories.map((c) =>
-                resolveCategoryId(c) === String(id) ? { ...c, status: false } : c,
+                resolveCategoryId(c) === String(id) ? { ...c, status: Boolean(newStatus) } : c,
             );
             setAllCategories(next);
             applyFilters(searchTerm, sortBy);
-            success('Đã khóa danh mục');
+            success(Boolean(newStatus) ? 'Đã hiển thị danh mục' : 'Đã ẩn danh mục');
         } catch (e) {
-            notifyError(e?.message || 'Không thể khóa danh mục');
+            notifyError(e?.message || 'Không thể cập nhật trạng thái danh mục');
+            throw e;
         }
     };
 
-    const handleUnlockCategory = async (id) => {
-        if (!id) return;
+    const requestDeleteCategory = (category) => {
+        setDeleteDialog({
+            open: true,
+            category: {
+                id: resolveCategoryId(category),
+                name: category.name,
+            },
+            loading: false,
+        });
+    };
+
+    const closeDeleteDialog = () => setDeleteDialog({ open: false, category: null, loading: false });
+
+    const confirmDeleteCategory = async () => {
+        if (!deleteDialog.category?.id) return;
+        setDeleteDialog((prev) => ({ ...prev, loading: true }));
         try {
-            const updated = await updateCategoryStatus(id, true);
-            const next = allCategories.map((c) =>
-                resolveCategoryId(c) === String(id) ? { ...c, status: true } : c,
-            );
-            setAllCategories(next);
-            applyFilters(searchTerm, sortBy);
-            success('Đã mở khóa danh mục');
-        } catch (e) {
-            notifyError(e?.message || 'Không thể mở khóa danh mục');
+            await performDeleteCategory(deleteDialog.category.id);
+            closeDeleteDialog();
+        } catch (_) {
+            setDeleteDialog((prev) => ({ ...prev, loading: false }));
+        }
+    };
+
+    const requestStatusDialog = (category, targetStatus) => {
+        setStatusDialog({
+            open: true,
+            category: {
+                id: resolveCategoryId(category),
+                name: category.name,
+            },
+            targetStatus,
+            loading: false,
+        });
+    };
+
+    const closeStatusDialog = () =>
+        setStatusDialog({ open: false, category: null, targetStatus: true, loading: false });
+
+    const confirmStatusChange = async () => {
+        if (!statusDialog.category?.id) return;
+        setStatusDialog((prev) => ({ ...prev, loading: true }));
+        try {
+            await applyStatusChange(statusDialog.category.id, statusDialog.targetStatus);
+            closeStatusDialog();
+        } catch (_) {
+            setStatusDialog((prev) => ({ ...prev, loading: false }));
         }
     };
 
@@ -316,11 +357,7 @@ function ManageCategoriesPage() {
                                         </button>
                                         <button
                                             className={cx('btn', 'delete-btn')}
-                                            onClick={() =>
-                                                handleDeleteCategory(
-                                                    resolveCategoryId(category),
-                                                )
-                                            }
+                                            onClick={() => requestDeleteCategory(category)}
                                         >
                                             Xóa
                                         </button>
@@ -328,22 +365,14 @@ function ManageCategoriesPage() {
                                             category.status === 'active' ? (
                                             <button
                                                 className={cx('btn', 'lock-btn')}
-                                                onClick={() =>
-                                                    handleLockCategory(
-                                                        resolveCategoryId(category),
-                                                    )
-                                                }
+                                                onClick={() => requestStatusDialog(category, false)}
                                             >
                                                 Ẩn
                                             </button>
                                         ) : (
                                             <button
                                                 className={cx('btn', 'unlock-btn')}
-                                                onClick={() =>
-                                                    handleUnlockCategory(
-                                                        resolveCategoryId(category),
-                                                    )
-                                                }
+                                                onClick={() => requestStatusDialog(category, true)}
                                             >
                                                 Hiển thị
                                             </button>
@@ -355,6 +384,23 @@ function ManageCategoriesPage() {
                     </tbody>
                 </table>
             </div>
+            <DeleteCategoryDialog
+                open={deleteDialog.open}
+                categoryName={deleteDialog.category?.name}
+                categoryId={deleteDialog.category?.id}
+                loading={deleteDialog.loading}
+                onCancel={closeDeleteDialog}
+                onConfirm={confirmDeleteCategory}
+            />
+            <SetStatusCategoryDialog
+                open={statusDialog.open}
+                categoryName={statusDialog.category?.name}
+                categoryId={statusDialog.category?.id}
+                targetStatus={statusDialog.targetStatus}
+                loading={statusDialog.loading}
+                onCancel={closeStatusDialog}
+                onConfirm={confirmStatusChange}
+            />
         </div>
     );
 }

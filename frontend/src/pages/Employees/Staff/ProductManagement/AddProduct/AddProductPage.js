@@ -255,7 +255,8 @@ export default function AddProductPage() {
             length: length && Number(length) >= 1 ? Number(length) : null,
             width: width && Number(width) >= 1 ? Number(width) : null,
             height: height && Number(height) >= 1 ? Number(height) : null,
-            price: Number(price) || 0,
+            price: Number.isFinite(finalPrice) ? finalPrice : 0,
+            unitPrice: Number(price) || 0,
             tax: taxDecimal || 0,
             discountValue:
                 discountValue && Number(discountValue) > 0 ? Number(discountValue) : null,
@@ -287,6 +288,7 @@ export default function AddProductPage() {
             categoryId,
             publicationDate,
             stockQuantity,
+            finalPrice,
         ],
     );
 

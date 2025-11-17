@@ -34,7 +34,7 @@ public interface ProductMapper {
     @Mapping(target = "defaultMediaUrl", source = "defaultMedia.mediaUrl", qualifiedByName = "normalizeUrl")
     @Mapping(target = "reviewCount", source = "reviews", qualifiedByName = "mapReviewCount")
     @Mapping(target = "averageRating", source = "reviews", qualifiedByName = "mapAverageRating")
-    @Mapping(target = "availableQuantity", source = "inventory.stockQuantity")
+    @Mapping(target = "stockQuantity", source = "inventory.stockQuantity")
     ProductResponse toResponse(Product product);
 
     // Request to Entity

@@ -555,15 +555,6 @@ function VoucherDetailPage() {
                             </button>
                         </>
                     )}
-                    {isAdmin && voucher.status === 'APPROVED' && (
-                        <button
-                            className={cx('btn', 'btn-edit')}
-                            onClick={() => navigate(`/admin/vouchers/${id}/edit`)}
-                            disabled={processing}
-                        >
-                            Chỉnh sửa
-                        </button>
-                    )}
                     <button
                         className={cx('btn', 'btn-delete')}
                         onClick={() => setShowDeleteModal(true)}

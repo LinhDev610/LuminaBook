@@ -43,10 +43,10 @@ public class PromotionUpdateRequest {
 
     DiscountApplyScope applyScope;
 
-    @Future(message = "Ngày bắt đầu phải là ngày trong tương lai")
+    @FutureOrPresent(message = "Ngày bắt đầu không được trước ngày hiện tại")
     LocalDate startDate;
 
-    @Future(message = "Ngày kết thúc phải là ngày trong tương lai")
+    @FutureOrPresent(message = "Ngày kết thúc không được trước ngày hiện tại")
     LocalDate expiryDate;
 
     // Áp dụng theo danh mục

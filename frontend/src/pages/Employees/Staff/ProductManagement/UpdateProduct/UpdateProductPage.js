@@ -44,7 +44,7 @@ function UpdateProductPage() {
     const [categoryId, setCategoryId] = useState('');
     const [categories, setCategories] = useState([]);
     const [publicationDate, setPublicationDate] = useState('');
-    const [availableQuantity, setAvailableQuantity] = useState('');
+    const [stockQuantity, setStockQuantity] = useState('');
     const [status, setStatus] = useState('PENDING');
     const [errors, setErrors] = useState({});
 
@@ -90,17 +90,21 @@ function UpdateProductPage() {
                 setLength(product.length || 1);
                 setWidth(product.width || 1);
                 setHeight(product.height || 1);
-                setPrice(product.price || 0.0);
+                const basePrice =
+                    product.unitPrice !== undefined && product.unitPrice !== null
+                        ? product.unitPrice
+                        : product.price || 0.0;
+                setPrice(basePrice);
                 setTaxPercent(product.tax ? String(Math.round(product.tax * 100)) : '0');
                 setDiscountValue(product.discountValue || 0.0);
                 setCategoryId(product.categoryId || '');
                 setPublicationDate(
                     product.publicationDate ? product.publicationDate.split('T')[0] : '',
                 );
-                setAvailableQuantity(
-                    product.availableQuantity !== undefined &&
-                        product.availableQuantity !== null
-                        ? String(product.availableQuantity)
+                const inventoryQuantity = product.stockQuantity ?? null;
+                setStockQuantity(
+                    inventoryQuantity !== undefined && inventoryQuantity !== null
+                        ? String(inventoryQuantity)
                         : '',
                 );
                 setStatus(product.status || 'PENDING');
@@ -191,14 +195,10 @@ function UpdateProductPage() {
                 newErrors.weight = 'Trọng lượng tối thiểu là 0.';
             }
         }
-        if (
-            availableQuantity !== undefined &&
-            availableQuantity !== null &&
-            availableQuantity !== ''
-        ) {
-            const quantityNum = Number(availableQuantity);
+        if (stockQuantity !== undefined && stockQuantity !== null && stockQuantity !== '') {
+            const quantityNum = Number(stockQuantity);
             if (Number.isNaN(quantityNum) || quantityNum < 0) {
-                newErrors.availableQuantity = 'Số lượng tồn kho tối thiểu là 0.';
+                newErrors.stockQuantity = 'Số lượng tồn kho tối thiểu là 0.';
             }
         }
 
@@ -243,7 +243,7 @@ function UpdateProductPage() {
                 localStorage.setItem('refreshToken', data.result.token);
                 return data.result.token;
             }
-        } catch (_) {}
+        } catch (_) { }
         return null;
     };
 
@@ -288,7 +288,8 @@ function UpdateProductPage() {
                 length: length && Number(length) >= 1 ? Number(length) : null,
                 width: width && Number(width) >= 1 ? Number(width) : null,
                 height: height && Number(height) >= 1 ? Number(height) : null,
-                price: Number(price) || 0,
+                price: Number.isFinite(finalPrice) ? finalPrice : 0,
+                unitPrice: Number(price) || 0,
                 tax: taxDecimal || 0,
                 discountValue:
                     discountValue && Number(discountValue) > 0
@@ -298,10 +299,10 @@ function UpdateProductPage() {
                 publicationDate: publicationDate || null,
                 status: 'PENDING', // Luôn đặt về PENDING khi gửi lại để duyệt
                 stockQuantity:
-                    availableQuantity !== undefined &&
-                    availableQuantity !== null &&
-                    availableQuantity !== ''
-                        ? Number(availableQuantity)
+                    stockQuantity !== undefined &&
+                        stockQuantity !== null &&
+                        stockQuantity !== ''
+                        ? Number(stockQuantity)
                         : undefined,
             };
 
@@ -720,13 +721,13 @@ function UpdateProductPage() {
                                                                             headers: {
                                                                                 ...(token
                                                                                     ? {
-                                                                                          Authorization: `Bearer ${token}`,
-                                                                                      }
+                                                                                        Authorization: `Bearer ${token}`,
+                                                                                    }
                                                                                     : {}),
                                                                             },
                                                                         },
                                                                     );
-                                                                } catch (_) {}
+                                                                } catch (_) { }
                                                             }}
                                                         />
                                                         Mặc định
@@ -816,18 +817,18 @@ function UpdateProductPage() {
                             <input
                                 inputMode="numeric"
                                 placeholder="VD: 100"
-                                value={availableQuantity}
+                                value={stockQuantity}
                                 onChange={(e) => {
                                     const cleaned = (e.target.value || '').replace(
                                         /[^0-9]/g,
                                         '',
                                     );
-                                    setAvailableQuantity(cleaned);
+                                    setStockQuantity(cleaned);
                                 }}
                             />
-                            {errors.availableQuantity && (
+                            {errors.stockQuantity && (
                                 <div className={cx('errorText')}>
-                                    {errors.availableQuantity}
+                                    {errors.stockQuantity}
                                 </div>
                             )}
                         </div>
@@ -870,8 +871,8 @@ function UpdateProductPage() {
                     notifyType === 'success'
                         ? 'Thành công'
                         : notifyType === 'error'
-                        ? 'Lỗi'
-                        : 'Thông báo'
+                            ? 'Lỗi'
+                            : 'Thông báo'
                 }
                 message={notifyMsg}
                 onClose={() => setNotifyOpen(false)}

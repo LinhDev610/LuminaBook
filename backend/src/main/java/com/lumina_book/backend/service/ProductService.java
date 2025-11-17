@@ -91,7 +91,21 @@ public class ProductService {
             throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION);
         }
         product.setUnitPrice(request.getUnitPrice());
-        product.setPrice(computeFinalPrice(request.getUnitPrice(), request.getTax(), request.getDiscountValue()));
+        Double explicitPrice = request.getPrice();
+        double finalPrice = (explicitPrice != null && explicitPrice >= 0)
+                ? explicitPrice
+                : computeFinalPrice(request.getUnitPrice(), request.getTax(), request.getDiscountValue());
+        product.setPrice(finalPrice);
+
+        // Khởi tạo tồn kho nếu có số lượng ban đầu
+        if (request.getStockQuantity() != null) {
+            Inventory inventory = Inventory.builder()
+                    .stockQuantity(request.getStockQuantity())
+                    .lastUpdated(LocalDate.now())
+                    .product(product)
+                    .build();
+            product.setInventory(inventory);
+        }
 
         // Gắn media (ảnh/video) từ request
         attachMediaFromRequest(product, request);
@@ -137,14 +151,19 @@ public class ProductService {
         productMapper.updateProduct(product, request);
         product.setUpdatedAt(LocalDateTime.now());
 
-        // Tính lại giá nếu unitPrice, tax, hoặc discountValue được cập nhật
-        if (request.getUnitPrice() != null || request.getTax() != null || request.getDiscountValue() != null) {
-            Double unitPrice = request.getUnitPrice() != null ? request.getUnitPrice() : product.getUnitPrice();
-            Double tax = request.getTax() != null ? request.getTax() : product.getTax();
-            Double discountValue = request.getDiscountValue() != null ? request.getDiscountValue() : product.getDiscountValue();
-            
+        boolean unitPriceChanged = request.getUnitPrice() != null;
+        boolean taxChanged = request.getTax() != null;
+        boolean discountChanged = request.getDiscountValue() != null;
+        boolean priceProvided = request.getPrice() != null;
+
+        if (priceProvided && request.getPrice() != null && request.getPrice() >= 0) {
+            product.setPrice(request.getPrice());
+        } else if (unitPriceChanged || taxChanged || discountChanged) {
+            Double unitPrice = product.getUnitPrice();
+            Double tax = product.getTax();
+            Double discountValue = product.getDiscountValue();
+
             if (unitPrice != null && unitPrice >= 0) {
-                product.setUnitPrice(unitPrice);
                 product.setPrice(computeFinalPrice(unitPrice, tax, discountValue));
             }
         }

@@ -241,11 +241,11 @@ export default function AddPromotionPage() {
         today.setHours(0, 0, 0, 0);
         const start = formState.startDate ? new Date(formState.startDate) : null;
         const end = formState.expiryDate ? new Date(formState.expiryDate) : null;
-        if (start && start <= today) {
-            validationErrors.startDate = 'Ngày bắt đầu phải lớn hơn ngày hiện tại';
+        if (start && start < today) {
+            validationErrors.startDate = 'Ngày bắt đầu không được trước ngày hiện tại';
         }
-        if (end && end <= today) {
-            validationErrors.expiryDate = 'Ngày kết thúc phải lớn hơn ngày hiện tại';
+        if (end && end < today) {
+            validationErrors.expiryDate = 'Ngày kết thúc không được trước ngày hiện tại';
         }
         if (formState.startDate && formState.expiryDate && formState.startDate > formState.expiryDate) {
             validationErrors.expiryDate = 'Ngày kết thúc phải sau ngày bắt đầu';
@@ -661,7 +661,7 @@ export default function AddPromotionPage() {
                                         className={cx('form-input', 'date-input', { error: errors.startDate })}
                                         min={(() => {
                                             const d = new Date();
-                                            d.setDate(d.getDate() + 1);
+                                            d.setDate(d.getDate());
                                             return d.toISOString().split('T')[0];
                                         })()}
                                     />
@@ -680,7 +680,7 @@ export default function AddPromotionPage() {
                                         min={(() => {
                                             const base = formState.startDate ? new Date(formState.startDate) : new Date();
                                             const d = new Date(base);
-                                            d.setDate(d.getDate() + 1);
+                                            d.setDate(d.getDate());
                                             return d.toISOString().split('T')[0];
                                         })()}
                                     />

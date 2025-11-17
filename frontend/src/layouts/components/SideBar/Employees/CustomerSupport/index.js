@@ -1,2 +1,2 @@
-export { default } from './CustomerSupport';
+export { default } from './CustomerSupportSidebar';
 

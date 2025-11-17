@@ -1,0 +1,29 @@
+.side {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 16px;
+}
+
+.menu {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.link {
+    display: block;
+    padding: 10px 12px;
+    color: #111;
+    text-decoration: none;
+    border-radius: 8px;
+}
+
+.link.active {
+    background: #e5e7eb;
+}
+
+

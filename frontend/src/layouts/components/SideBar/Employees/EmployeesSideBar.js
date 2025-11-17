@@ -1,5 +1,5 @@
 import classNames from 'classnames/bind';
-import styles from './EmployeesSideBar.module.scss';
+import styles from './EmployeesSidebar.module.scss';
 import useLocalStorage from '../../../../hooks/useLocalStorage';
 import avatarFallback from '../../../../assets/icons/icon_defaultAva.png';
 import { useEffect, useState, useCallback } from 'react';
@@ -8,7 +8,7 @@ import { getStoredToken, getMyInfo } from '../../../../services';
 
 const cx = classNames.bind(styles);
 
-export default function EmployeesSideBar({
+export default function EmployeesSidebar({
     title,
     homePath,
     menuItems,

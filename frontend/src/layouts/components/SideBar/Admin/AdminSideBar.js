@@ -1,5 +1,5 @@
 import classNames from 'classnames/bind';
-import styles from './AdminSideBar.module.scss';
+import styles from './AdminSidebar.module.scss';
 import adminHeaderStyles from '../../Header/Admin/AdminHeader.module.scss';
 import useLocalStorage from '../../../../hooks/useLocalStorage';
 import { useState } from 'react';
@@ -8,7 +8,7 @@ import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 const cx = classNames.bind(styles);
 const cxModal = classNames.bind(adminHeaderStyles);
 
-export default function AdminSideBar() {
+export default function AdminSidebar() {
     const location = useLocation();
     const navigate = useNavigate();
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);

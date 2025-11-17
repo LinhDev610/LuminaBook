@@ -1,7 +1,7 @@
 import { DefaultHeader } from '../components/Header';
 import Footer from '../components/Footer';
 import AuthModals from '../../components/AuthModals';
-import CustomerSideBar from '../components/SideBar/Customer';
+import CustomerSidebar from '../components/Sidebar/Customer';
 
 function CustomerAccountLayout({ children }) {
     return (
@@ -9,7 +9,7 @@ function CustomerAccountLayout({ children }) {
             <DefaultHeader />
             <div className="container" style={{ display: 'block' }}>
                 {/* <aside>
-                    <CustomerSideBar />
+                    <CustomerSidebar />
                 </aside> */}
                 <div className="content">{children}</div>
             </div>

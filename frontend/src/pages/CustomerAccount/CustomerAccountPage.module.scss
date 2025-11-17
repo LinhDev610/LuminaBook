@@ -156,6 +156,11 @@
     gap: 10px; /* khoảng cách giữa label và input */
 }
 
+.error-msg {
+    font-size: 13px;
+    color: #dc2626;
+}
+
 .form-group label {
     font-size: 16px;
     font-weight: 600;

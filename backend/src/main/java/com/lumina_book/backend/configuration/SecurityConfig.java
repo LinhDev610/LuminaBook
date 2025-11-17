@@ -36,6 +36,7 @@ public class SecurityConfig {
         "/product_media/**",
         "/voucher_media/**",
         "/promotion_media/**",
+        "/profile_media/**",
         "/vouchers/**",
         "/promotions/**",
         "/products/**",

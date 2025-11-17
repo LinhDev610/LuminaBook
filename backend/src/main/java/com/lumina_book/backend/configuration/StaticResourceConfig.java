@@ -21,6 +21,10 @@ public class StaticResourceConfig implements WebMvcConfigurer {
         registry.addResourceHandler("/product_media/**")
                 .addResourceLocations("file:uploads/product_media/");
 
+        // Khi client request đến /profile_media/**, serve file avatar người dùng.
+        registry.addResourceHandler("/profile_media/**")
+                .addResourceLocations("file:uploads/profile_media/");
+
         // Khi client request đến /voucher_media/**, Spring sẽ serve file từ thư mục vouchers/ trong project.
         registry.addResourceHandler("/voucher_media/**")
                 .addResourceLocations("file:uploads/vouchers/");
@@ -45,7 +49,8 @@ public class StaticResourceConfig implements WebMvcConfigurer {
                     .addResourceLocations(
                             "file:uploads/promotions/",
                             "file:uploads/vouchers/",
-                            "file:uploads/product_media/"
+                            "file:uploads/product_media/",
+                            "file:uploads/profile_media/"
                     );
         }
     }

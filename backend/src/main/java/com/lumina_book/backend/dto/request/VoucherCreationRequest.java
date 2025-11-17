@@ -55,11 +55,11 @@ public class VoucherCreationRequest {
     DiscountApplyScope applyScope;
 
     @NotNull(message = "Ngày bắt đầu không được để trống")
-    @Future(message = "Ngày bắt đầu phải là ngày trong tương lai")
+    @FutureOrPresent(message = "Ngày bắt đầu không được trước ngày hiện tại")
     LocalDate startDate;
 
     @NotNull(message = "Ngày kết thúc không được để trống")
-    @Future(message = "Ngày kết thúc phải là ngày trong tương lai")
+    @FutureOrPresent(message = "Ngày kết thúc không được trước ngày hiện tại")
     LocalDate expiryDate;
 
     @Min(value = 1, message = "Giới hạn sử dụng phải lớn hơn 0")

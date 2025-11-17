@@ -142,23 +142,23 @@ export async function refreshToken(token = null) {
 
 export async function changePassword(passwordData, token = null) {
     const { data, ok } = await apiRequest('/auth/change-password', { method: 'POST', body: passwordData, token });
-    return { ok, data: extractResult(data) };
+    return { ok, data };
 }
 
 export async function resetPassword(passwordData) {
     // passwordData có thể là { email } hoặc { email, otp, newPassword }
     const { data, ok } = await apiRequest('/auth/reset-password', { method: 'POST', body: passwordData });
-    return { ok, data: extractResult(data) };
+    return { ok, data };
 }
 
 export async function sendOTP(email, mode) {
     const { data, ok } = await apiRequest(`/auth/send-otp?email=${encodeURIComponent(email)}&mode=${mode}`, { method: 'POST' });
-    return { ok, data: extractResult(data) };
+    return { ok, data };
 }
 
 export async function verifyOTP(email, otp, mode) {
     const { data, ok } = await apiRequest('/auth/verify-otp', { method: 'POST', body: { email, otp, mode } });
-    return { ok, data: extractResult(data) };
+    return { ok, data };
 }
 
 // ========== CATEGORIES API ==========

@@ -20,8 +20,10 @@ public class FileStorageService {
     private static final String PRODUCT_MEDIA_DIR = "uploads/product_media";
     private static final String VOUCHER_MEDIA_DIR = "uploads/vouchers";
     private static final String PROMOTION_MEDIA_DIR = "uploads/promotions";
+    private static final String PROFILE_MEDIA_DIR = "uploads/profile_media";
     private static final String VOUCHER_MEDIA_URL = "/voucher_media/";
     private static final String PROMOTION_MEDIA_URL = "/promotion_media/";
+    private static final String PROFILE_MEDIA_URL = "/profile_media/";
 
     /**
      * Lưu file media của product vào thư mục product_media/
@@ -48,6 +50,15 @@ public class FileStorageService {
      */
     public String storePromotionMedia(MultipartFile file) {
         return storeFile(file, PROMOTION_MEDIA_DIR, PROMOTION_MEDIA_URL);
+    }
+
+    /**
+     * Lưu file avatar/profile vào thư mục profile_media/
+     * @param file File cần lưu
+     * @return URL của file đã lưu
+     */
+    public String storeProfileMedia(MultipartFile file) {
+        return storeFile(file, PROFILE_MEDIA_DIR, PROFILE_MEDIA_URL);
     }
 
     /**

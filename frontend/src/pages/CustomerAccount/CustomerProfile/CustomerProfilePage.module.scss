@@ -24,6 +24,8 @@
 
 .form-actions {
     margin-top: 12px;
+    display: flex;
+    gap: 8px;
 }
 
 .primary {
@@ -33,6 +35,26 @@
     padding: 8px 12px;
     border-radius: 8px;
     cursor: pointer;
+}
+
+.secondary {
+    background: transparent;
+    color: #173a55;
+    border: 1px solid #173a55;
+    padding: 8px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.status-msg {
+    margin-top: 8px;
+    color: #0f8a3d;
+    font-size: 14px;
+}
+
+.error-msg {
+    font-size: 13px;
+    color: #dc2626;
 }
 
 

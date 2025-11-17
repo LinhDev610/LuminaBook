@@ -8,10 +8,14 @@ const ProductDetail = ({ productId }) => {
     const [product, setProduct] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const [selectedImage, setSelectedImage] = useState('');
+    const [quantity, setQuantity] = useState(1);
 
-    // Fetch product data from API
     useEffect(() => {
-        if (!productId) return;
+        if (!productId) {
+            setLoading(false);
+            return;
+        }
 
         const fetchProduct = async () => {
             try {
@@ -19,18 +23,13 @@ const ProductDetail = ({ productId }) => {
                 setError('');
                 const response = await fetch(`${API_BASE_URL}/products/${productId}`, {
                     method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                 });
 
-                if (!response.ok) {
-                    throw new Error('Không thể tải thông tin sản phẩm');
-                }
+                if (!response.ok) throw new Error('Không thể tải thông tin sản phẩm');
 
                 const data = await response.json();
-                const productData = data?.result || data;
-                setProduct(productData);
+                setProduct(data?.result || data);
             } catch (err) {
                 console.error('Error fetching product:', err);
                 setError(err.message || 'Không thể tải thông tin sản phẩm');
@@ -42,57 +41,148 @@ const ProductDetail = ({ productId }) => {
         fetchProduct();
     }, [productId, API_BASE_URL]);
 
-    // Fallback to mock data if API fails or no productId
     const mockProduct = {
-        id: 1,
-        name: "Tủ Sách Giáo Dục Shichida - Siêu Não Phải - Nuôi Dạy Con Trở Thành Thiên Tài Theo Phương Pháp Giáo Dục Shichida",
-        subtitle: "Nuôi dạy con trở thành thiên tài theo phương pháp giáo dục Shichida",
-        author: "Makoto Shichida",
-        publisher: "Dân Trí",
-        coverType: "Bìa Mềm",
+        id: '9786044027456',
+        name: 'Tủ Sách Giáo Dục Shichida - Siêu Não Phải - Nuôi Dạy Con Trở Thành Thiên Tài Theo Phương Pháp Giáo Dục Shichida',
+        subtitle: 'Nuôi dạy con trở thành thiên tài theo phương pháp giáo dục Shichida',
+        author: 'Makoto Shichida',
+        publisher: 'Dân Trí',
+        coverType: 'Bìa Mềm',
         price: 132000,
         originalPrice: 165000,
         discount: 20,
-        rating: 5,
+        averageRating: 5,
         reviewCount: 10,
-        soldCount: 16,
-        productCode: "9786044027456",
-        translator: "Yuka Tú Phạm, Brainworks Studio",
+        quantitySold: 16,
+        translator: 'Yuka Tú Phạm, Brainworks Studio',
         publishYear: 2024,
         weight: 250,
-        dimensions: "20.5 x 14 x 1.2 cm",
+        dimensions: '20.5 x 14 x 1.2 cm',
         pages: 232,
-        format: "Bìa Mềm",
-        bestSeller: "Top 100 sản phẩm Kỹ năng sống bán chạy của tháng",
-        description: "Siêu Não Phải là cuốn sách minh chứng tính hiệu quả của phương pháp giáo dục siêu não phải mà các lớp học theo phương pháp Shichida áp dụng đang được triển khai tại 18 quốc gia và khu vực trên toàn thế giới. Cuốn sách sẽ cho thấy tầm quan trọng của việc áp dụng phương pháp giáo dục não phải để phát huy khả năng ghi nhớ, khả năng tính toán, khả năng đọc nhanh, học ngôn ngữ....",
-        longDescription: "Nếu phát huy được những khả năng còn tiềm ẩn ở bán cầu não phải bấy lâu, thì con sẽ trở thành những đứa trẻ sở hữu tư duy sáng tạo và nguồn cảm hứng dồi dào. Và chính cha mẹ sẽ là người khai phá tài năng của trẻ.",
+        format: 'Bìa Mềm',
+        bestSeller: 'Top 100 sản phẩm Kỹ năng sống bán chạy của tháng',
+        description:
+            'Siêu Não Phải là cuốn sách minh chứng tính hiệu quả của phương pháp giáo dục siêu não phải mà các lớp học theo phương pháp Shichida áp dụng đang được triển khai tại 18 quốc gia và khu vực trên toàn thế giới.',
+        longDescription:
+            'Nếu phát huy được những khả năng còn tiềm ẩn ở bán cầu não phải bấy lâu, thì con sẽ trở thành những đứa trẻ sở hữu tư duy sáng tạo và nguồn cảm hứng dồi dào. Và chính cha mẹ sẽ là người khai phá tài năng của trẻ.',
         images: [
-            "/assets/images/img_kinangsong.png",
-            "/assets/images/img_kinangsong.png",
-            "/assets/images/img_kinangsong.png",
-            "/assets/images/img_kinangsong.png",
-            "/assets/images/img_kinangsong.png"
+            '/assets/images/img_kinangsong.png',
+            '/assets/images/img_sach.png',
+            '/assets/images/img_taichinh.png',
+            '/assets/images/img_sachgiadinh.png',
+            '/assets/images/img_qc.png',
         ],
-        category: "Sách Giáo Dục",
+        category: 'Sách Giáo Dục',
         stock: 50,
-        shippingAddress: "Phường Bến Nghé, Quận 1, Hồ Chí Minh",
-        deliveryMethod: "Giao hàng tiêu chuẩn",
-        estimatedDelivery: "Thứ ba - 14/10"
+        shippingAddress: 'Phường Bến Nghé, Quận 1, Hồ Chí Minh',
+        deliveryMethod: 'Giao hàng tiêu chuẩn',
+        estimatedDelivery: 'Thứ ba - 14/10',
     };
 
-    const [quantity, setQuantity] = useState(1);
-
-    // Use product from API or fallback to mock data
     const displayProduct = product || mockProduct;
-
-    // Check if product is rejected
     const isRejected = product && product.status === 'REJECTED';
+
+    const formatPrice = (price) =>
+        new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(
+            price || 0,
+        );
+
+    const renderStars = (rating = 0) => {
+        const resolved = Math.max(0, Math.min(5, rating || 0));
+        return Array.from({ length: 5 }, (_, idx) => {
+            const filled = idx < Math.round(resolved);
+            return (
+                <span key={idx} className={filled ? styles.star : styles.starEmpty}>
+                    ★
+                </span>
+            );
+        });
+    };
+
+    const productImages = product?.mediaUrls?.length
+        ? product.mediaUrls.map((img) => normalizeMediaUrl(img, API_BASE_URL))
+        : (displayProduct.images || []).map((img) =>
+              normalizeMediaUrl(img, API_BASE_URL),
+          );
+    const heroFallback = product?.defaultMediaUrl
+        ? normalizeMediaUrl(product.defaultMediaUrl, API_BASE_URL)
+        : productImages[0] || require('../../../assets/images/img_sach.png');
+
+    useEffect(() => {
+        setSelectedImage(heroFallback);
+    }, [heroFallback]);
+
+    const availableStock =
+        product?.availableQuantity ??
+        product?.stock ??
+        displayProduct.availableQuantity ??
+        displayProduct.stock ??
+        0;
+
+    const currentPrice = displayProduct.price ?? displayProduct.unitPrice ?? 0;
+    const originalPrice =
+        displayProduct.originalPrice ?? displayProduct.unitPrice ?? currentPrice;
+    const discountPercent =
+        displayProduct.discount ??
+        (originalPrice > 0
+            ? Math.round(((originalPrice - currentPrice) / originalPrice) * 100)
+            : 0);
+
+    const policyHighlights = [
+        { icon: '🚚', text: 'Thời gian giao hàng: Giao hàng nhanh và uy tín' },
+        { icon: '🔄', text: 'Đổi trả miễn phí: Đổi trả miễn phí toàn quốc' },
+        { icon: '💳', text: 'Thanh toán tiện lợi: Hỗ trợ nhiều phương thức thanh toán' },
+    ];
+
+    const infoRows = [
+        {
+            label: 'Mã hàng',
+            value: displayProduct.id || displayProduct.productCode || '-',
+        },
+        { label: 'Tên Nhà Cung Cấp', value: displayProduct.supplierName || '-' },
+        { label: 'Tác giả', value: displayProduct.author || '-' },
+        { label: 'Người Dịch', value: displayProduct.translator || '-' },
+        { label: 'NXB', value: displayProduct.publisher || '-' },
+        {
+            label: 'Năm XB',
+            value: displayProduct.publicationDate
+                ? new Date(displayProduct.publicationDate).getFullYear()
+                : displayProduct.publishYear || '-',
+        },
+        { label: 'Trọng lượng (gr)', value: displayProduct.weight || '-' },
+        {
+            label: 'Kích Thước Bao Bì',
+            value:
+                displayProduct.length && displayProduct.width && displayProduct.height
+                    ? `${displayProduct.length} × ${displayProduct.width} × ${displayProduct.height} cm`
+                    : displayProduct.dimensions || '-',
+        },
+        { label: 'Số trang', value: displayProduct.pages || '-' },
+        {
+            label: 'Hình thức',
+            value: displayProduct.format || displayProduct.coverType || '-',
+        },
+    ];
+
+    useEffect(() => {
+        if (availableStock && quantity > availableStock) {
+            setQuantity(availableStock);
+        }
+    }, [availableStock]);
+
+    const handleAddToCart = () => {
+        alert(`Đã thêm ${quantity} sản phẩm vào giỏ hàng!`);
+    };
+
+    const handleBuyNow = () => {
+        alert('Chuyển đến trang thanh toán!');
+    };
 
     if (loading) {
         return (
             <div className={styles.productDetail}>
                 <div className={styles.container}>
-                    <div style={{ padding: '40px', textAlign: 'center' }}>
+                    <div className={styles.loadingState}>
                         Đang tải thông tin sản phẩm...
                     </div>
                 </div>
@@ -104,74 +194,28 @@ const ProductDetail = ({ productId }) => {
         return (
             <div className={styles.productDetail}>
                 <div className={styles.container}>
-                    <div style={{ padding: '40px', textAlign: 'center', color: '#dc2626' }}>
-                        {error}
-                    </div>
+                    <div className={styles.errorState}>{error}</div>
                 </div>
             </div>
         );
     }
 
-    const handleAddToCart = () => {
-        // TODO: Implement add to cart functionality
-        // console.log(`Added ${quantity} of ${product.name} to cart`);
-        alert(`Đã thêm ${quantity} sản phẩm vào giỏ hàng!`);
-    };
-
-    const handleBuyNow = () => {
-        // TODO: Implement buy now functionality
-        // console.log(`Buy now: ${quantity} of ${product.name}`);
-        alert('Chuyển đến trang thanh toán!');
-    };
-
-    const formatPrice = (price) => {
-        if (!price) return '0 ₫';
-        return new Intl.NumberFormat('vi-VN', {
-            style: 'currency',
-            currency: 'VND'
-        }).format(price);
-    };
-
-    const renderStars = (rating) => {
-        if (!rating) return null;
-        const stars = [];
-        const fullStars = Math.floor(rating);
-        const hasHalfStar = rating % 1 !== 0;
-
-        for (let i = 0; i < fullStars; i++) {
-            stars.push(<span key={i} className={styles.star}>★</span>);
-        }
-
-        if (hasHalfStar) {
-            stars.push(<span key="half" className={styles.star}>☆</span>);
-        }
-
-        const emptyStars = 5 - Math.ceil(rating);
-        for (let i = 0; i < emptyStars; i++) {
-            stars.push(<span key={`empty-${i}`} className={styles.starEmpty}>☆</span>);
-        }
-
-        return stars;
-    };
-
-    // Get product images
-    const productImages = product?.mediaUrls || displayProduct.images || [];
-    const defaultImage = product?.defaultMediaUrl
-        ? normalizeMediaUrl(product.defaultMediaUrl, API_BASE_URL)
-        : productImages[0] || require('../../../assets/images/img_sach.png');
-
     return (
         <div className={styles.productDetail}>
             <div className={styles.container}>
-                {/* Header Breadcrumb */}
                 <div className={styles.headerBreadcrumb}>
-                    <span className={styles.categoryHeader}>{displayProduct.categoryName || displayProduct.category || 'Sản phẩm'}</span>
+                    <span className={styles.categoryHeader}>
+                        {displayProduct.categoryName ||
+                            displayProduct.category ||
+                            'Sản phẩm'}
+                    </span>
                 </div>
 
-                {/* Lý do không duyệt sản phẩm */}
                 {isRejected && product.rejectionReason && (
                     <div className={styles.rejectionBox}>
-                        <h3 className={styles.rejectionTitle}>Lý do không duyệt sản phẩm</h3>
+                        <h3 className={styles.rejectionTitle}>
+                            Lý do không duyệt sản phẩm
+                        </h3>
                         <p className={styles.rejectionText}>{product.rejectionReason}</p>
                         {product.updatedAt && (
                             <p className={styles.rejectionDate}>
@@ -182,246 +226,210 @@ const ProductDetail = ({ productId }) => {
                 )}
 
                 <div className={styles.productContent}>
-                    {/* Product Images */}
                     <div className={styles.productImages}>
                         <div className={styles.mainImage}>
                             <img
-                                src={defaultImage}
+                                src={selectedImage || heroFallback}
                                 alt={displayProduct.name}
                                 onError={(e) => {
                                     e.target.src = require('../../../assets/images/img_sach.png');
                                 }}
                             />
                         </div>
-                        {productImages.length > 1 && (
+                        {productImages.length > 0 && (
                             <div className={styles.thumbnailImages}>
-                                {productImages.slice(0, 3).map((img, idx) => {
-                                    const imgUrl = typeof img === 'string'
-                                        ? normalizeMediaUrl(img, API_BASE_URL)
-                                        : img;
-                                    return (
-                                        <img
-                                            key={idx}
-                                            src={imgUrl}
-                                            alt={`${displayProduct.name} ${idx + 1}`}
-                                            className={idx === 0 ? styles.active : ''}
-                                            onError={(e) => {
-                                                e.target.src = require('../../../assets/images/img_sach.png');
-                                            }}
-                                        />
-                                    );
-                                })}
-                                {productImages.length > 3 && (
+                                {productImages.slice(0, 4).map((img, idx) => (
+                                    <img
+                                        key={idx}
+                                        src={img}
+                                        alt={`${displayProduct.name} ${idx + 1}`}
+                                        className={
+                                            selectedImage === img ? styles.active : ''
+                                        }
+                                        onClick={() => setSelectedImage(img)}
+                                        onError={(e) => {
+                                            e.target.src = require('../../../assets/images/img_sach.png');
+                                        }}
+                                    />
+                                ))}
+                                {productImages.length > 4 && (
                                     <div className={styles.moreImages}>
-                                        +{productImages.length - 3}
+                                        +{productImages.length - 4}
                                     </div>
                                 )}
                             </div>
                         )}
+
                     </div>
 
-                    {/* Product Info */}
                     <div className={styles.productInfo}>
                         <h1 className={styles.productName}>{displayProduct.name}</h1>
 
                         <div className={styles.productMeta}>
-                            <div className={styles.metaRow}>
-                                <span><strong>Nhà xuất bản:</strong> {displayProduct.publisher || '-'}</span>
-                                <span><strong>Hình thức bìa:</strong> {displayProduct.coverType || '-'}</span>
+                            <div>
+                                <strong>Tác giả:</strong> {displayProduct.author || '-'}
                             </div>
-                            <div className={styles.authorRow}>
-                                <span><strong>Tác giả:</strong> {displayProduct.author || '-'}</span>
+                            <div>
+                                <strong>Nhà xuất bản:</strong>{' '}
+                                {displayProduct.publisher || '-'}
                             </div>
                         </div>
 
-                        {/* Rating and Sales */}
                         <div className={styles.ratingSection}>
                             <div className={styles.stars}>
-                                {renderStars(displayProduct.averageRating || displayProduct.rating)}
+                                {renderStars(
+                                    displayProduct.averageRating || displayProduct.rating,
+                                )}
                             </div>
-                            <span className={styles.ratingText}>
-                                ({displayProduct.reviewCount || 0} đánh giá) . Đã bán {displayProduct.quantitySold || displayProduct.soldCount || 0}
-                            </span>
+                            <div className={styles.ratingText}>
+                                <span className={styles.reviewCount}>
+                                    ({displayProduct.reviewCount || 0} đánh giá)
+                                </span>
+                                <span className={styles.dot}>·</span>
+                                <span className={styles.soldCount}>
+                                    Đã bán{' '}
+                                    {displayProduct.quantitySold ||
+                                        displayProduct.soldCount ||
+                                        0}
+                                </span>
+                            </div>
                         </div>
 
-                        {/* Price */}
                         <div className={styles.priceSection}>
                             <div className={styles.currentPrice}>
-                                {formatPrice(displayProduct.price)}
+                                {formatPrice(currentPrice)}
                             </div>
-                            {displayProduct.originalPrice && displayProduct.originalPrice > displayProduct.price && (
-                                <>
-                                    <div className={styles.originalPrice}>
-                                        {formatPrice(displayProduct.originalPrice)}
-                                    </div>
-                                    {displayProduct.discount && (
-                                        <div className={styles.discount}>
-                                            -{displayProduct.discount}%
-                                        </div>
-                                    )}
-                                </>
-                            )}
-                            <div className={styles.taxNote}>
-                                (Giá đã gồm thuế)
-                            </div>
-                        </div>
-
-                        {/* Shipping Information */}
-                        <div className={styles.shippingInfo}>
-                            <h3>Thông tin vận chuyển</h3>
-                            <div className={styles.shippingItem}>
-                                <span className={styles.shippingIcon}>📍</span>
-                                <span>Giao hàng đến: {displayProduct.shippingAddress || 'Toàn quốc'}</span>
-                            </div>
-                            <div className={styles.shippingItem}>
-                                <span className={styles.shippingIcon}>🚚</span>
-                                <span>{displayProduct.deliveryMethod || 'Giao hàng tiêu chuẩn'}</span>
-                            </div>
-                            <div className={styles.shippingItem}>
-                                <span className={styles.shippingIcon}>📅</span>
-                                <span>Dự kiến giao: {displayProduct.estimatedDelivery || '3-5 ngày làm việc'}</span>
-                            </div>
-                        </div>
-
-                        {/* Quantity */}
-                        <div className={styles.quantitySection}>
-                            <label>Số lượng:</label>
-                            <div className={styles.quantityControls}>
-                                <button
-                                    onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                                    disabled={quantity <= 1}
-                                >
-                                    -
-                                </button>
-                                <input
-                                    type="number"
-                                    value={quantity}
-                                    onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-                                    min="1"
-                                    max={product.stock}
-                                />
-                                <button
-                                    onClick={() => setQuantity(Math.min(product.stock, quantity + 1))}
-                                    disabled={quantity >= product.stock}
-                                >
-                                    +
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* Action Buttons */}
-                        <div className={styles.actionButtons}>
-                            <button
-                                className={styles.addToCartBtn}
-                                onClick={handleAddToCart}
-                                disabled={product.stock === 0}
-                            >
-                                🛒 Thêm vào giỏ hàng
-                            </button>
-                            <button
-                                className={styles.buyNowBtn}
-                                onClick={handleBuyNow}
-                                disabled={product.stock === 0}
-                            >
-                                Mua ngay
-                            </button>
-                        </div>
-
-                        {/* Promotional Policies */}
-                        <div className={styles.promotionalPolicies}>
-                            <h3>Chính sách ưu đãi</h3>
-                            <div className={styles.policyItem}>
-                                <span className={styles.policyIcon}>🕒</span>
-                                <span>Thời gian giao hàng: Giao hàng nhanh và uy tín</span>
-                            </div>
-                            <div className={styles.policyItem}>
-                                <span className={styles.policyIcon}>🔄</span>
-                                <span>Đổi trả miễn phí: Đổi trả miễn phí toàn quốc</span>
-                            </div>
-                            <div className={styles.policyItem}>
-                                <span className={styles.policyIcon}>💳</span>
-                                <span>Thanh toán tiện lợi: Hỗ trợ nhiều phương thức thanh toán</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Product Details Sections */}
-                <div className={styles.productDetails}>
-                    {/* Detailed Information */}
-                    <div className={styles.detailedInfo}>
-                        <h3>Thông tin chi tiết</h3>
-                        <div className={styles.infoTable}>
-                            <div className={styles.infoRow}>
-                                <span className={styles.infoLabel}>Mã hàng</span>
-                                <span className={styles.infoValue}>{displayProduct.id || displayProduct.productCode || '-'}</span>
-                            </div>
-                            <div className={styles.infoRow}>
-                                <span className={styles.infoLabel}>Tên Nhà Cung Cấp</span>
-                                <span className={styles.infoValue}>-</span>
-                            </div>
-                            <div className={styles.infoRow}>
-                                <span className={styles.infoLabel}>Tác giả</span>
-                                <span className={styles.infoValue}>{displayProduct.author || '-'}</span>
-                            </div>
-                            <div className={styles.infoRow}>
-                                <span className={styles.infoLabel}>Người Dịch</span>
-                                <span className={styles.infoValue}>{displayProduct.translator || '-'}</span>
-                            </div>
-                            <div className={styles.infoRow}>
-                                <span className={styles.infoLabel}>NXB</span>
-                                <span className={styles.infoValue}>{displayProduct.publisher || '-'}</span>
-                            </div>
-                            <div className={styles.infoRow}>
-                                <span className={styles.infoLabel}>Năm XB</span>
-                                <span className={styles.infoValue}>
-                                    {displayProduct.publicationDate
-                                        ? new Date(displayProduct.publicationDate).getFullYear()
-                                        : displayProduct.publishYear || '-'}
-                                </span>
-                            </div>
-                            <div className={styles.infoRow}>
-                                <span className={styles.infoLabel}>Trọng lượng (gr)</span>
-                                <span className={styles.infoValue}>{displayProduct.weight || '-'}</span>
-                            </div>
-                            <div className={styles.infoRow}>
-                                <span className={styles.infoLabel}>Kích Thước Bao Bì</span>
-                                <span className={styles.infoValue}>
-                                    {displayProduct.length && displayProduct.width && displayProduct.height
-                                        ? `${displayProduct.length} × ${displayProduct.width} × ${displayProduct.height} cm`
-                                        : displayProduct.dimensions || '-'}
-                                </span>
-                            </div>
-                            <div className={styles.infoRow}>
-                                <span className={styles.infoLabel}>Số trang</span>
-                                <span className={styles.infoValue}>{displayProduct.pages || '-'}</span>
-                            </div>
-                            <div className={styles.infoRow}>
-                                <span className={styles.infoLabel}>Hình thức</span>
-                                <span className={styles.infoValue}>{displayProduct.format || displayProduct.coverType || '-'}</span>
-                            </div>
-                            {displayProduct.bestSeller && (
-                                <div className={styles.infoRow}>
-                                    <span className={styles.infoLabel}>Sản phẩm bán chạy nhất</span>
-                                    <span className={styles.infoValue}>
-                                        <a href="#" className={styles.bestSellerLink}>{displayProduct.bestSeller}</a>
+                            {originalPrice > currentPrice && (
+                                <div className={styles.priceMeta}>
+                                    <span className={styles.originalPrice}>
+                                        {formatPrice(originalPrice)}
+                                    </span>
+                                    <span className={styles.discount}>
+                                        -{discountPercent}%
                                     </span>
                                 </div>
                             )}
+                            <div className={styles.taxNote}>(Giá đã gồm thuế)</div>
                         </div>
-                    </div>
 
-                    {/* Product Description */}
-                    <div className={styles.productDescription}>
-                        <h3>Mô tả sản phẩm</h3>
-                        <h4>{displayProduct.name}</h4>
-                        {displayProduct.subtitle && (
-                            <p className={styles.subtitle}>{displayProduct.subtitle}</p>
-                        )}
-                        <p>{displayProduct.description || '-'}</p>
-                        {displayProduct.longDescription && (
-                            <p>{displayProduct.longDescription}</p>
-                        )}
+                        <div className={styles.infoCard}>
+                            <h3 className={styles.cardTitle}>Thông tin vận chuyển</h3>
+                            <div className={styles.shippingItem}>
+                                <span className={styles.shippingIcon}>📍</span>
+                                <span>
+                                    Giao hàng đến:{' '}
+                                    {displayProduct.shippingAddress || 'Toàn quốc'}
+                                </span>
+                            </div>
+                            <div className={styles.shippingItem}>
+                                <span className={styles.shippingIcon}>🚚</span>
+                                <span>
+                                    {displayProduct.deliveryMethod ||
+                                        'Giao hàng tiêu chuẩn'}
+                                </span>
+                            </div>
+                            <div className={styles.shippingItem}>
+                                <span className={styles.shippingIcon}>📅</span>
+                                <span>
+                                    Dự kiến giao:{' '}
+                                    {displayProduct.estimatedDelivery ||
+                                        '3-5 ngày làm việc'}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div className={styles.infoCard}>
+                            <h3 className={styles.cardTitle}>Số lượng</h3>
+                            <div className={styles.quantitySection}>
+                                <label>Số lượng:</label>
+                                <div className={styles.quantityControls}>
+                                    <button
+                                        onClick={() =>
+                                            setQuantity((prev) => Math.max(1, prev - 1))
+                                        }
+                                        disabled={quantity <= 1}
+                                    >
+                                        -
+                                    </button>
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        max={availableStock || undefined}
+                                        value={quantity}
+                                        onChange={(e) =>
+                                            setQuantity(
+                                                Math.max(
+                                                    1,
+                                                    Math.min(
+                                                        parseInt(e.target.value) || 1,
+                                                        availableStock || 999,
+                                                    ),
+                                                ),
+                                            )
+                                        }
+                                    />
+                                    <button
+                                        onClick={() => {
+                                            const limit = availableStock || 999;
+                                            setQuantity((prev) => Math.min(prev + 1, limit));
+                                        }}
+                                        disabled={
+                                            availableStock
+                                                ? quantity >= availableStock
+                                                : false
+                                        }
+                                    >
+                                        +
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className={styles.infoCard}>
+                            <h3 className={styles.cardTitle}>Chính sách ưu đãi</h3>
+                            {policyHighlights.map((item, index) => (
+                                <div key={index} className={styles.policyItem}>
+                                    <span className={styles.policyIcon}>{item.icon}</span>
+                                    <span>{item.text}</span>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className={styles.infoCard}>
+                            <h3 className={styles.cardTitle}>Thông tin chi tiết</h3>
+                            <div className={styles.infoTable}>
+                                {infoRows.map((row) => (
+                                    <div className={styles.infoRow} key={row.label}>
+                                        <span className={styles.infoLabel}>{row.label}</span>
+                                        <span className={styles.infoValue}>{row.value}</span>
+                                    </div>
+                                ))}
+                                {displayProduct.bestSeller && (
+                                    <div className={styles.infoRow}>
+                                        <span className={styles.infoLabel}>
+                                            Sản phẩm bán chạy nhất
+                                        </span>
+                                        <span className={styles.infoValue}>
+                                            <a href="#!" className={styles.bestSellerLink}>
+                                                {displayProduct.bestSeller}
+                                            </a>
+                                        </span>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className={styles.infoCard}>
+                            <h3 className={styles.cardTitle}>Mô tả sản phẩm</h3>
+                            <h4>{displayProduct.name}</h4>
+                            {displayProduct.subtitle && (
+                                <p className={styles.subtitle}>{displayProduct.subtitle}</p>
+                            )}
+                            <p>{displayProduct.description || '-'}</p>
+                            {displayProduct.longDescription && (
+                                <p>{displayProduct.longDescription}</p>
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>

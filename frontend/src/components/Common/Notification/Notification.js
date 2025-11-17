@@ -106,7 +106,7 @@ function Toast({ type, title, message, onClose, duration = DEFAULT_DURATION }) {
  * Provider component để quản lý notifications trong app
  * Bọc app với component này để sử dụng notification
  */
-function NotificationProvider({ children }) {
+function NotificationProviderBase({ children }) {
     const [items, setItems] = useState([]);
 
     /**
@@ -189,9 +189,33 @@ function NotificationProvider({ children }) {
     );
 }
 
-// ========== Export ==========
-// Export default là Provider component
-export default NotificationProvider;
+// ========== Controlled Notification ==========
+function ControlledNotification({
+    open,
+    type = 'info',
+    title = '',
+    message = '',
+    duration = DEFAULT_DURATION,
+    onClose,
+}) {
+    if (!open) return null;
 
-// Export named để có thể import useNotification trực tiếp
-export { useNotification };
+    const validType = NOTIFICATION_TYPES.includes(type) ? type : 'info';
+
+    return (
+        <div className={cx('container')}>
+            <Toast type={validType} title={title} message={message} duration={duration} onClose={onClose} />
+        </div>
+    );
+}
+
+// ========== Root Export ==========
+function NotificationRoot(props) {
+    if (Object.prototype.hasOwnProperty.call(props || {}, 'open')) {
+        return <ControlledNotification {...props} />;
+    }
+    return <NotificationProviderBase {...props} />;
+}
+
+export default NotificationRoot;
+export { useNotification, NotificationProviderBase as NotificationProvider };

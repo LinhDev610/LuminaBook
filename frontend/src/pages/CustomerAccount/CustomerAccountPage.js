@@ -101,6 +101,10 @@ function CustomerAccountPage() {
     const [confirmPassword, setConfirmPassword] = useState('');
     const [changePwdMsg, setChangePwdMsg] = useState('');
 
+    const isValidPhone = (phone) => {
+        return /^0\d{9}$/.test((phone || '').trim());
+    };
+
     const handleChangePassword = async (e) => {
         e.preventDefault();
         setChangePwdMsg('');
@@ -291,6 +295,9 @@ function CustomerAccountPage() {
                                         onChange={(e) => setUser((prev) => ({ ...(prev || {}), phoneNumber: e.target.value }))}
                                         disabled={!isLoggedIn}
                                     />
+                                    {!isValidPhone(user?.phoneNumber ?? '') && (user?.phoneNumber ?? '').trim() !== '' && (
+                                        <span className={cx('error-msg')}>Số điện thoại phải gồm 10 số và bắt đầu bằng 0</span>
+                                    )}
                                 </div>
                                 <div className={cx('form-group')}>
                                     <label>Địa chỉ</label>
@@ -329,6 +336,10 @@ function CustomerAccountPage() {
                                     onClick={async () => {
                                         if (!user?.id) return;
                                         setProfileMsg('');
+                                        if (!isValidPhone(user.phoneNumber ?? '')) {
+                                            setProfileMsg('Số điện thoại phải gồm 10 số và bắt đầu bằng 0');
+                                            return;
+                                        }
                                         try {
                                             const tk = getStoredToken();
                                             const body = {

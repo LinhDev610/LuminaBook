@@ -36,8 +36,10 @@ public class SecurityConfig {
         "/product_media/**",
         "/voucher_media/**",
         "/promotion_media/**",
+        "/profile_media/**",
         "/vouchers/**",
         "/promotions/**",
+        "/products/**",
         "/uploads/**",
         "/banners/active",
         "/error"  // Allow error endpoint to be accessed without authentication

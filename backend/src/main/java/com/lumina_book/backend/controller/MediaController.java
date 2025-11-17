@@ -22,6 +22,14 @@ public class MediaController {
 
     FileStorageService fileStorageService;
 
+    @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ApiResponse<List<String>> uploadProfileMedia(@RequestPart("files") List<MultipartFile> files) {
+        List<String> urls = files.stream()
+                .map(fileStorageService::storeProfileMedia)
+                .collect(Collectors.toList());
+        return ApiResponse.<List<String>>builder().result(urls).build();
+    }
+
     @PostMapping(value = "/upload-product", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ApiResponse<List<String>> uploadProductMedia(@RequestPart("files") List<MultipartFile> files) {
         List<String> urls = files.stream()

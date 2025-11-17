@@ -1,5 +1,4 @@
 import classNames from 'classnames/bind';
-import { Link } from 'react-router-dom';
 import { useState, useEffect, useLayoutEffect } from 'react';
 import useLocalStorage from '../../hooks/useLocalStorage';
 import AdminRedirectHandler from '../../components/AdminRedirectHandler';
@@ -21,7 +20,6 @@ import bannerImage2 from '../../assets/images/img_qc.png';
 import bannerImage3 from '../../assets/images/img_qc.png';
 import Banner2 from '../../components/Common/Banner/Banner2';
 import imgsach_test from '../../assets/images/img_sach.png';
-import imgsach_tiente from '../../assets/images/img_chinhsachtiente.jpeg';
 import bgTetOngTrang from '../../assets/images/img_tetongtrang.png';
 // service icons
 import iconGiaoHang from '../../assets/icons/icon_giaohangtannoi.png';
@@ -33,73 +31,42 @@ import iconKhuyenMai from '../../assets/icons/icon_khuyenmaihapdan.png';
 
 const cx = classNames.bind(styles);
 
-// Dữ liệu sản phẩm mẫu - sau này sẽ thay thế bằng API call
-const mockProducts = [
-    {
-        id: 1,
-        title: "Dầu và Máu - Mohammed Bin Salman Và Tham Vọng Tái Thiết Kinh Tế Ả-Rập",
-        image: imgsach_test,
-        currentPrice: 200000,
-        originalPrice: 285000,
-        discount: 29
-    },
-    {
-        id: 2,
-        title: "Sao Chúng Ta Lại Ngủ - Why We Sleep",
-        image: imgsach_tiente,
-        currentPrice: 200000,
-        originalPrice: 285000,
-        discount: 29
-    },
-    {
-        id: 3,
-        title: "Người Thầy (Tái Bản)",
-        image: imgsach_test,
-        currentPrice: 200000,
-        originalPrice: 285000,
-        discount: 29
-    },
-    {
-        id: 4,
-        title: "Dế Mèn Phiêu Lưu Ký (Tái Bản 2020)",
-        image: imgsach_test,
-        currentPrice: 200000,
-        originalPrice: 285000,
-        discount: 29
-    },
-    {
-        id: 5,
-        title: "Tủ Sách Thanh Niên - Mãi Mãi Tuổi Hai Mươi",
-        image: imgsach_test,
-        currentPrice: 200000,
-        originalPrice: 285000,
-        discount: 29
-    },
-    {
-        id: 6,
-        title: "Tủ Sách Thanh Niên - Mãi Mãi Tuổi Hai Mươi",
-        image: imgsach_test,
-        currentPrice: 200000,
-        originalPrice: 285000,
-        discount: 29
-    },
-    {
-        id: 7,
-        title: "Tủ Sách Thanh Niên - Mãi Mãi Tuổi Hai Mươi",
-        image: imgsach_test,
-        currentPrice: 200000,
-        originalPrice: 285000,
-        discount: 29
-    },
-    {
-        id: 8,
-        title: "Tủ Sách Thanh Niên - Mãi Mãi Tuổi Hai Mươi",
-        image: imgsach_test,
-        currentPrice: 200000,
-        originalPrice: 285000,
-        discount: 29
-    }
-];
+const PRODUCT_IMAGE_FALLBACK = imgsach_test;
+
+const mapProductToCard = (product, apiBaseUrl) => {
+    if (!product) return null;
+    const rawMedia =
+        product.defaultMediaUrl ||
+        (Array.isArray(product.mediaUrls) && product.mediaUrls.length > 0
+            ? product.mediaUrls[0]
+            : '');
+    const imageUrl = normalizeMediaUrl(rawMedia, apiBaseUrl) || PRODUCT_IMAGE_FALLBACK;
+    const price = typeof product.price === 'number' ? product.price : null;
+    const unitPrice = typeof product.unitPrice === 'number' ? product.unitPrice : null;
+    const discountValue = typeof product.discountValue === 'number' ? product.discountValue : 0;
+
+    const originalPrice = unitPrice ?? price ?? 0;
+    const discountedPrice =
+        discountValue > 0 && originalPrice > 0
+            ? Math.max(originalPrice - discountValue, 0)
+            : price ?? originalPrice;
+    const computedDiscount =
+        originalPrice > 0 && discountValue > 0
+            ? Math.min(99, Math.max(0, Math.round((discountValue / originalPrice) * 100)))
+            : 0;
+
+    return {
+        id: product.id,
+        title: product.name || 'Sản phẩm',
+        image: imageUrl,
+        currentPrice: discountedPrice ?? originalPrice ?? 0,
+        originalPrice: originalPrice || discountedPrice || 0,
+        discount: computedDiscount,
+        averageRating: typeof product.averageRating === 'number' ? product.averageRating : 0,
+        quantitySold: typeof product.quantitySold === 'number' ? product.quantitySold : 0,
+        updatedAt: product.updatedAt || product.createdAt || null,
+    };
+};
 
 function Home() {
     const [token] = useLocalStorage('token', null);
@@ -111,6 +78,9 @@ function Home() {
         const tokenCheck = token || sessionStorage.getItem('token');
         return !!tokenCheck;
     });
+    const [homeProducts, setHomeProducts] = useState([]);
+    const [productLoading, setProductLoading] = useState(true);
+    const [productError, setProductError] = useState('');
 
     useLayoutEffect(() => {
         // Sync check ngay trước khi paint
@@ -204,6 +174,66 @@ function Home() {
         };
     }, [API_BASE_URL]);
 
+    useEffect(() => {
+        let canceled = false;
+        const fetchActiveProducts = async () => {
+            setProductLoading(true);
+            setProductError('');
+            try {
+                const resp = await fetch(`${API_BASE_URL}/products/active`);
+                const data = await resp.json().catch(() => ({}));
+                if (canceled) return;
+
+                if (!resp.ok) {
+                    throw new Error(data?.message || 'Không thể tải sản phẩm thực tế');
+                }
+
+                const rawProducts = Array.isArray(data?.result)
+                    ? data.result
+                    : Array.isArray(data)
+                        ? data
+                        : [];
+
+                const normalizedProducts = rawProducts
+                    .map((product) => mapProductToCard(product, API_BASE_URL))
+                    .filter(Boolean);
+
+                setHomeProducts(normalizedProducts);
+            } catch (error) {
+                if (!canceled) {
+                    setHomeProducts([]);
+                    setProductError(error?.message || 'Không thể tải sản phẩm thực tế');
+                }
+            } finally {
+                if (!canceled) {
+                    setProductLoading(false);
+                }
+            }
+        };
+
+        fetchActiveProducts();
+
+        return () => {
+            canceled = true;
+        };
+    }, [API_BASE_URL]);
+
+    const allProducts = homeProducts;
+
+    const sortAndSlice = (products, accessor, limit = 10) => {
+        if (!products.length) return [];
+        return [...products]
+            .sort((a, b) => {
+                const aVal = accessor(a) ?? 0;
+                const bVal = accessor(b) ?? 0;
+                return bVal - aVal;
+            })
+            .slice(0, Math.min(limit, products.length));
+    };
+
+    const trendingProducts = sortAndSlice(allProducts, (p) => p.averageRating || 0);
+    const bestSellerProducts = sortAndSlice(allProducts, (p) => p.quantitySold || 0);
+
     return (
         <div className={cx('home-wrapper')}>
             <AdminRedirectHandler />
@@ -229,9 +259,16 @@ function Home() {
                     ]}
                 />
 
+                {productLoading && (
+                    <div className={cx('api-notice')}>Đang tải sản phẩm thực tế...</div>
+                )}
+                {!productLoading && productError && (
+                    <div className={cx('api-notice', 'error')}>{productError}</div>
+                )}
+
                 {/* Hot Promotions Section */}
                 <ProductList 
-                    products={mockProducts} 
+                    products={allProducts} 
                     title="KHUYẾN MÃI HOT" 
                     showNavigation={true}
                 />
@@ -247,7 +284,7 @@ function Home() {
                             
                         </div>
                         <ProductList 
-                            products={mockProducts.slice(0, 5)}
+                            products={allProducts}
                             title="Tết ông trăng"
                             showNavigation={false}
                             showHeader={false}
@@ -264,7 +301,7 @@ function Home() {
                         <h3 className={cx('trending-title')}>SÁCH THỊNH HÀNH</h3>
                     </div>
                     <ProductList
-                        products={mockProducts}
+                        products={trendingProducts}
                         title="SÁCH THỊNH HÀNH"
                         showNavigation={true}
                         showHeader={false}
@@ -280,7 +317,7 @@ function Home() {
                         <h3 className={cx('trending-title')}>SÁCH BÁN CHẠY</h3>
                     </div>
                     <ProductList
-                        products={mockProducts}
+                        products={bestSellerProducts}
                         title="SÁCH BÁN CHẠY"
                         showNavigation={true}
                         showHeader={false}
@@ -294,7 +331,7 @@ function Home() {
                         <h3 className={cx('trending-title')}>COMBO SÁCH HOT</h3>
                     </div>
                     <ProductList
-                        products={mockProducts}
+                        products={allProducts}
                         title="SÁCH BÁN CHẠY"
                         showNavigation={true}
                         showHeader={false}

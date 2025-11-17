@@ -62,20 +62,29 @@ export default function ProductCard({ product = {} }) {
             currency: 'VND',
         }).format(value || 0);
 
+    const showOriginal = resolvedOriginalPrice > resolvedCurrentPrice;
+    const showDiscount = resolvedDiscount > 0 && showOriginal;
+
     return (
         <div className={cx('hot-product')}>
             <Link to={productLink} className={cx('product-link')}>
-                <img src={resolvedImage} alt={resolvedTitle} className={cx('product-image')} />
+                <div className={cx('image-wrapper')}>
+                    <img src={resolvedImage} alt={resolvedTitle} className={cx('product-image')} />
+                </div>
                 <div className={cx('product-info')}>
                     <h3 className={cx('product-title')}>{resolvedTitle}</h3>
-                    <div className={cx('product-price')}>
+                    <div className={cx('price-block')}>
                         <span className={cx('current-price')}>
                             {formatPrice(resolvedCurrentPrice)}
                         </span>
-                        <span className={cx('original-price')}>
-                            {formatPrice(resolvedOriginalPrice)}
-                        </span>
-                        <span className={cx('discount')}>-{resolvedDiscount}%</span>
+                        <div className={cx('sub-prices')}>
+                            {showOriginal && (
+                                <span className={cx('original-price')}>
+                                    {formatPrice(resolvedOriginalPrice)}
+                                </span>
+                            )}
+                            {showDiscount && <span className={cx('discount-pill')}>-{resolvedDiscount}%</span>}
+                        </div>
                     </div>
                 </div>
             </Link>

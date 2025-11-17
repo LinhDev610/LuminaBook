@@ -83,24 +83,27 @@ const ProductDetail = ({ productId }) => {
     const isRejected = product && product.status === 'REJECTED';
 
     const formatPrice = (price) =>
-        new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price || 0);
+        new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(
+            price || 0,
+        );
 
-    const renderStars = (rating) => {
-        if (!rating) return null;
-        const stars = [];
-        const fullStars = Math.floor(rating);
-        const hasHalfStar = rating % 1 !== 0;
-        for (let i = 0; i < fullStars; i++) stars.push(<span key={i} className={styles.star}>★</span>);
-        if (hasHalfStar) stars.push(<span key="half" className={styles.star}>☆</span>);
-        const emptyStars = 5 - Math.ceil(rating);
-        for (let i = 0; i < emptyStars; i++)
-            stars.push(<span key={`empty-${i}`} className={styles.starEmpty}>☆</span>);
-        return stars;
+    const renderStars = (rating = 0) => {
+        const resolved = Math.max(0, Math.min(5, rating || 0));
+        return Array.from({ length: 5 }, (_, idx) => {
+            const filled = idx < Math.round(resolved);
+            return (
+                <span key={idx} className={filled ? styles.star : styles.starEmpty}>
+                    ★
+                </span>
+            );
+        });
     };
 
     const productImages = product?.mediaUrls?.length
         ? product.mediaUrls.map((img) => normalizeMediaUrl(img, API_BASE_URL))
-        : (displayProduct.images || []).map((img) => normalizeMediaUrl(img, API_BASE_URL));
+        : (displayProduct.images || []).map((img) =>
+              normalizeMediaUrl(img, API_BASE_URL),
+          );
     const heroFallback = product?.defaultMediaUrl
         ? normalizeMediaUrl(product.defaultMediaUrl, API_BASE_URL)
         : productImages[0] || require('../../../assets/images/img_sach.png');
@@ -117,10 +120,13 @@ const ProductDetail = ({ productId }) => {
         0;
 
     const currentPrice = displayProduct.price ?? displayProduct.unitPrice ?? 0;
-    const originalPrice = displayProduct.originalPrice ?? displayProduct.unitPrice ?? currentPrice;
+    const originalPrice =
+        displayProduct.originalPrice ?? displayProduct.unitPrice ?? currentPrice;
     const discountPercent =
         displayProduct.discount ??
-        (originalPrice > 0 ? Math.round(((originalPrice - currentPrice) / originalPrice) * 100) : 0);
+        (originalPrice > 0
+            ? Math.round(((originalPrice - currentPrice) / originalPrice) * 100)
+            : 0);
 
     const policyHighlights = [
         { icon: '🚚', text: 'Thời gian giao hàng: Giao hàng nhanh và uy tín' },
@@ -129,7 +135,10 @@ const ProductDetail = ({ productId }) => {
     ];
 
     const infoRows = [
-        { label: 'Mã hàng', value: displayProduct.id || displayProduct.productCode || '-' },
+        {
+            label: 'Mã hàng',
+            value: displayProduct.id || displayProduct.productCode || '-',
+        },
         { label: 'Tên Nhà Cung Cấp', value: displayProduct.supplierName || '-' },
         { label: 'Tác giả', value: displayProduct.author || '-' },
         { label: 'Người Dịch', value: displayProduct.translator || '-' },
@@ -149,7 +158,10 @@ const ProductDetail = ({ productId }) => {
                     : displayProduct.dimensions || '-',
         },
         { label: 'Số trang', value: displayProduct.pages || '-' },
-        { label: 'Hình thức', value: displayProduct.format || displayProduct.coverType || '-' },
+        {
+            label: 'Hình thức',
+            value: displayProduct.format || displayProduct.coverType || '-',
+        },
     ];
 
     useEffect(() => {
@@ -170,7 +182,9 @@ const ProductDetail = ({ productId }) => {
         return (
             <div className={styles.productDetail}>
                 <div className={styles.container}>
-                    <div className={styles.loadingState}>Đang tải thông tin sản phẩm...</div>
+                    <div className={styles.loadingState}>
+                        Đang tải thông tin sản phẩm...
+                    </div>
                 </div>
             </div>
         );
@@ -191,13 +205,17 @@ const ProductDetail = ({ productId }) => {
             <div className={styles.container}>
                 <div className={styles.headerBreadcrumb}>
                     <span className={styles.categoryHeader}>
-                        {displayProduct.categoryName || displayProduct.category || 'Sản phẩm'}
+                        {displayProduct.categoryName ||
+                            displayProduct.category ||
+                            'Sản phẩm'}
                     </span>
                 </div>
 
                 {isRejected && product.rejectionReason && (
                     <div className={styles.rejectionBox}>
-                        <h3 className={styles.rejectionTitle}>Lý do không duyệt sản phẩm</h3>
+                        <h3 className={styles.rejectionTitle}>
+                            Lý do không duyệt sản phẩm
+                        </h3>
                         <p className={styles.rejectionText}>{product.rejectionReason}</p>
                         {product.updatedAt && (
                             <p className={styles.rejectionDate}>
@@ -225,7 +243,9 @@ const ProductDetail = ({ productId }) => {
                                         key={idx}
                                         src={img}
                                         alt={`${displayProduct.name} ${idx + 1}`}
-                                        className={selectedImage === img ? styles.active : ''}
+                                        className={
+                                            selectedImage === img ? styles.active : ''
+                                        }
                                         onClick={() => setSelectedImage(img)}
                                         onError={(e) => {
                                             e.target.src = require('../../../assets/images/img_sach.png');
@@ -233,13 +253,18 @@ const ProductDetail = ({ productId }) => {
                                     />
                                 ))}
                                 {productImages.length > 4 && (
-                                    <div className={styles.moreImages}>+{productImages.length - 4}</div>
+                                    <div className={styles.moreImages}>
+                                        +{productImages.length - 4}
+                                    </div>
                                 )}
                             </div>
                         )}
 
                         <div className={styles.ctaRow}>
-                            <button className={styles.secondaryBtn} onClick={handleAddToCart}>
+                            <button
+                                className={styles.secondaryBtn}
+                                onClick={handleAddToCart}
+                            >
                                 Thêm vào giỏ hàng
                             </button>
                             <button className={styles.primaryBtn} onClick={handleBuyNow}>
@@ -252,27 +277,47 @@ const ProductDetail = ({ productId }) => {
                         <h1 className={styles.productName}>{displayProduct.name}</h1>
 
                         <div className={styles.productMeta}>
-                            <div><strong>Tác giả:</strong> {displayProduct.author || '-'}</div>
-                            <div><strong>Nhà xuất bản:</strong> {displayProduct.publisher || '-'}</div>
-                            <div><strong>Hình thức bìa:</strong> {displayProduct.coverType || '-'}</div>
+                            <div>
+                                <strong>Tác giả:</strong> {displayProduct.author || '-'}
+                            </div>
+                            <div>
+                                <strong>Nhà xuất bản:</strong>{' '}
+                                {displayProduct.publisher || '-'}
+                            </div>
                         </div>
 
                         <div className={styles.ratingSection}>
                             <div className={styles.stars}>
-                                {renderStars(displayProduct.averageRating || displayProduct.rating)}
+                                {renderStars(
+                                    displayProduct.averageRating || displayProduct.rating,
+                                )}
                             </div>
-                            <span className={styles.ratingText}>
-                                ({displayProduct.reviewCount || 0} đánh giá) · Đã bán{' '}
-                                {displayProduct.quantitySold || displayProduct.soldCount || 0}
-                            </span>
+                            <div className={styles.ratingText}>
+                                <span className={styles.reviewCount}>
+                                    ({displayProduct.reviewCount || 0} đánh giá)
+                                </span>
+                                <span className={styles.dot}>·</span>
+                                <span className={styles.soldCount}>
+                                    Đã bán{' '}
+                                    {displayProduct.quantitySold ||
+                                        displayProduct.soldCount ||
+                                        0}
+                                </span>
+                            </div>
                         </div>
 
                         <div className={styles.priceSection}>
-                            <div className={styles.currentPrice}>{formatPrice(currentPrice)}</div>
+                            <div className={styles.currentPrice}>
+                                {formatPrice(currentPrice)}
+                            </div>
                             {originalPrice > currentPrice && (
                                 <div className={styles.priceMeta}>
-                                    <span className={styles.originalPrice}>{formatPrice(originalPrice)}</span>
-                                    <span className={styles.discount}>-{discountPercent}%</span>
+                                    <span className={styles.originalPrice}>
+                                        {formatPrice(originalPrice)}
+                                    </span>
+                                    <span className={styles.discount}>
+                                        -{discountPercent}%
+                                    </span>
                                 </div>
                             )}
                             <div className={styles.taxNote}>(Giá đã gồm thuế)</div>
@@ -282,22 +327,37 @@ const ProductDetail = ({ productId }) => {
                             <h3>Thông tin vận chuyển</h3>
                             <div className={styles.shippingItem}>
                                 <span className={styles.shippingIcon}>📍</span>
-                                <span>Giao hàng đến: {displayProduct.shippingAddress || 'Toàn quốc'}</span>
+                                <span>
+                                    Giao hàng đến:{' '}
+                                    {displayProduct.shippingAddress || 'Toàn quốc'}
+                                </span>
                             </div>
                             <div className={styles.shippingItem}>
                                 <span className={styles.shippingIcon}>🚚</span>
-                                <span>{displayProduct.deliveryMethod || 'Giao hàng tiêu chuẩn'}</span>
+                                <span>
+                                    {displayProduct.deliveryMethod ||
+                                        'Giao hàng tiêu chuẩn'}
+                                </span>
                             </div>
                             <div className={styles.shippingItem}>
                                 <span className={styles.shippingIcon}>📅</span>
-                                <span>Dự kiến giao: {displayProduct.estimatedDelivery || '3-5 ngày làm việc'}</span>
+                                <span>
+                                    Dự kiến giao:{' '}
+                                    {displayProduct.estimatedDelivery ||
+                                        '3-5 ngày làm việc'}
+                                </span>
                             </div>
                         </div>
 
                         <div className={styles.quantitySection}>
                             <label>Số lượng:</label>
                             <div className={styles.quantityControls}>
-                                <button onClick={() => setQuantity((prev) => Math.max(1, prev - 1))} disabled={quantity <= 1}>
+                                <button
+                                    onClick={() =>
+                                        setQuantity((prev) => Math.max(1, prev - 1))
+                                    }
+                                    disabled={quantity <= 1}
+                                >
                                     -
                                 </button>
                                 <input
@@ -306,7 +366,15 @@ const ProductDetail = ({ productId }) => {
                                     max={availableStock || undefined}
                                     value={quantity}
                                     onChange={(e) =>
-                                        setQuantity(Math.max(1, Math.min(parseInt(e.target.value) || 1, availableStock || 999)))
+                                        setQuantity(
+                                            Math.max(
+                                                1,
+                                                Math.min(
+                                                    parseInt(e.target.value) || 1,
+                                                    availableStock || 999,
+                                                ),
+                                            ),
+                                        )
                                     }
                                 />
                                 <button
@@ -314,7 +382,11 @@ const ProductDetail = ({ productId }) => {
                                         const limit = availableStock || 999;
                                         setQuantity((prev) => Math.min(prev + 1, limit));
                                     }}
-                                    disabled={availableStock ? quantity >= availableStock : false}
+                                    disabled={
+                                        availableStock
+                                            ? quantity >= availableStock
+                                            : false
+                                    }
                                 >
                                     +
                                 </button>
@@ -345,7 +417,9 @@ const ProductDetail = ({ productId }) => {
                             ))}
                             {displayProduct.bestSeller && (
                                 <div className={styles.infoRow}>
-                                    <span className={styles.infoLabel}>Sản phẩm bán chạy nhất</span>
+                                    <span className={styles.infoLabel}>
+                                        Sản phẩm bán chạy nhất
+                                    </span>
                                     <span className={styles.infoValue}>
                                         <a href="#!" className={styles.bestSellerLink}>
                                             {displayProduct.bestSeller}
@@ -359,9 +433,13 @@ const ProductDetail = ({ productId }) => {
                     <div className={styles.productDescription}>
                         <h3>Mô tả sản phẩm</h3>
                         <h4>{displayProduct.name}</h4>
-                        {displayProduct.subtitle && <p className={styles.subtitle}>{displayProduct.subtitle}</p>}
+                        {displayProduct.subtitle && (
+                            <p className={styles.subtitle}>{displayProduct.subtitle}</p>
+                        )}
                         <p>{displayProduct.description || '-'}</p>
-                        {displayProduct.longDescription && <p>{displayProduct.longDescription}</p>}
+                        {displayProduct.longDescription && (
+                            <p>{displayProduct.longDescription}</p>
+                        )}
                     </div>
                 </div>
             </div>

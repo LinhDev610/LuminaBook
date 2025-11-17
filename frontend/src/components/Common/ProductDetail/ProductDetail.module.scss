@@ -189,8 +189,24 @@
       }
 
       .ratingText {
-        color: #666;
+        display: flex;
+        align-items: center;
+        gap: 8px;
         font-size: 15px;
+        color: #4b5563;
+
+        .reviewCount {
+          color: #f59e0b;
+          font-weight: 600;
+        }
+
+        .dot {
+          color: #9ca3af;
+        }
+
+        .soldCount {
+          color: #4b5563;
+        }
       }
     }
 

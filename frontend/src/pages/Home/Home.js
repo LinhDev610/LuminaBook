@@ -43,17 +43,47 @@ const mapProductToCard = (product, apiBaseUrl) => {
     const imageUrl = normalizeMediaUrl(rawMedia, apiBaseUrl) || PRODUCT_IMAGE_FALLBACK;
     const price = typeof product.price === 'number' ? product.price : null;
     const unitPrice = typeof product.unitPrice === 'number' ? product.unitPrice : null;
+    const originalPriceField =
+        typeof product.originalPrice === 'number' ? product.originalPrice : null;
     const discountValue = typeof product.discountValue === 'number' ? product.discountValue : 0;
+    const discountPercent = typeof product.discount === 'number' ? product.discount : null;
 
-    const originalPrice = unitPrice ?? price ?? 0;
+    const currentPrice = price ?? unitPrice ?? 0;
+    const originalPrice = originalPriceField ?? unitPrice ?? currentPrice;
+
+    const percentToApply =
+        discountPercent != null && Number.isFinite(discountPercent)
+            ? Math.min(99, Math.max(0, discountPercent))
+            : null;
+
+    const amountToApply =
+        percentToApply != null && originalPrice > 0
+            ? Math.round((percentToApply / 100) * originalPrice)
+            : originalPrice > currentPrice && originalPrice > 0
+                ? originalPrice - currentPrice
+                : discountValue;
+
     const discountedPrice =
-        discountValue > 0 && originalPrice > 0
-            ? Math.max(originalPrice - discountValue, 0)
-            : price ?? originalPrice;
+        percentToApply != null
+            ? Math.max(originalPrice - amountToApply, 0)
+            : originalPrice > currentPrice && currentPrice > 0
+                ? currentPrice
+                : originalPrice > 0 && discountValue > 0
+                    ? Math.max(originalPrice - discountValue, 0)
+                    : currentPrice;
+
     const computedDiscount =
-        originalPrice > 0 && discountValue > 0
-            ? Math.min(99, Math.max(0, Math.round((discountValue / originalPrice) * 100)))
-            : 0;
+        percentToApply != null
+            ? percentToApply
+            : originalPrice > 0 && (originalPrice - discountedPrice) > 0
+                ? Math.min(
+                    99,
+                    Math.max(
+                        0,
+                        Math.round(((originalPrice - discountedPrice) / originalPrice) * 100),
+                    ),
+                )
+                : 0;
 
     return {
         id: product.id,

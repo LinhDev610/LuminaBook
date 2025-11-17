@@ -260,17 +260,6 @@ const ProductDetail = ({ productId }) => {
                             </div>
                         )}
 
-                        <div className={styles.ctaRow}>
-                            <button
-                                className={styles.secondaryBtn}
-                                onClick={handleAddToCart}
-                            >
-                                Thêm vào giỏ hàng
-                            </button>
-                            <button className={styles.primaryBtn} onClick={handleBuyNow}>
-                                Mua ngay
-                            </button>
-                        </div>
                     </div>
 
                     <div className={styles.productInfo}>
@@ -323,8 +312,8 @@ const ProductDetail = ({ productId }) => {
                             <div className={styles.taxNote}>(Giá đã gồm thuế)</div>
                         </div>
 
-                        <div className={styles.shippingInfo}>
-                            <h3>Thông tin vận chuyển</h3>
+                        <div className={styles.infoCard}>
+                            <h3 className={styles.cardTitle}>Thông tin vận chuyển</h3>
                             <div className={styles.shippingItem}>
                                 <span className={styles.shippingIcon}>📍</span>
                                 <span>
@@ -349,52 +338,55 @@ const ProductDetail = ({ productId }) => {
                             </div>
                         </div>
 
-                        <div className={styles.quantitySection}>
-                            <label>Số lượng:</label>
-                            <div className={styles.quantityControls}>
-                                <button
-                                    onClick={() =>
-                                        setQuantity((prev) => Math.max(1, prev - 1))
-                                    }
-                                    disabled={quantity <= 1}
-                                >
-                                    -
-                                </button>
-                                <input
-                                    type="number"
-                                    min="1"
-                                    max={availableStock || undefined}
-                                    value={quantity}
-                                    onChange={(e) =>
-                                        setQuantity(
-                                            Math.max(
-                                                1,
-                                                Math.min(
-                                                    parseInt(e.target.value) || 1,
-                                                    availableStock || 999,
+                        <div className={styles.infoCard}>
+                            <h3 className={styles.cardTitle}>Số lượng</h3>
+                            <div className={styles.quantitySection}>
+                                <label>Số lượng:</label>
+                                <div className={styles.quantityControls}>
+                                    <button
+                                        onClick={() =>
+                                            setQuantity((prev) => Math.max(1, prev - 1))
+                                        }
+                                        disabled={quantity <= 1}
+                                    >
+                                        -
+                                    </button>
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        max={availableStock || undefined}
+                                        value={quantity}
+                                        onChange={(e) =>
+                                            setQuantity(
+                                                Math.max(
+                                                    1,
+                                                    Math.min(
+                                                        parseInt(e.target.value) || 1,
+                                                        availableStock || 999,
+                                                    ),
                                                 ),
-                                            ),
-                                        )
-                                    }
-                                />
-                                <button
-                                    onClick={() => {
-                                        const limit = availableStock || 999;
-                                        setQuantity((prev) => Math.min(prev + 1, limit));
-                                    }}
-                                    disabled={
-                                        availableStock
-                                            ? quantity >= availableStock
-                                            : false
-                                    }
-                                >
-                                    +
-                                </button>
+                                            )
+                                        }
+                                    />
+                                    <button
+                                        onClick={() => {
+                                            const limit = availableStock || 999;
+                                            setQuantity((prev) => Math.min(prev + 1, limit));
+                                        }}
+                                        disabled={
+                                            availableStock
+                                                ? quantity >= availableStock
+                                                : false
+                                        }
+                                    >
+                                        +
+                                    </button>
+                                </div>
                             </div>
                         </div>
 
-                        <div className={styles.promotionalPolicies}>
-                            <h3>Chính sách ưu đãi</h3>
+                        <div className={styles.infoCard}>
+                            <h3 className={styles.cardTitle}>Chính sách ưu đãi</h3>
                             {policyHighlights.map((item, index) => (
                                 <div key={index} className={styles.policyItem}>
                                     <span className={styles.policyIcon}>{item.icon}</span>
@@ -402,44 +394,42 @@ const ProductDetail = ({ productId }) => {
                                 </div>
                             ))}
                         </div>
-                    </div>
-                </div>
 
-                <div className={styles.productDetails}>
-                    <div className={styles.detailedInfo}>
-                        <h3>Thông tin chi tiết</h3>
-                        <div className={styles.infoTable}>
-                            {infoRows.map((row) => (
-                                <div className={styles.infoRow} key={row.label}>
-                                    <span className={styles.infoLabel}>{row.label}</span>
-                                    <span className={styles.infoValue}>{row.value}</span>
-                                </div>
-                            ))}
-                            {displayProduct.bestSeller && (
-                                <div className={styles.infoRow}>
-                                    <span className={styles.infoLabel}>
-                                        Sản phẩm bán chạy nhất
-                                    </span>
-                                    <span className={styles.infoValue}>
-                                        <a href="#!" className={styles.bestSellerLink}>
-                                            {displayProduct.bestSeller}
-                                        </a>
-                                    </span>
-                                </div>
+                        <div className={styles.infoCard}>
+                            <h3 className={styles.cardTitle}>Thông tin chi tiết</h3>
+                            <div className={styles.infoTable}>
+                                {infoRows.map((row) => (
+                                    <div className={styles.infoRow} key={row.label}>
+                                        <span className={styles.infoLabel}>{row.label}</span>
+                                        <span className={styles.infoValue}>{row.value}</span>
+                                    </div>
+                                ))}
+                                {displayProduct.bestSeller && (
+                                    <div className={styles.infoRow}>
+                                        <span className={styles.infoLabel}>
+                                            Sản phẩm bán chạy nhất
+                                        </span>
+                                        <span className={styles.infoValue}>
+                                            <a href="#!" className={styles.bestSellerLink}>
+                                                {displayProduct.bestSeller}
+                                            </a>
+                                        </span>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className={styles.infoCard}>
+                            <h3 className={styles.cardTitle}>Mô tả sản phẩm</h3>
+                            <h4>{displayProduct.name}</h4>
+                            {displayProduct.subtitle && (
+                                <p className={styles.subtitle}>{displayProduct.subtitle}</p>
+                            )}
+                            <p>{displayProduct.description || '-'}</p>
+                            {displayProduct.longDescription && (
+                                <p>{displayProduct.longDescription}</p>
                             )}
                         </div>
-                    </div>
-
-                    <div className={styles.productDescription}>
-                        <h3>Mô tả sản phẩm</h3>
-                        <h4>{displayProduct.name}</h4>
-                        {displayProduct.subtitle && (
-                            <p className={styles.subtitle}>{displayProduct.subtitle}</p>
-                        )}
-                        <p>{displayProduct.description || '-'}</p>
-                        {displayProduct.longDescription && (
-                            <p>{displayProduct.longDescription}</p>
-                        )}
                     </div>
                 </div>
             </div>

@@ -1,4 +1,4 @@
-import EmployeesSidebar from '../EmployeesSidebar';
+import EmployeesSideBar from '../EmployeesSideBar';
 
 const menuItems = [
     { path: '/customer-support/complaints', label: 'Quản lý khiếu nại' },
@@ -10,9 +10,9 @@ const roleDisplay = (rawRole) => {
     return rawRole === 'CUSTOMER_SUPPORT' ? 'Chăm sóc khách hàng' : 'CSKH';
 };
 
-export default function CustomerSupportSidebar() {
+export default function CustomerSupportSideBar() {
     return (
-        <EmployeesSidebar
+        <EmployeesSideBar
             title="Hệ thống - CSKH"
             homePath="/customer-support"
             menuItems={menuItems}

@@ -1,4 +1,4 @@
-import EmployeesSidebar from '../EmployeesSidebar';
+import EmployeesSideBar from '../EmployeesSideBar';
 
 const menuItems = [
     { path: '/staff/products', label: 'Quản lý sản phẩm' },
@@ -12,9 +12,9 @@ const roleDisplay = (rawRole) => {
     return rawRole === 'CUSTOMER_SUPPORT' ? 'Chăm sóc khách hàng' : 'Nhân viên';
 };
 
-export default function StaffSidebar() {
+export default function StaffSideBar() {
     return (
-        <EmployeesSidebar
+        <EmployeesSideBar
             title="Hệ thống - Nhân viên"
             homePath="/staff"
             menuItems={menuItems}

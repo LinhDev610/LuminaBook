@@ -1,5 +1,5 @@
 import { CustomerSupportHeader } from '../components/Header';
-import CustomerSupportSidebar from '../components/Sidebar/Employees/CustomerSupport';
+import CustomerSupportSideBar from '../components/SideBar/Employees/CustomerSupport';
 
 function CustomerSupportLayout({ children }) {
     return (
@@ -8,7 +8,7 @@ function CustomerSupportLayout({ children }) {
             style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: 16 }}
         >
             <aside>
-                <CustomerSupportSidebar />
+                <CustomerSupportSideBar />
             </aside>
             <div className="content">{children}</div>
         </div>

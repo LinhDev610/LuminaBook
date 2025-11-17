@@ -1,1 +1,1 @@
-export { default } from './StaffSidebar';
+export { default } from './StaffSideBar';

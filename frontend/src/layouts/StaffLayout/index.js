@@ -1,5 +1,5 @@
 import { StaffHeader } from '../components/Header';
-import StaffSidebar from '../components/Sidebar/Employees/Staff';
+import StaffSideBar from '../components/SideBar/Employees/Staff';
 
 function StaffLayout({ children }) {
     return (
@@ -8,7 +8,7 @@ function StaffLayout({ children }) {
             style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: 16 }}
         >
             <aside>
-                <StaffSidebar />
+                <StaffSideBar />
             </aside>
             <div className="content">{children}</div>
         </div>

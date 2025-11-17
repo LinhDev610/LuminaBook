@@ -1,5 +1,5 @@
 import classNames from 'classnames/bind';
-import styles from './EmployeesSidebar.module.scss';
+import styles from './EmployeesSideBar.module.scss';
 import useLocalStorage from '../../../../hooks/useLocalStorage';
 import avatarFallback from '../../../../assets/icons/icon_defaultAva.png';
 import { useEffect, useState, useCallback } from 'react';
@@ -8,16 +8,14 @@ import { getStoredToken, getMyInfo } from '../../../../services';
 
 const cx = classNames.bind(styles);
 
-export default function EmployeesSidebar({
-    title,
-    homePath,
-    menuItems,
-    roleDisplay
-}) {
+export default function EmployeesSideBar({ title, homePath, menuItems, roleDisplay }) {
     const location = useLocation();
     const navigate = useNavigate();
     const [displayName] = useLocalStorage('displayName', null);
-    const [profile, setProfile] = useState({ name: displayName || 'Người dùng', role: '' });
+    const [profile, setProfile] = useState({
+        name: displayName || 'Người dùng',
+        role: '',
+    });
 
     // Extract role từ user data
     const extractRole = useCallback((userData) => {
@@ -33,12 +31,7 @@ export default function EmployeesSidebar({
     // Extract name từ user data
     const extractName = useCallback((userData, fallbackName) => {
         if (!userData) return fallbackName || 'Người dùng';
-        return (
-            userData?.fullName ||
-            userData?.username ||
-            fallbackName ||
-            'Người dùng'
-        );
+        return userData?.fullName || userData?.username || fallbackName || 'Người dùng';
     }, []);
 
     useEffect(() => {
@@ -86,9 +79,12 @@ export default function EmployeesSidebar({
         };
     }, [displayName, roleDisplay, extractRole, extractName]);
 
-    const isActive = useCallback((path) => {
-        return location.pathname === path || location.pathname.startsWith(`${path}/`);
-    }, [location.pathname]);
+    const isActive = useCallback(
+        (path) => {
+            return location.pathname === path || location.pathname.startsWith(`${path}/`);
+        },
+        [location.pathname],
+    );
 
     const handleProfileClick = useCallback(() => {
         navigate(homePath);
@@ -100,7 +96,9 @@ export default function EmployeesSidebar({
             <div className={cx('profile')} onClick={handleProfileClick}>
                 <img src={avatarFallback} alt="avatar" className={cx('avatar')} />
                 <div className={cx('info')}>
-                    <div className={cx('name')} title={profile.name}>{profile.name}</div>
+                    <div className={cx('name')} title={profile.name}>
+                        {profile.name}
+                    </div>
                     <div className={cx('role')}>{profile.role}</div>
                 </div>
             </div>
@@ -119,4 +117,3 @@ export default function EmployeesSidebar({
         </div>
     );
 }
-

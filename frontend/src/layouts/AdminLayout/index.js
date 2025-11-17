@@ -1,5 +1,5 @@
 import { AdminHeader } from '../components/Header';
-import AdminSidebar from '../components/Sidebar/Admin'
+import AdminSideBar from '../components/SideBar/Admin';
 
 function AdminLayout({ children }) {
     return (
@@ -10,7 +10,7 @@ function AdminLayout({ children }) {
                 style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: 16 }}
             >
                 <aside>
-                    <AdminSidebar />
+                    <AdminSideBar />
                 </aside>
                 <div className="content">{children}</div>
             </div>

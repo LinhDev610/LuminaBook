@@ -1,1 +1,1 @@
-export { default } from './AdminSidebar';
+export { default } from './AdminSideBar';

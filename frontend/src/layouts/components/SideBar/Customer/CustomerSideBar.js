@@ -1,10 +1,10 @@
 import classNames from 'classnames/bind';
-import styles from './CustomerSidebar.module.scss';
+import styles from './CustomerSideBar.module.scss';
 import { NavLink } from 'react-router-dom';
 
 const cx = classNames.bind(styles);
 
-export default function CustomerSidebar() {
+export default function CustomerSideBar() {
     return (
         <div className={cx('side')}>
             {' '}

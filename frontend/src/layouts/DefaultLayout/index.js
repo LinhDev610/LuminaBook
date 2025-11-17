@@ -1,13 +1,13 @@
 import { DefaultHeader } from '../components/Header';
 import AuthModals from '../../components/AuthModals';
 import Footer from '../components/Footer';
-import Navbar from '../components/Navbar';
+import NavBar from '../components/NavBar';
 
 function DefaultLayout({ children }) {
     return (
         <div>
             <DefaultHeader />
-            <Navbar />
+            <NavBar />
             <div className="container">
                 <div className="content">{children}</div>
             </div>

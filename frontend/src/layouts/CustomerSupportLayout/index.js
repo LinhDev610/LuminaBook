@@ -16,4 +16,3 @@ function CustomerSupportLayout({ children }) {
 }
 
 export default CustomerSupportLayout;
-

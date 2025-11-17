@@ -11,7 +11,6 @@ function StaffLayout({ children }) {
                 <StaffSideBar />
             </aside>
             <div className="content">{children}</div>
-        
         </div>
     );
 }

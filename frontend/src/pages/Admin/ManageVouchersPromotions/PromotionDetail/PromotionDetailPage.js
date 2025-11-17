@@ -551,15 +551,6 @@ function PromotionDetailPage() {
                             </button>
                         </>
                     )}
-                    {isAdmin && promotion.status === 'APPROVED' && (
-                        <button
-                            className={cx('btn', 'btn-edit')}
-                            onClick={() => navigate(`/admin/promotions/${id}/edit`)}
-                            disabled={processing}
-                        >
-                            Chỉnh sửa
-                        </button>
-                    )}
                     <button
                         className={cx('btn', 'btn-delete')}
                         onClick={() => setShowDeleteModal(true)}

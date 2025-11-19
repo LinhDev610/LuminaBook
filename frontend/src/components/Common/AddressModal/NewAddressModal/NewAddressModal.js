@@ -44,7 +44,15 @@ const NewAddressModal = ({ open, onClose, onCreated }) => {
 
     useEffect(() => {
         if (!open) return;
-        loadProvinces();
+        const loadData = async () => {
+            try {
+                const result = await loadProvinces();
+                console.log('Provinces loaded:', result?.length || 0);
+            } catch (err) {
+                console.error('Failed to load provinces:', err);
+            }
+        };
+        loadData();
     }, [open, loadProvinces]);
 
     useEffect(() => {
@@ -207,8 +215,14 @@ const NewAddressModal = ({ open, onClose, onCreated }) => {
                     <div className={cx('grid')}>
                         <label className={cx('field')}>
                             <span>Tỉnh / Thành phố *</span>
-                            <select value={form.provinceID} onChange={handleProvinceChange}>
-                                <option value="">Chọn tỉnh / thành phố</option>
+                            <select
+                                value={form.provinceID}
+                                onChange={handleProvinceChange}
+                                disabled={loading.provinces}
+                            >
+                                <option value="">
+                                    {loading.provinces ? 'Đang tải...' : 'Chọn tỉnh / thành phố'}
+                                </option>
                                 {provinces.map((province) => (
                                     <option key={province.id} value={province.id}>
                                         {province.name}

@@ -33,13 +33,22 @@ public class GhnService {
     private final WebClient ghnWebClient;
 
     public List<GhnProvinceResponse> getProvinces() {
-        GhnProvinceResponse[] data = callGhnApi(
-                "/shiip/public-api/master-data/province",
-                HttpMethod.GET,
-                null,
-                new ParameterizedTypeReference<GhnApiResponse<GhnProvinceResponse[]>>() {});
+        try {
+            log.info("Fetching GHN provinces from: {}", ghnProperties.getBaseUrl());
+            GhnProvinceResponse[] data = callGhnApi(
+                    "/shiip/public-api/master-data/province",
+                    HttpMethod.GET,
+                    null,
+                    new ParameterizedTypeReference<GhnApiResponse<GhnProvinceResponse[]>>() {});
 
-        return data == null ? List.of() : Arrays.asList(data);
+            return data == null ? List.of() : Arrays.asList(data);
+        } catch (AppException e) {
+            log.error("Failed to fetch GHN provinces: {}", e.getMessage());
+            throw e;
+        } catch (Exception e) {
+            log.error("Unexpected error fetching GHN provinces", e);
+            throw new AppException(ErrorCode.EXTERNAL_SERVICE_ERROR);
+        }
     }
 
     public List<GhnDistrictResponse> getDistricts(Integer provinceId) {

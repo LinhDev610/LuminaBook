@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import useLocalStorage from '../../hooks/useLocalStorage';
 import Notification from '../../components/Common/Notification/Notification';
 import guestImgIcon from '../../assets/icons/icon_img_guest.png';
-import { getMyInfo, updateUser } from '../../services';
+import { getMyInfo, updateUser, getMyAddresses } from '../../services';
 import styles from './CustomerAccountPage.module.scss';
 import CustomerChangePasswordPage from './CustomerChangePassword/CustomerChangePasswordPage';
 import classNames from 'classnames/bind';
@@ -84,6 +84,24 @@ function CustomerAccountPage() {
                 if (!tk) return;
                 const u = await getMyInfo(tk);
                 if (u) {
+                    // Fetch addresses to find default address
+                    try {
+                        const addresses = await getMyAddresses(tk);
+                        if (Array.isArray(addresses) && addresses.length > 0) {
+                            const defaultAddress = addresses.find((addr) => addr?.defaultAddress === true);
+                            if (defaultAddress) {
+                                u.address = formatFullAddress(defaultAddress);
+                                setSelectedAddress(defaultAddress);
+                            } else {
+                                u.address = '';
+                            }
+                        } else {
+                            u.address = '';
+                        }
+                    } catch (_addrErr) {
+                        u.address = u.address || '';
+                    }
+
                     setUser(u);
                     // Deep clone to ensure cancel restores immutable snapshot
                     try {
@@ -103,6 +121,45 @@ function CustomerAccountPage() {
         };
         fetchMe();
     }, []);
+
+    // Auto-update default address when address list changes
+    useEffect(() => {
+        const updateDefaultAddress = async () => {
+            if (!isLoggedIn || addressRefreshKey === 0) return;
+            try {
+                const tk = getStoredToken();
+                if (!tk) return;
+                const addresses = await getMyAddresses(tk);
+                if (Array.isArray(addresses) && addresses.length > 0) {
+                    const defaultAddress = addresses.find((addr) => addr?.defaultAddress === true);
+                    if (defaultAddress) {
+                        setUser((prev) => ({
+                            ...(prev || {}),
+                            address: formatFullAddress(defaultAddress),
+                        }));
+                        setSelectedAddress(defaultAddress);
+                    } else {
+                        // No default address, clear if no address selected
+                        setUser((prev) => {
+                            const currentSelectedId = selectedAddress?.id;
+                            const stillExists = addresses.some((addr) => addr?.id === currentSelectedId);
+                            if (!stillExists) {
+                                return { ...(prev || {}), address: '' };
+                            }
+                            return prev;
+                        });
+                    }
+                } else {
+                    // No addresses at all, clear
+                    setUser((prev) => ({ ...(prev || {}), address: '' }));
+                    setSelectedAddress(null);
+                }
+            } catch (_e) {
+                // Ignore errors
+            }
+        };
+        updateDefaultAddress();
+    }, [addressRefreshKey, isLoggedIn]);
 
     // Change password form state
     const [currentPassword, setCurrentPassword] = useState('');

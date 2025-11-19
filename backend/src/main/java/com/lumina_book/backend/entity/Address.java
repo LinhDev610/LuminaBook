@@ -32,7 +32,8 @@ public class Address {
     String address;
 
     String postalCode;
-    boolean isDefault;
+    @Column(name = "is_default")
+    boolean defaultAddress;
 
     LocalDateTime createdAt;
     LocalDateTime updatedAt;

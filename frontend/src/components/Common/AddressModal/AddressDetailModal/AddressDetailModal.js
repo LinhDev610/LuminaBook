@@ -71,7 +71,8 @@ const AddressDetailModal = ({ open, address, onClose, onUpdated }) => {
 
     const validate = (payload) => {
         const newErrors = {};
-        if (!payload.recipientName) newErrors.recipientName = 'Vui lòng nhập tên người nhận';
+        if (!payload.recipientName)
+            newErrors.recipientName = 'Vui lòng nhập tên người nhận';
         if (!payload.recipientPhoneNumber) {
             newErrors.recipientPhoneNumber = 'Vui lòng nhập số điện thoại';
         } else if (!/^0\d{9}$/.test(payload.recipientPhoneNumber)) {
@@ -158,7 +159,11 @@ const AddressDetailModal = ({ open, address, onClose, onUpdated }) => {
                         <h3>Chi tiết địa chỉ</h3>
                         <p>{address.recipientName}</p>
                     </div>
-                    <button className={cx('close-btn')} onClick={onClose} aria-label="Đóng">
+                    <button
+                        className={cx('close-btn')}
+                        onClick={onClose}
+                        aria-label="Đóng"
+                    >
                         ×
                     </button>
                 </header>
@@ -184,7 +189,7 @@ const AddressDetailModal = ({ open, address, onClose, onUpdated }) => {
                         )}
                         <div>
                             <span className={cx('label')}>Trạng thái</span>
-                            <p>{address.isDefault ? 'Mặc định' : 'Khác'}</p>
+                            <p>{address.defaultAddress ? 'Mặc định' : 'Khác'}</p>
                         </div>
                     </div>
                 )}
@@ -195,10 +200,14 @@ const AddressDetailModal = ({ open, address, onClose, onUpdated }) => {
                                 <span>Người nhận *</span>
                                 <input
                                     value={form.recipientName}
-                                    onChange={(e) => handleFieldChange('recipientName', e.target.value)}
+                                    onChange={(e) =>
+                                        handleFieldChange('recipientName', e.target.value)
+                                    }
                                 />
                                 {errors.recipientName && (
-                                    <small className={cx('error')}>{errors.recipientName}</small>
+                                    <small className={cx('error')}>
+                                        {errors.recipientName}
+                                    </small>
                                 )}
                             </label>
                             <label className={cx('field')}>
@@ -206,7 +215,10 @@ const AddressDetailModal = ({ open, address, onClose, onUpdated }) => {
                                 <input
                                     value={form.recipientPhoneNumber}
                                     onChange={(e) =>
-                                        handleFieldChange('recipientPhoneNumber', e.target.value)
+                                        handleFieldChange(
+                                            'recipientPhoneNumber',
+                                            e.target.value,
+                                        )
                                     }
                                 />
                                 {errors.recipientPhoneNumber && (
@@ -219,7 +231,10 @@ const AddressDetailModal = ({ open, address, onClose, onUpdated }) => {
                         <div className={cx('grid')}>
                             <label className={cx('field')}>
                                 <span>Tỉnh / Thành *</span>
-                                <select value={form.provinceID} onChange={handleProvinceChange}>
+                                <select
+                                    value={form.provinceID}
+                                    onChange={handleProvinceChange}
+                                >
                                     <option value="">Chọn tỉnh / thành</option>
                                     {provinces.map((province) => (
                                         <option key={province.id} value={province.id}>
@@ -228,7 +243,9 @@ const AddressDetailModal = ({ open, address, onClose, onUpdated }) => {
                                     ))}
                                 </select>
                                 {errors.provinceID && (
-                                    <small className={cx('error')}>{errors.provinceID}</small>
+                                    <small className={cx('error')}>
+                                        {errors.provinceID}
+                                    </small>
                                 )}
                             </label>
                             <label className={cx('field')}>
@@ -246,7 +263,9 @@ const AddressDetailModal = ({ open, address, onClose, onUpdated }) => {
                                     ))}
                                 </select>
                                 {errors.districtID && (
-                                    <small className={cx('error')}>{errors.districtID}</small>
+                                    <small className={cx('error')}>
+                                        {errors.districtID}
+                                    </small>
                                 )}
                             </label>
                         </div>
@@ -266,14 +285,18 @@ const AddressDetailModal = ({ open, address, onClose, onUpdated }) => {
                                     ))}
                                 </select>
                                 {errors.wardCode && (
-                                    <small className={cx('error')}>{errors.wardCode}</small>
+                                    <small className={cx('error')}>
+                                        {errors.wardCode}
+                                    </small>
                                 )}
                             </label>
                             <label className={cx('field')}>
                                 <span>Mã bưu chính</span>
                                 <input
                                     value={form.postalCode}
-                                    onChange={(e) => handleFieldChange('postalCode', e.target.value)}
+                                    onChange={(e) =>
+                                        handleFieldChange('postalCode', e.target.value)
+                                    }
                                 />
                             </label>
                         </div>
@@ -282,7 +305,9 @@ const AddressDetailModal = ({ open, address, onClose, onUpdated }) => {
                             <textarea
                                 rows={3}
                                 value={form.address}
-                                onChange={(e) => handleFieldChange('address', e.target.value)}
+                                onChange={(e) =>
+                                    handleFieldChange('address', e.target.value)
+                                }
                             />
                             {errors.address && (
                                 <small className={cx('error')}>{errors.address}</small>
@@ -291,8 +316,10 @@ const AddressDetailModal = ({ open, address, onClose, onUpdated }) => {
                         <label className={cx('checkbox')}>
                             <input
                                 type="checkbox"
-                                checked={!!form.isDefault}
-                                onChange={(e) => handleFieldChange('isDefault', e.target.checked)}
+                                checked={!!form.defaultAddress}
+                                onChange={(e) =>
+                                    handleFieldChange('defaultAddress', e.target.checked)
+                                }
                             />
                             Đặt làm địa chỉ mặc định
                         </label>
@@ -306,7 +333,10 @@ const AddressDetailModal = ({ open, address, onClose, onUpdated }) => {
                             <button className={cx('btn', 'ghost')} onClick={onClose}>
                                 Đóng
                             </button>
-                            <button className={cx('btn', 'primary')} onClick={() => setIsEditing(true)}>
+                            <button
+                                className={cx('btn', 'primary')}
+                                onClick={() => setIsEditing(true)}
+                            >
                                 Chỉnh sửa
                             </button>
                         </>
@@ -317,7 +347,10 @@ const AddressDetailModal = ({ open, address, onClose, onUpdated }) => {
                                 className={cx('btn', 'ghost')}
                                 onClick={() => {
                                     setIsEditing(false);
-                                    setForm({ ...INITIAL_FORM_STATE_ADDRESS_DETAIL, ...address });
+                                    setForm({
+                                        ...INITIAL_FORM_STATE_ADDRESS_DETAIL,
+                                        ...address,
+                                    });
                                     setErrors({});
                                 }}
                             >
@@ -341,4 +374,3 @@ const AddressDetailModal = ({ open, address, onClose, onUpdated }) => {
 };
 
 export default AddressDetailModal;
-

@@ -9,8 +9,8 @@ const cx = classNames.bind(styles);
 
 const sortAddresses = (items = []) => {
     return [...items].sort((a, b) => {
-        if (a?.isDefault && !b?.isDefault) return -1;
-        if (!a?.isDefault && b?.isDefault) return 1;
+        if (a?.defaultAddress && !b?.defaultAddress) return -1;
+        if (!a?.defaultAddress && b?.defaultAddress) return 1;
         const aTime = Date.parse(a?.createdAt || '') || 0;
         const bTime = Date.parse(b?.createdAt || '') || 0;
         return bTime - aTime;
@@ -103,7 +103,7 @@ const AddressListModal = ({
                             key={address.id}
                             className={cx('address-item', {
                                 active: highlightAddressId && highlightAddressId === address.id,
-                                default: address.isDefault,
+                                default: address.defaultAddress,
                             })}
                         >
                             <div className={cx('address-meta-wrap')}>
@@ -112,7 +112,7 @@ const AddressListModal = ({
                                         <span className={cx('recipient')}>{address.recipientName}</span>
                                         <span className={cx('divider')} />
                                         <span className={cx('phone')}>{address.recipientPhoneNumber}</span>
-                                        {address.isDefault && <span className={cx('badge')}>Mặc định</span>}
+                                        {address.defaultAddress && <span className={cx('badge')}>Mặc định</span>}
                                     </div>
                                     <p className={cx('address-line')}>{formatFullAddress(address)}</p>
                                     {validCreatedDate && (

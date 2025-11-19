@@ -126,6 +126,6 @@ export const normalizeAddressPayload = (form) => ({
     wardCode: form.wardCode ?? '',
     address: form.address?.trim() ?? '',
     postalCode: form.postalCode?.trim() ?? '',
-    isDefault: !!form.isDefault,
+    defaultAddress: !!form.defaultAddress,
 });
 

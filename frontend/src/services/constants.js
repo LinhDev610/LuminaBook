@@ -263,7 +263,7 @@ export const INITIAL_FORM_STATE_ADDRESS = {
     wardName: '',
     address: '',
     postalCode: '',
-    isDefault: false,
+    defaultAddress: false,
 };
 
 export const INITIAL_FORM_STATE_ADDRESS_DETAIL = {
@@ -278,5 +278,5 @@ export const INITIAL_FORM_STATE_ADDRESS_DETAIL = {
     wardName: '',
     address: '',
     postalCode: '',
-    isDefault: false,
+    defaultAddress: false,
 };

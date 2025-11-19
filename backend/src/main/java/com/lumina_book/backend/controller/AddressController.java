@@ -27,9 +27,9 @@ class AddressController {
 
     @PostMapping
     ApiResponse<AddressResponse> createAddress(@RequestBody @Valid AddressCreationRequest request) {
-        // log.info("Controller: create Address");
+        AddressResponse result = addressService.createAddress(request);
         return ApiResponse.<AddressResponse>builder()
-                .result(addressService.createAddress(request))
+                .result(result)
                 .build();
     }
 
@@ -53,7 +53,6 @@ class AddressController {
     ApiResponse<AddressResponse> updateAddress(
             @PathVariable String addressId,
             @RequestBody @Valid AddressUpdateRequest request) {
-        // log.info("Controller: update address with ID: {}", addressId);
         try {
             AddressResponse result = addressService.updateAddress(addressId, request);
             return ApiResponse.<AddressResponse>builder()

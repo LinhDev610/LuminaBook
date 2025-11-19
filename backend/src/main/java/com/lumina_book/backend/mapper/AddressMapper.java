@@ -22,7 +22,6 @@ public interface AddressMapper {
 
     // Entity to Response
     @Mapping(target = "id", source = "addressId")
-    @Mapping(target = "isDefault", expression = "java(address.isDefault())")
     AddressResponse toAddressResponse(Address address);
 
     // Update Entity

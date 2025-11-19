@@ -41,8 +41,9 @@ public class AddressService {
         address.setCreatedAt(LocalDateTime.now());
         address.setUpdatedAt(LocalDateTime.now());
         address.setCountry("Việt Nam"); // Default country
+        address.setDefaultAddress(request.isDefaultAddress());
 
-        if (request.isDefault()) {
+        if (request.isDefaultAddress()) {
             unsetOtherDefaults(currentUser, null);
         }
 
@@ -75,11 +76,12 @@ public class AddressService {
         User currentUser = getCurrentUser();
         Address address = getOwnedAddress(addressId, currentUser);
 
-        if (request.isDefault()) {
+        if (request.isDefaultAddress()) {
             unsetOtherDefaults(currentUser, addressId);
         }
 
         addressMapper.updateAddress(address, request);
+        address.setDefaultAddress(request.isDefaultAddress());
         address.setUpdatedAt(LocalDateTime.now());
 
         Address savedAddress = addressRepository.save(address);
@@ -123,10 +125,10 @@ public class AddressService {
 
     private void unsetOtherDefaults(User currentUser, String excludeAddressId) {
         currentUser.getAddresses().stream()
-                .filter(Address::isDefault)
+                .filter(Address::isDefaultAddress)
                 .filter(addr -> excludeAddressId == null || !addr.getAddressId().equals(excludeAddressId))
                 .forEach(addr -> {
-                    addr.setDefault(false);
+                    addr.setDefaultAddress(false);
                     addressRepository.save(addr);
                 });
     }

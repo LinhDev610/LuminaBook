@@ -23,21 +23,10 @@ public class AddressResponse {
     String wardCode;
 
     String address;
-
     String postalCode;
     
-    @Getter(AccessLevel.NONE)
-    @Setter(AccessLevel.NONE)
-    boolean isDefault;
+    boolean defaultAddress;
 
     LocalDateTime createdAt;
     LocalDateTime updatedAt;
-    
-    public boolean isDefault() {
-        return this.isDefault;
-    }
-    
-    public void setDefault(boolean isDefault) {
-        this.isDefault = isDefault;
-    }
 }

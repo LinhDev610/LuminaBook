@@ -1,6 +1,5 @@
 package com.lumina_book.backend.dto.request;
 
-import jakarta.validation.constraints.NotBlank;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
@@ -24,5 +23,6 @@ public class AddressUpdateRequest {
     String address;
 
     String postalCode;
-    boolean isDefault;
+    
+    boolean defaultAddress;
 }

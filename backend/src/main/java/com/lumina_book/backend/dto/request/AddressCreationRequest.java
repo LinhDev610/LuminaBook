@@ -29,5 +29,6 @@ public class AddressCreationRequest {
     String address;
 
     String postalCode;
-    boolean isDefault;
+    
+    boolean defaultAddress;
 }

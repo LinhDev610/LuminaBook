@@ -47,7 +47,7 @@ const NewAddressModal = ({ open, onClose, onCreated }) => {
         const loadData = async () => {
             try {
                 const result = await loadProvinces();
-                console.log('Provinces loaded:', result?.length || 0);
+                // console.log('Provinces loaded:', result?.length || 0);
             } catch (err) {
                 console.error('Failed to load provinces:', err);
             }
@@ -293,8 +293,8 @@ const NewAddressModal = ({ open, onClose, onCreated }) => {
                     <label className={cx('checkbox')}>
                         <input
                             type="checkbox"
-                            checked={form.isDefault}
-                            onChange={(e) => handleChange('isDefault', e.target.checked)}
+                            checked={form.defaultAddress}
+                            onChange={(e) => handleChange('defaultAddress', e.target.checked)}
                         />
                         Đặt làm địa chỉ mặc định
                     </label>

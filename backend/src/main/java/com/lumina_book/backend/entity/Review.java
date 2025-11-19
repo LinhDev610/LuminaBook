@@ -38,7 +38,7 @@ public class Review {
     @Column(name = "reply_at")
     LocalDateTime replyAt;
 
-    // User relationship
+    // User relationship (bắt buộc - phải đăng nhập để đánh giá)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     User user;

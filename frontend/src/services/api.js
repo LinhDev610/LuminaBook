@@ -92,8 +92,14 @@ export async function getAllUsers(token = null) {
 }
 
 export async function getUserById(userId, token = null) {
-    const { data } = await apiRequest(`/users/${userId}`, { token });
-    return extractResult(data);
+    const { data, ok, status } = await apiRequest(`/users/${userId}`, { token });
+    console.log('getUserById response:', { ok, status, data });
+    if (!ok) {
+        throw new Error(`Failed to get user: ${status} - ${JSON.stringify(data)}`);
+    }
+    const result = extractResult(data);
+    console.log('getUserById extracted result:', result);
+    return result;
 }
 
 export async function updateUser(userId, userData, token = null) {
@@ -411,4 +417,33 @@ export async function getPendingPromotions(token = null) {
 export async function getPromotionsByStatus(status, token = null) {
     const { data } = await apiRequest(`/promotions/status/${status}`, { token });
     return extractResult(data, true);
+}
+
+// ========== REVIEW API ==========
+export async function getReviewsByProduct(productId, token = null) {
+  const { data } = await apiRequest(`/reviews/product/${productId}`, { token });
+  return extractResult(data, true);
+}
+
+export async function getAllReviews(token = null) {
+  const { data } = await apiRequest('/reviews/all-reviews', { token });
+  return extractResult(data, true);
+}
+
+export async function createReview(reviewData, token = null) {
+  const { data, ok, status } = await apiRequest('/reviews', {
+    method: 'POST',
+    body: reviewData,
+    token,
+  });
+  return { ok, status, data: extractResult(data) };
+}
+
+export async function replyToReview(reviewId, replyData, token = null) {
+  const { data, ok, status } = await apiRequest(`/reviews/${reviewId}/reply`, {
+    method: 'POST',
+    body: replyData,
+    token,
+  });
+  return { ok, status, data: extractResult(data) };
 }

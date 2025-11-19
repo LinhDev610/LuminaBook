@@ -73,29 +73,35 @@ public class ReviewService {
 
     @Transactional
     public ReviewResponse createReview(ReviewCreationRequest request) {
-        // Get current user from security context
-        var context = SecurityContextHolder.getContext();
-        String userId = context.getAuthentication().getName();
-
-        // Get user
-        User user = userRepository.findById(userId).orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
-
         // Get product
         Product product = productRepository
                 .findById(request.getProduct().getId())
                 .orElseThrow(() -> new AppException(ErrorCode.PRODUCT_NOT_EXISTED));
 
+        // Bắt buộc phải đăng nhập để đánh giá
+        // Lấy user từ security context (bắt buộc)
+        var context = SecurityContextHolder.getContext();
+        String userEmail = context.getAuthentication().getName();
+        
+        // Get user by email (JWT token subject contains email, not userId)
+        User user = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+        
+        log.info("Review created by user: {} (display name: {})", 
+                userEmail, request.getNameDisplay());
+
         // Create review entity using mapper
         Review review = reviewMapper.toReview(request);
-        review.setNameDisplay(request.getNameDisplay());
+        review.setNameDisplay(request.getNameDisplay()); // Tên hiển thị do người dùng nhập
         review.setRating(request.getRating());
         review.setComment(request.getComment());
         review.setCreatedAt(LocalDateTime.now());
-        review.setUser(user);
+        review.setUser(user); // Có thể null nếu không đăng nhập
         review.setProduct(product);
 
         Review savedReview = reviewRepository.save(review);
-        log.info("Review created with ID: {} by user: {}", savedReview.getId(), userId);
+        String reviewerInfo = user != null ? user.getEmail() : (request.getNameDisplay() != null ? request.getNameDisplay() : "Anonymous");
+        log.info("Review created with ID: {} by: {}", savedReview.getId(), reviewerInfo);
 
         return reviewMapper.toReviewResponse(savedReview);
     }

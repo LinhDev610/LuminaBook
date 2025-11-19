@@ -111,6 +111,19 @@
 .customerName {
     font-weight: 700;
     color: #1a3c5a;
+    transition: color 0.2s ease;
+
+    &.clickable {
+        cursor: pointer;
+        text-decoration: underline;
+        text-decoration-color: transparent;
+        transition: all 0.2s ease;
+
+        &:hover {
+            color: #2563eb;
+            text-decoration-color: #2563eb;
+        }
+    }
 }
 
 .reviewDate {
@@ -206,6 +219,112 @@
 
     .replyButton {
         width: 100%;
+    }
+}
+
+/* Modal hiển thị thông tin khách hàng */
+.modalOverlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 20px;
+}
+
+.customerModal {
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    max-width: 500px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.modalHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.modalTitle {
+    font-size: 20px;
+    font-weight: 700;
+    color: #1a3c5a;
+    margin: 0;
+}
+
+.closeButton {
+    background: transparent;
+    border: none;
+    font-size: 28px;
+    color: #6b7280;
+    cursor: pointer;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+
+    &:hover {
+        background: #f3f4f6;
+        color: #111827;
+    }
+}
+
+.modalContent {
+    padding: 24px;
+}
+
+.customerDetails {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.detailRow {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #f3f4f6;
+
+    &:last-child {
+        border-bottom: none;
+        padding-bottom: 0;
+    }
+}
+
+.detailLabel {
+    font-weight: 600;
+    color: #374151;
+    font-size: 14px;
+    min-width: 120px;
+    flex-shrink: 0;
+}
+
+.detailValue {
+    font-size: 14px;
+    color: #111827;
+    flex: 1;
+    word-break: break-word;
+
+    &.active {
+        color: #10b981;
+        font-weight: 600;
+    }
+
+    &.inactive {
+        color: #ef4444;
+        font-weight: 600;
     }
 }
 

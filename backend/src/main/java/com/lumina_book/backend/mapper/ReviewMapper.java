@@ -11,8 +11,8 @@ import com.lumina_book.backend.entity.Review;
 public interface ReviewMapper {
 
     // Entity to Response
-    @Mapping(target = "userId", source = "user.id")
-    @Mapping(target = "userName", source = "user.fullName")
+    @Mapping(target = "userId", source = "user.id", defaultExpression = "java(null)")
+    @Mapping(target = "userName", source = "user.fullName", defaultExpression = "java(null)")
     @Mapping(target = "productId", source = "product.id")
     @Mapping(target = "productName", source = "product.name")
     ReviewResponse toReviewResponse(Review review);

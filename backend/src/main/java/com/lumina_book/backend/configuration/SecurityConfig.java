@@ -30,6 +30,7 @@ public class SecurityConfig {
         "/auth/send-otp",
         "/auth/verify-otp",
         "/auth/reset-password"
+        // /reviews yêu cầu đăng nhập - đã xóa khỏi đây
     };
 
     private static final String[] PUBLIC_GET_ENDPOINTS = {
@@ -37,6 +38,7 @@ public class SecurityConfig {
         "/voucher_media/**",
         "/promotion_media/**",
         "/profile_media/**",
+        "/reviews/**",
         "/vouchers/**",
         "/promotions/**",
         "/products/**",

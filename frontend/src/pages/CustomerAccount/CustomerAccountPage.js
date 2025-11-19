@@ -7,6 +7,10 @@ import { getMyInfo, updateUser } from '../../services';
 import styles from './CustomerAccountPage.module.scss';
 import CustomerChangePasswordPage from './CustomerChangePassword/CustomerChangePasswordPage';
 import classNames from 'classnames/bind';
+import AddressListModal from '../../components/Common/AddressModal/AddressListModal';
+import NewAddressModal from '../../components/Common/AddressModal/NewAddressModal';
+import AddressDetailModal from '../../components/Common/AddressModal/AddressDetailModal';
+import { formatFullAddress } from '../../components/Common/AddressModal/useGhnLocations';
 
 // Thông tin tài khoản, lịch sử đơn hàng, đổi mật khẩu
 
@@ -49,6 +53,11 @@ function CustomerAccountPage() {
     const [notif, setNotif] = useState({ open: false, type: 'success', title: '', message: '', duration: 3000 });
 
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+    const [showAddressList, setShowAddressList] = useState(false);
+    const [showNewAddressModal, setShowNewAddressModal] = useState(false);
+    const [showAddressDetailModal, setShowAddressDetailModal] = useState(false);
+    const [selectedAddress, setSelectedAddress] = useState(null);
+    const [addressRefreshKey, setAddressRefreshKey] = useState(0);
 
     const handleLogout = () => {
         // Close modal first so it disappears immediately
@@ -303,7 +312,10 @@ function CustomerAccountPage() {
                                     <label>Địa chỉ</label>
                                     <input
                                         value={user?.address ?? ''}
-                                        onChange={(e) => setUser((prev) => ({ ...(prev || {}), address: e.target.value }))}
+                                        readOnly
+                                        onClick={() => isLoggedIn && setShowAddressList(true)}
+                                        onFocus={() => isLoggedIn && setShowAddressList(true)}
+                                        placeholder="Chọn từ danh sách địa chỉ của bạn"
                                         disabled={!isLoggedIn}
                                     />
                                 </div>
@@ -427,6 +439,54 @@ function CustomerAccountPage() {
                 message={notif.message}
                 duration={notif.duration}
                 onClose={() => setNotif((n) => ({ ...n, open: false }))}
+            />
+            <AddressListModal
+                open={showAddressList}
+                onClose={() => setShowAddressList(false)}
+                onSelectAddress={(address) => {
+                    if (!address) return;
+                    setUser((prev) => ({ ...(prev || {}), address: formatFullAddress(address) }));
+                    setSelectedAddress(address);
+                }}
+                onViewDetail={(address) => {
+                    setSelectedAddress(address);
+                    setShowAddressDetailModal(true);
+                }}
+                onAddNewAddress={() => {
+                    setShowNewAddressModal(true);
+                }}
+                refreshKey={addressRefreshKey}
+                highlightAddressId={selectedAddress?.id || null}
+            />
+            <NewAddressModal
+                open={showNewAddressModal}
+                onClose={() => setShowNewAddressModal(false)}
+                onCreated={(newAddress) => {
+                    if (newAddress) {
+                        setSelectedAddress(newAddress);
+                        setUser((prev) => ({
+                            ...(prev || {}),
+                            address: formatFullAddress(newAddress),
+                        }));
+                    }
+                    setAddressRefreshKey((prev) => prev + 1);
+                    setShowNewAddressModal(false);
+                    setShowAddressList(false);
+                }}
+            />
+            <AddressDetailModal
+                open={showAddressDetailModal}
+                address={selectedAddress}
+                onClose={() => setShowAddressDetailModal(false)}
+                onUpdated={(updated) => {
+                    if (!updated) return;
+                    setSelectedAddress(updated);
+                    setAddressRefreshKey((prev) => prev + 1);
+                    setUser((prev) => ({
+                        ...(prev || {}),
+                        address: formatFullAddress(updated),
+                    }));
+                }}
             />
         </div>
     );

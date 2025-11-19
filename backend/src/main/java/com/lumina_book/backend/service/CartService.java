@@ -1,7 +1,7 @@
 package com.lumina_book.backend.service;
 
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,6 +17,7 @@ import com.lumina_book.backend.enums.DiscountValueType;
 import com.lumina_book.backend.enums.DiscountApplyScope;
 import com.lumina_book.backend.repository.VoucherRepository;
 import com.lumina_book.backend.repository.OrderRepository;
+import com.lumina_book.backend.util.SecurityUtil;
 
 import java.time.LocalDate;
 
@@ -40,7 +41,7 @@ public class CartService {
     @Transactional
     @PreAuthorize("hasAuthority('CUSTOMER')")
     public Cart getOrCreateCartForCurrentCustomer() {
-        String userId = SecurityContextHolder.getContext().getAuthentication().getName();
+        String userId = SecurityUtil.getAuthentication().getName();
         User user = userRepository.findById(userId).orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
         return cartRepository
                 .findByUserId(user.getId())
@@ -142,8 +143,8 @@ public class CartService {
         // Lấy current user
         User currentUser = cart.getUser();
         if (currentUser == null) {
-            String userEmail = SecurityContextHolder.getContext().getAuthentication().getName();
-            currentUser = userRepository.findByEmail(userEmail)
+            Authentication authentication = SecurityUtil.getAuthentication();
+            currentUser = userRepository.findByEmail(authentication.getName())
                     .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
         }
         

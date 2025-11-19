@@ -3,7 +3,6 @@ package com.lumina_book.backend.service;
 import java.time.LocalDateTime;
 import java.util.List;
 
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,6 +16,7 @@ import com.lumina_book.backend.exception.ErrorCode;
 import com.lumina_book.backend.mapper.AddressMapper;
 import com.lumina_book.backend.repository.AddressRepository;
 import com.lumina_book.backend.repository.UserRepository;
+import com.lumina_book.backend.util.SecurityUtil;
 
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -100,7 +100,7 @@ public class AddressService {
     }
 
     private User getCurrentUser() {
-        String currentEmail = SecurityContextHolder.getContext().getAuthentication().getName();
+        String currentEmail = SecurityUtil.getCurrentUserEmail();
         return userRepository
                 .findByEmail(currentEmail)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));

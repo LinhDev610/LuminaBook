@@ -1,5 +1,7 @@
 package com.lumina_book.backend.dto.response;
 
+import java.time.LocalDateTime;
+
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
@@ -27,6 +29,9 @@ public class AddressResponse {
     @Getter(AccessLevel.NONE)
     @Setter(AccessLevel.NONE)
     boolean isDefault;
+
+    LocalDateTime createdAt;
+    LocalDateTime updatedAt;
     
     public boolean isDefault() {
         return this.isDefault;

@@ -249,3 +249,34 @@ export const INITIAL_FORM_STATE_PROMOTION = {
     categoryIds: [],
     productIds: [],
 };
+
+
+// Trạng thái ban đầu của form thêm address
+export const INITIAL_FORM_STATE_ADDRESS = {
+    recipientName: '',
+    recipientPhoneNumber: '',
+    provinceID: '',
+    provinceName: '',
+    districtID: '',
+    districtName: '',
+    wardCode: '',
+    wardName: '',
+    address: '',
+    postalCode: '',
+    isDefault: false,
+};
+
+export const INITIAL_FORM_STATE_ADDRESS_DETAIL = {
+    id: '',
+    recipientName: '',
+    recipientPhoneNumber: '',
+    provinceID: '',
+    provinceName: '',
+    districtID: '',
+    districtName: '',
+    wardCode: '',
+    wardName: '',
+    address: '',
+    postalCode: '',
+    isDefault: false,
+};

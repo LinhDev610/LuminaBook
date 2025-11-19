@@ -6,7 +6,7 @@ import java.util.List;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -20,6 +20,7 @@ import com.lumina_book.backend.exception.AppException;
 import com.lumina_book.backend.exception.ErrorCode;
 import com.lumina_book.backend.mapper.UserMapper;
 import com.lumina_book.backend.repository.RoleRepository;
+import com.lumina_book.backend.util.SecurityUtil;
 import com.lumina_book.backend.repository.UserRepository;
 
 import lombok.AccessLevel;
@@ -128,8 +129,7 @@ public class UserService {
     public UserResponse getMyInfo() {
         // SecurityContextHolder chứa thông tin về user đang đăng nhập
         // Khi request được xác định thành công -> thông tin lưu trữ của user được lưu trong Security context holder
-        var context = SecurityContextHolder.getContext();
-        String name = context.getAuthentication().getName();
+        String name = SecurityUtil.getCurrentUserEmail();
 
         User user = userRepository.findByEmail(name).orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
 
@@ -141,11 +141,11 @@ public class UserService {
         User user = userRepository.findById(userId).orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
 
         // Check current user is ADMIN
-        var context = SecurityContextHolder.getContext();
-        String currentEmail = context.getAuthentication().getName();
+        Authentication authentication = SecurityUtil.getAuthentication();
+        String currentEmail = authentication.getName();
         
         // Check ADMIN từ SecurityContext authorities trước
-        var authorities = context.getAuthentication().getAuthorities();
+        var authorities = authentication.getAuthorities();
         boolean isAdminFromAuthorities = authorities.stream()
                 .anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN"));
         

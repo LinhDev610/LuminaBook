@@ -4,7 +4,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,6 +20,7 @@ import com.lumina_book.backend.exception.ErrorCode;
 import com.lumina_book.backend.mapper.TicketMapper;
 import com.lumina_book.backend.repository.SupportTicketRepository;
 import com.lumina_book.backend.repository.UserRepository;
+import com.lumina_book.backend.util.SecurityUtil;
 
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -82,9 +83,8 @@ public class TicketService {
                 supportTicketRepository.findById(id).orElseThrow(() -> new AppException(ErrorCode.TICKET_NOT_EXISTED));
         
         // Get current user from security context
-        var context = SecurityContextHolder.getContext();
-        String currentUserEmail = context.getAuthentication().getName();
-        User currentUser = userRepository.findByEmail(currentUserEmail)
+        Authentication authentication = SecurityUtil.getAuthentication();
+        User currentUser = userRepository.findByEmail(authentication.getName())
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
         
         // If CSKH saves a note (tiếp nhận khiếu nại), automatically assign to them
@@ -147,9 +147,8 @@ public class TicketService {
                 supportTicketRepository.findById(id).orElseThrow(() -> new AppException(ErrorCode.TICKET_NOT_EXISTED));
         
         // Get current user from security context
-        var context = SecurityContextHolder.getContext();
-        String currentUserEmail = context.getAuthentication().getName();
-        User currentUser = userRepository.findByEmail(currentUserEmail)
+        Authentication authentication = SecurityUtil.getAuthentication();
+        User currentUser = userRepository.findByEmail(authentication.getName())
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
         
         if (handlerNote != null) {

@@ -30,7 +30,7 @@ public class SecurityConfig {
         "/auth/send-otp",
         "/auth/verify-otp",
         "/auth/reset-password",
-        "/ghn/shipping-fees"
+        "/ghn/shipping-fees",
         "/auth/reset-password"
 
     };

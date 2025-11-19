@@ -105,14 +105,6 @@ export async function getAllUsers(token = null) {
 export async function getUserById(userId, token = null) {
     const { data } = await apiRequest(users.detail(userId), { token });
     return extractResult(data);
-    const { data, ok, status } = await apiRequest(`/users/${userId}`, { token });
-    console.log('getUserById response:', { ok, status, data });
-    if (!ok) {
-        throw new Error(`Failed to get user: ${status} - ${JSON.stringify(data)}`);
-    }
-    const result = extractResult(data);
-    console.log('getUserById extracted result:', result);
-    return result;
 }
 
 export async function updateUser(userId, userData, token = null) {
@@ -155,12 +147,11 @@ export async function register(userData) {
 }
 
 export async function refreshToken(token = null) {
-    const { data, ok } = await apiRequest(auth.refresh, { method: 'POST', token });
     // Backend expects JSON body: { token: "<token>" }
-    // Endpoint /auth/refresh đã được phép PUBLIC, nên không cần Authorization header.
+    // Endpoint /auth/refresh đã được phép PUBLIC, nên không cần Authorization header riêng.
     const tokenToUse = token || getStoredToken('token');
     const body = { token: tokenToUse };
-    const { data, ok } = await apiRequest('/auth/refresh', { method: 'POST', body });
+    const { data, ok } = await apiRequest(auth.refresh, { method: 'POST', body });
     return { ok, data: extractResult(data) };
 }
 

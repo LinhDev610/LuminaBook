@@ -42,8 +42,11 @@ public class CartService {
     @Transactional
     @PreAuthorize("hasRole('CUSTOMER')")
     public Cart getOrCreateCartForCurrentCustomer() {
-        String userId = SecurityUtil.getAuthentication().getName();
-        User user = userRepository.findById(userId).orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+        // Authentication name đang là email (subject của JWT)
+        String email = SecurityUtil.getAuthentication().getName();
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+
         return cartRepository
                 .findByUserId(user.getId())
                 .orElseGet(() -> cartRepository.save(Cart.builder().user(user).build()));

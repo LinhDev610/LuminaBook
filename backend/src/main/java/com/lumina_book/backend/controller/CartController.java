@@ -21,8 +21,17 @@ public class CartController {
     CartService cartService;
     CartMapper cartMapper;
 
+    @GetMapping
+    @PreAuthorize("hasRole('CUSTOMER')")
+    ApiResponse<CartResponse> getCart() {
+        var cart = cartService.getCart();
+        return ApiResponse.<CartResponse>builder()
+                .result(cartMapper.toResponse(cart))
+                .build();
+    }
+
     @PostMapping("/items")
-    @PreAuthorize("hasAuthority('CUSTOMER')")
+    @PreAuthorize("hasRole('CUSTOMER')")
     ApiResponse<CartResponse> addItem(
             @RequestParam("productId") String productId, @RequestParam("quantity") int quantity) {
         var cart = cartService.addItem(productId, quantity);
@@ -31,10 +40,38 @@ public class CartController {
                 .build();
     }
 
+    @PutMapping("/items/{cartItemId}")
+    @PreAuthorize("hasRole('CUSTOMER')")
+    ApiResponse<CartResponse> updateCartItemQuantity(
+            @PathVariable String cartItemId, @RequestParam("quantity") int quantity) {
+        var cart = cartService.updateCartItemQuantity(cartItemId, quantity);
+        return ApiResponse.<CartResponse>builder()
+                .result(cartMapper.toResponse(cart))
+                .build();
+    }
+
+    @DeleteMapping("/items/{cartItemId}")
+    @PreAuthorize("hasRole('CUSTOMER')")
+    ApiResponse<CartResponse> removeCartItem(@PathVariable String cartItemId) {
+        var cart = cartService.removeCartItem(cartItemId);
+        return ApiResponse.<CartResponse>builder()
+                .result(cartMapper.toResponse(cart))
+                .build();
+    }
+
     @PostMapping("/apply-voucher")
-    @PreAuthorize("hasAuthority('CUSTOMER')")
+    @PreAuthorize("hasRole('CUSTOMER')")
     ApiResponse<CartResponse> applyVoucher(@RequestParam("code") String code) {
         var cart = cartService.applyVoucher(code);
+        return ApiResponse.<CartResponse>builder()
+                .result(cartMapper.toResponse(cart))
+                .build();
+    }
+
+    @PostMapping("/clear-voucher")
+    @PreAuthorize("hasRole('CUSTOMER')")
+    ApiResponse<CartResponse> clearVoucher() {
+        var cart = cartService.clearVoucher();
         return ApiResponse.<CartResponse>builder()
                 .result(cartMapper.toResponse(cart))
                 .build();

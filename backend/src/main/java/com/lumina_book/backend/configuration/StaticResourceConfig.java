@@ -44,6 +44,10 @@ public class StaticResourceConfig implements WebMvcConfigurer {
         registry.addResourceHandler("/uploads/**")
                 .addResourceLocations("file:uploads/");
 
+        // Handle assets folder (static resources như images, css, js)
+        registry.addResourceHandler("/assets/**")
+                .addResourceLocations("classpath:/static/assets/", "file:assets/");
+
         // Handle trường hợp request trực tiếp đến filename (UUID pattern) - tìm trong tất cả các thư mục media
         // Pattern: UUID với extension (ví dụ: 17e72808-42a6-47fb-84cf-c00ee4e8308a.png)
         // Thêm handler cho từng extension phổ biến

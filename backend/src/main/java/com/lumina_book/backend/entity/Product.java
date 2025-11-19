@@ -121,7 +121,7 @@ public class Product {
 
     // Banners
     @ManyToMany(mappedBy = "products")
-    List<Banner> banners;
+List<Banner> banners;
 
     // Promotions
     @ManyToOne(fetch = FetchType.LAZY)

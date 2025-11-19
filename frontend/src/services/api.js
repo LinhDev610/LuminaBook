@@ -447,3 +447,61 @@ export async function replyToReview(reviewId, replyData, token = null) {
   });
   return { ok, status, data: extractResult(data) };
 }
+
+// ========== CART API ==========
+export async function addCartItem(productId, quantity, token = null) {
+  const { data, ok, status } = await apiRequest(
+    `/cart/items?productId=${encodeURIComponent(productId)}&quantity=${quantity}`,
+    {
+      method: 'POST',
+      token,
+    }
+  );
+  return { ok, status, data: extractResult(data) };
+}
+
+export async function getCart(token = null) {
+  const { data, ok, status } = await apiRequest('/cart', { token });
+  return { ok, status, data: extractResult(data, false) };
+}
+
+export async function updateCartItemQuantity(cartItemId, quantity, token = null) {
+  const { data, ok, status } = await apiRequest(
+    `/cart/items/${encodeURIComponent(cartItemId)}?quantity=${quantity}`,
+    {
+      method: 'PUT',
+      token,
+    }
+  );
+  return { ok, status, data: extractResult(data) };
+}
+
+export async function removeCartItem(cartItemId, token = null) {
+  const { data, ok, status } = await apiRequest(
+    `/cart/items/${encodeURIComponent(cartItemId)}`,
+    {
+      method: 'DELETE',
+      token,
+    }
+  );
+  return { ok, status, data: extractResult(data) };
+}
+
+export async function applyVoucherToCart(voucherCode, token = null) {
+  const { data, ok, status } = await apiRequest(
+    `/cart/apply-voucher?code=${encodeURIComponent(voucherCode)}`,
+    {
+      method: 'POST',
+      token,
+    }
+  );
+  return { ok, status, data: extractResult(data) };
+}
+
+export async function clearVoucherFromCart(token = null) {
+  const { data, ok, status } = await apiRequest('/cart/clear-voucher', {
+    method: 'POST',
+    token,
+  });
+  return { ok, status, data: extractResult(data) };
+}

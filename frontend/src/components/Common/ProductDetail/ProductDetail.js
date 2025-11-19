@@ -2,12 +2,13 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import styles from './ProductDetail.module.scss';
 import { getApiBaseUrl, formatDateTime } from '../../../services/utils';
 import { normalizeMediaUrl } from '../../../services/productUtils';
-import { getMyInfo, getStoredToken, getReviewsByProduct, createReview } from '../../../services';
+import { getMyInfo, getStoredToken, getReviewsByProduct, createReview, addCartItem } from '../../../services';
 import iconShip from '../../../assets/icons/icon_ship.png';
 import iconPay from '../../../assets/icons/icon_pay.png';
 import iconRefund from '../../../assets/icons/icon_refund.png';
 import iconShoppingCart from '../../../assets/icons/icon_shopping_cart.png';
 import { useAuth } from '../../../contexts/AuthContext';
+import { useNotification } from '../Notification';
 
 const ProductDetail = ({ productId }) => {
     const API_BASE_URL = useMemo(() => getApiBaseUrl(), []);
@@ -30,6 +31,7 @@ const ProductDetail = ({ productId }) => {
     const [expandedReviews, setExpandedReviews] = useState({});
     const descriptionRef = useRef(null);
     const { openLoginModal, openRegisterModal } = useAuth();
+    const { success, error: showError } = useNotification();
     const isLoggedIn = !!getStoredToken('token');
 
     useEffect(() => {
@@ -277,8 +279,64 @@ const ProductDetail = ({ productId }) => {
         fetchReviews();
     }, [productId]);
 
-    const handleAddToCart = () => {
-        alert(`Đã thêm ${quantity} sản phẩm vào giỏ hàng!`);
+    const handleAddToCart = async () => {
+        // Kiểm tra đăng nhập
+        if (!isLoggedIn) {
+            showError('Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng');
+            openLoginModal();
+            return;
+        }
+
+        // Kiểm tra productId
+        if (!productId) {
+            showError('Không tìm thấy thông tin sản phẩm');
+            return;
+        }
+
+        // Kiểm tra số lượng
+        if (quantity <= 0) {
+            showError('Số lượng sản phẩm không hợp lệ');
+            return;
+        }
+
+        try {
+            const token = getStoredToken('token');
+            
+            if (!token) {
+                showError('Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng');
+                openLoginModal();
+                return;
+            }
+
+            console.log('Adding to cart:', { productId, quantity, hasToken: !!token });
+            const { ok, status, data } = await addCartItem(productId, quantity, token);
+            console.log('Add to cart API response:', { ok, status, data });
+
+            if (!ok) {
+                if (status === 401) {
+                    showError('Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại');
+                    openLoginModal();
+                } else if (status === 403) {
+                    showError('Bạn không có quyền thêm sản phẩm vào giỏ hàng. Vui lòng đăng nhập với tài khoản khách hàng.');
+                    openLoginModal();
+                } else if (status === 400 || status === 404) {
+                    const errorMessage = data?.message || data?.error || 'Không thể thêm sản phẩm vào giỏ hàng';
+                    showError(errorMessage);
+                } else {
+                    const errorMessage = data?.message || data?.error || `Có lỗi xảy ra khi thêm sản phẩm vào giỏ hàng (Lỗi: ${status})`;
+                    console.error('Add to cart error:', { status, data });
+                    showError(errorMessage);
+                }
+                return;
+            }
+
+            // Hiển thị thông báo thành công
+            const productName = product?.name || displayProduct?.name || 'sản phẩm';
+            success(`Đã thêm ${quantity} "${productName}" vào giỏ hàng thành công!`);
+        } catch (err) {
+            console.error('Error adding to cart:', err);
+            showError('Có lỗi xảy ra khi thêm sản phẩm vào giỏ hàng');
+        }
     };
 
     const handleBuyNow = () => {
@@ -497,7 +555,6 @@ const ProductDetail = ({ productId }) => {
                                 type="button"
                                 className={styles.secondaryBtn}
                                 onClick={handleAddToCart}
-                                disabled={availableStock <= 0}
                             >
                                 <img
                                     src={iconShoppingCart}
@@ -510,7 +567,6 @@ const ProductDetail = ({ productId }) => {
                                 type="button"
                                 className={styles.primaryBtn}
                                 onClick={handleBuyNow}
-                                disabled={availableStock <= 0}
                             >
                                 Mua ngay
                             </button>

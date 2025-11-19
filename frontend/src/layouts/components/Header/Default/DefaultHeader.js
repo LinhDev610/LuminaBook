@@ -195,7 +195,7 @@ function DefaultHeader() {
                             className={cx('ring-icon')}
                         />
                     </span>
-                    <span className={cx('cart')}>
+                    <span className={cx('cart')} onClick={() => navigate('/cart')}>
                         <img
                             src="https://cdn0.iconfinder.com/data/icons/mobile-basic-vol-1/32/Tote_Bag-1024.png"
                             alt="Cart"

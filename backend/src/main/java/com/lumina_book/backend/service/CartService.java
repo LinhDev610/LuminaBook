@@ -38,17 +38,33 @@ public class CartService {
     OrderRepository orderRepository;
 
     @Transactional
-    @PreAuthorize("hasAuthority('CUSTOMER')")
+    @PreAuthorize("hasRole('CUSTOMER')")
     public Cart getOrCreateCartForCurrentCustomer() {
-        String userId = SecurityContextHolder.getContext().getAuthentication().getName();
-        User user = userRepository.findById(userId).orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+        // Authentication name đang là email (subject của JWT), không phải userId
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+
         return cartRepository
                 .findByUserId(user.getId())
                 .orElseGet(() -> cartRepository.save(Cart.builder().user(user).build()));
     }
 
     @Transactional
-    @PreAuthorize("hasAuthority('CUSTOMER')")
+    @PreAuthorize("hasRole('CUSTOMER')")
+    public Cart getCart() {
+        Cart cart = getOrCreateCartForCurrentCustomer();
+        // Force load cart items to avoid lazy loading issues
+        if (cart.getCartItems() != null) {
+            cart.getCartItems().size(); // Trigger lazy loading
+        }
+        // Recalculate totals to ensure they are up to date
+        recalcCartTotals(cart);
+        return cart;
+    }
+
+    @Transactional
+    @PreAuthorize("hasRole('CUSTOMER')")
     public Cart addItem(String productId, int quantity) {
         if (quantity <= 0) {
             throw new AppException(ErrorCode.OUT_OF_STOCK);
@@ -107,20 +123,28 @@ public class CartService {
     }
 
     private void recalcCartTotals(Cart cart) {
+        // Tính lại subtotal từ các cartItem (nếu chưa có item thì subtotal = 0)
         double subtotal = cart.getCartItems() == null
                 ? 0.0
                 : cart.getCartItems().stream()
                         .mapToDouble(CartItem::getFinalPrice)
                         .sum();
         cart.setSubtotal(subtotal);
-        double voucherDiscount = cart.getVoucherDiscount();
-        double total = Math.max(0.0, subtotal - (voucherDiscount == 0 ? 0.0 : voucherDiscount));
+
+        // voucherDiscount có thể null với giỏ hàng mới => mặc định 0
+        Double rawVoucherDiscount = cart.getVoucherDiscount();
+        double voucherDiscount = rawVoucherDiscount == null ? 0.0 : rawVoucherDiscount;
+        cart.setVoucherDiscount(voucherDiscount);
+
+        double total = Math.max(0.0, subtotal - voucherDiscount);
         cart.setTotalAmount(total);
+
+        // Lưu lại cart với giá trị subtotal / totalAmount mới
         cartRepository.save(cart);
     }
 
     @Transactional
-    @PreAuthorize("hasAuthority('CUSTOMER')")
+    @PreAuthorize("hasRole('CUSTOMER')")
     public Cart applyVoucher(String code) {
         Cart cart = getOrCreateCartForCurrentCustomer();
         if (cart.getCartItems() == null || cart.getCartItems().isEmpty()) {
@@ -232,5 +256,57 @@ public class CartService {
                 })
                 .mapToDouble(CartItem::getFinalPrice)
                 .sum();
+    }
+
+    @Transactional
+    @PreAuthorize("hasRole('CUSTOMER')")
+    public Cart updateCartItemQuantity(String cartItemId, int quantity) {
+        if (quantity <= 0) {
+            throw new AppException(ErrorCode.OUT_OF_STOCK);
+        }
+
+        Cart cart = getOrCreateCartForCurrentCustomer();
+        CartItem cartItem = cartItemRepository.findById(cartItemId)
+                .orElseThrow(() -> new AppException(ErrorCode.CART_ITEM_NOT_EXISTED));
+
+        // Kiểm tra cartItem thuộc về cart của user hiện tại
+        if (!cartItem.getCart().getId().equals(cart.getId())) {
+            throw new AppException(ErrorCode.CART_ITEM_NOT_EXISTED);
+        }
+
+        cartItem.setQuantity(quantity);
+        double finalPrice = cartItem.getQuantity() * cartItem.getUnitPrice();
+        cartItem.setFinalPrice(finalPrice);
+
+        cartItemRepository.save(cartItem);
+        recalcCartTotals(cart);
+        return cart;
+    }
+
+    @Transactional
+    @PreAuthorize("hasRole('CUSTOMER')")
+    public Cart removeCartItem(String cartItemId) {
+        Cart cart = getOrCreateCartForCurrentCustomer();
+        CartItem cartItem = cartItemRepository.findById(cartItemId)
+                .orElseThrow(() -> new AppException(ErrorCode.CART_ITEM_NOT_EXISTED));
+
+        // Kiểm tra cartItem thuộc về cart của user hiện tại
+        if (!cartItem.getCart().getId().equals(cart.getId())) {
+            throw new AppException(ErrorCode.CART_ITEM_NOT_EXISTED);
+        }
+
+        cartItemRepository.delete(cartItem);
+        recalcCartTotals(cart);
+        return cart;
+    }
+
+    @Transactional
+    @PreAuthorize("hasRole('CUSTOMER')")
+    public Cart clearVoucher() {
+        Cart cart = getOrCreateCartForCurrentCustomer();
+        cart.setAppliedVoucherCode(null);
+        cart.setVoucherDiscount(0.0);
+        recalcCartTotals(cart);
+        return cart;
     }
 }

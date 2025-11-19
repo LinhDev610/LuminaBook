@@ -43,6 +43,7 @@ public class SecurityConfig {
         "/promotions/**",
         "/products/**",
         "/uploads/**",
+        "/assets/**",
         "/banners/active",
         "/error"  // Allow error endpoint to be accessed without authentication
     };

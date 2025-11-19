@@ -10,6 +10,8 @@ import ForgotPassword from '../components/Auth/ForgotPassword';
 import VerifyCode from '../components/Auth/VerifyCode';
 
 import Account from '../pages/CustomerAccount';
+import CartPage from '../pages/CartPage';
+import CheckoutDetailPage from '../pages/CheckoutPage/CheckoutDetails';
 import CustomerAccountLayout from '../layouts/CustomerAccountLayout';
 import AdminLayout from '../layouts/AdminLayout';
 import StaffLayout from '../layouts/StaffLayout';
@@ -66,6 +68,8 @@ const publicRoutes = [
     { path: '/contact', component: Contact },
     { path: '/support', component: CustomerService },
     { path: '/product/:id', component: ProductDetailPage },
+    { path: '/cart', component: CartPage },
+    { path: '/checkout', component: CheckoutDetailPage },
     { path: '/login', component: Login },
     { path: '/register', component: Register },
     { path: '/forgot-password', component: ForgotPassword },

@@ -1,0 +1,363 @@
+.checkout-page {
+    min-height: 100vh;
+    background: #ffffff;
+    padding: 24px 0 48px;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 16px;
+}
+
+.content {
+    display: grid;
+    grid-template-columns: minmax(0, 2.2fr) minmax(0, 1.1fr);
+    gap: 24px;
+    align-items: flex-start;
+
+    @media (max-width: 1024px) {
+        grid-template-columns: 1fr;
+    }
+}
+
+.left {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.right {
+    position: sticky;
+    top: 24px;
+}
+
+.card {
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 4px 16px rgba(15, 23, 42, 0.08);
+    padding: 16px 20px;
+}
+
+.card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+
+    h2 {
+        margin: 0;
+        font-size: 16px;
+        font-weight: 700;
+        color: #1a3c5a;
+    }
+}
+
+.address-box {
+    background: #f9fafb;
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-size: 14px;
+    color: #1a3c5a;
+}
+
+.address-line {
+    margin-bottom: 4px;
+}
+
+.address-meta {
+    font-size: 13px;
+    color: #4b5563;
+}
+
+.link-button {
+    border: none;
+    background: none;
+    color: #2563eb;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.radio-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.radio-option {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between; /* Đẩy giá sang bên phải để luôn nhìn thấy */
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+    cursor: pointer;
+
+    input {
+        margin-top: 4px;
+    }
+
+    &:hover {
+        border-color: #1d4ed8;
+        background: #eff6ff;
+    }
+}
+
+.radio-content {
+    flex: 1;
+}
+
+.radio-title {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    color: #1a3c5a;
+}
+
+.radio-desc {
+    font-size: 13px;
+    color: #6b7280;
+}
+
+.radio-price {
+    font-size: 14px;
+    font-weight: 600;
+    color: #111827;
+    min-width: 80px;         /* Đảm bảo luôn có chỗ cho số tiền */
+    text-align: right;
+    white-space: nowrap;     /* Không bị xuống dòng lộn xộn */
+}
+
+.note-input {
+    width: 100%;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+    padding: 10px 12px;
+    font-size: 14px;
+    outline: none;
+
+    &:focus {
+        border-color: #1d4ed8;
+        box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.1);
+    }
+}
+
+.products-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+
+    h2 {
+        margin: 0;
+        font-size: 16px;
+        font-weight: 700;
+        color: #1a3c5a;
+    }
+}
+
+.products-count {
+    font-size: 13px;
+    color: #6b7280;
+}
+
+.products-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.product-row {
+    display: grid;
+    grid-template-columns: 64px minmax(0, 1fr) auto;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.product-image {
+    width: 64px;
+    height: 80px;
+    border-radius: 4px;
+    overflow: hidden;
+    background: #f3f4f6;
+
+    img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+}
+
+.product-info {
+    flex: 1;
+}
+
+.product-name {
+    font-size: 20px; /* tăng thêm 10px so với trước đó */
+    font-weight: 600;
+    color: #1a3c5a;
+}
+
+.product-qty {
+    font-size: 15px;
+    color: #6b7280;
+}
+
+.product-price {
+    text-align: right;
+}
+
+.current-price {
+    font-size: 14px;
+    font-weight: 700;
+    color: #dc2626;
+}
+
+.unit-price {
+    font-size: 12px;
+    color: #9ca3af;
+    text-decoration: line-through;
+}
+
+.summary-card {
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 20px 22px 24px;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+}
+
+.summary-title {
+    margin: 0 0 12px 0;
+    font-size: 16px;
+    font-weight: 700;
+    color: #111827;
+}
+
+.summary-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 14px;
+    color: #111827;
+    margin-bottom: 4px;
+}
+
+.summary-total {
+    margin-top: 8px;
+    font-weight: 700;
+}
+
+.summary-total-price {
+    color: #dc2626;
+    font-size: 18px;
+}
+
+.summary-divider {
+    border-top: 1px solid #e5e7eb;
+    margin: 14px 0;
+}
+
+.voucher-section {
+    margin-bottom: 16px;
+}
+
+.voucher-title {
+    font-size: 14px;
+    font-weight: 700;
+    margin: 0 0 8px 0;
+}
+
+.voucher-card {
+    background: #f9fafb;
+    border-radius: 8px;
+    padding: 10px 12px;
+}
+
+.voucher-input-row {
+    display: flex;
+    gap: 8px;
+}
+
+.voucher-input {
+    flex: 1;
+    height: 36px;
+    padding: 0 10px;
+    border-radius: 6px;
+    border: 1px solid #e5e7eb;
+    font-size: 14px;
+}
+
+.voucher-apply-btn {
+    padding: 8px 14px;
+    background: #123a5a;
+    border-radius: 6px;
+    border: none;
+    color: #ffffff;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.voucher-applied {
+    margin: 6px 0 0 0;
+    font-size: 12px;
+    color: #374151;
+}
+
+.remove-voucher-inline {
+    margin-left: 6px;
+    background: none;
+    border: none;
+    color: #dc2626;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 0;
+
+    &:hover {
+        text-decoration: underline;
+    }
+}
+
+.pay-btn {
+    width: 100%;
+    margin-top: 8px;
+    padding: 12px 18px;
+    background: #123a5a;
+    border-radius: 8px;
+    border: none;
+    color: #ffffff;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.payment-note {
+    margin-top: 6px;
+    font-size: 12px;
+    color: #6b7280;
+}
+
+.loading,
+.empty {
+    min-height: 300px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.back-to-cart {
+    padding: 8px 14px;
+    border-radius: 6px;
+    border: none;
+    background: #123a5a;
+    color: #ffffff;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+

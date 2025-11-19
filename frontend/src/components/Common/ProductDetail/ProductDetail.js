@@ -1,7 +1,13 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import styles from './ProductDetail.module.scss';
 import { getApiBaseUrl, formatDateTime } from '../../../services/utils';
 import { normalizeMediaUrl } from '../../../services/productUtils';
+import { getMyInfo, getStoredToken } from '../../../services';
+import iconShip from '../../../assets/icons/icon_ship.png';
+import iconPay from '../../../assets/icons/icon_pay.png';
+import iconRefund from '../../../assets/icons/icon_refund.png';
+import iconShoppingCart from '../../../assets/icons/icon_shopping_cart.png';
+import { useAuth } from '../../../contexts/AuthContext';
 
 const ProductDetail = ({ productId }) => {
     const API_BASE_URL = useMemo(() => getApiBaseUrl(), []);
@@ -10,6 +16,11 @@ const ProductDetail = ({ productId }) => {
     const [error, setError] = useState('');
     const [selectedImage, setSelectedImage] = useState('');
     const [quantity, setQuantity] = useState(1);
+    const [userAddress, setUserAddress] = useState('');
+    const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
+    const descriptionRef = useRef(null);
+    const { openLoginModal, openRegisterModal } = useAuth();
+    const isLoggedIn = !!getStoredToken('token');
 
     useEffect(() => {
         if (!productId) {
@@ -40,6 +51,23 @@ const ProductDetail = ({ productId }) => {
 
         fetchProduct();
     }, [productId, API_BASE_URL]);
+
+    useEffect(() => {
+        const fetchUserAddress = async () => {
+            try {
+                const token = getStoredToken('token');
+                if (token) {
+                    const userInfo = await getMyInfo(token);
+                    if (userInfo?.address) {
+                        setUserAddress(userInfo.address);
+                    }
+                }
+            } catch (err) {
+                console.error('Error fetching user address:', err);
+            }
+        };
+        fetchUserAddress();
+    }, []);
 
     const mockProduct = {
         id: '9786044027456',
@@ -128,10 +156,32 @@ const ProductDetail = ({ productId }) => {
             ? Math.round(((originalPrice - currentPrice) / originalPrice) * 100)
             : 0);
 
+    // Rating data dùng chung cho phần đầu và khối đánh giá toàn trang
+    const averageRating =
+        typeof displayProduct.averageRating === 'number'
+            ? displayProduct.averageRating
+            : typeof displayProduct.rating === 'number'
+                ? displayProduct.rating
+                : 0;
+    const reviewCount =
+        typeof displayProduct.reviewCount === 'number' ? displayProduct.reviewCount : 0;
+
     const policyHighlights = [
-        { icon: '🚚', text: 'Thời gian giao hàng: Giao hàng nhanh và uy tín' },
-        { icon: '🔄', text: 'Đổi trả miễn phí: Đổi trả miễn phí toàn quốc' },
-        { icon: '💳', text: 'Thanh toán tiện lợi: Hỗ trợ nhiều phương thức thanh toán' },
+        {
+            icon: iconShip,
+            label: 'Thời gian giao hàng:',
+            text: 'Giao hàng nhanh và uy tín',
+        },
+        {
+            icon: iconRefund,
+            label: 'Đổi trả miễn phí:',
+            text: 'Đổi trả miễn phí toàn quốc',
+        },
+        {
+            icon: iconPay,
+            label: 'Thanh toán tiện lợi:',
+            text: 'Hỗ trợ nhiều phương thức thanh toán',
+        },
     ];
 
     const infoRows = [
@@ -139,9 +189,7 @@ const ProductDetail = ({ productId }) => {
             label: 'Mã hàng',
             value: displayProduct.id || displayProduct.productCode || '-',
         },
-        { label: 'Tên Nhà Cung Cấp', value: displayProduct.supplierName || '-' },
         { label: 'Tác giả', value: displayProduct.author || '-' },
-        { label: 'Người Dịch', value: displayProduct.translator || '-' },
         { label: 'NXB', value: displayProduct.publisher || '-' },
         {
             label: 'Năm XB',
@@ -156,11 +204,6 @@ const ProductDetail = ({ productId }) => {
                 displayProduct.length && displayProduct.width && displayProduct.height
                     ? `${displayProduct.length} × ${displayProduct.width} × ${displayProduct.height} cm`
                     : displayProduct.dimensions || '-',
-        },
-        { label: 'Số trang', value: displayProduct.pages || '-' },
-        {
-            label: 'Hình thức',
-            value: displayProduct.format || displayProduct.coverType || '-',
         },
     ];
 
@@ -260,88 +303,127 @@ const ProductDetail = ({ productId }) => {
                             </div>
                         )}
 
+                        {/* Buttons hành động bên trái */}
+                        <div className={styles.ctaRow}>
+                            <button
+                                type="button"
+                                className={styles.secondaryBtn}
+                                onClick={handleAddToCart}
+                                disabled={availableStock <= 0}
+                            >
+                                <img
+                                    src={iconShoppingCart}
+                                    alt="Thêm vào giỏ hàng"
+                                    className={styles.cartIcon}
+                                />
+                                <span>Thêm vào giỏ hàng</span>
+                            </button>
+                            <button
+                                type="button"
+                                className={styles.primaryBtn}
+                                onClick={handleBuyNow}
+                                disabled={availableStock <= 0}
+                            >
+                                Mua ngay
+                            </button>
+                        </div>
+
+                        {/* Chính sách ưu đãi bên trái */}
+                        <div className={styles.infoCard}>
+                            <h3 className={styles.cardTitle}>Chính sách ưu đãi</h3>
+                            {policyHighlights.map((item, index) => (
+                                <div key={index} className={styles.policyItem}>
+                                    <img
+                                        src={item.icon}
+                                        alt=""
+                                        className={styles.policyIcon}
+                                    />
+                                    <span className={styles.policyLabel}>{item.label}</span>
+                                    <span className={styles.policyText}>{item.text}</span>
+                                </div>
+                            ))}
+                        </div>
                     </div>
 
                     <div className={styles.productInfo}>
-                        <h1 className={styles.productName}>{displayProduct.name}</h1>
+                        <div className={styles.infoCard}>
+                            <h1 className={styles.productName}>{displayProduct.name}</h1>
 
-                        <div className={styles.productMeta}>
-                            <div>
-                                <strong>Tác giả:</strong> {displayProduct.author || '-'}
+                            <div className={styles.productMeta}>
+                                <div>
+                                    <strong>Tác giả:</strong> {displayProduct.author || '-'}
+                                </div>
+                                <div>
+                                    <strong>Nhà xuất bản:</strong>{' '}
+                                    {displayProduct.publisher || '-'}
+                                </div>
                             </div>
-                            <div>
-                                <strong>Nhà xuất bản:</strong>{' '}
-                                {displayProduct.publisher || '-'}
-                            </div>
-                        </div>
 
-                        <div className={styles.ratingSection}>
-                            <div className={styles.stars}>
-                                {renderStars(
-                                    displayProduct.averageRating || displayProduct.rating,
-                                )}
-                            </div>
-                            <div className={styles.ratingText}>
-                                <span className={styles.reviewCount}>
-                                    ({displayProduct.reviewCount || 0} đánh giá)
-                                </span>
-                                <span className={styles.dot}>·</span>
-                                <span className={styles.soldCount}>
-                                    Đã bán{' '}
-                                    {displayProduct.quantitySold ||
-                                        displayProduct.soldCount ||
-                                        0}
-                                </span>
-                            </div>
-                        </div>
-
-                        <div className={styles.priceSection}>
-                            <div className={styles.currentPrice}>
-                                {formatPrice(currentPrice)}
-                            </div>
-                            {originalPrice > currentPrice && (
-                                <div className={styles.priceMeta}>
-                                    <span className={styles.originalPrice}>
-                                        {formatPrice(originalPrice)}
+                            <div className={styles.ratingSection}>
+                                <div className={styles.stars}>
+                                    {renderStars(
+                                        displayProduct.averageRating || displayProduct.rating,
+                                    )}
+                                </div>
+                                <div className={styles.ratingText}>
+                                    <span className={styles.reviewCount}>
+                                        ({displayProduct.reviewCount || 0} đánh giá)
                                     </span>
-                                    <span className={styles.discount}>
-                                        -{discountPercent}%
+                                    <span className={styles.dot}>·</span>
+                                    <span className={styles.soldCount}>
+                                        Đã bán{' '}
+                                        {displayProduct.quantitySold ||
+                                            displayProduct.soldCount ||
+                                            0}
                                     </span>
                                 </div>
-                            )}
-                            <div className={styles.taxNote}>(Giá đã gồm thuế)</div>
+                            </div>
+
+                            <div className={styles.priceSection}>
+                                <div className={styles.currentPrice}>
+                                    {formatPrice(currentPrice)}
+                                </div>
+                                {originalPrice > currentPrice && (
+                                    <div className={styles.priceMeta}>
+                                        <span className={styles.originalPrice}>
+                                            {formatPrice(originalPrice)}
+                                        </span>
+                                        <span className={styles.discount}>
+                                            -{discountPercent}%
+                                        </span>
+                                    </div>
+                                )}
+                                <div className={styles.taxNote}>(Giá đã gồm thuế)</div>
+                            </div>
                         </div>
 
                         <div className={styles.infoCard}>
                             <h3 className={styles.cardTitle}>Thông tin vận chuyển</h3>
                             <div className={styles.shippingItem}>
-                                <span className={styles.shippingIcon}>📍</span>
                                 <span>
-                                    Giao hàng đến:{' '}
-                                    {displayProduct.shippingAddress || 'Toàn quốc'}
+                                    Giao hàng đến :{' '}
+                                    {userAddress || displayProduct.shippingAddress || 'Toàn quốc'}
                                 </span>
                             </div>
                             <div className={styles.shippingItem}>
-                                <span className={styles.shippingIcon}>🚚</span>
-                                <span>
+                                <img src={iconShip} alt="ship" className={styles.shipIcon} />
+                                <span className={styles.deliveryMethodBold}>
                                     {displayProduct.deliveryMethod ||
                                         'Giao hàng tiêu chuẩn'}
                                 </span>
                             </div>
                             <div className={styles.shippingItem}>
-                                <span className={styles.shippingIcon}>📅</span>
                                 <span>
-                                    Dự kiến giao:{' '}
+                                    Dự kiến giao :{' '}
                                     {displayProduct.estimatedDelivery ||
                                         '3-5 ngày làm việc'}
                                 </span>
                             </div>
-                        </div>
-
-                        <div className={styles.infoCard}>
-                            <h3 className={styles.cardTitle}>Số lượng</h3>
+                            
+                            <div className={styles.quantityDivider}></div>
+                            
                             <div className={styles.quantitySection}>
-                                <label>Số lượng:</label>
+                                <span className={styles.quantityLabel}>Số lượng</span>
                                 <div className={styles.quantityControls}>
                                     <button
                                         onClick={() =>
@@ -386,16 +468,6 @@ const ProductDetail = ({ productId }) => {
                         </div>
 
                         <div className={styles.infoCard}>
-                            <h3 className={styles.cardTitle}>Chính sách ưu đãi</h3>
-                            {policyHighlights.map((item, index) => (
-                                <div key={index} className={styles.policyItem}>
-                                    <span className={styles.policyIcon}>{item.icon}</span>
-                                    <span>{item.text}</span>
-                                </div>
-                            ))}
-                        </div>
-
-                        <div className={styles.infoCard}>
                             <h3 className={styles.cardTitle}>Thông tin chi tiết</h3>
                             <div className={styles.infoTable}>
                                 {infoRows.map((row) => (
@@ -425,9 +497,107 @@ const ProductDetail = ({ productId }) => {
                             {displayProduct.subtitle && (
                                 <p className={styles.subtitle}>{displayProduct.subtitle}</p>
                             )}
-                            <p>{displayProduct.description || '-'}</p>
-                            {displayProduct.longDescription && (
-                                <p>{displayProduct.longDescription}</p>
+
+                            <div
+                                ref={descriptionRef}
+                                className={
+                                    isDescriptionExpanded
+                                        ? `${styles.description} ${styles.descriptionExpanded}`
+                                        : styles.description
+                                }
+                            >
+                                <p>{displayProduct.description || '-'}</p>
+                                {displayProduct.longDescription && (
+                                    <p>{displayProduct.longDescription}</p>
+                                )}
+                            </div>
+
+                            {(displayProduct.description || displayProduct.longDescription) && (
+                                <button
+                                    type="button"
+                                    className={styles.viewMoreButton}
+                                    onClick={() => {
+                                        setIsDescriptionExpanded((prev) => !prev);
+                                        if (descriptionRef.current) {
+                                            descriptionRef.current.scrollIntoView({
+                                                behavior: 'smooth',
+                                                block: 'start',
+                                            });
+                                        }
+                                    }}
+                                >
+                                    {isDescriptionExpanded ? 'Thu gọn' : 'Xem thêm'}
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Khối đánh giá sản phẩm toàn trang */}
+                <div className={styles.reviewCard}>
+                    <h3 className={styles.cardTitle}>Đánh giá sản phẩm</h3>
+                    <div className={styles.reviewContent}>
+                        <div className={styles.reviewSummary}>
+                            <div className={styles.reviewScore}>
+                                <div className={styles.scoreValueRow}>
+                                    <div className={styles.scoreValue}>
+                                        {reviewCount > 0
+                                            ? averageRating.toFixed(1)
+                                            : '0'}
+                                    </div>
+                                    <div className={styles.scoreMax}>/5</div>
+                                </div>
+                                <div className={styles.scoreStars}>
+                                    {renderStars(averageRating)}
+                                </div>
+                                <div className={styles.scoreCount}>
+                                    ({reviewCount} đánh giá)
+                                </div>
+                            </div>
+                            <div className={styles.ratingBars}>
+                                {[5, 4, 3, 2, 1].map((star) => (
+                                    <div key={star} className={styles.ratingBarRow}>
+                                        <span>{star} sao</span>
+                                        <div className={styles.ratingBarTrack}>
+                                            <div
+                                                className={styles.ratingBarFill}
+                                                style={{ width: '0%' }}
+                                            />
+                                        </div>
+                                        <span className={styles.ratingPercent}>0%</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                        <div className={styles.reviewAction}>
+                            {!isLoggedIn ? (
+                                <p className={styles.loginPrompt}>
+                                    Chỉ có thành viên mới có thể viết nhận xét. Vui lòng{' '}
+                                    <button
+                                        type="button"
+                                        className={styles.inlineLink}
+                                        onClick={openLoginModal}
+                                    >
+                                        đăng nhập
+                                    </button>
+                                    {' '}
+                                    hoặc{' '}
+                                    <button
+                                        type="button"
+                                        className={styles.inlineLink}
+                                        onClick={openRegisterModal}
+                                    >
+                                        đăng ký
+                                    </button>
+                                    .
+                                </p>
+                            ) : (
+                                <button
+                                    type="button"
+                                    className={styles.writeReviewButton}
+                                >
+                                    Viết đánh giá
+                                </button>
                             )}
                         </div>
                     </div>

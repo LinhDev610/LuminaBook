@@ -136,7 +136,11 @@ export async function register(userData) {
 }
 
 export async function refreshToken(token = null) {
-    const { data, ok } = await apiRequest('/auth/refresh', { method: 'POST', token });
+    // Backend expects JSON body: { token: "<token>" }
+    // Endpoint /auth/refresh đã được phép PUBLIC, nên không cần Authorization header.
+    const tokenToUse = token || getStoredToken('token');
+    const body = { token: tokenToUse };
+    const { data, ok } = await apiRequest('/auth/refresh', { method: 'POST', body });
     return { ok, data: extractResult(data) };
 }
 

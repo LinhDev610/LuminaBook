@@ -46,7 +46,6 @@
     border-top: none;
     border-radius: 0 0 16px 16px;
     margin-bottom: 28px;
-    box-shadow: 0 18px 45px rgba(15, 23, 42, 0.12);
 
     @media (max-width: 768px) {
       grid-template-columns: 1fr;
@@ -78,16 +77,21 @@
     .ctaRow {
       display: flex;
       gap: 12px;
+      margin-top: 16px;
 
       button {
         flex: 1;
-        padding: 12px 16px;
-        border-radius: 10px;
-        font-weight: 700;
-        font-size: 15px;
+        padding: 10px 18px;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 14px;
         cursor: pointer;
         border: none;
         transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
 
         &:hover {
           transform: translateY(-1px);
@@ -95,14 +99,20 @@
       }
 
       .secondaryBtn {
-        background: #fff;
-        color: #c62828;
-        border: 2px solid #c62828;
+        background: #ffffff;
+        color: #d6002f;
+        border: 1px solid #d6002f;
+
+        .cartIcon {
+          width: 16px;
+          height: 16px;
+          object-fit: contain;
+        }
       }
 
       .primaryBtn {
-        background: #e11d48;
-        color: #fff;
+        background: #d6002f;
+        color: #ffffff;
       }
     }
 
@@ -145,6 +155,33 @@
     }
   }
 
+  /* Chính sách ưu đãi – nằm bên cột trái (productImages) */
+  .productImages .policyItem {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+    font-size: 14px;
+    color: #4b5563;
+
+    .policyIcon {
+      width: 27px;
+      height: 27px;
+      object-fit: contain;
+      flex-shrink: 0;
+    }
+
+    .policyLabel {
+      font-weight: 700;
+      color: #1A3C5A;
+      margin-right: 4px;
+    }
+
+    .policyText {
+      color: #111827;
+    }
+  }
+
   .productInfo {
     display: flex;
     flex-direction: column;
@@ -153,8 +190,9 @@
     .productName {
       font-size: 30px;
       font-weight: 700;
-      color: #12263f;
-      margin-bottom: 8px;
+      color: #000000;
+      margin-bottom: 12px;
+      margin-top: 0;
       line-height: 1.4;
     }
 
@@ -164,6 +202,7 @@
       gap: 6px;
       font-size: 16px;
       color: #4b5563;
+      margin-bottom: 12px;
 
       strong {
         color: #1f2937;
@@ -174,6 +213,7 @@
       display: flex;
       align-items: center;
       gap: 10px;
+      margin-bottom: 12px;
 
       .stars {
         display: flex;
@@ -181,20 +221,20 @@
 
         .star {
           color: #ffc107;
-          font-size: 18px;
+          font-size: 20px;
         }
 
         .starEmpty {
           color: #e5e7eb;
-          font-size: 18px;
+          font-size: 20px;
         }
       }
 
       .ratingText {
         display: flex;
         align-items: center;
-        gap: 8px;
-        font-size: 15px;
+        gap: 6px;
+        font-size: 14px;
         color: #4b5563;
 
         .reviewCount {
@@ -202,8 +242,9 @@
           font-weight: 600;
         }
 
-        .dot {
+        .separator {
           color: #9ca3af;
+          margin: 0 4px;
         }
 
         .soldCount {
@@ -213,7 +254,7 @@
     }
 
     .priceSection {
-      margin: 12px 0;
+      margin: 0;
 
       .currentPrice {
         font-size: 34px;
@@ -252,6 +293,7 @@
     .actionButtons {
       display: flex;
       gap: 12px;
+      margin-top: 20px;
 
       @media (max-width: 480px) {
         flex-direction: column;
@@ -262,10 +304,14 @@
         padding: 12px 20px;
         border: none;
         border-radius: 8px;
-        font-size: 14px;
+        font-size: 15px;
         font-weight: 600;
         cursor: pointer;
-        transition: all 0.3s ease;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
 
         &:disabled {
           opacity: 0.6;
@@ -275,21 +321,27 @@
 
       .addToCartBtn {
         background: white;
-        color: #E53935;
-        border: 2px solid #E53935;
+        color: #d6002f;
+        border: 2px solid #d6002f;
+
+        .cartIcon {
+          width: 18px;
+          height: 18px;
+          object-fit: contain;
+        }
 
         &:hover:not(:disabled) {
-          background: #E53935;
+          background: #d6002f;
           color: white;
         }
       }
 
       .buyNowBtn {
-        background: #E53935;
+        background: #d6002f;
         color: white;
 
         &:hover:not(:disabled) {
-          background: #c62828;
+          background: #b91c1c;
         }
       }
     }
@@ -299,13 +351,63 @@
       border: 1px solid #e6e8ef;
       border-radius: 16px;
       padding: 18px;
-      box-shadow: 0 12px 24px rgba(15, 23, 42, 0.08);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 
       .cardTitle {
         font-size: 16px;
         font-weight: 600;
         margin-bottom: 12px;
+        color: #1A3C5A;
+      }
+
+      .description {
+        max-height: 220px;
+        overflow: hidden;
+        position: relative;
+        font-size: 14px;
+        line-height: 1.6;
         color: #111827;
+        white-space: pre-line; // giữ nguyên xuống dòng từ backend
+
+        & > p {
+          margin: 0 0 8px 0;
+        }
+
+        &::after {
+          content: "";
+          position: absolute;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          height: 60px;
+          background: linear-gradient(to bottom, rgba(255, 255, 255, 0), #ffffff);
+          pointer-events: none;
+        }
+
+        &.descriptionExpanded {
+          max-height: none;
+
+          &::after {
+            display: none;
+          }
+        }
+      }
+
+      .descriptionExpanded {
+        max-height: none;
+      }
+
+      .viewMoreButton {
+        margin: 8px auto 0;
+        border: none;
+        background: transparent;
+        color: #1A3C5A;
+        font-weight: 600;
+        font-size: 14px;
+        cursor: pointer;
+        padding: 0;
+        display: block;
+        text-align: center;
       }
     }
 
@@ -321,22 +423,44 @@
         font-size: 16px;
         color: #94a3b8;
       }
+
+      .shipIcon {
+        width: 15px;
+        height: 15px;
+        object-fit: contain;
+        flex-shrink: 0;
+      }
+
+      .deliveryMethodBold {
+        font-weight: 600;
+        color: #1f2937;
+      }
+    }
+
+    .quantityDivider {
+      height: 1px;
+      background: #e6e8ef;
+      margin: 18px 0;
     }
 
     .quantitySection {
-      label {
-        display: block;
-        margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+
+      .quantityLabel {
+        display: inline-block;
+        margin: 0;
         font-weight: 600;
-        color: #333;
-        font-size: 14px;
+        color: #1A3C5A;
+        font-size: 16px;
       }
 
       .quantityControls {
         display: flex;
         align-items: center;
         gap: 0;
-        border: 1px solid #ddd;
+        border: 1px solid #e5e7eb;
         border-radius: 6px;
         width: fit-content;
 
@@ -344,7 +468,7 @@
           width: 35px;
           height: 35px;
           border: none;
-          background: #f8f9fa;
+          background: #f3f4f6;
           cursor: pointer;
           font-size: 16px;
           font-weight: 600;
@@ -352,7 +476,7 @@
           transition: all 0.3s ease;
 
           &:hover:not(:disabled) {
-            background: #e9ecef;
+            background: #e5e7eb;
           }
 
           &:disabled {
@@ -365,9 +489,11 @@
           width: 50px;
           height: 35px;
           border: none;
+          background: #fff;
           text-align: center;
           font-size: 14px;
           font-weight: 600;
+          color: #333;
 
           &:focus {
             outline: none;
@@ -378,16 +504,27 @@
 
     .policyItem {
       display: flex;
-      align-items: flex-start;
+      align-items: center;
       gap: 8px;
       margin-bottom: 8px;
       font-size: 14px;
-      color: #666;
+      color: #4b5563;
 
       .policyIcon {
-        font-size: 16px;
-        color: #999;
-        margin-top: 2px;
+        width: 15px;
+        height: 15px;
+        object-fit: contain;
+        flex-shrink: 0;
+      }
+
+      .policyLabel {
+        font-weight: 700;
+        color: #1A3C5A;
+        margin-right: 4px;
+      }
+
+      .policyText {
+        color: #1A3C5A;
       }
     }
 
@@ -470,6 +607,171 @@
 
   .productDetails {
     display: none;
+  }
+
+  /* ==== KHỐI ĐÁNH GIÁ SẢN PHẨM (FULL WIDTH CARD) ==== */
+  .reviewCard {
+    margin-top: 24px;
+    background: #ffffff;
+    border: 1px solid #e6e8ef;
+    border-radius: 18px;
+    padding: 24px 32px;
+    box-shadow: 0 3px 10px rgba(15, 23, 42, 0.06);
+
+    .cardTitle {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      color: #1A3C5A;
+    }
+
+    .reviewContent {
+      display: flex;
+      align-items: stretch;
+      justify-content: space-between;
+      gap: 48px;
+    }
+
+    .reviewSummary {
+      display: flex;
+      align-items: center;
+      gap: 32px;
+    }
+
+    .reviewScore {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 6px;
+
+      .scoreValueRow {
+        display: flex;
+        align-items: baseline;
+        gap: 4px;
+      }
+
+      .scoreValue {
+        font-size: 40px;
+        font-weight: 700;
+        color: #111827;
+        line-height: 1;
+      }
+
+      .scoreMax {
+        font-size: 16px;
+        color: #6b7280;
+      }
+
+      .scoreStars {
+        display: flex;
+        gap: 2px;
+        font-size: 18px;
+
+        .star,
+        .starEmpty {
+          color: #e5e7eb; // sao xám khi chưa có đánh giá
+        }
+      }
+
+      .scoreCount {
+        font-size: 13px;
+        color: #6b7280;
+      }
+    }
+
+    .ratingBars {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+
+      .ratingBarRow {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-size: 13px;
+        color: #4b5563;
+        padding: 2px 0 4px;
+        border-bottom: 1px solid #f3f4f6;
+
+        &:last-child {
+          border-bottom: none;
+        }
+      }
+
+      .ratingBarTrack {
+        flex: 1;
+        height: 6px;
+        border-radius: 999px;
+        background: #f3f4f6;
+        overflow: hidden;
+      }
+
+      .ratingBarFill {
+        height: 100%;
+        background: #f59e0b;
+        border-radius: inherit;
+      }
+
+      .ratingPercent {
+        width: 32px;
+        text-align: right;
+        font-size: 13px;
+        color: #6b7280;
+      }
+    }
+
+    .reviewAction {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 260px;
+    }
+
+    .writeReviewButton {
+      min-width: 220px;
+      padding: 10px 24px;
+      border-radius: 999px;
+      border: 1px solid #1A3C5A;
+      background: #ffffff;
+      color: #1A3C5A;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+
+      &:hover {
+        background: #1A3C5A;
+        color: #ffffff;
+      }
+    }
+
+    .loginPrompt {
+      font-size: 14px;
+      color: #4b5563;
+      line-height: 1.5;
+    }
+
+    .inlineLink {
+      border: none;
+      background: transparent;
+      padding: 0;
+      margin: 0 2px;
+      color: #1A3C5A;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    @media (max-width: 768px) {
+      .reviewContent {
+        flex-direction: column;
+        gap: 20px;
+      }
+
+      .reviewAction {
+        justify-content: flex-start;
+      }
+    }
   }
 }
 

@@ -19,7 +19,7 @@ public class ProductUpdateRequest {
     @Size(max = 255, message = "Tên sản phẩm không được vượt quá 255 ký tự")
     String name;
 
-    @Size(max = 2000, message = "Mô tả không được vượt quá 2000 ký tự")
+    @Size(max = 5000, message = "Mô tả không được vượt quá 5000 ký tự")
     String description;
 
     String size;

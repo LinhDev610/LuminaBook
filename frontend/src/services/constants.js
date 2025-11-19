@@ -1,23 +1,82 @@
 // Constants
 // Hằng số của ứng dụng
 
-// =========== API Endpoints ===========
-export const API_ENDPOINTS = {
-    AUTH: {
-        LOGIN: '/auth/login',
-        REGISTER: '/auth/register',
-        FORGOT_PASSWORD: '/auth/forgot-password',
+// =========== API Configuration ===========
+// API Base URL fallback - được cấu hình trong backend/application.yaml: app.frontend.base-url
+export const API_BASE_URL_FALLBACK = 'http://localhost:8080/lumina_book';
+
+// =========== API Routes ===========
+export const API_ROUTES = {
+    auth: {
+        login: '/auth/token',
+        register: '/users',
+        refresh: '/auth/refresh',
+        changePassword: '/auth/change-password',
+        resetPassword: '/auth/reset-password',
+        sendOtp: (email, mode) =>
+            `/auth/send-otp?email=${encodeURIComponent(email ?? '')}&mode=${encodeURIComponent(mode ?? '')}`,
+        verifyOtp: '/auth/verify-otp',
     },
-    PRODUCTS: {
-        LIST: '/products',
-        DETAIL: '/products/:id',
-        SEARCH: '/products/search',
+    users: {
+        root: '/users',
+        detail: (userId) => `/users/${userId}`,
+        myInfo: '/users/my-info',
+        staff: '/users/staff',
     },
-    CART: {
-        GET: '/cart',
-        ADD: '/cart/add',
-        UPDATE: '/cart/items/:id',
-        REMOVE: '/cart/items/:id',
+    categories: {
+        root: '/categories',
+        active: '/categories/active',
+        rootOnly: '/categories/root',
+        subCategories: (parentId) => `/categories/${parentId}/subcategories`,
+        detail: (categoryId) => `/categories/${categoryId}`,
+    },
+    products: {
+        root: '/products',
+        active: '/products/active',
+        detail: (productId) => `/products/${productId}`,
+        myProducts: '/products/my-products',
+        pending: '/products/pending',
+        byCategory: (categoryId) => `/products/category/${categoryId}`,
+        search: (keyword) => `/products/search?keyword=${encodeURIComponent(keyword ?? '')}`,
+        priceRange: (minPrice, maxPrice) =>
+            `/products/price-range?minPrice=${minPrice ?? ''}&maxPrice=${maxPrice ?? ''}`,
+        approve: '/products/approve',
+        defaultMedia: (productId, mediaUrl) =>
+            `/products/${productId}/default-media?mediaUrl=${encodeURIComponent(mediaUrl ?? '')}`,
+    },
+    media: {
+        uploadProfile: '/media/upload',
+        uploadProduct: '/media/upload-product',
+        uploadVoucher: '/media/upload-voucher',
+        uploadPromotion: '/media/upload-promotion',
+    },
+    vouchers: {
+        root: '/vouchers',
+        mine: '/vouchers/my',
+        active: '/vouchers/active',
+        detail: (voucherId) => `/vouchers/${voucherId}`,
+        approve: '/vouchers/approve',
+        pending: '/vouchers/pending',
+        byStatus: (status) => `/vouchers/status/${status}`,
+    },
+    promotions: {
+        root: '/promotions',
+        mine: '/promotions/my-promotions',
+        active: '/promotions/active',
+        detail: (promotionId) => `/promotions/${promotionId}`,
+        approve: '/promotions/approve',
+        pending: '/promotions/pending',
+        byStatus: (status) => `/promotions/status/${status}`,
+    },
+    addresses: {
+        root: '/addresses',
+        detail: (addressId) => `/addresses/${addressId}`,
+    },
+    ghn: {
+        provinces: '/ghn/provinces',
+        districts: (provinceId) => `/ghn/districts?province_id=${provinceId}`,
+        wards: (districtId) => `/ghn/wards?district_id=${districtId}`,
+        shippingFees: '/ghn/shipping-fees',
     },
 };
 
@@ -189,4 +248,35 @@ export const INITIAL_FORM_STATE_PROMOTION = {
     applyScope: 'CATEGORY',
     categoryIds: [],
     productIds: [],
+};
+
+
+// Trạng thái ban đầu của form thêm address
+export const INITIAL_FORM_STATE_ADDRESS = {
+    recipientName: '',
+    recipientPhoneNumber: '',
+    provinceID: '',
+    provinceName: '',
+    districtID: '',
+    districtName: '',
+    wardCode: '',
+    wardName: '',
+    address: '',
+    postalCode: '',
+    defaultAddress: false,
+};
+
+export const INITIAL_FORM_STATE_ADDRESS_DETAIL = {
+    id: '',
+    recipientName: '',
+    recipientPhoneNumber: '',
+    provinceID: '',
+    provinceName: '',
+    districtID: '',
+    districtName: '',
+    wardCode: '',
+    wardName: '',
+    address: '',
+    postalCode: '',
+    defaultAddress: false,
 };

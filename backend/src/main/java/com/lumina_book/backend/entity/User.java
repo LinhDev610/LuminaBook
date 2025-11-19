@@ -28,7 +28,8 @@ public class User {
     String phoneNumber;
     String address;
     String avatarUrl;
-    boolean isActive;
+    @Column(name = "is_active")
+    boolean active;
     LocalDate createAt;
 
     @OneToOne(mappedBy = "user")

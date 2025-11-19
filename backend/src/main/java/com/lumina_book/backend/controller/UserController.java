@@ -47,12 +47,6 @@ class UserController {
 
     @GetMapping
     ApiResponse<List<UserResponse>> getUsers() {
-        // SecurityContextHolder chứa thông tin về user đang đăng nhập
-        // var authentication = SecurityContextHolder.getContext().getAuthentication();
-
-        // log.info("Username: {}", authentication.getName());
-        // authentication.getAuthorities().forEach(grantedAuthority -> log.info(grantedAuthority.getAuthority()));
-
         return ApiResponse.<List<UserResponse>>builder()
                 .result(userService.getUsers())
                 .build();
@@ -60,18 +54,12 @@ class UserController {
 
     @GetMapping("/my-info")
     ApiResponse<UserResponse> getMyInfo() {
-        // SecurityContextHolder chứa thông tin về user đang đăng nhập
-        // var authentication = SecurityContextHolder.getContext().getAuthentication();
-
-        // log.info("Username: {}", authentication.getName());
-        // authentication.getAuthorities().forEach(grantedAuthority -> log.info(grantedAuthority.getAuthority()));
-
         return ApiResponse.<UserResponse>builder()
                 .result(userService.getMyInfo())
                 .build();
     }
 
-    @DeleteMapping("{userId}")
+    @DeleteMapping("/{userId}")
     ApiResponse<String> deleteUser(@PathVariable String userId) {
         userService.deleteUser(userId);
         return ApiResponse.<String>builder().result("User has been deleted").build();
@@ -84,7 +72,7 @@ class UserController {
                 .build();
     }
 
-    @PutMapping("{userId}")
+    @PutMapping("/{userId}")
     ApiResponse<UserResponse> updateUser(@PathVariable String userId, @RequestBody UserUpdateRequest request) {
         try {
             UserResponse result = userService.updateUser(userId, request);

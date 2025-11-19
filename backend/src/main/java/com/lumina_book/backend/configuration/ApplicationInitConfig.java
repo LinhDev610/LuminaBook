@@ -68,7 +68,7 @@ public class ApplicationInitConfig {
                         .email(ADMIN_EMAIL)
                         .password(passwordEncoder.encode(ADMIN_PASSWORD))
                         .role(adminRole)
-                        .isActive(true)
+                        .active(true)
                         .createAt(LocalDate.now())
                         .build();
 

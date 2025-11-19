@@ -2,8 +2,6 @@ package com.lumina_book.backend.dto.response;
 
 import java.time.LocalDate;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
@@ -20,13 +18,7 @@ public class UserResponse {
     String address;
     String avatarUrl;
     
-    @JsonProperty("isActive")
     boolean active;
-    
-    // Getter for compatibility
-    public boolean isActive() {
-        return active;
-    }
     
     LocalDate createAt;
 

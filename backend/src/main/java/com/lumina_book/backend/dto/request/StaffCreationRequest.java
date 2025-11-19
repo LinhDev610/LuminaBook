@@ -27,5 +27,5 @@ public class StaffCreationRequest {
     String roleName;
 
     @Builder.Default
-    boolean isActive = true;
+    boolean active = true;
 }

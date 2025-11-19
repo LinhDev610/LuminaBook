@@ -1,5 +1,6 @@
 package com.lumina_book.backend.entity;
 
+import java.time.LocalDateTime;
 import java.util.Set;
 
 import jakarta.persistence.*;
@@ -20,11 +21,22 @@ public class Address {
     String addressId;
 
     String recipientName;
-    String recipientPhone;
-    String street;
-    String city;
+    String recipientPhoneNumber;
     String country;
-    boolean isDefault;
+    String provinceID;
+    String provinceName;
+    String districtID;
+    String districtName;
+    String wardCode;
+    String wardName;
+    String address;
+
+    String postalCode;
+    @Column(name = "is_default")
+    boolean defaultAddress;
+
+    LocalDateTime createdAt;
+    LocalDateTime updatedAt;
 
     @ManyToMany(mappedBy = "addresses")
     Set<User> users;

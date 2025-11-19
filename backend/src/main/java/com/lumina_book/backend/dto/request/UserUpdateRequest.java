@@ -22,7 +22,7 @@ public class UserUpdateRequest {
     String fullName;
     String address;
     String avatarUrl;
-    Boolean isActive;
+    Boolean active;
 
     String role;
 }

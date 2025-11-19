@@ -1,12 +1,16 @@
 import { useNavigate } from 'react-router-dom';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import useLocalStorage from '../../hooks/useLocalStorage';
 import Notification from '../../components/Common/Notification/Notification';
 import guestImgIcon from '../../assets/icons/icon_img_guest.png';
-import { getMyInfo, updateUser } from '../../services';
+import { getMyInfo, updateUser, getMyAddresses, getStoredToken } from '../../services';
 import styles from './CustomerAccountPage.module.scss';
 import CustomerChangePasswordPage from './CustomerChangePassword/CustomerChangePasswordPage';
 import classNames from 'classnames/bind';
+import AddressListModal from '../../components/Common/AddressModal/AddressListModal';
+import NewAddressModal from '../../components/Common/AddressModal/NewAddressModal';
+import AddressDetailModal from '../../components/Common/AddressModal/AddressDetailModal';
+import { formatFullAddress } from '../../components/Common/AddressModal/useGhnLocations';
 
 // Thông tin tài khoản, lịch sử đơn hàng, đổi mật khẩu
 
@@ -20,20 +24,6 @@ function CustomerAccountPage() {
     );
     const [email, setEmail, removeEmail] = useLocalStorage('email', '');
     const [token, setToken, removeToken] = useLocalStorage('token', null);
-
-    // Helper to read token from both storages
-    const getStoredToken = useMemo(() => () => {
-        try {
-            const raw = localStorage.getItem('token');
-            if (!raw) return sessionStorage.getItem('token');
-            if ((raw.startsWith('"') && raw.endsWith('"')) || raw.startsWith('{') || raw.startsWith('[')) {
-                return JSON.parse(raw);
-            }
-            return raw;
-        } catch (_e) {
-            return sessionStorage.getItem('token');
-        }
-    }, []);
 
     // Check if user is logged in
     const isLoggedIn = !!(token || getStoredToken());
@@ -49,6 +39,11 @@ function CustomerAccountPage() {
     const [notif, setNotif] = useState({ open: false, type: 'success', title: '', message: '', duration: 3000 });
 
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+    const [showAddressList, setShowAddressList] = useState(false);
+    const [showNewAddressModal, setShowNewAddressModal] = useState(false);
+    const [showAddressDetailModal, setShowAddressDetailModal] = useState(false);
+    const [selectedAddress, setSelectedAddress] = useState(null);
+    const [addressRefreshKey, setAddressRefreshKey] = useState(0);
 
     const handleLogout = () => {
         // Close modal first so it disappears immediately
@@ -75,6 +70,24 @@ function CustomerAccountPage() {
                 if (!tk) return;
                 const u = await getMyInfo(tk);
                 if (u) {
+                    // Fetch addresses to find default address
+                    try {
+                        const addresses = await getMyAddresses(tk);
+                        if (Array.isArray(addresses) && addresses.length > 0) {
+                            const defaultAddress = addresses.find((addr) => addr?.defaultAddress === true);
+                            if (defaultAddress) {
+                                u.address = formatFullAddress(defaultAddress);
+                                setSelectedAddress(defaultAddress);
+                            } else {
+                                u.address = '';
+                            }
+                        } else {
+                            u.address = '';
+                        }
+                    } catch (_addrErr) {
+                        u.address = u.address || '';
+                    }
+
                     setUser(u);
                     // Deep clone to ensure cancel restores immutable snapshot
                     try {
@@ -94,6 +107,45 @@ function CustomerAccountPage() {
         };
         fetchMe();
     }, []);
+
+    // Auto-update default address when address list changes
+    useEffect(() => {
+        const updateDefaultAddress = async () => {
+            if (!isLoggedIn || addressRefreshKey === 0) return;
+            try {
+                const tk = getStoredToken();
+                if (!tk) return;
+                const addresses = await getMyAddresses(tk);
+                if (Array.isArray(addresses) && addresses.length > 0) {
+                    const defaultAddress = addresses.find((addr) => addr?.defaultAddress === true);
+                    if (defaultAddress) {
+                        setUser((prev) => ({
+                            ...(prev || {}),
+                            address: formatFullAddress(defaultAddress),
+                        }));
+                        setSelectedAddress(defaultAddress);
+                    } else {
+                        // No default address, clear if no address selected
+                        setUser((prev) => {
+                            const currentSelectedId = selectedAddress?.id;
+                            const stillExists = addresses.some((addr) => addr?.id === currentSelectedId);
+                            if (!stillExists) {
+                                return { ...(prev || {}), address: '' };
+                            }
+                            return prev;
+                        });
+                    }
+                } else {
+                    // No addresses at all, clear
+                    setUser((prev) => ({ ...(prev || {}), address: '' }));
+                    setSelectedAddress(null);
+                }
+            } catch (_e) {
+                // Ignore errors
+            }
+        };
+        updateDefaultAddress();
+    }, [addressRefreshKey, isLoggedIn]);
 
     // Change password form state
     const [currentPassword, setCurrentPassword] = useState('');
@@ -303,7 +355,10 @@ function CustomerAccountPage() {
                                     <label>Địa chỉ</label>
                                     <input
                                         value={user?.address ?? ''}
-                                        onChange={(e) => setUser((prev) => ({ ...(prev || {}), address: e.target.value }))}
+                                        readOnly
+                                        onClick={() => isLoggedIn && setShowAddressList(true)}
+                                        onFocus={() => isLoggedIn && setShowAddressList(true)}
+                                        placeholder="Chọn từ danh sách địa chỉ của bạn"
                                         disabled={!isLoggedIn}
                                     />
                                 </div>
@@ -428,11 +483,56 @@ function CustomerAccountPage() {
                 duration={notif.duration}
                 onClose={() => setNotif((n) => ({ ...n, open: false }))}
             />
+            <AddressListModal
+                open={showAddressList}
+                onClose={() => setShowAddressList(false)}
+                onSelectAddress={(address) => {
+                    if (!address) return;
+                    setUser((prev) => ({ ...(prev || {}), address: formatFullAddress(address) }));
+                    setSelectedAddress(address);
+                }}
+                onViewDetail={(address) => {
+                    setSelectedAddress(address);
+                    setShowAddressDetailModal(true);
+                }}
+                onAddNewAddress={() => {
+                    setShowNewAddressModal(true);
+                }}
+                refreshKey={addressRefreshKey}
+                highlightAddressId={selectedAddress?.id || null}
+            />
+            <NewAddressModal
+                open={showNewAddressModal}
+                onClose={() => setShowNewAddressModal(false)}
+                onCreated={(newAddress) => {
+                    if (newAddress) {
+                        setSelectedAddress(newAddress);
+                        setUser((prev) => ({
+                            ...(prev || {}),
+                            address: formatFullAddress(newAddress),
+                        }));
+                    }
+                    setAddressRefreshKey((prev) => prev + 1);
+                    setShowNewAddressModal(false);
+                    setShowAddressList(false);
+                }}
+            />
+            <AddressDetailModal
+                open={showAddressDetailModal}
+                address={selectedAddress}
+                onClose={() => setShowAddressDetailModal(false)}
+                onUpdated={(updated) => {
+                    if (!updated) return;
+                    setSelectedAddress(updated);
+                    setAddressRefreshKey((prev) => prev + 1);
+                    setUser((prev) => ({
+                        ...(prev || {}),
+                        address: formatFullAddress(updated),
+                    }));
+                }}
+            />
         </div>
     );
 }
 
 export default CustomerAccountPage;
-
-//
-

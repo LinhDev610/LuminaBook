@@ -1,9 +1,9 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import classNames from 'classnames/bind';
 import styles from './StaffDetailPage.module.scss';
 import guestAvatar from '../../../../assets/icons/icon_img_guest.png';
-import ConfirmDialog from '../../../../layouts/components/ConfirmDialog';
+import ConfirmDialog from '../../../../components/Common/ConfirmDialog/DeleteAccountDialog';
 import Notification from '../../../../components/Common/Notification/Notification';
 import { getUserById, updateUser, deleteUser } from '../../../../services';
 

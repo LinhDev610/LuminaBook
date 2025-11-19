@@ -5,6 +5,7 @@ import java.util.List;
 
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,6 +22,7 @@ import com.lumina_book.backend.mapper.UserMapper;
 import com.lumina_book.backend.repository.ProductRepository;
 import com.lumina_book.backend.repository.ReviewRepository;
 import com.lumina_book.backend.repository.UserRepository;
+import com.lumina_book.backend.util.SecurityUtil;
 
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -54,8 +56,8 @@ public class ReviewService {
 
     public List<ReviewResponse> getMyReviews() {
         // Get current user from security context
-        var context = SecurityContextHolder.getContext();
-        String userId = context.getAuthentication().getName();
+        Authentication authentication = SecurityUtil.getAuthentication();
+        String userId = authentication.getName();
 
         User user = userRepository.findById(userId).orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
 
@@ -73,6 +75,13 @@ public class ReviewService {
 
     @Transactional
     public ReviewResponse createReview(ReviewCreationRequest request) {
+        // Get current user from security context
+        Authentication authentication = SecurityUtil.getAuthentication();
+        String userId = authentication.getName();
+
+        // Get user
+
+
         // Get product
         Product product = productRepository
                 .findById(request.getProduct().getId())
@@ -82,12 +91,12 @@ public class ReviewService {
         // Lấy user từ security context (bắt buộc)
         var context = SecurityContextHolder.getContext();
         String userEmail = context.getAuthentication().getName();
-        
+
         // Get user by email (JWT token subject contains email, not userId)
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
-        
-        log.info("Review created by user: {} (display name: {})", 
+
+        log.info("Review created by user: {} (display name: {})",
                 userEmail, request.getNameDisplay());
 
         // Create review entity using mapper

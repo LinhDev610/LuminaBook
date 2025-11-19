@@ -12,7 +12,7 @@ import java.time.LocalDate;
 
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,6 +33,7 @@ import com.lumina_book.backend.repository.ProductRepository;
 import com.lumina_book.backend.repository.PromotionRepository;
 import com.lumina_book.backend.repository.VoucherRepository;
 import com.lumina_book.backend.repository.UserRepository;
+import com.lumina_book.backend.util.SecurityUtil;
 
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -57,8 +58,7 @@ public class ProductService {
     @Transactional
     @PreAuthorize("hasRole('STAFF')")
     public ProductResponse createProduct(ProductCreationRequest request) {
-        var context = SecurityContextHolder.getContext();
-        String userEmail = context.getAuthentication().getName();
+        String userEmail = SecurityUtil.getCurrentUserEmail();
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
 
@@ -130,8 +130,8 @@ public class ProductService {
      */
     @Transactional
     public ProductResponse updateProduct(String productId, ProductUpdateRequest request) {
-        var context = SecurityContextHolder.getContext();
-        String userEmail = context.getAuthentication().getName();
+        Authentication authentication = SecurityUtil.getAuthentication();
+        String userEmail = authentication.getName();
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
 
@@ -140,7 +140,7 @@ public class ProductService {
                 .orElseThrow(() -> new AppException(ErrorCode.PRODUCT_NOT_EXISTED));
 
         // Kiểm tra quyền: Admin hoặc chủ sở hữu sản phẩm
-        boolean isAdmin = context.getAuthentication().getAuthorities().stream()
+        boolean isAdmin = authentication.getAuthorities().stream()
                 .anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN"));
 
         if (!isAdmin && !product.getSubmittedBy().getId().equals(user.getId())) {
@@ -228,8 +228,7 @@ public class ProductService {
     @Transactional
     @PreAuthorize("hasRole('ADMIN')")
     public void deleteProduct(String productId) {
-        var context = SecurityContextHolder.getContext();
-        String userEmail = context.getAuthentication().getName();
+        String userEmail = SecurityUtil.getCurrentUserEmail();
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
 
@@ -378,8 +377,7 @@ public class ProductService {
     }
 
     public List<ProductResponse> getMyProducts() {
-        var context = SecurityContextHolder.getContext();
-        String userEmail = context.getAuthentication().getName();
+        String userEmail = SecurityUtil.getCurrentUserEmail();
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
 
@@ -398,8 +396,7 @@ public class ProductService {
     @Transactional
     @PreAuthorize("hasRole('ADMIN')")
     public ProductResponse approveProduct(ApproveProductRequest request) {
-        var context = SecurityContextHolder.getContext();
-        String adminEmail = context.getAuthentication().getName();
+        String adminEmail = SecurityUtil.getCurrentUserEmail();
         User admin = userRepository.findByEmail(adminEmail)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
 
@@ -432,8 +429,8 @@ public class ProductService {
     // ========== MEDIA OPERATIONS ==========
     @Transactional
     public ProductResponse setDefaultMedia(String productId, String mediaUrl) {
-        var context = SecurityContextHolder.getContext();
-        String userEmail = context.getAuthentication().getName();
+        Authentication authentication = SecurityUtil.getAuthentication();
+        String userEmail = authentication.getName();
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
 
@@ -441,7 +438,7 @@ public class ProductService {
                 .findById(productId)
                 .orElseThrow(() -> new AppException(ErrorCode.PRODUCT_NOT_EXISTED));
 
-        boolean isAdmin = context.getAuthentication().getAuthorities().stream()
+        boolean isAdmin = authentication.getAuthorities().stream()
                 .anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN"));
         if (!isAdmin && !product.getSubmittedBy().getId().equals(user.getId())) {
             throw new AppException(ErrorCode.UNAUTHORIZED);

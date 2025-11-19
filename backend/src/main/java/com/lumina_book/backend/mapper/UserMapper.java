@@ -25,11 +25,12 @@ public interface UserMapper {
     @Mapping(target = "reviews", ignore = true)
     @Mapping(target = "notifications", ignore = true)
     @Mapping(target = "addresses", ignore = true)
+    @Mapping(target = "cart", ignore = true)
+    @Mapping(target = "orders", ignore = true)
+    @Mapping(target = "active", ignore = true)
     User toUser(UserCreationRequest request);
 
     // Entity to Response
-    @Mapping(target = "role", source = "role")
-    @Mapping(target = "active", expression = "java(user.isActive())") // Map from User.isActive() to UserResponse.active
     UserResponse toUserResponse(User user);
 
     // Update Entity
@@ -45,5 +46,8 @@ public interface UserMapper {
     @Mapping(target = "reviews", ignore = true)
     @Mapping(target = "notifications", ignore = true)
     @Mapping(target = "addresses", ignore = true)
+    @Mapping(target = "cart", ignore = true)
+    @Mapping(target = "orders", ignore = true)
+    @Mapping(target = "active", ignore = true)
     void updateUser(@MappingTarget User user, UserUpdateRequest request);
 }

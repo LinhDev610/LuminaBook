@@ -12,7 +12,6 @@ import java.util.function.Function;
 import java.util.Optional;
 
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,6 +32,7 @@ import com.lumina_book.backend.repository.CategoryRepository;
 import com.lumina_book.backend.repository.ProductRepository;
 import com.lumina_book.backend.repository.UserRepository;
 import com.lumina_book.backend.repository.VoucherRepository;
+import com.lumina_book.backend.util.SecurityUtil;
 
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -149,7 +149,7 @@ public class VoucherService {
                 .findById(voucherId)
                 .orElseThrow(() -> new AppException(ErrorCode.VOUCHER_NOT_EXISTED));
 
-        boolean isAdmin = SecurityContextHolder.getContext().getAuthentication().getAuthorities().stream()
+        boolean isAdmin = SecurityUtil.getAuthentication().getAuthorities().stream()
                 .anyMatch(auth -> "ROLE_ADMIN".equals(auth.getAuthority()));
 
         if (!isAdmin && voucher.getSubmittedBy() != null && !voucher.getSubmittedBy().getId().equals(currentUserId)) {
@@ -189,7 +189,7 @@ public class VoucherService {
                 .findById(voucherId)
                 .orElseThrow(() -> new AppException(ErrorCode.VOUCHER_NOT_EXISTED));
 
-        boolean isAdmin = SecurityContextHolder.getContext().getAuthentication().getAuthorities().stream()
+        boolean isAdmin = SecurityUtil.getAuthentication().getAuthorities().stream()
                 .anyMatch(auth -> "ROLE_ADMIN".equals(auth.getAuthority()));
 
         if (!isAdmin && voucher.getSubmittedBy() != null && !voucher.getSubmittedBy().getId().equals(currentUserId)) {
@@ -211,7 +211,7 @@ public class VoucherService {
     }
 
     private User getCurrentUser() {
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        String email = SecurityUtil.getCurrentUserEmail();
         return userRepository.findByEmail(email).orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
     }
 

@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,6 +21,7 @@ import com.lumina_book.backend.mapper.BannerMapper;
 import com.lumina_book.backend.repository.BannerRepository;
 import com.lumina_book.backend.repository.ProductRepository;
 import com.lumina_book.backend.repository.UserRepository;
+import com.lumina_book.backend.util.SecurityUtil;
 
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -42,8 +43,7 @@ public class BannerService {
     @PreAuthorize("hasRole('STAFF')")
     public BannerResponse createBanner(BannerCreationRequest request) {
         // Get current user from security context
-        var context = SecurityContextHolder.getContext();
-        String userEmail = context.getAuthentication().getName();
+        String userEmail = SecurityUtil.getCurrentUserEmail();
 
         // Get user by email (getName() returns email, not ID)
         User user = userRepository.findByEmail(userEmail).orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
@@ -99,8 +99,8 @@ public class BannerService {
 
     @Transactional
     public BannerResponse updateBanner(String bannerId, BannerUpdateRequest request) {
-        var context = SecurityContextHolder.getContext();
-        String userEmail = context.getAuthentication().getName();
+        Authentication authentication = SecurityUtil.getAuthentication();
+        String userEmail = authentication.getName();
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
 
@@ -108,7 +108,7 @@ public class BannerService {
                 bannerRepository.findById(bannerId).orElseThrow(() -> new AppException(ErrorCode.BANNER_NOT_EXISTED));
 
         // Kiểm tra quyền: Admin hoặc chủ sở hữu banner
-        boolean isAdmin = context.getAuthentication().getAuthorities().stream()
+        boolean isAdmin = authentication.getAuthorities().stream()
                 .anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN"));
 
         if (!isAdmin && (banner.getCreatedBy() == null || !banner.getCreatedBy().getId().equals(user.getId()))) {
@@ -193,7 +193,7 @@ public class BannerService {
         log.info(
                 "Banner deleted: {} by user: {}",
                 bannerId,
-                SecurityContextHolder.getContext().getAuthentication().getName());
+                SecurityUtil.getCurrentUserEmail());
     }
 
     @Transactional

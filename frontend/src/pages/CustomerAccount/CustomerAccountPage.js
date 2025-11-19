@@ -1,9 +1,9 @@
 import { useNavigate } from 'react-router-dom';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import useLocalStorage from '../../hooks/useLocalStorage';
 import Notification from '../../components/Common/Notification/Notification';
 import guestImgIcon from '../../assets/icons/icon_img_guest.png';
-import { getMyInfo, updateUser, getMyAddresses } from '../../services';
+import { getMyInfo, updateUser, getMyAddresses, getStoredToken } from '../../services';
 import styles from './CustomerAccountPage.module.scss';
 import CustomerChangePasswordPage from './CustomerChangePassword/CustomerChangePasswordPage';
 import classNames from 'classnames/bind';
@@ -24,20 +24,6 @@ function CustomerAccountPage() {
     );
     const [email, setEmail, removeEmail] = useLocalStorage('email', '');
     const [token, setToken, removeToken] = useLocalStorage('token', null);
-
-    // Helper to read token from both storages
-    const getStoredToken = useMemo(() => () => {
-        try {
-            const raw = localStorage.getItem('token');
-            if (!raw) return sessionStorage.getItem('token');
-            if ((raw.startsWith('"') && raw.endsWith('"')) || raw.startsWith('{') || raw.startsWith('[')) {
-                return JSON.parse(raw);
-            }
-            return raw;
-        } catch (_e) {
-            return sessionStorage.getItem('token');
-        }
-    }, []);
 
     // Check if user is logged in
     const isLoggedIn = !!(token || getStoredToken());

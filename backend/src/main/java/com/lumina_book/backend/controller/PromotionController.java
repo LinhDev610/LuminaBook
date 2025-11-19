@@ -31,7 +31,6 @@ public class PromotionController {
     // Staff endpoints
     @PostMapping
     ApiResponse<PromotionResponse> createPromotion(@RequestBody @Valid PromotionCreationRequest request) {
-//        log.info("Controller: create Promotion");
         return ApiResponse.<PromotionResponse>builder()
                 .result(promotionService.createPromotion(request))
                 .build();
@@ -39,7 +38,6 @@ public class PromotionController {
 
     @GetMapping("/my-promotions")
     ApiResponse<List<PromotionResponse>> getMyPromotions() {
-//        log.info("Controller: get my promotions");
         return ApiResponse.<List<PromotionResponse>>builder()
                 .result(promotionService.getMyPromotions())
                 .build();

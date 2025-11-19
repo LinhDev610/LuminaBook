@@ -1,5 +1,5 @@
 import { createPortal } from 'react-dom';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import classNames from 'classnames/bind';
 import styles from './NewAddressModal.module.scss';
 import { createAddress } from '../../../../services';
@@ -9,6 +9,7 @@ import {
     normalizeAddressPayload,
     useGhnLocations,
 } from '../useGhnLocations';
+import { validateAddressForm } from '../../../../utils/addressValidation';
 
 const cx = classNames.bind(styles);
 
@@ -44,15 +45,9 @@ const NewAddressModal = ({ open, onClose, onCreated }) => {
 
     useEffect(() => {
         if (!open) return;
-        const loadData = async () => {
-            try {
-                const result = await loadProvinces();
-                // console.log('Provinces loaded:', result?.length || 0);
-            } catch (err) {
-                console.error('Failed to load provinces:', err);
-            }
-        };
-        loadData();
+        loadProvinces().catch((err) => {
+            console.error('Failed to load provinces:', err);
+        });
     }, [open, loadProvinces]);
 
     useEffect(() => {
@@ -80,20 +75,6 @@ const NewAddressModal = ({ open, onClose, onCreated }) => {
         }
     }, [open]);
 
-    const validate = (payload) => {
-        const newErrors = {};
-        if (!payload.recipientName) newErrors.recipientName = 'Vui lòng nhập tên người nhận';
-        if (!payload.recipientPhoneNumber) {
-            newErrors.recipientPhoneNumber = 'Vui lòng nhập số điện thoại';
-        } else if (!/^0\d{9}$/.test(payload.recipientPhoneNumber)) {
-            newErrors.recipientPhoneNumber = 'Số điện thoại phải gồm 10 số và bắt đầu bằng 0';
-        }
-        if (!payload.provinceID) newErrors.provinceID = 'Vui lòng chọn tỉnh/thành';
-        if (!payload.districtID) newErrors.districtID = 'Vui lòng chọn quận/huyện';
-        if (!payload.wardCode) newErrors.wardCode = 'Vui lòng chọn phường/xã';
-        if (!payload.address) newErrors.address = 'Vui lòng nhập địa chỉ chi tiết';
-        return newErrors;
-    };
 
     const handleChange = (field, value) => {
         setForm((prev) => ({ ...prev, [field]: value }));
@@ -141,7 +122,7 @@ const NewAddressModal = ({ open, onClose, onCreated }) => {
     const handleSubmit = async (event) => {
         event.preventDefault();
         const payload = normalizeAddressPayload(form);
-        const validationErrors = validate(payload);
+        const validationErrors = validateAddressForm(payload);
         setErrors(validationErrors);
         if (Object.keys(validationErrors).length) return;
 

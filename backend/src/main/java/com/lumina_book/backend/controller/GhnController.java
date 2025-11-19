@@ -10,6 +10,7 @@ import com.lumina_book.backend.dto.response.GhnDistrictResponse;
 import com.lumina_book.backend.dto.response.GhnProvinceResponse;
 import com.lumina_book.backend.dto.response.GhnWardResponse;
 import com.lumina_book.backend.service.GhnService;
+import com.lumina_book.backend.util.ParseUtil;
 
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -35,33 +36,21 @@ public class GhnController {
     @GetMapping("/districts")
     public ApiResponse<List<GhnDistrictResponse>> getDistricts(
             @RequestParam("province_id") String provinceIdStr) {
-        try {
-            Integer provinceId = Integer.parseInt(provinceIdStr);
-            log.info("Getting GHN districts for province: {}", provinceId);
-            return ApiResponse.<List<GhnDistrictResponse>>builder()
-                    .result(ghnService.getDistricts(provinceId))
-                    .build();
-        } catch (NumberFormatException e) {
-            log.error("Invalid province_id format: {}", provinceIdStr);
-            throw new com.lumina_book.backend.exception.AppException(
-                    com.lumina_book.backend.exception.ErrorCode.INVALID_KEY);
-        }
+        Integer provinceId = ParseUtil.parseInteger(provinceIdStr, "province_id");
+        log.info("Getting GHN districts for province: {}", provinceId);
+        return ApiResponse.<List<GhnDistrictResponse>>builder()
+                .result(ghnService.getDistricts(provinceId))
+                .build();
     }
 
     @GetMapping("/wards")
     public ApiResponse<List<GhnWardResponse>> getWards(
             @RequestParam("district_id") String districtIdStr) {
-        try {
-            Integer districtId = Integer.parseInt(districtIdStr);
-            log.info("Getting GHN wards for district: {}", districtId);
-            return ApiResponse.<List<GhnWardResponse>>builder()
-                    .result(ghnService.getWards(districtId))
-                    .build();
-        } catch (NumberFormatException e) {
-            log.error("Invalid district_id format: {}", districtIdStr);
-            throw new com.lumina_book.backend.exception.AppException(
-                    com.lumina_book.backend.exception.ErrorCode.INVALID_KEY);
-        }
+        Integer districtId = ParseUtil.parseInteger(districtIdStr, "district_id");
+        log.info("Getting GHN wards for district: {}", districtId);
+        return ApiResponse.<List<GhnWardResponse>>builder()
+                .result(ghnService.getWards(districtId))
+                .build();
     }
 
     @PostMapping("/shipping-fees")

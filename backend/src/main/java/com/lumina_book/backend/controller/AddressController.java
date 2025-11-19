@@ -35,7 +35,6 @@ class AddressController {
 
     @GetMapping
     ApiResponse<List<AddressResponse>> getMyAddresses() {
-        // log.info("Controller: get my addresses");
         return ApiResponse.<List<AddressResponse>>builder()
                 .result(addressService.getMyAddresses())
                 .build();
@@ -43,7 +42,6 @@ class AddressController {
 
     @GetMapping("/{addressId}")
     ApiResponse<AddressResponse> getAddress(@PathVariable String addressId) {
-        // log.info("Controller: get address by ID: {}", addressId);
         return ApiResponse.<AddressResponse>builder()
                 .result(addressService.getAddressById(addressId))
                 .build();
@@ -66,7 +64,6 @@ class AddressController {
 
     @DeleteMapping("/{addressId}")
     ApiResponse<String> deleteAddress(@PathVariable String addressId) {
-        // log.info("Controller: delete address with ID: {}", addressId);
         addressService.deleteAddress(addressId);
         return ApiResponse.<String>builder()
                 .result("Address has been deleted")

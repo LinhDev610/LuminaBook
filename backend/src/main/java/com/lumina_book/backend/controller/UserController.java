@@ -47,12 +47,6 @@ class UserController {
 
     @GetMapping
     ApiResponse<List<UserResponse>> getUsers() {
-        // SecurityContextHolder chứa thông tin về user đang đăng nhập
-        // var authentication = SecurityContextHolder.getContext().getAuthentication();
-
-        // log.info("Username: {}", authentication.getName());
-        // authentication.getAuthorities().forEach(grantedAuthority -> log.info(grantedAuthority.getAuthority()));
-
         return ApiResponse.<List<UserResponse>>builder()
                 .result(userService.getUsers())
                 .build();
@@ -60,12 +54,6 @@ class UserController {
 
     @GetMapping("/my-info")
     ApiResponse<UserResponse> getMyInfo() {
-        // SecurityContextHolder chứa thông tin về user đang đăng nhập
-        // var authentication = SecurityContextHolder.getContext().getAuthentication();
-
-        // log.info("Username: {}", authentication.getName());
-        // authentication.getAuthorities().forEach(grantedAuthority -> log.info(grantedAuthority.getAuthority()));
-
         return ApiResponse.<UserResponse>builder()
                 .result(userService.getMyInfo())
                 .build();

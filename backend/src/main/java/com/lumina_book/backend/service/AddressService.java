@@ -111,7 +111,7 @@ public class AddressService {
     private Address getOwnedAddress(String addressId, User owner) {
         Address address = addressRepository
                 .findById(addressId)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+                .orElseThrow(() -> new AppException(ErrorCode.ADDRESS_NOT_EXISTED));
 
         boolean ownsAddress = owner.getAddresses().stream()
                 .anyMatch(addr -> addr.getAddressId().equals(addressId));

@@ -1,5 +1,5 @@
 import { createPortal } from 'react-dom';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import classNames from 'classnames/bind';
 import styles from './AddressDetailModal.module.scss';
 import { updateAddress } from '../../../../services';
@@ -9,6 +9,7 @@ import {
     normalizeAddressPayload,
     useGhnLocations,
 } from '../useGhnLocations';
+import { validateAddressForm } from '../../../../utils/addressValidation';
 
 const cx = classNames.bind(styles);
 
@@ -69,21 +70,6 @@ const AddressDetailModal = ({ open, address, onClose, onUpdated }) => {
         }
     }, [open, isEditing, form.provinceID, form.districtID, loadDistricts, loadWards]);
 
-    const validate = (payload) => {
-        const newErrors = {};
-        if (!payload.recipientName)
-            newErrors.recipientName = 'Vui lòng nhập tên người nhận';
-        if (!payload.recipientPhoneNumber) {
-            newErrors.recipientPhoneNumber = 'Vui lòng nhập số điện thoại';
-        } else if (!/^0\d{9}$/.test(payload.recipientPhoneNumber)) {
-            newErrors.recipientPhoneNumber = 'Số điện thoại phải gồm 10 số';
-        }
-        if (!payload.provinceID) newErrors.provinceID = 'Chọn tỉnh/thành';
-        if (!payload.districtID) newErrors.districtID = 'Chọn quận/huyện';
-        if (!payload.wardCode) newErrors.wardCode = 'Chọn phường/xã';
-        if (!payload.address) newErrors.address = 'Nhập địa chỉ chi tiết';
-        return newErrors;
-    };
 
     const handleFieldChange = (key, value) => {
         setForm((prev) => ({ ...prev, [key]: value }));
@@ -128,7 +114,7 @@ const AddressDetailModal = ({ open, address, onClose, onUpdated }) => {
     const handleUpdate = async (event) => {
         event.preventDefault();
         const payload = normalizeAddressPayload(form);
-        const validationErrors = validate(payload);
+        const validationErrors = validateAddressForm(payload);
         setErrors(validationErrors);
         if (Object.keys(validationErrors).length) return;
         setSubmitting(true);

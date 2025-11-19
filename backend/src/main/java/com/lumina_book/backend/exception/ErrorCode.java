@@ -54,10 +54,11 @@ public enum ErrorCode {
     CATEGORY_HAS_SUBCATEGORIES(6007, "Không thể xóa danh mục vì còn danh mục con", HttpStatus.BAD_REQUEST),
     OUT_OF_STOCK(6002, "Hết hàng", HttpStatus.BAD_REQUEST),
 
-    // ORDER - SHIPMENT - CART
+    // ORDER - SHIPMENT - CART - ADDRESS
     CART_ITEM_NOT_EXISTED(7001, "Không tồn tại sản phẩm trong giỏ hàng", HttpStatus.NOT_FOUND),
     ORDER_NOT_EXISTED(7002, "Đơn hàng không tồn tại", HttpStatus.NOT_FOUND),
     EXTERNAL_SERVICE_ERROR(7003, "Lỗi kết nối dịch vụ vận chuyển", HttpStatus.BAD_GATEWAY),
+    ADDRESS_NOT_EXISTED(7004, "Địa chỉ không tồn tại", HttpStatus.NOT_FOUND),
 
     // FILE UPLOAD
     FILE_UPLOAD_FAILED(8001, "Không thể upload file", HttpStatus.INTERNAL_SERVER_ERROR);

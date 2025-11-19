@@ -31,7 +31,6 @@ public class VoucherController {
     // Staff endpoints
     @PostMapping
     public ApiResponse<VoucherResponse> createVoucher(@RequestBody @Valid VoucherCreationRequest request) {
-        // log.info("Controller: create voucher");
         return ApiResponse.<VoucherResponse>builder()
                 .result(voucherService.createVoucher(request))
                 .build();
@@ -39,7 +38,6 @@ public class VoucherController {
 
     @GetMapping("/my")
     public ApiResponse<List<VoucherResponse>> getMyVouchers() {
-        // log.info("Controller: get my vouchers");
         return ApiResponse.<List<VoucherResponse>>builder()
                 .result(voucherService.getMyVouchers())
                 .build();

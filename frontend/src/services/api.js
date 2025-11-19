@@ -1,12 +1,23 @@
 // API Service
-// Tất cả API calls
+import { API_BASE_URL_FALLBACK, API_ROUTES } from './constants';
+
+const {
+    auth,
+    users,
+    categories,
+    products,
+    media,
+    vouchers,
+    promotions,
+    addresses,
+    ghn,
+} = API_ROUTES;
 
 // Get API base URL
+// Priority: Environment Variable → Fallback
 export function getApiBaseUrl() {
-    const envUrl =
-        typeof process !== 'undefined' ? process.env?.REACT_APP_API_BASE_URL : undefined;
-    const fallback = 'http://localhost:8080/lumina_book';
-    return (envUrl && String(envUrl).trim()) || fallback;
+    const envUrl = typeof process !== 'undefined' ? process.env?.REACT_APP_API_BASE_URL : undefined;
+    return (envUrl && String(envUrl).trim()) || API_BASE_URL_FALLBACK;
 }
 
 // Get stored token from localStorage or sessionStorage
@@ -29,7 +40,7 @@ export function getStoredToken(key = 'token') {
                 } catch (_) { }
             }
             t = t.trim();
-            // Remove accidental Bearer prefix and whitespace
+            // Xóa prefix Bearer và khoảng trắng
             if (t.toLowerCase().startsWith('bearer ')) {
                 t = t.slice(7);
             }
@@ -43,7 +54,7 @@ export function getStoredToken(key = 'token') {
     }
 }
 
-// Helper function to make API requests
+// Hàm helper để tạo request API
 async function apiRequest(endpoint, options = {}) {
     const { method = 'GET', body = null, token = null, isFormData = false } = options;
     const apiBaseUrl = getApiBaseUrl();
@@ -82,37 +93,37 @@ const extractResult = (data, isArray = false) => {
 
 // ========== USER API ==========
 export async function getMyInfo(token = null) {
-    const { data } = await apiRequest('/users/my-info', { token });
+    const { data } = await apiRequest(users.myInfo, { token });
     return extractResult(data);
 }
 
 export async function getAllUsers(token = null) {
-    const { data } = await apiRequest('/users', { token });
+    const { data } = await apiRequest(users.root, { token });
     return extractResult(data, true);
 }
 
 export async function getUserById(userId, token = null) {
-    const { data } = await apiRequest(`/users/${userId}`, { token });
+    const { data } = await apiRequest(users.detail(userId), { token });
     return extractResult(data);
 }
 
 export async function updateUser(userId, userData, token = null) {
-    const { data } = await apiRequest(`/users/${userId}`, { method: 'PUT', body: userData, token });
+    const { data } = await apiRequest(users.detail(userId), { method: 'PUT', body: userData, token });
     return extractResult(data);
 }
 
 export async function deleteUser(userId, token = null) {
-    const { data, ok } = await apiRequest(`/users/${userId}`, { method: 'DELETE', token });
+    const { data, ok } = await apiRequest(users.detail(userId), { method: 'DELETE', token });
     return { ok, data: extractResult(data) };
 }
 
 export async function createStaff(staffData, token = null) {
-    const { data } = await apiRequest('/users/staff', { method: 'POST', body: staffData, token });
+    const { data } = await apiRequest(users.staff, { method: 'POST', body: staffData, token });
     return extractResult(data);
 }
 
 export async function getUserRole(apiBaseUrl, token) {
-    const { data } = await apiRequest('/users/my-info', { token });
+    const { data } = await apiRequest(users.myInfo, { token });
     return (
         data?.result?.role?.name ||
         data?.role?.name ||
@@ -126,149 +137,151 @@ export async function getUserRole(apiBaseUrl, token) {
 
 // ========== AUTH API ==========
 export async function login(credentials) {
-    const { data, ok } = await apiRequest('/auth/token', { method: 'POST', body: credentials });
+    const { data, ok } = await apiRequest(auth.login, { method: 'POST', body: credentials });
     return { ok, data: extractResult(data) };
 }
 
 export async function register(userData) {
-    const { data, ok } = await apiRequest('/users', { method: 'POST', body: userData });
+    const { data, ok } = await apiRequest(auth.register, { method: 'POST', body: userData });
     return { ok, data: extractResult(data) };
 }
 
 export async function refreshToken(token = null) {
-    const { data, ok } = await apiRequest('/auth/refresh', { method: 'POST', token });
+    const { data, ok } = await apiRequest(auth.refresh, { method: 'POST', token });
     return { ok, data: extractResult(data) };
 }
 
 export async function changePassword(passwordData, token = null) {
-    const { data, ok } = await apiRequest('/auth/change-password', { method: 'POST', body: passwordData, token });
+    const { data, ok } = await apiRequest(auth.changePassword, { method: 'POST', body: passwordData, token });
     return { ok, data };
 }
 
 export async function resetPassword(passwordData) {
     // passwordData có thể là { email } hoặc { email, otp, newPassword }
-    const { data, ok } = await apiRequest('/auth/reset-password', { method: 'POST', body: passwordData });
+    const { data, ok } = await apiRequest(auth.resetPassword, { method: 'POST', body: passwordData });
     return { ok, data };
 }
 
 export async function sendOTP(email, mode) {
-    const { data, ok } = await apiRequest(`/auth/send-otp?email=${encodeURIComponent(email)}&mode=${mode}`, { method: 'POST' });
+    const { data, ok } = await apiRequest(auth.sendOtp(email, mode), { method: 'POST' });
     return { ok, data };
 }
 
 export async function verifyOTP(email, otp, mode) {
-    const { data, ok } = await apiRequest('/auth/verify-otp', { method: 'POST', body: { email, otp, mode } });
+    const { data, ok } = await apiRequest(auth.verifyOtp, { method: 'POST', body: { email, otp, mode } });
     return { ok, data };
 }
 
 // ========== CATEGORIES API ==========
 export async function getAllCategories(token = null) {
-    const { data } = await apiRequest('/categories', { token });
+    const { data } = await apiRequest(categories.root, { token });
     return extractResult(data, true);
 }
 
 export async function getActiveCategories(token = null) {
-    const { data } = await apiRequest('/categories/active', { token });
+    const { data } = await apiRequest(categories.active, { token });
     return extractResult(data, true);
 }
 
 export async function getRootCategories(token = null) {
-    const { data } = await apiRequest('/categories/root', { token });
+    const { data } = await apiRequest(categories.rootOnly, { token });
     return extractResult(data, true);
 }
 
 export async function getSubCategories(parentId, token = null) {
-    const { data } = await apiRequest(`/categories/${parentId}/subcategories`, { token });
+    const { data } = await apiRequest(categories.subCategories(parentId), { token });
     return extractResult(data, true);
 }
 
 export async function getCategoryById(categoryId, token = null) {
-    const { data } = await apiRequest(`/categories/${categoryId}`, { token });
+    const { data } = await apiRequest(categories.detail(categoryId), { token });
     return extractResult(data);
 }
 
 export async function createCategory(categoryData, token = null) {
-    const { data, ok } = await apiRequest('/categories', { method: 'POST', body: categoryData, token });
+    const { data, ok } = await apiRequest(categories.root, { method: 'POST', body: categoryData, token });
     return { ok, data: extractResult(data) };
 }
 
 export async function updateCategory(categoryId, categoryData, token = null) {
-    const { data, ok } = await apiRequest(`/categories/${categoryId}`, { method: 'PUT', body: categoryData, token });
+    const { data, ok } = await apiRequest(categories.detail(categoryId), {
+        method: 'PUT',
+        body: categoryData,
+        token,
+    });
     return { ok, data: extractResult(data) };
 }
 
 export async function deleteCategory(categoryId, token = null) {
-    const { data, ok } = await apiRequest(`/categories/${categoryId}`, { method: 'DELETE', token });
+    const { data, ok } = await apiRequest(categories.detail(categoryId), { method: 'DELETE', token });
     return { ok, data: extractResult(data) };
 }
 
 // ========== PRODUCTS API ==========
 export async function getAllProducts(token = null) {
-    const { data } = await apiRequest('/products', { token });
+    const { data } = await apiRequest(products.root, { token });
     return extractResult(data, true);
 }
 
 export async function getActiveProducts(token = null) {
-    const { data } = await apiRequest('/products/active', { token });
+    const { data } = await apiRequest(products.active, { token });
     return extractResult(data, true);
 }
 
 export async function getProductById(productId, token = null) {
-    const { data } = await apiRequest(`/products/${productId}`, { token });
+    const { data } = await apiRequest(products.detail(productId), { token });
     return extractResult(data);
 }
 
-// Get products by IDs (for displaying product names in promotions/vouchers)
 export async function getProductsByIds(productIds, token = null) {
     if (!productIds || productIds.length === 0) return [];
-    // Fetch all products and filter by IDs (backend doesn't have a bulk endpoint)
-    const { data } = await apiRequest('/products', { token });
+    const { data } = await apiRequest(products.root, { token });
     const allProducts = extractResult(data, true) || [];
     return allProducts.filter(p => productIds.includes(p.id));
 }
 
 export async function getMyProducts(token = null) {
-    const { data } = await apiRequest('/products/my-products', { token });
+    const { data } = await apiRequest(products.myProducts, { token });
     return extractResult(data, true);
 }
 
 export async function getPendingProducts(token = null) {
-    const { data } = await apiRequest('/products/pending', { token });
+    const { data } = await apiRequest(products.pending, { token });
     return extractResult(data, true);
 }
 
 export async function getProductsByCategory(categoryId, token = null) {
-    const { data } = await apiRequest(`/products/category/${categoryId}`, { token });
+    const { data } = await apiRequest(products.byCategory(categoryId), { token });
     return extractResult(data, true);
 }
 
 export async function searchProducts(keyword, token = null) {
-    const { data } = await apiRequest(`/products/search?keyword=${encodeURIComponent(keyword)}`, { token });
+    const { data } = await apiRequest(products.search(keyword), { token });
     return extractResult(data, true);
 }
 
 export async function getProductsByPriceRange(minPrice, maxPrice, token = null) {
-    const { data } = await apiRequest(`/products/price-range?minPrice=${minPrice}&maxPrice=${maxPrice}`, { token });
+    const { data } = await apiRequest(products.priceRange(minPrice, maxPrice), { token });
     return extractResult(data, true);
 }
 
 export async function createProduct(productData, token = null) {
-    const { data, ok } = await apiRequest('/products', { method: 'POST', body: productData, token });
+    const { data, ok } = await apiRequest(products.root, { method: 'POST', body: productData, token });
     return { ok, data: extractResult(data) };
 }
 
 export async function updateProduct(productId, productData, token = null) {
-    const { data, ok } = await apiRequest(`/products/${productId}`, { method: 'PUT', body: productData, token });
+    const { data, ok } = await apiRequest(products.detail(productId), { method: 'PUT', body: productData, token });
     return { ok, data: extractResult(data) };
 }
 
 export async function approveProduct(approveData, token = null) {
-    const { data, ok } = await apiRequest('/products/approve', { method: 'POST', body: approveData, token });
+    const { data, ok } = await apiRequest(products.approve, { method: 'POST', body: approveData, token });
     return { ok, data: extractResult(data) };
 }
 
 export async function setProductDefaultMedia(productId, mediaUrl, token = null) {
-    const { data, ok } = await apiRequest(`/products/${productId}/default-media?mediaUrl=${encodeURIComponent(mediaUrl)}`, { method: 'POST', token });
+    const { data, ok } = await apiRequest(products.defaultMedia(productId, mediaUrl), { method: 'POST', token });
     return { ok, data: extractResult(data) };
 }
 
@@ -276,7 +289,12 @@ export async function setProductDefaultMedia(productId, mediaUrl, token = null) 
 export async function uploadMediaProfile(file, token = null) {
     const formData = new FormData();
     formData.append('file', file);
-    const { data, ok } = await apiRequest('/media/upload', { method: 'POST', body: formData, token, isFormData: true });
+    const { data, ok } = await apiRequest(media.uploadProfile, {
+        method: 'POST',
+        body: formData,
+        token,
+        isFormData: true,
+    });
     return { ok, data: extractResult(data) };
 }
 
@@ -306,105 +324,162 @@ async function uploadMediaFiles(endpoint, file, token = null) {
 }
 
 export async function uploadProductMedia(file, token = null) {
-    return uploadMediaFiles('/media/upload-product', file, token);
+    return uploadMediaFiles(media.uploadProduct, file, token);
 }
 
 export async function uploadVoucherMedia(file, token = null) {
-    return uploadMediaFiles('/media/upload-voucher', file, token);
+    return uploadMediaFiles(media.uploadVoucher, file, token);
 }
 
 export async function uploadPromotionMedia(file, token = null) {
-    return uploadMediaFiles('/media/upload-promotion', file, token);
+    return uploadMediaFiles(media.uploadPromotion, file, token);
 }
 
 // ========== VOUCHER API ==========
 export async function getStaffVouchers(token = null) {
-    const { data } = await apiRequest('/vouchers/my', { token });
+    const { data } = await apiRequest(vouchers.mine, { token });
     return extractResult(data, true);
 }
 
 export async function getActiveVouchers(token = null) {
-    const { data } = await apiRequest('/vouchers/active', { token });
+    const { data } = await apiRequest(vouchers.active, { token });
     return extractResult(data, true);
 }
 
 export async function getVoucherById(voucherId, token = null) {
-    const { data } = await apiRequest(`/vouchers/${voucherId}`, { token });
+    const { data } = await apiRequest(vouchers.detail(voucherId), { token });
     return extractResult(data);
 }
 
 export async function createVoucher(voucherData, token = null) {
-    const { data, ok } = await apiRequest('/vouchers', { method: 'POST', body: voucherData, token });
+    const { data, ok } = await apiRequest(vouchers.root, { method: 'POST', body: voucherData, token });
     return { ok, data: extractResult(data) };
 }
 
 export async function updateVoucher(voucherId, voucherData, token = null) {
-    const { data, ok } = await apiRequest(`/vouchers/${voucherId}`, { method: 'PUT', body: voucherData, token });
+    const { data, ok } = await apiRequest(vouchers.detail(voucherId), { method: 'PUT', body: voucherData, token });
     return { ok, data: extractResult(data) };
 }
 
 export async function deleteVoucher(voucherId, token = null) {
-    const { data, ok } = await apiRequest(`/vouchers/${voucherId}`, { method: 'DELETE', token });
+    const { data, ok } = await apiRequest(vouchers.detail(voucherId), { method: 'DELETE', token });
     return { ok, data: extractResult(data) };
 }
 
 export async function approveVoucher(approvalData, token = null) {
-    const { data, ok } = await apiRequest('/vouchers/approve', { method: 'POST', body: approvalData, token });
+    const { data, ok } = await apiRequest(vouchers.approve, { method: 'POST', body: approvalData, token });
     return { ok, data: extractResult(data) };
 }
 
 export async function getPendingVouchers(token = null) {
-    const { data } = await apiRequest('/vouchers/pending', { token });
+    const { data } = await apiRequest(vouchers.pending, { token });
     return extractResult(data, true);
 }
 
 export async function getVouchersByStatus(status, token = null) {
-    const { data } = await apiRequest(`/vouchers/status/${status}`, { token });
+    const { data } = await apiRequest(vouchers.byStatus(status), { token });
     return extractResult(data, true);
 }
 
 // ========== PROMOTION API ==========
 export async function getStaffPromotions(token = null) {
-    const { data } = await apiRequest('/promotions/my-promotions', { token });
+    const { data } = await apiRequest(promotions.mine, { token });
     return extractResult(data, true);
 }
 
 export async function getActivePromotions(token = null) {
-    const { data } = await apiRequest('/promotions/active', { token });
+    const { data } = await apiRequest(promotions.active, { token });
     return extractResult(data, true);
 }
 
 export async function getPromotionById(promotionId, token = null) {
-    const { data } = await apiRequest(`/promotions/${promotionId}`, { token });
+    const { data } = await apiRequest(promotions.detail(promotionId), { token });
     return extractResult(data);
 }
 
 export async function createPromotion(promotionData, token = null) {
-    const { data, ok, status } = await apiRequest('/promotions', { method: 'POST', body: promotionData, token });
+    const { data, ok, status } = await apiRequest(promotions.root, { method: 'POST', body: promotionData, token });
     return { ok, status, data, result: extractResult(data) };
 }
 
 export async function updatePromotion(promotionId, promotionData, token = null) {
-    const { data, ok } = await apiRequest(`/promotions/${promotionId}`, { method: 'PUT', body: promotionData, token });
+    const { data, ok } = await apiRequest(promotions.detail(promotionId), {
+        method: 'PUT',
+        body: promotionData,
+        token,
+    });
     return { ok, data: extractResult(data) };
 }
 
 export async function deletePromotion(promotionId, token = null) {
-    const { data, ok } = await apiRequest(`/promotions/${promotionId}`, { method: 'DELETE', token });
+    const { data, ok } = await apiRequest(promotions.detail(promotionId), { method: 'DELETE', token });
     return { ok, data: extractResult(data) };
 }
 
 export async function approvePromotion(approvalData, token = null) {
-    const { data, ok } = await apiRequest('/promotions/approve', { method: 'POST', body: approvalData, token });
+    const { data, ok } = await apiRequest(promotions.approve, { method: 'POST', body: approvalData, token });
     return { ok, data: extractResult(data) };
 }
 
 export async function getPendingPromotions(token = null) {
-    const { data } = await apiRequest('/promotions/pending', { token });
+    const { data } = await apiRequest(promotions.pending, { token });
     return extractResult(data, true);
 }
 
 export async function getPromotionsByStatus(status, token = null) {
-    const { data } = await apiRequest(`/promotions/status/${status}`, { token });
+    const { data } = await apiRequest(promotions.byStatus(status), { token });
     return extractResult(data, true);
+}
+
+// ========== ADDRESS API ==========
+// Lấy danh sách địa chỉ của user hiện tại
+export async function getMyAddresses(token = null) {
+    const { data } = await apiRequest(addresses.root, { token });
+    return extractResult(data, true);
+}
+
+export async function getAddressById(addressId, token = null) {
+    const { data } = await apiRequest(addresses.detail(addressId), { token });
+    return extractResult(data);
+}
+
+export async function createAddress(addressData, token = null) {
+    const { data, ok } = await apiRequest(addresses.root, { method: 'POST', body: addressData, token });
+    return { ok, data: extractResult(data) };
+}
+
+export async function updateAddress(addressId, addressData, token = null) {
+    const { data, ok } = await apiRequest(addresses.detail(addressId), {
+        method: 'PUT',
+        body: addressData,
+        token,
+    });
+    return { ok, data: extractResult(data) };
+}
+
+export async function deleteAddress(addressId, token = null) {
+    const { data, ok } = await apiRequest(addresses.detail(addressId), { method: 'DELETE', token });
+    return { ok, data: extractResult(data) };
+}
+
+// ========== GHN API (Qua Backend) ==========
+// Các API gọi qua backend để bảo mật token và shopId
+export async function getGhnProvinces(token = null) {
+    const { data } = await apiRequest(ghn.provinces, { token });
+    return extractResult(data, true);
+}
+
+export async function getGhnDistricts(provinceId, token = null) {
+    const { data } = await apiRequest(ghn.districts(provinceId), { token });
+    return extractResult(data, true);
+}
+
+export async function getGhnWards(districtId, token = null) {
+    const { data } = await apiRequest(ghn.wards(districtId), { token });
+    return extractResult(data, true);
+}
+
+export async function calculateGhnShippingFee(feeData, token = null) {
+    const { data, ok } = await apiRequest(ghn.shippingFees, { method: 'POST', body: feeData, token });
+    return { ok, data: extractResult(data) };
 }

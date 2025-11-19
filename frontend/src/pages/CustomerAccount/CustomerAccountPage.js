@@ -433,6 +433,3 @@ function CustomerAccountPage() {
 }
 
 export default CustomerAccountPage;
-
-//
-

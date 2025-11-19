@@ -94,7 +94,7 @@ public class UserService {
                 .address(request.getAddress() != null ? request.getAddress() : "")
                 .avatarUrl(defaultAvatarUrl)
                 .createAt(LocalDate.now())
-                .isActive(request.isActive())
+                .active(true)
                 .build();
 
         // Lấy role
@@ -212,11 +212,11 @@ public class UserService {
             }
         }
 
-        // isActive - chỉ cập nhật nếu isActive có trong request và user là ADMIN
-        if (request.getIsActive() != null) {
+        // active - chỉ cập nhật nếu active có trong request và user là ADMIN
+        if (request.getActive() != null) {
             if (isAdmin) {
                 boolean oldIsActiveValue = user.isActive();
-                boolean newIsActiveValue = request.getIsActive();
+                boolean newIsActiveValue = request.getActive();
                 
                 // Check if account is being locked (transition from active to inactive)
                 if (oldIsActiveValue && !newIsActiveValue) {
@@ -245,8 +245,8 @@ public class UserService {
                 
                 user.setActive(newIsActiveValue);
             } else {
-                // Nếu không phải ADMIN mà cố gắng thay đổi isActive → từ chối
-                log.warn("Non-admin user {} attempted to change isActive for user {}", currentEmail, userId);
+                // Nếu không phải ADMIN mà cố gắng thay đổi active → từ chối
+                log.warn("Non-admin user {} attempted to change active for user {}", currentEmail, userId);
                 throw new AppException(ErrorCode.UNAUTHORIZED);
             }
         }

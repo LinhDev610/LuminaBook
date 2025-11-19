@@ -43,12 +43,14 @@ jwt:
 # Default avatar configuration
 app:
   default-avatar: "/assets/images/default-avatar.png"
+  frontend:
+    base-url: "http://localhost:8080/lumina_book"
 
 # GHN configuration
 ghn:
-  token: ${GHN_TOKEN:}
-  shop-id: ${GHN_SHOP_ID:0}
-  base-url: https://online-gateway.ghn.vn
+  token: ${GHN_TOKEN}
+  shop-id: ${GHN_SHOP_ID}
+  base-url: https://dev-online-gateway.ghn.vn
 
 # Layer1 - Controller: Quan ly cac mapping, endpoint
 # Layer2 - Service: Xu ly cac logic lien quan toi subdomain

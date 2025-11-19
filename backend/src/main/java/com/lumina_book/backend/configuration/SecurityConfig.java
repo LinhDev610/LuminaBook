@@ -29,7 +29,8 @@ public class SecurityConfig {
         "/auth/refresh",
         "/auth/send-otp",
         "/auth/verify-otp",
-        "/auth/reset-password"
+        "/auth/reset-password",
+        "/ghn/shipping-fees"
     };
 
     private static final String[] PUBLIC_GET_ENDPOINTS = {
@@ -42,6 +43,9 @@ public class SecurityConfig {
         "/products/**",
         "/uploads/**",
         "/banners/active",
+        "/ghn/provinces",
+        "/ghn/districts",
+        "/ghn/wards",
         "/error"  // Allow error endpoint to be accessed without authentication
     };
 

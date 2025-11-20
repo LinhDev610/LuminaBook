@@ -33,6 +33,12 @@ public class Order {
     @OneToOne(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     Shipment shipment;
 
+    /**
+     * Mã đơn hàng hiển thị cho khách (ví dụ: LMN20241120ABC123).
+     */
+    @Column(name = "order_code", unique = true)
+    String code;
+
     String note;
     String shippingAddress;
     LocalDate orderDate;

@@ -10,6 +10,8 @@ import {
     getActiveProducts,
     getStoredToken,
     uploadPromotionMedia,
+    getActivePromotions,
+    getPendingPromotions,
     DISCOUNT_VALUE_TYPES,
     APPLY_SCOPE_OPTIONS,
     INITIAL_FORM_STATE_PROMOTION,
@@ -214,6 +216,243 @@ export default function AddPromotionPage() {
         setFormState((prev) => ({ ...prev, imageUrl: '' }));
     };
 
+    // Tạo map để tra cứu categoryId của mỗi product nhanh chóng
+    const productCategoryMap = useMemo(() => {
+        const map = new Map();
+        products.forEach((product) => {
+            if (product.id && product.categoryId) {
+                map.set(product.id, {
+                    categoryId: product.categoryId,
+                    categoryName: product.categoryName || '',
+                    productName: product.name || '',
+                });
+            }
+        });
+        return map;
+    }, [products]);
+
+    // Kiểm tra trùng lặp promotion với các promotion đang active hoặc pending
+    const checkOverlappingPromotions = useCallback(async () => {
+        try {
+            const token = getStoredToken();
+            const [activePromotions, pendingPromotions] = await Promise.all([
+                getActivePromotions(token),
+                getPendingPromotions(token),
+            ]);
+
+            const allPromotions = [
+                ...(Array.isArray(activePromotions) ? activePromotions : []),
+                ...(Array.isArray(pendingPromotions) ? pendingPromotions : []),
+            ];
+
+            const newStartDate = new Date(formState.startDate);
+            const newExpiryDate = new Date(formState.expiryDate);
+            const overlappingItems = {
+                categories: [],
+                products: [],
+                categoryProductOverlaps: [], // Promotion mới áp dụng cho category, promotion cũ áp dụng cho product trong category đó
+                productCategoryOverlaps: [], // Promotion mới áp dụng cho product, promotion cũ áp dụng cho category của product đó
+            };
+
+            for (const promotion of allPromotions) {
+                // Bỏ qua promotion hiện tại nếu đang update
+                if (promotion.id && promotion.id === formState.id) {
+                    continue;
+                }
+
+                const existingStartDate = promotion.startDate ? new Date(promotion.startDate) : null;
+                const existingExpiryDate = promotion.expiryDate ? new Date(promotion.expiryDate) : null;
+
+                if (!existingStartDate || !existingExpiryDate) {
+                    continue;
+                }
+
+                // Kiểm tra xem có trùng khoảng thời gian không
+                const hasTimeOverlap =
+                    (newStartDate <= existingExpiryDate && newExpiryDate >= existingStartDate);
+
+                if (!hasTimeOverlap) {
+                    continue;
+                }
+
+                // Kiểm tra trùng theo applyScope
+                if (formState.applyScope === 'ORDER' && promotion.applyScope === 'ORDER') {
+                    // Cả hai đều áp dụng cho toàn bộ đơn hàng
+                    return {
+                        hasOverlap: true,
+                        message: `Đã có khuyến mãi "${promotion.name}" (mã: ${promotion.code}) áp dụng cho toàn bộ đơn hàng trong khoảng thời gian này.`,
+                    };
+                }
+
+                if (formState.applyScope === 'CATEGORY' && promotion.applyScope === 'CATEGORY') {
+                    // Kiểm tra trùng danh mục (1 promotion chỉ áp dụng cho 1 category)
+                    const newCategoryId = Array.isArray(formState.categoryIds)
+                        ? formState.categoryIds[0]
+                        : formState.categoryIds;
+                    const existingCategoryIds = promotion.categoryIds
+                        ? Array.from(promotion.categoryIds)
+                        : [];
+                    const existingCategoryNames = promotion.categoryNames || [];
+
+                    // Lấy category của promotion cũ
+                    const existingCategoryId = existingCategoryIds.length > 0 ? existingCategoryIds[0] : null;
+                    const existingCategoryName = existingCategoryNames.length > 0 ? existingCategoryNames[0] : null;
+
+                    // So sánh category ID
+                    if (newCategoryId && existingCategoryId && newCategoryId === existingCategoryId) {
+                        const categoryName = existingCategoryName || newCategoryId;
+                        overlappingItems.categories.push({
+                            promotionName: promotion.name,
+                            promotionCode: promotion.code,
+                            categoryName: categoryName,
+                        });
+                    }
+                }
+
+                if (formState.applyScope === 'PRODUCT' && promotion.applyScope === 'PRODUCT') {
+                    // Kiểm tra trùng sản phẩm
+                    const newProductIds = Array.isArray(formState.productIds)
+                        ? formState.productIds
+                        : [];
+                    const existingProductIds = promotion.productIds
+                        ? Array.from(promotion.productIds)
+                        : [];
+                    const existingProductNames = promotion.productNames || [];
+
+                    const overlappingProductIds = newProductIds.filter((id) =>
+                        existingProductIds.includes(id),
+                    );
+
+                    if (overlappingProductIds.length > 0) {
+                        const overlappingNames = overlappingProductIds.map((id) => {
+                            const index = existingProductIds.indexOf(id);
+                            return existingProductNames[index] || id;
+                        });
+                        overlappingItems.products.push({
+                            promotionName: promotion.name,
+                            promotionCode: promotion.code,
+                            productNames: overlappingNames,
+                        });
+                    }
+                }
+
+                // Kiểm tra trường hợp: Promotion mới áp dụng cho CATEGORY, promotion cũ áp dụng cho PRODUCT trong category đó
+                if (formState.applyScope === 'CATEGORY' && promotion.applyScope === 'PRODUCT') {
+                    const newCategoryId = Array.isArray(formState.categoryIds)
+                        ? formState.categoryIds[0]
+                        : formState.categoryIds;
+                    const existingProductIds = promotion.productIds
+                        ? Array.from(promotion.productIds)
+                        : [];
+                    const existingProductNames = promotion.productNames || [];
+
+                    // Tìm các sản phẩm trong promotion cũ thuộc category của promotion mới
+                    const conflictingProducts = [];
+                    existingProductIds.forEach((productId, index) => {
+                        const productInfo = productCategoryMap.get(productId);
+                        if (productInfo && productInfo.categoryId === newCategoryId) {
+                            conflictingProducts.push({
+                                productName: existingProductNames[index] || productInfo.productName || productId,
+                                categoryName: productInfo.categoryName,
+                            });
+                        }
+                    });
+
+                    if (conflictingProducts.length > 0) {
+                        const categoryName = conflictingProducts[0].categoryName;
+                        overlappingItems.categoryProductOverlaps.push({
+                            promotionName: promotion.name,
+                            promotionCode: promotion.code,
+                            categoryName: categoryName,
+                            productNames: conflictingProducts.map((p) => p.productName),
+                        });
+                    }
+                }
+
+                // Kiểm tra trường hợp: Promotion mới áp dụng cho PRODUCT, promotion cũ áp dụng cho CATEGORY của product đó
+                if (formState.applyScope === 'PRODUCT' && promotion.applyScope === 'CATEGORY') {
+                    const newProductIds = Array.isArray(formState.productIds)
+                        ? formState.productIds
+                        : [];
+                    const existingCategoryIds = promotion.categoryIds
+                        ? Array.from(promotion.categoryIds)
+                        : [];
+                    const existingCategoryNames = promotion.categoryNames || [];
+
+                    // Lấy category của promotion cũ 
+                    const existingCategoryId = existingCategoryIds.length > 0 ? existingCategoryIds[0] : null;
+                    const existingCategoryName = existingCategoryNames.length > 0 ? existingCategoryNames[0] : null;
+
+                    // Tìm các sản phẩm trong promotion mới thuộc category của promotion cũ
+                    const conflictingProducts = [];
+                    newProductIds.forEach((productId) => {
+                        const productInfo = productCategoryMap.get(productId);
+                        if (productInfo && productInfo.categoryId === existingCategoryId) {
+                            conflictingProducts.push({
+                                productName: productInfo.productName,
+                                categoryName: existingCategoryName || productInfo.categoryName,
+                            });
+                        }
+                    });
+
+                    if (conflictingProducts.length > 0) {
+                        const categoryName = conflictingProducts[0].categoryName;
+                        overlappingItems.productCategoryOverlaps.push({
+                            promotionName: promotion.name,
+                            promotionCode: promotion.code,
+                            categoryName: categoryName,
+                            productNames: conflictingProducts.map((p) => p.productName),
+                        });
+                    }
+                }
+            }
+
+            // Tạo thông báo lỗi chi tiết
+            const errorMessages = [];
+            if (overlappingItems.categories.length > 0) {
+                overlappingItems.categories.forEach((item) => {
+                    errorMessages.push(
+                        `Danh mục "${item.categoryName}" đã được áp dụng bởi khuyến mãi "${item.promotionName}" (mã: ${item.promotionCode}) trong khoảng thời gian này.`,
+                    );
+                });
+            }
+            if (overlappingItems.products.length > 0) {
+                overlappingItems.products.forEach((item) => {
+                    errorMessages.push(
+                        `Sản phẩm "${item.productNames.join(', ')}" đã được áp dụng bởi khuyến mãi "${item.promotionName}" (mã: ${item.promotionCode}) trong khoảng thời gian này.`,
+                    );
+                });
+            }
+            if (overlappingItems.categoryProductOverlaps.length > 0) {
+                overlappingItems.categoryProductOverlaps.forEach((item) => {
+                    errorMessages.push(
+                        `Danh mục "${item.categoryName}" đang được áp dụng bởi khuyến mãi "${item.promotionName}" (mã: ${item.promotionCode}) thông qua các sản phẩm: "${item.productNames.join(', ')}" trong khoảng thời gian này.`,
+                    );
+                });
+            }
+            if (overlappingItems.productCategoryOverlaps.length > 0) {
+                overlappingItems.productCategoryOverlaps.forEach((item) => {
+                    errorMessages.push(
+                        `Sản phẩm "${item.productNames.join(', ')}" thuộc danh mục "${item.categoryName}" đã được áp dụng bởi khuyến mãi "${item.promotionName}" (mã: ${item.promotionCode}) trong khoảng thời gian này.`,
+                    );
+                });
+            }
+
+            if (errorMessages.length > 0) {
+                return {
+                    hasOverlap: true,
+                    message: errorMessages.join('\n'),
+                };
+            }
+
+            return { hasOverlap: false };
+        } catch (error) {
+            console.error('Error checking overlapping promotions:', error);
+            // Nếu có lỗi khi kiểm tra, vẫn cho phép submit và để backend xử lý
+            return { hasOverlap: false };
+        }
+    }, [formState, productCategoryMap]);
+
     const validate = useCallback(() => {
         const validationErrors = {};
         if (!formState.name.trim()) {
@@ -321,6 +560,15 @@ export default function AddPromotionPage() {
 
         try {
             setIsSubmitting(true);
+
+            // Kiểm tra trùng lặp promotion trước khi submit
+            const overlapCheck = await checkOverlappingPromotions();
+            if (overlapCheck.hasOverlap) {
+                notifyError(overlapCheck.message);
+                setIsSubmitting(false);
+                return;
+            }
+
             const token = getStoredToken();
             const payload = await preparePayload();
             const { ok, data, status, result } = await createPromotion(payload, token);

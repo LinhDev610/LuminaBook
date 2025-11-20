@@ -48,19 +48,20 @@ public class StaticResourceConfig implements WebMvcConfigurer {
         registry.addResourceHandler("/assets/**")
                 .addResourceLocations("classpath:/static/assets/", "file:assets/");
 
-        // Handle trường hợp request trực tiếp đến filename (UUID pattern) - tìm trong tất cả các thư mục media
-        // Pattern: UUID với extension (ví dụ: 17e72808-42a6-47fb-84cf-c00ee4e8308a.png)
-        // Thêm handler cho từng extension phổ biến
-        String[] extensions = { "png", "jpg", "jpeg", "gif", "webp", "mp4" };
-        for (String ext : extensions) {
-            registry.addResourceHandler("/*." + ext)
-                    .addResourceLocations(
-                            "file:uploads/promotions/",
-                            "file:uploads/vouchers/",
-                            "file:uploads/product_media/",
-                            "file:uploads/profile_media/"
-                    );
-        }
+        // Nếu muốn hỗ trợ truy cập trực tiếp bằng UUID filename (vd: 17e7...08.png),
+        // bạn có thể bật lại block bên dưới nhưng cần đảm bảo file thực sự tồn tại trong thư mục uploads.
+        // Hiện tại block này bị tắt để tránh log lỗi NoResourceFoundException khi client request tới
+        // các file không tồn tại như f507172a-7fb7-4f0d-bf43-8eedbcc51dd4.png.
+//        String[] extensions = { "png", "jpg", "jpeg", "gif", "webp", "mp4" };
+//        for (String ext : extensions) {
+//            registry.addResourceHandler("/*." + ext)
+//                    .addResourceLocations(
+//                            "file:uploads/promotions/",
+//                            "file:uploads/vouchers/",
+//                            "file:uploads/product_media/",
+//                            "file:uploads/profile_media/"
+//                    );
+//        }
     }
 }
 

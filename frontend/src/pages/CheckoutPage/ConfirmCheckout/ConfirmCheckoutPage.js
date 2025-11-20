@@ -28,6 +28,7 @@ export default function ConfirmCheckoutPage() {
     const paymentMethod = state.paymentMethod || 'momo'; // 'momo' | 'cod'
     const address = state.address || {};
     const summary = state.summary || {};
+    const cartItemIds = state.cartItemIds || [];
 
     const items = summary.items || [];
     const shippingFee = summary.shippingFee || 0;
@@ -94,6 +95,7 @@ export default function ConfirmCheckoutPage() {
                 shippingAddress: address.addressText || '',
                 note: '', // có thể truyền ghi chú nếu cần
                 shippingFee,
+                cartItemIds,
             };
 
             const orderResp = await fetch(`${apiBaseUrl}/orders/checkout`, {
@@ -133,10 +135,9 @@ export default function ConfirmCheckoutPage() {
 
             // Bước 2: Nếu là MOMO thì khởi tạo thanh toán MoMo cho đơn hàng này
             if (paymentMethod === 'momo') {
-                const amountForMomo =
-                    typeof order.totalAmount === 'number' && order.totalAmount > 0
-                        ? Math.round(order.totalAmount)
-                        : currentTotal;
+                // Sử dụng đúng tổng tiền đang hiển thị trên UI để gửi sang MoMo,
+                // tránh lệch số do khác biệt cách tính giữa frontend và backend.
+                const amountForMomo = Math.round(currentTotal);
 
                 // Lưu / cập nhật thông tin đơn hàng gần nhất để hiển thị ở màn hình OrderSuccess
                 try {

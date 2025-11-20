@@ -55,3 +55,14 @@ ghn:
 # Layer1 - Controller: Quan ly cac mapping, endpoint
 # Layer2 - Service: Xu ly cac logic lien quan toi subdomain
 # Layer3 - Repository: Tang tuong tac truc tiep voi DBMS
+
+momo:
+  partner-code: MOMOBKUN20180529
+  return-url: "http://localhost:3000/"
+  end-point: "https://test-payment.momo.vn/v2/gateway/api"
+  ipn-url: "http://localhost:8080/api/momo/ipn-handler"
+  access-key: "k1m05TvNBzhg7h7j"
+  secret-key: "at67qH6mk8wSY1nAyMoYkMWACiEi2bsa"
+  request-type: "captureWallet"
+
+

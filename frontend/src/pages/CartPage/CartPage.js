@@ -84,7 +84,7 @@ export default function CartPage() {
                     data.items.forEach((item) => {
                         if (!item.productId) return;
 
-                        // Fetch product để lấy ảnh và giá gốc (chưa giảm)
+                        // Fetch product để lấy ảnh + thông tin giá giống ProductDetail
                         fetch(`${API_BASE_URL}/products/${item.productId}`, {
                             method: 'GET',
                             headers: { 'Content-Type': 'application/json' },
@@ -92,6 +92,7 @@ export default function CartPage() {
                             .then((res) => res.json())
                             .then((productData) => {
                                 const product = productData?.result || productData;
+
                                 const imageUrl =
                                     product?.defaultMediaUrl ||
                                     (product?.mediaUrls && product.mediaUrls.length > 0
@@ -101,16 +102,29 @@ export default function CartPage() {
                                     ? normalizeMediaUrl(imageUrl, API_BASE_URL)
                                     : defaultProductImage;
 
-                                const originalUnitPrice =
-                                    typeof product?.price === 'number' && product.price > 0
+                                // Logic tính giá giống với ProductDetail:
+                                // - currentPrice: giá đang bán (đã giảm)
+                                // - originalPrice: giá gốc trước giảm
+                                const currentPrice =
+                                    (typeof product?.price === 'number' && product.price > 0
                                         ? product.price
                                         : typeof product?.unitPrice === 'number' &&
                                           product.unitPrice > 0
                                             ? product.unitPrice
-                                            : item.unitPrice || 0;
+                                            : undefined) ?? item.unitPrice ?? 0;
+
+                                const originalUnitPrice =
+                                    (typeof product?.originalPrice === 'number' &&
+                                        product.originalPrice > 0
+                                        ? product.originalPrice
+                                        : typeof product?.unitPrice === 'number' &&
+                                          product.unitPrice > 0
+                                            ? product.unitPrice
+                                            : undefined) ?? currentPrice;
 
                                 metaMap[item.productId] = {
                                     imageUrl: normalizedImage,
+                                    currentPrice,
                                     originalUnitPrice,
                                 };
                                 setProductMeta((prev) => ({ ...prev, ...metaMap }));
@@ -118,6 +132,7 @@ export default function CartPage() {
                             .catch(() => {
                                 metaMap[item.productId] = {
                                     imageUrl: defaultProductImage,
+                                    currentPrice: item.unitPrice || 0,
                                     originalUnitPrice: item.unitPrice || 0,
                                 };
                                 setProductMeta((prev) => ({ ...prev, ...metaMap }));
@@ -198,7 +213,7 @@ export default function CartPage() {
         setUpdatingItems((prev) => new Set(prev).add(itemId));
         try {
             const token = getStoredToken('token');
-            const { ok, status, data } = await removeCartItem(itemId, token);
+            const { ok, status } = await removeCartItem(itemId, token);
 
             if (!ok) {
                 if (status === 401) {
@@ -210,7 +225,12 @@ export default function CartPage() {
                 return;
             }
 
-            setCart(data);
+            // Xóa item khỏi state giỏ hàng trên UI, độc lập với payload backend trả về
+            setCart((prev) => {
+                if (!prev) return prev;
+                const nextItems = (prev.items || []).filter((item) => item.id !== itemId);
+                return { ...prev, items: nextItems };
+            });
             setSelectedItems((prev) => {
                 const newSet = new Set(prev);
                 newSet.delete(itemId);
@@ -295,13 +315,40 @@ export default function CartPage() {
         }
     };
 
-    // Calculate totals
+    // Tự động hủy voucher khi không còn chọn sản phẩm nào trong giỏ
+    useEffect(() => {
+        if (!cart) return;
+
+        const items = cart.items || [];
+        const hasVoucher = !!selectedVoucherCode || !!cart.appliedVoucherCode;
+        const hasSelectedItems = selectedItems.size > 0;
+
+        // Nếu đang có voucher nhưng không chọn sản phẩm nào thì tự động hủy
+        if (items.length >= 0 && hasVoucher && !hasSelectedItems) {
+            handleClearVoucher();
+        }
+    }, [cart, selectedItems, selectedVoucherCode]);
+
+    // Calculate totals: tính lại giống đúng logic hiển thị (giá đang bán * số lượng)
     const selectedItemsData = useMemo(() => {
         const items = cart?.items || [];
         const selected = items.filter((item) => selectedItems.has(item.id));
-        const subtotal = selected.reduce((sum, item) => sum + (item.finalPrice || 0), 0);
+
+        const subtotal = selected.reduce((sum, item) => {
+            const meta = productMeta[item.productId] || {};
+            const quantity = item.quantity || 1;
+
+            // Giá đang bán ưu tiên lấy từ meta (giống ProductDetail), fallback về unitPrice trong cart
+            const unitPriceFromMeta =
+                typeof meta.currentPrice === 'number' ? meta.currentPrice : undefined;
+            const unitPrice = unitPriceFromMeta ?? item.unitPrice ?? 0;
+
+            const lineTotal = unitPrice * quantity;
+            return sum + lineTotal;
+        }, 0);
+
         return { subtotal, items: selected };
-    }, [cart, selectedItems]);
+    }, [cart, selectedItems, productMeta]);
 
     const formatPrice = (price) =>
         new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price || 0);
@@ -374,7 +421,13 @@ export default function CartPage() {
                                 const meta = productMeta[item.productId] || {};
                                 const productImage = meta.imageUrl || defaultProductImage;
                                 const quantity = item.quantity || 1;
-                                const unitPrice = item.unitPrice || 0;
+                                // Giá đang bán ưu tiên lấy từ meta (giống ProductDetail), fallback về unitPrice trong cart
+                                const unitPriceFromMeta =
+                                    typeof meta.currentPrice === 'number'
+                                        ? meta.currentPrice
+                                        : undefined;
+                                const unitPrice =
+                                    unitPriceFromMeta ?? item.unitPrice ?? 0;
                                 const originalUnitPrice =
                                     typeof meta.originalUnitPrice === 'number'
                                         ? meta.originalUnitPrice
@@ -384,6 +437,8 @@ export default function CartPage() {
                                 const originalPrice = originalUnitPrice;
                                 const showOriginal =
                                     originalPrice > currentPrice && originalPrice > 0;
+                                // Thành tiền hiển thị = giá hiện tại * số lượng (giống trang chi tiết)
+                                const itemSubtotal = currentPrice * quantity;
 
                                 return (
                                     <div key={item.id} className={cx('cart-item')}>
@@ -458,7 +513,7 @@ export default function CartPage() {
                                         <div className={cx('item-subtotal')}>
                                             <span className={cx('subtotal-label')}>Thành tiền</span>
                                             <span className={cx('subtotal-value')}>
-                                                {formatPrice(item.finalPrice)}
+                                                {formatPrice(itemSubtotal)}
                                             </span>
                                         </div>
 

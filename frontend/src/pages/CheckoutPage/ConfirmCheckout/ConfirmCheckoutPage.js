@@ -86,17 +86,112 @@ export default function ConfirmCheckoutPage() {
         try {
             setSubmitting(true);
 
-            if (paymentMethod === 'momo') {
-                const apiBaseUrl = getApiBaseUrl();
-                const token = getStoredToken('token');
+            const apiBaseUrl = getApiBaseUrl();
+            const token = getStoredToken('token');
 
-                const resp = await fetch(`${apiBaseUrl}/api/momo/create?amount=${currentTotal}`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            // Bước 1: tạo đơn hàng từ giỏ hàng hiện tại
+            const orderPayload = {
+                shippingAddress: address.addressText || '',
+                note: '', // có thể truyền ghi chú nếu cần
+                shippingFee,
+            };
+
+            const orderResp = await fetch(`${apiBaseUrl}/orders/checkout`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                },
+                body: JSON.stringify(orderPayload),
+            });
+
+            if (!orderResp.ok) {
+                let message = 'Không thể tạo đơn hàng. Vui lòng thử lại.';
+                try {
+                    const errorBody = await orderResp.json();
+                    message =
+                        errorBody?.message ||
+                        errorBody?.error ||
+                        errorBody?.detail ||
+                        message;
+                } catch {
+                    // ignore parse error, dùng message mặc định
+                }
+                showError(message);
+                setSubmitting(false);
+                return;
+            }
+
+            const orderData = await orderResp.json().catch(() => null);
+            const order = orderData?.result || orderData;
+
+            if (!order || !order.id) {
+                showError('Không nhận được thông tin đơn hàng từ server.');
+                setSubmitting(false);
+                return;
+            }
+
+            // Bước 2: Nếu là MOMO thì khởi tạo thanh toán MoMo cho đơn hàng này
+            if (paymentMethod === 'momo') {
+                const amountForMomo =
+                    typeof order.totalAmount === 'number' && order.totalAmount > 0
+                        ? Math.round(order.totalAmount)
+                        : currentTotal;
+
+                // Lưu / cập nhật thông tin đơn hàng gần nhất để hiển thị ở màn hình OrderSuccess
+                try {
+                    const existingRaw = window.localStorage.getItem('lumina_latest_order');
+                    let existing = {};
+                    if (existingRaw) {
+                        try {
+                            existing = JSON.parse(existingRaw) || {};
+                        } catch {
+                            existing = {};
+                        }
+                    }
+
+                    const latestOrderInfo = {
+                        ...existing,
+                        orderId: order.id,
+                        code: order.code || order.orderCode || existing.code || null,
+                        // Đảm bảo các field quan trọng luôn có giá trị
+                        receiverName:
+                            existing.receiverName || address.recipientName || 'Khách hàng',
+                        paymentMethod: existing.paymentMethod || 'Thanh toán qua MoMo',
+                        subtotal:
+                            typeof existing.subtotal === 'number'
+                                ? existing.subtotal
+                                : currentSubtotal,
+                        shippingFee:
+                            typeof existing.shippingFee === 'number'
+                                ? existing.shippingFee
+                                : shippingFee,
+                        voucherDiscount:
+                            typeof existing.voucherDiscount === 'number'
+                                ? existing.voucherDiscount
+                                : summary.voucherDiscount || 0,
+                        total: amountForMomo,
+                        shippingProvider:
+                            existing.shippingProvider || address.shippingProvider || 'GHN',
+                    };
+                    window.localStorage.setItem(
+                        'lumina_latest_order',
+                        JSON.stringify(latestOrderInfo),
+                    );
+                } catch (storageErr) {
+                    console.warn('Cannot persist latest order info', storageErr);
+                }
+
+                const resp = await fetch(
+                    `${apiBaseUrl}/api/momo/create?amount=${amountForMomo}&orderId=${encodeURIComponent(order.id)}`,
+                    {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                        },
                     },
-                });
+                );
 
                 if (!resp.ok) {
                     showError('Không thể khởi tạo thanh toán MoMo. Vui lòng thử lại.');
@@ -119,7 +214,8 @@ export default function ConfirmCheckoutPage() {
                 return;
             }
 
-            // COD: tạm thời quay về trang chủ sau khi xác nhận
+            // COD: tạo đơn xong thì quay về trang chủ (có thể điều hướng sang trang "Đơn hàng của tôi" sau này)
+            success('Đơn hàng COD đã được tạo thành công.');
             navigate('/');
         } catch (err) {
             console.error('Error when confirming checkout:', err);

@@ -1,0 +1,37 @@
+package com.lumina_book.backend.dto.response;
+
+import java.time.LocalDate;
+
+import lombok.*;
+import lombok.experimental.FieldDefaults;
+
+@Getter
+@Setter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@FieldDefaults(level = AccessLevel.PRIVATE)
+public class OrderResponse {
+
+    String id;
+
+    /**
+     * Mã đơn hàng hiển thị (hiện tại dùng luôn id, có thể thay đổi sau).
+     */
+    String code;
+
+    String customerName;
+
+    String customerEmail;
+
+    LocalDate orderDate;
+
+    Double totalAmount;
+
+    /**
+     * Trạng thái đơn hàng dạng chuỗi (CREATED, PAID, SHIPPED, ...).
+     */
+    String status;
+}
+
+

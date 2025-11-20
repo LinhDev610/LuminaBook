@@ -336,6 +336,8 @@ export default function CheckoutDetailPage() {
         navigate('/checkout/confirm', {
             state: {
                 paymentMethod,
+                // Giữ lại danh sách cartItemId đã chọn để backend biết item nào cần thanh toán
+                cartItemIds: selectedItemIds,
                 address: {
                     recipientName,
                     recipientPhone,

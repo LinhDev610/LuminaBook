@@ -47,6 +47,7 @@ public class CartService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
 
+        // Lấy cart hiện tại của user (nếu có), nếu không thì tạo mới.
         return cartRepository
                 .findByUserId(user.getId())
                 .orElseGet(() -> cartRepository.save(Cart.builder().user(user).build()));
@@ -313,7 +314,16 @@ public class CartService {
             throw new AppException(ErrorCode.CART_ITEM_NOT_EXISTED);
         }
 
+        // Xóa cartItem khỏi DB
         cartItemRepository.delete(cartItem);
+
+        // Đồng bộ lại collection cartItems trong entity Cart hiện tại,
+        // tránh việc recalcCartTotals() save lại item vừa xóa.
+        if (cart.getCartItems() != null && !cart.getCartItems().isEmpty()) {
+            cart.getCartItems().removeIf(item -> cartItemId.equals(item.getId()));
+        }
+
+        // Tính lại tổng tiền sau khi đã loại bỏ item vừa xóa
         recalcCartTotals(cart);
         return cart;
     }

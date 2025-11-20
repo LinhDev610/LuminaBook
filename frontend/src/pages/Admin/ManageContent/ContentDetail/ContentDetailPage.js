@@ -52,7 +52,6 @@ export default function ContentDetailPage() {
                     const createdDate = bannerData.createdAt
                         ? formatDateTime(bannerData.createdAt).split(' ')[0]
                         : '';
-                    // Note: startDate and endDate may not be in backend yet
                     const startDate = bannerData.startDate || '';
                     const endDate = bannerData.endDate || '';
 
@@ -226,7 +225,6 @@ export default function ContentDetailPage() {
             setIsSubmitting(false);
         }
     };
-
 
     const handleDelete = async () => {
         setIsSubmitting(true);

@@ -76,7 +76,9 @@ export default function CheckoutDetailPage() {
                         const { ok, status, data } = await getCart(token);
                         if (!ok) {
                             if (status === 401) {
-                                showError('Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại');
+                                showError(
+                                    'Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại',
+                                );
                                 openLoginModal();
                             } else {
                                 showError('Không thể tải giỏ hàng để thanh toán');
@@ -150,17 +152,19 @@ export default function CheckoutDetailPage() {
                             ? product.price
                             : typeof product?.unitPrice === 'number' &&
                               product.unitPrice > 0
-                                ? product.unitPrice
-                                : undefined) ?? item.unitPrice ?? 0;
+                            ? product.unitPrice
+                            : undefined) ??
+                        item.unitPrice ??
+                        0;
 
                     const originalUnitPrice =
                         (typeof product?.originalPrice === 'number' &&
-                            product.originalPrice > 0
+                        product.originalPrice > 0
                             ? product.originalPrice
                             : typeof product?.unitPrice === 'number' &&
                               product.unitPrice > 0
-                                ? product.unitPrice
-                                : undefined) ?? currentPrice;
+                            ? product.unitPrice
+                            : undefined) ?? currentPrice;
 
                     metaMap[item.productId] = {
                         imageUrl: normalizedImage,
@@ -423,8 +427,8 @@ export default function CheckoutDetailPage() {
                                 </div>
                                 {(recipientName || recipientPhone) && (
                                     <div className={cx('address-meta')}>
-                                        Người nhận:{' '}
-                                        <strong>{recipientName}</strong> · {recipientPhone}
+                                        Người nhận: <strong>{recipientName}</strong> ·{' '}
+                                        {recipientPhone}
                                     </div>
                                 )}
                             </div>
@@ -449,11 +453,7 @@ export default function CheckoutDetailPage() {
                                             Dự kiến giao: Thứ Ba, 14/10
                                         </span>
                                     </div>
-                                    
                                 </label>
-                            
-                                    
-        
                             </div>
                         </section>
 
@@ -473,8 +473,8 @@ export default function CheckoutDetailPage() {
                                             MOMO (Thanh toán online)
                                         </span>
                                         <span className={cx('radio-desc')}>
-                                            Sử dụng ví MOMO để quét mã hoặc thanh toán trực tuyến.
-                                            Xác nhận tự động.
+                                            Sử dụng ví MOMO để quét mã hoặc thanh toán
+                                            trực tuyến. Xác nhận tự động.
                                         </span>
                                     </div>
                                 </label>
@@ -491,8 +491,8 @@ export default function CheckoutDetailPage() {
                                             COD — Thanh toán khi nhận hàng
                                         </span>
                                         <span className={cx('radio-desc')}>
-                                            Thanh toán trực tiếp cho nhân viên vận chuyển khi nhận
-                                            hàng.
+                                            Thanh toán trực tiếp cho nhân viên vận chuyển
+                                            khi nhận hàng.
                                         </span>
                                     </div>
                                 </label>
@@ -539,7 +539,8 @@ export default function CheckoutDetailPage() {
                                     // Thành tiền mỗi sản phẩm: giống CartPage (giá đang bán * số lượng),
                                     // nhưng vẫn giữ hiển thị giá gốc * số lượng nếu có khuyến mãi.
                                     const currentLineTotal = unitPrice * quantity;
-                                    const originalLineTotal = originalUnitPrice * quantity;
+                                    const originalLineTotal =
+                                        originalUnitPrice * quantity;
                                     const showOriginal =
                                         originalLineTotal > currentLineTotal &&
                                         originalLineTotal > 0;
@@ -551,7 +552,8 @@ export default function CheckoutDetailPage() {
                                                     src={imgSrc}
                                                     alt={item.productName}
                                                     onError={(e) => {
-                                                        e.target.src = defaultProductImage;
+                                                        e.target.src =
+                                                            defaultProductImage;
                                                     }}
                                                 />
                                             </div>
@@ -615,7 +617,9 @@ export default function CheckoutDetailPage() {
                                             placeholder="Nhập mã giảm giá (ví dụ: MGG20)"
                                             value={voucherCodeInput}
                                             onChange={(e) =>
-                                                setVoucherCodeInput(e.target.value.toUpperCase())
+                                                setVoucherCodeInput(
+                                                    e.target.value.toUpperCase(),
+                                                )
                                             }
                                         />
                                         <button
@@ -628,7 +632,8 @@ export default function CheckoutDetailPage() {
                                     </div>
                                     {selectedVoucherCode && (
                                         <p className={cx('voucher-applied')}>
-                                            Đã áp dụng mã: <strong>{selectedVoucherCode}</strong>
+                                            Đã áp dụng mã:{' '}
+                                            <strong>{selectedVoucherCode}</strong>
                                             <button
                                                 type="button"
                                                 className={cx('remove-voucher-inline')}
@@ -650,15 +655,15 @@ export default function CheckoutDetailPage() {
                             </button>
 
                             <p className={cx('payment-note')}>
-                                Chú ý: MOMO xử lý thanh toán online. COD thanh toán khi nhận hàng qua
-                                GHN.
+                                Chú ý: MOMO xử lý thanh toán online. COD thanh toán khi
+                                nhận hàng qua GHN.
                             </p>
                         </div>
                     </aside>
                 </div>
             </div>
 
-            {/* Modal chọn địa chỉ giao hàng (dùng lại logic từ trang tài khoản) */}
+            {/* Modal chọn địa chỉ giao hàng */}
             <AddressListModal
                 open={showAddressList}
                 onClose={() => setShowAddressList(false)}

@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import classNames from 'classnames/bind';
 import styles from './ConfirmCheckoutPage.module.scss';
 import defaultProductImage from '../../../assets/images/img_sach.png';
-import { getStoredToken } from '../../../services/utils';
+import { getApiBaseUrl, getStoredToken } from '../../../services/utils';
 import { removeCartItem } from '../../../services';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useNotification } from '../../../components/Common/Notification';
@@ -24,7 +24,8 @@ export default function ConfirmCheckoutPage() {
 
     const state = location.state || {};
 
-    const paymentMethod = state.paymentMethod || 'cod'; // 'cod' | 'momo'
+    // Mặc định ưu tiên MOMO nếu không có state truyền từ trang trước
+    const paymentMethod = state.paymentMethod || 'momo'; // 'momo' | 'cod'
     const address = state.address || {};
     const summary = state.summary || {};
 
@@ -33,6 +34,7 @@ export default function ConfirmCheckoutPage() {
     const voucherDiscount = summary.voucherDiscount || 0;
 
     const [orderItems, setOrderItems] = useState(items);
+    const [submitting, setSubmitting] = useState(false);
 
     const currentSubtotal = useMemo(
         () => orderItems.reduce((sum, item) => sum + (item.lineTotal || 0), 0),
@@ -78,10 +80,53 @@ export default function ConfirmCheckoutPage() {
         }
     };
 
-    const handleConfirm = () => {
-        // TODO: Gọi API tạo đơn hàng thực tế tại đây
-        // Tạm thời chỉ điều hướng về trang chủ sau khi xác nhận
-        navigate('/');
+    const handleConfirm = async () => {
+        if (submitting) return;
+
+        try {
+            setSubmitting(true);
+
+            if (paymentMethod === 'momo') {
+                const apiBaseUrl = getApiBaseUrl();
+                const token = getStoredToken('token');
+
+                const resp = await fetch(`${apiBaseUrl}/api/momo/create?amount=${currentTotal}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                    },
+                });
+
+                if (!resp.ok) {
+                    showError('Không thể khởi tạo thanh toán MoMo. Vui lòng thử lại.');
+                    setSubmitting(false);
+                    return;
+                }
+
+                const data = await resp.json().catch(() => null);
+                const result = data?.result || data;
+                const payUrl = result?.payUrl || result?.deepLink || result?.qrCodeUrl;
+
+                if (!payUrl) {
+                    showError('Không nhận được đường dẫn thanh toán MoMo.');
+                    setSubmitting(false);
+                    return;
+                }
+
+                // Điều hướng người dùng sang màn hình thanh toán của MoMo
+                window.location.href = payUrl;
+                return;
+            }
+
+            // COD: tạm thời quay về trang chủ sau khi xác nhận
+            navigate('/');
+        } catch (err) {
+            console.error('Error when confirming checkout:', err);
+            showError('Có lỗi xảy ra khi xác nhận đặt hàng.');
+        } finally {
+            setSubmitting(false);
+        }
     };
 
     return (
@@ -181,8 +226,9 @@ export default function ConfirmCheckoutPage() {
                         type="button"
                         className={cx('confirm-button')}
                         onClick={handleConfirm}
+                        disabled={submitting}
                     >
-                        {confirmButtonLabel}
+                        {submitting ? 'Đang xử lý...' : confirmButtonLabel}
                     </button>
                 </div>
             </div>

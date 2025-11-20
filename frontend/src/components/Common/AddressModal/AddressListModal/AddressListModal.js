@@ -2,8 +2,8 @@ import { createPortal } from 'react-dom';
 import { useEffect, useState } from 'react';
 import classNames from 'classnames/bind';
 import styles from './AddressListModal.module.scss';
-import { getMyAddresses } from '../../../../services';
-import { formatFullAddress } from '../useGhnLocations';
+import { getMyAddresses, updateAddress } from '../../../../services';
+import { formatFullAddress, normalizeAddressPayload } from '../useGhnLocations';
 
 const cx = classNames.bind(styles);
 
@@ -29,6 +29,7 @@ const AddressListModal = ({
     const [addresses, setAddresses] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [settingDefault, setSettingDefault] = useState(null);
 
     const fetchAddresses = async () => {
         setLoading(true);
@@ -76,6 +77,29 @@ const AddressListModal = ({
 
     const handleAddNew = () => {
         onAddNewAddress?.();
+    };
+
+    const handleSetDefault = async (address) => {
+        if (address.defaultAddress) return; // Đã là default rồi
+        setSettingDefault(address.id);
+        try {
+            const payload = normalizeAddressPayload({
+                ...address,
+                defaultAddress: true,
+            });
+            const { ok, data } = await updateAddress(address.id, payload);
+            if (ok && data?.id) {
+                // Refresh danh sách địa chỉ
+                await fetchAddresses();
+            } else {
+                setError('Không thể đặt địa chỉ mặc định. Vui lòng thử lại.');
+            }
+        } catch (err) {
+            console.error('Đặt địa chỉ mặc định thất bại', err);
+            setError('Không thể đặt địa chỉ mặc định. Vui lòng thử lại.');
+        } finally {
+            setSettingDefault(null);
+        }
     };
 
     const renderContent = () => {
@@ -131,13 +155,20 @@ const AddressListModal = ({
                                 </button>
                             </div>
                             <div className={cx('actions')}>
-                                <button
-                                    type="button"
-                                    className={cx('btn', 'primary')}
-                                    onClick={() => handleSelect(address)}
-                                >
-                                    Chọn
-                                </button>
+                                {address.defaultAddress ? (
+                                    <span className={cx('badge')}>Địa chỉ mặc định</span>
+                                ) : (
+                                    <button
+                                        type="button"
+                                        className={cx('btn', 'primary')}
+                                        onClick={() => handleSetDefault(address)}
+                                        disabled={settingDefault === address.id}
+                                    >
+                                        {settingDefault === address.id
+                                            ? 'Đang xử lý...'
+                                            : 'Đặt làm địa chỉ mặc định'}
+                                    </button>
+                                )}
                             </div>
                         </li>
                     );

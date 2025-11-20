@@ -298,16 +298,6 @@ const AddressDetailModal = ({ open, address, onClose, onUpdated }) => {
                                 <small className={cx('error')}>{errors.address}</small>
                             )}
                         </label>
-                        <label className={cx('checkbox')}>
-                            <input
-                                type="checkbox"
-                                checked={!!form.defaultAddress}
-                                onChange={(e) =>
-                                    handleFieldChange('defaultAddress', e.target.checked)
-                                }
-                            />
-                            Đặt làm địa chỉ mặc định
-                        </label>
                         {ghnError && <div className={cx('helper-error')}>{ghnError}</div>}
                         {status && <div className={cx('status')}>{status}</div>}
                     </form>

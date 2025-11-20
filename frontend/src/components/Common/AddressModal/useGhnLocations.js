@@ -2,20 +2,20 @@ import { useCallback, useState } from 'react';
 import { getGhnDistricts, getGhnProvinces, getGhnWards } from '../../../services';
 
 const normalizeProvince = (item = {}) => ({
-    id: String(item?.provinceID ?? item?.ProvinceID ?? item?.ProvinceId ?? ''),
-    name: item?.provinceName ?? item?.ProvinceName ?? item?.Name ?? '',
+    id: String(item?.ProvinceID ?? ''),
+    name: item?.ProvinceName ?? '',
 });
 
 const normalizeDistrict = (item = {}) => ({
-    id: String(item?.districtID ?? item?.DistrictID ?? ''),
-    name: item?.districtName ?? item?.DistrictName ?? item?.Name ?? '',
-    provinceId: String(item?.provinceID ?? item?.ProvinceID ?? ''),
+    id: String(item?.DistrictID ?? ''),
+    name: item?.DistrictName ?? '',
+    provinceId: String(item?.ProvinceID ?? ''),
 });
 
 const normalizeWard = (item = {}) => ({
-    code: String(item?.wardCode ?? item?.WardCode ?? ''),
-    name: item?.wardName ?? item?.WardName ?? item?.Name ?? '',
-    districtId: String(item?.districtID ?? item?.DistrictID ?? ''),
+    code: String(item?.WardCode ?? ''),
+    name: item?.WardName ?? '',
+    districtId: String(item?.DistrictID ?? ''),
 });
 
 export const useGhnLocations = () => {
@@ -128,4 +128,3 @@ export const normalizeAddressPayload = (form) => ({
     postalCode: form.postalCode?.trim() ?? '',
     defaultAddress: !!form.defaultAddress,
 });
-

@@ -2,7 +2,7 @@ import { createPortal } from 'react-dom';
 import { useEffect, useState } from 'react';
 import classNames from 'classnames/bind';
 import styles from './AddressDetailModal.module.scss';
-import { updateAddress } from '../../../../services';
+import { updateAddress, deleteAddress } from '../../../../services';
 import { INITIAL_FORM_STATE_ADDRESS_DETAIL } from '../../../../services/constants';
 import {
     formatFullAddress,
@@ -10,15 +10,18 @@ import {
     useGhnLocations,
 } from '../useGhnLocations';
 import { validateAddressForm } from '../../../../utils/addressValidation';
+import DeleteAddresssDialog from '../../ConfirmDialog/DeleteAddresssDialog';
 
 const cx = classNames.bind(styles);
 
-const AddressDetailModal = ({ open, address, onClose, onUpdated }) => {
+const AddressDetailModal = ({ open, address, onClose, onUpdated, onDeleted }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [form, setForm] = useState(INITIAL_FORM_STATE_ADDRESS_DETAIL);
     const [errors, setErrors] = useState({});
     const [status, setStatus] = useState('');
     const [submitting, setSubmitting] = useState(false);
+    const [deleting, setDeleting] = useState(false);
+    const [showConfirmDelete, setShowConfirmDelete] = useState(false);
 
     const {
         provinces,
@@ -48,6 +51,7 @@ const AddressDetailModal = ({ open, address, onClose, onUpdated }) => {
         setErrors({});
         setStatus('');
         setIsEditing(false);
+        setDeleting(false);
         loadProvinces().then(() => {
             if (address?.provinceID) {
                 loadDistricts(address.provinceID).then(() => {
@@ -135,9 +139,46 @@ const AddressDetailModal = ({ open, address, onClose, onUpdated }) => {
         }
     };
 
-    if (!open || !address || typeof document === 'undefined') return null;
+    const handleDelete = () => {
+        if (!address?.id || deleting) return;
+        setShowConfirmDelete(true);
+    };
 
-    return createPortal(
+    const confirmDelete = async () => {
+        if (!address?.id || deleting) return;
+        setDeleting(true);
+        setStatus('');
+        try {
+            const { ok } = await deleteAddress(address.id);
+            if (!ok) {
+                throw new Error('Không thể xóa địa chỉ');
+            }
+            onDeleted?.(address.id);
+            setStatus('Đã xóa địa chỉ');
+            onClose?.();
+        } catch (err) {
+            console.error('Xóa địa chỉ thất bại', err);
+            setStatus(err?.message || 'Xóa địa chỉ thất bại, vui lòng thử lại');
+        } finally {
+            setDeleting(false);
+            setShowConfirmDelete(false);
+        }
+    };
+
+    if (!open || !address || typeof document === 'undefined') {
+        return (
+            <DeleteAddresssDialog
+                open={showConfirmDelete}
+                onConfirm={confirmDelete}
+                onCancel={() => {
+                    if (!deleting) setShowConfirmDelete(false);
+                }}
+                loading={deleting}
+            />
+        );
+    }
+
+    const modalNode = createPortal(
         <div className={cx('overlay')} role="dialog" aria-modal="true">
             <div className={cx('modal')}>
                 <header className={cx('header')}>
@@ -310,6 +351,12 @@ const AddressDetailModal = ({ open, address, onClose, onUpdated }) => {
                                 Đóng
                             </button>
                             <button
+                                className={cx('btn', 'danger')}
+                                onClick={handleDelete}
+                            >
+                                {deleting ? 'Đang xóa...' : 'Xóa'}
+                            </button>
+                            <button
                                 className={cx('btn', 'primary')}
                                 onClick={() => setIsEditing(true)}
                             >
@@ -333,6 +380,13 @@ const AddressDetailModal = ({ open, address, onClose, onUpdated }) => {
                                 Hủy
                             </button>
                             <button
+                                className={cx('btn', 'danger')}
+                                type="button"
+                                onClick={handleDelete}
+                            >
+                                {deleting ? 'Đang xóa...' : 'Xóa'}
+                            </button>
+                            <button
                                 className={cx('btn', 'primary')}
                                 onClick={handleUpdate}
                                 disabled={submitting}
@@ -346,6 +400,20 @@ const AddressDetailModal = ({ open, address, onClose, onUpdated }) => {
             </div>
         </div>,
         document.body,
+    );
+
+    return (
+        <>
+            {modalNode}
+            <DeleteAddresssDialog
+                open={showConfirmDelete}
+                onConfirm={confirmDelete}
+                onCancel={() => {
+                    if (!deleting) setShowConfirmDelete(false);
+                }}
+                loading={deleting}
+            />
+        </>
     );
 };
 

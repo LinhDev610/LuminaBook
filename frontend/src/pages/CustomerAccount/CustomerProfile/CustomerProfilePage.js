@@ -374,6 +374,17 @@ function CustomerProfilePage() {
                         address: formatFullAddress(updated),
                     }));
                 }}
+                onDeleted={(deletedId) => {
+                    setShowAddressDetailModal(false);
+                    setAddressRefreshKey((prev) => prev + 1);
+                    if (selectedAddress?.id === deletedId) {
+                        setSelectedAddress(null);
+                        setUser((prev) => ({
+                            ...(prev || {}),
+                            address: '',
+                        }));
+                    }
+                }}
             />
         </div>
     );

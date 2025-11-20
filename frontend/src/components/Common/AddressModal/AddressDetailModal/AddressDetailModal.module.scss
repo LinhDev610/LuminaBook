@@ -193,5 +193,21 @@
             cursor: not-allowed;
         }
     }
+
+    &.danger {
+        background: #dc2626;
+        border-color: #dc2626;
+        color: #fff;
+
+        &:hover {
+            background: #b91c1c;
+        }
+
+        &:disabled {
+            background: #fca5a5;
+            border-color: #fca5a5;
+            cursor: not-allowed;
+        }
+    }
 }
 

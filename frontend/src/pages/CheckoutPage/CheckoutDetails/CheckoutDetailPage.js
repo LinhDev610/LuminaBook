@@ -310,6 +310,29 @@ export default function CheckoutDetailPage() {
             };
         });
 
+        // Lưu tạm thông tin tóm tắt đơn hàng để màn OrderSuccess có thể đọc lại
+        try {
+            const previewOrderInfo = {
+                receiverName: recipientName,
+                paymentMethod:
+                    paymentMethod === 'momo'
+                        ? 'Thanh toán qua MoMo'
+                        : 'Thanh toán khi nhận hàng (COD)',
+                subtotal: itemsSubtotal,
+                shippingFee,
+                voucherDiscount,
+                total,
+                shippingProvider: 'GHN',
+            };
+            window.localStorage.setItem(
+                'lumina_latest_order',
+                JSON.stringify(previewOrderInfo),
+            );
+        } catch (storageErr) {
+            // Không chặn luồng nếu localStorage lỗi
+            console.warn('Cannot persist preview order info', storageErr);
+        }
+
         navigate('/checkout/confirm', {
             state: {
                 paymentMethod,

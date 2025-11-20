@@ -75,29 +75,17 @@ const MOCK_ORDERS = [
 // Chuyển đổi dữ liệu đơn hàng từ API sang dạng hiển thị
 const mapOrderFromApi = (order) => {
     if (!order) return null;
-    const { label, css } = mapOrderStatus(order.status);
-    const user = order.user || {};
-    const cart = order.cart || {};
+    const rawStatus = order.status || order.rawStatus;
+    const { label, css } = mapOrderStatus(rawStatus);
 
     return {
         id: order.id || '',
         code: order.code || order.orderCode || order.id || '',
-        username:
-            user.username ||
-            user.userName ||
-            user.fullName ||
-            user.name ||
-            user.email ||
-            'Khách hàng',
-        email: user.email || '',
+        username: order.customerName || 'Khách hàng',
+        email: order.customerEmail || '',
         orderDate: order.orderDate || order.createdAt || null,
-        totalAmount:
-            typeof order.totalAmount === 'number'
-                ? order.totalAmount
-                : typeof cart.totalAmount === 'number'
-                  ? cart.totalAmount
-                  : 0,
-        rawStatus: order.status,
+        totalAmount: typeof order.totalAmount === 'number' ? order.totalAmount : 0,
+        rawStatus: rawStatus,
         statusLabel: label,
         statusClass: css,
     };
@@ -131,7 +119,7 @@ export default function OrderManagementPage() {
     const [dateFilter, setDateFilter] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
 
-    // Fetch danh sách đơn hàng (tạm thời: cố gắng gọi API, nếu lỗi dùng mock)
+    // Fetch danh sách đơn hàng (ưu tiên gọi API thật, nếu lỗi dùng mock)
     useEffect(() => {
         const fetchOrders = async () => {
             try {
@@ -141,8 +129,8 @@ export default function OrderManagementPage() {
                 const token = getStoredToken('token');
                 const apiBaseUrl = getApiBaseUrl();
 
-                // TODO: Điều chỉnh endpoint / quyền truy cập khi backend Order API sẵn sàng
-                const resp = await fetch(`${apiBaseUrl}/orders/my-orders`, {
+                // Staff xem tất cả đơn hàng
+                const resp = await fetch(`${apiBaseUrl}/orders`, {
                     headers: {
                         'Content-Type': 'application/json',
                         ...(token ? { Authorization: `Bearer ${token}` } : {}),

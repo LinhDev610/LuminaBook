@@ -1,0 +1,164 @@
+import React, { useEffect, useMemo, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import classNames from 'classnames/bind';
+import styles from './OrderSuccessPage.module.scss';
+
+const cx = classNames.bind(styles);
+
+const formatPrice = (value) =>
+    new Intl.NumberFormat('vi-VN', {
+        style: 'currency',
+        currency: 'VND',
+    }).format(value || 0);
+
+export default function OrderSuccessPage() {
+    const navigate = useNavigate();
+    const location = useLocation();
+
+    const [orderInfo, setOrderInfo] = useState(null);
+    const [isError, setIsError] = useState(false);
+
+    const searchParams = useMemo(
+        () => new URLSearchParams(location.search || ''),
+        [location.search],
+    );
+
+    useEffect(() => {
+        const resultCode = searchParams.get('resultCode');
+        const orderIdFromQuery = searchParams.get('orderId');
+
+        // Đọc thông tin đơn hàng được lưu trước khi redirect sang MoMo
+        const savedRaw = window.localStorage.getItem('lumina_latest_order');
+        let saved = null;
+        if (savedRaw) {
+            try {
+                saved = JSON.parse(savedRaw);
+            } catch {
+                saved = null;
+            }
+        }
+
+        // Nếu MoMo trả về lỗi thì coi như lỗi thanh toán
+        if (resultCode && resultCode !== '0') {
+            setIsError(true);
+        }
+
+        // Ưu tiên orderId từ query nếu có
+        if (saved && orderIdFromQuery && saved.orderId !== orderIdFromQuery) {
+            saved = { ...saved, orderId: orderIdFromQuery };
+        }
+
+        setOrderInfo(
+            saved || {
+                orderId: orderIdFromQuery || '',
+            },
+        );
+    }, [searchParams]);
+
+    if (isError) {
+        return (
+            <div className={cx('wrapper')}>
+                <div className={cx('card')}>
+                    <div className={cx('icon-wrapper', 'icon-error')}>!</div>
+                    <h1 className={cx('title')}>Thanh toán thất bại</h1>
+                    <p className={cx('subtitle')}>
+                        Rất tiếc, thanh toán MoMo của bạn chưa được hoàn tất. Vui lòng thử lại
+                        hoặc chọn phương thức thanh toán khác.
+                    </p>
+                    <div className={cx('actions')}>
+                        <button
+                            type="button"
+                            className={cx('primary-btn')}
+                            onClick={() => navigate('/checkout/confirm')}
+                        >
+                            Quay lại thanh toán
+                        </button>
+                        <button
+                            type="button"
+                            className={cx('secondary-btn')}
+                            onClick={() => navigate('/')}
+                        >
+                            Về trang chủ
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    const subtotal = orderInfo?.subtotal || 0;
+    const shippingFee = orderInfo?.shippingFee || 0;
+    const voucherDiscount = orderInfo?.voucherDiscount || 0;
+    const total =
+        typeof orderInfo?.total === 'number'
+            ? orderInfo.total
+            : Math.max(0, subtotal + shippingFee - voucherDiscount);
+
+    return (
+        <div className={cx('wrapper')}>
+            <div className={cx('card')}>
+                <div className={cx('icon-wrapper')}>
+                    <span className={cx('icon-check')}>✓</span>
+                </div>
+                <h1 className={cx('title')}>Cảm ơn bạn đã đặt hàng tại Lumina Book!</h1>
+                <p className={cx('subtitle')}>
+                    Đơn hàng của bạn đã được xác nhận. Chúng tôi sẽ sớm xử lý và giao hàng qua GHN
+                    đến địa chỉ của bạn.
+                </p>
+
+                <div className={cx('order-box')}>
+                    <div className={cx('order-row', 'order-row--header')}>
+                        <span>Mã đơn hàng:</span>
+                        <span className={cx('order-code')}>
+                            {orderInfo?.code || orderInfo?.orderCode || orderInfo?.orderId || '#'}
+                        </span>
+                    </div>
+                    <div className={cx('order-row')}>
+                        <span>Người nhận:</span>
+                        <span>{orderInfo?.receiverName || 'Khách hàng'}</span>
+                    </div>
+                    <div className={cx('order-row')}>
+                        <span>Phương thức thanh toán:</span>
+                        <span>{orderInfo?.paymentMethod || 'Thanh toán qua MoMo'}</span>
+                    </div>
+                    <div className={cx('order-row')}>
+                        <span>Tạm tính:</span>
+                        <span>{formatPrice(subtotal)}</span>
+                    </div>
+                    <div className={cx('order-row')}>
+                        <span>Phí vận chuyển:</span>
+                        <span>{formatPrice(shippingFee)}</span>
+                    </div>
+                    {voucherDiscount > 0 && (
+                        <div className={cx('order-row')}>
+                            <span>Giảm giá:</span>
+                            <span>-{formatPrice(voucherDiscount)}</span>
+                        </div>
+                    )}
+                    <div className={cx('order-row', 'order-row--total')}>
+                        <span>Tổng cộng:</span>
+                        <span className={cx('order-total')}>{formatPrice(total)}</span>
+                    </div>
+                </div>
+
+                <div className={cx('actions')}>
+                    <button
+                        type="button"
+                        className={cx('primary-btn')}
+                        onClick={() => navigate('/')}
+                    >
+                        Tiếp tục mua sắm
+                    </button>
+                    <button
+                        type="button"
+                        className={cx('secondary-btn')}
+                        onClick={() => navigate('/customer-account')}
+                    >
+                        Xem đơn hàng
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+

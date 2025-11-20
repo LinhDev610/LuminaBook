@@ -13,6 +13,7 @@ import Account from '../pages/CustomerAccount';
 import CartPage from '../pages/CartPage';
 import CheckoutDetailPage from '../pages/CheckoutPage/CheckoutDetails';
 import ConfirmCheckoutPage from '../pages/CheckoutPage/ConfirmCheckout';
+import OrderSuccessPage from '../pages/CheckoutPage/OrderSuccess';
 import CustomerAccountLayout from '../layouts/CustomerAccountLayout';
 import AdminLayout from '../layouts/AdminLayout';
 import StaffLayout from '../layouts/StaffLayout';
@@ -74,6 +75,7 @@ const publicRoutes = [
     { path: '/cart', component: CartPage },
     { path: '/checkout', component: CheckoutDetailPage },
     { path: '/checkout/confirm', component: ConfirmCheckoutPage },
+    { path: '/order-success', component: OrderSuccessPage },
     { path: '/login', component: Login },
     { path: '/register', component: Register },
     { path: '/forgot-password', component: ForgotPassword },

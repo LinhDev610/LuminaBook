@@ -10,6 +10,10 @@ import ForgotPassword from '../components/Auth/ForgotPassword';
 import VerifyCode from '../components/Auth/VerifyCode';
 
 import Account from '../pages/CustomerAccount';
+import CustomerProfilePage from '../pages/CustomerAccount/CustomerProfile';
+import CustomerOrderHistoryPage from '../pages/CustomerAccount/CustomerOrderHistory';
+import CustomerVoucherPromotionPage from '../pages/CustomerAccount/CustomerVoucherPromotion';
+import CustomerChangePasswordPage from '../pages/CustomerAccount/CustomerChangePassword';
 import CartPage from '../pages/CartPage';
 import CheckoutDetailPage from '../pages/CheckoutPage/CheckoutDetails';
 import CustomerAccountLayout from '../layouts/CustomerAccountLayout';
@@ -81,6 +85,10 @@ const publicRoutes = [
 const privateRoutes = [
     // Customer routes
     { path: '/customer-account', component: Account, layout: CustomerAccountLayout },
+    { path: '/customer-account/profile', component: CustomerProfilePage, layout: CustomerAccountLayout },
+    { path: '/customer-account/orders', component: CustomerOrderHistoryPage, layout: CustomerAccountLayout },
+    { path: '/customer-account/vouchers', component: CustomerVoucherPromotionPage, layout: CustomerAccountLayout },
+    { path: '/customer-account/password', component: CustomerChangePasswordPage, layout: CustomerAccountLayout },
 
     // Admin routes
     { path: '/admin', component: ManageStaffAccountsPage, layout: AdminLayout },

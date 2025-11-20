@@ -155,18 +155,29 @@ const AddressListModal = ({
                                 </button>
                             </div>
                             <div className={cx('actions')}>
+                                {highlightAddressId === address.id ? (
+                                    <span className={cx('badge', 'selected-badge')}>Đã chọn</span>
+                                ) : (
+                                    <button
+                                        type="button"
+                                        className={cx('btn', 'primary', 'select-btn')}
+                                        onClick={() => handleSelect(address)}
+                                    >
+                                        Chọn
+                                    </button>
+                                )}
                                 {address.defaultAddress ? (
                                     <span className={cx('badge')}>Địa chỉ mặc định</span>
                                 ) : (
                                     <button
                                         type="button"
-                                        className={cx('btn', 'primary')}
+                                        className={cx('btn', 'secondary')}
                                         onClick={() => handleSetDefault(address)}
                                         disabled={settingDefault === address.id}
                                     >
                                         {settingDefault === address.id
                                             ? 'Đang xử lý...'
-                                            : 'Đặt làm địa chỉ mặc định'}
+                                            : 'Đặt làm mặc định'}
                                     </button>
                                 )}
                             </div>

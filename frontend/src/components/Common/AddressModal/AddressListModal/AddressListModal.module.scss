@@ -137,6 +137,14 @@
     border-radius: 999px;
     padding: 2px 8px;
     font-size: 0.75rem;
+
+    &.selected-badge {
+        background: #dbeafe;
+        color: #1e40af;
+        font-weight: 600;
+        padding: 6px 12px;
+        font-size: 0.875rem;
+    }
 }
 
 .address-line {
@@ -176,6 +184,13 @@
     display: flex;
     align-items: center;
     gap: 8px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+.select-btn {
+    min-width: 90px;
+    font-weight: 700;
 }
 
 .btn {
@@ -185,6 +200,7 @@
     cursor: pointer;
     font-weight: 600;
     transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+    font-size: 0.875rem;
 
     &.primary {
         background: #2563eb;
@@ -194,6 +210,10 @@
         &:hover {
             background: #1e40af;
             border-color: #1e40af;
+        }
+
+        &:active {
+            background: #1e3a8a;
         }
     }
 
@@ -205,6 +225,7 @@
         &:hover {
             border-color: #2563eb;
             color: #2563eb;
+            background: #eff6ff;
         }
     }
 

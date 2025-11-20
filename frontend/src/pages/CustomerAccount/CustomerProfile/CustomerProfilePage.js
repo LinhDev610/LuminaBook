@@ -3,7 +3,6 @@ import classNames from 'classnames/bind';
 import styles from './CustomerProfilePage.module.scss';
 import useLocalStorage from '../../../hooks/useLocalStorage';
 import Notification from '../../../components/Common/Notification/Notification';
-import guestImgIcon from '../../../assets/icons/icon_img_guest.png';
 import { getMyInfo, updateUser, getMyAddresses, getStoredToken } from '../../../services';
 import AddressListModal from '../../../components/Common/AddressModal/AddressListModal';
 import NewAddressModal from '../../../components/Common/AddressModal/NewAddressModal';
@@ -17,9 +16,6 @@ function CustomerProfilePage() {
     const [email, setEmail, removeEmail] = useLocalStorage('email', '');
     const [token, setToken, removeToken] = useLocalStorage('token', null);
     const isLoggedIn = !!(token || getStoredToken());
-    const [userAvatar, setUserAvatar, removeUserAvatar] = useLocalStorage('userAvatar', null);
-    const [pendingAvatarDataUrl, setPendingAvatarDataUrl] = useState(null);
-    const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
     const [user, setUser] = useState(null);
     const [originalUser, setOriginalUser] = useState(null);
@@ -75,7 +71,6 @@ function CustomerProfilePage() {
                     }
                     setDisplayName(u.fullName || displayName || '');
                     setEmail(u.email || '');
-                    setUserAvatar(u.avatarUrl || null);
                 }
             } catch (_e) {
                 // ignore for now
@@ -138,67 +133,6 @@ function CustomerProfilePage() {
                             />
                             <span className={cx('menu-item')} /> Thông tin cá nhân
                         </h3>
-                        <div className={cx('avatar-section')}>
-                            <div className={cx('avatar-wrapper')} onClick={() => document.getElementById('avatar-file-input')?.click()} role="button" aria-label="Chọn ảnh đại diện">
-                                <img
-                                    src={(user && user.avatarUrl) || userAvatar || guestImgIcon}
-                                    onError={(e) => { e.currentTarget.src = guestImgIcon; }}
-                                    alt="User Avatar"
-                                    className={cx('avatar-image')}
-                                />
-                                <input id="avatar-file-input" type="file" accept="image/*" style={{ display: 'none' }} onChange={async (e) => {
-                                    const file = e.target.files?.[0];
-                                    if (!file) return;
-                                    try {
-                                        // Local instant preview
-                                        const previewUrl = URL.createObjectURL(file);
-                                        setUserAvatar(previewUrl);
-                                        setPendingAvatarDataUrl(previewUrl);
-
-                                        // Upload to server to obtain persistent URL
-                                        setUploadingAvatar(true);
-                                        const form = new FormData();
-                                        form.append('files', file);
-                                        const tk = getStoredToken();
-                                        const resp = await fetch('http://localhost:8080/lumina_book/media/upload', {
-                                            method: 'POST',
-                                            headers: tk ? { Authorization: `Bearer ${tk}` } : undefined,
-                                            body: form,
-                                        });
-                                        const data = await resp.json().catch(() => ({}));
-                                        if (resp.ok && Array.isArray(data?.result) && data.result[0]) {
-                                            const url = data.result[0];
-                                            setUser((prev) => ({ ...(prev || {}), avatarUrl: url }));
-                                            setUserAvatar(url);
-                                            setPendingAvatarDataUrl(null);
-                                            // Auto-save avatar to user profile
-                                            try {
-                                                if (user?.id) {
-                                                    const tk2 = getStoredToken();
-                                                    const updateData = await updateUser(user.id, { avatarUrl: url }, tk2);
-                                                    if (updateData) {
-                                                        // Refresh original snapshot and notify
-                                                        try {
-                                                            setOriginalUser(JSON.parse(JSON.stringify(updateData)));
-                                                        } catch (_e) {
-                                                            setOriginalUser(updateData);
-                                                        }
-                                                        setNotif({ open: true, type: 'success', title: 'Đã lưu ảnh đại diện', message: 'Ảnh đại diện đã được cập nhật', duration: 2500 });
-                                                    } else {
-                                                        setNotif({ open: true, type: 'warning', title: 'Không lưu được ảnh', message: 'Không thể lưu avatar, thử lại sau', duration: 3500 });
-                                                    }
-                                                }
-                                            } catch (_e) {
-                                                setNotif({ open: true, type: 'error', title: 'Lỗi', message: 'Không thể lưu avatar, vui lòng thử lại', duration: 3000 });
-                                            }
-                                        } else {
-                                            setNotif({ open: true, type: 'error', title: 'Upload thất bại', message: 'Không thể tải ảnh lên máy chủ', duration: 3000 });
-                                        }
-                                    } catch (_) { }
-                                    finally { setUploadingAvatar(false); }
-                                }} />
-                            </div>
-                        </div>
                         <div className={cx('form-row')}>
                             <div className={cx('form-group')}>
                                 <label>Họ và tên</label>
@@ -248,12 +182,6 @@ function CustomerProfilePage() {
                                         } catch (_e) {
                                             setUser(originalUser);
                                         }
-                                        setPendingAvatarDataUrl(null);
-                                        if (originalUser.avatarUrl) {
-                                            setUserAvatar(originalUser.avatarUrl);
-                                        } else {
-                                            setUserAvatar(null);
-                                        }
                                     }
                                 }}
                             >
@@ -275,7 +203,6 @@ function CustomerProfilePage() {
                                             fullName: user.fullName ?? '',
                                             phoneNumber: user.phoneNumber ?? '',
                                             address: user.address ?? '',
-                                            avatarUrl: (user?.avatarUrl ?? '').trim(),
                                         };
                                         const updatedData = await updateUser(user.id, body, tk);
                                         if (updatedData) {
@@ -289,12 +216,6 @@ function CustomerProfilePage() {
                                                         setOriginalUser(JSON.parse(JSON.stringify(confirmedUser)));
                                                     } catch (_e) {
                                                         setOriginalUser(confirmedUser);
-                                                    }
-                                                    setPendingAvatarDataUrl(null);
-                                                    if (confirmedUser?.avatarUrl) {
-                                                        setUserAvatar(confirmedUser.avatarUrl);
-                                                    } else {
-                                                        setUserAvatar(null);
                                                     }
                                                 } else {
                                                     setOriginalUser({ ...(originalUser || {}), ...body });

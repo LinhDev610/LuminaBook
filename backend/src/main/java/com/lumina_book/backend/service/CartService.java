@@ -125,6 +125,22 @@ public class CartService {
     }
 
     private void recalcCartTotals(Cart cart) {
+        // Đồng bộ lại đơn giá và thành tiền của từng cartItem
+        if (cart.getCartItems() != null && !cart.getCartItems().isEmpty()) {
+            cart.getCartItems().forEach(item -> {
+                Product product = item.getProduct();
+                if (product != null) {
+                    // Tính lại đơn giá dựa trên cấu hình khuyến mãi hiện tại
+                    double unitPrice = calculateUnitPrice(product);
+                    item.setUnitPrice(unitPrice);
+                    // Thành tiền = đơn giá * số lượng
+                    double finalPrice = unitPrice * item.getQuantity();
+                    item.setFinalPrice(finalPrice);
+                    cartItemRepository.save(item);
+                }
+            });
+        }
+
         // Tính lại subtotal từ các cartItem (nếu chưa có item thì subtotal = 0)
         double subtotal = cart.getCartItems() == null
                 ? 0.0

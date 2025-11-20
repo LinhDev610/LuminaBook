@@ -1,0 +1,215 @@
+.page {
+    padding: 12px 8px 24px;
+    background: #f2ebdd;
+    min-height: calc(100vh - 60px);
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.title {
+    font-size: 24px;
+    font-weight: 800;
+    color: #1b2b34;
+}
+
+.dashboard-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 40px;
+    padding: 0 16px;
+    border-radius: 10px;
+    border: none;
+    background: #13324a;
+    color: #fff;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.dashboard-btn:hover {
+    opacity: 0.9;
+}
+
+.icon-left {
+    display: inline-flex;
+}
+
+.wrap {
+    margin-top: 4px;
+}
+
+.info-row {
+    margin: 8px 0;
+    font-size: 14px;
+    color: #374151;
+}
+
+.info-row.error {
+    color: #b91c1c;
+}
+
+.card {
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    padding: 0;
+    border: none;
+    overflow: hidden;
+    margin-top: 12px;
+}
+
+.card-header {
+    padding: 12px 16px;
+    font-weight: 800;
+    font-size: 16px;
+    color: #1b2b34;
+    background: #ffffff;
+    border-bottom: 1px solid #eef2f4;
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.table thead th {
+    text-align: center;
+    padding: 12px 60px; /* tăng khoảng cách ngang giữa các cột tiêu đề */
+    font-size: 14px;
+    font-weight: 700;
+    color: #fff;
+    background: #173a55;
+}
+
+.table tbody td {
+    padding: 16px 24px; /* tăng khoảng cách ngang giữa các cột + trên/dưới giữa các hàng */
+    border-top: 1px solid #e5e7eb;
+    color: #000;
+    font-size: 14px;
+    text-align: center;
+}
+
+/* Giảm khoảng trắng bên phải cột "Thao tác" nhưng vẫn giữ dòng kẻ full chiều ngang */
+.table thead th:last-child,
+.table tbody td:last-child {
+    padding-right: 8px;
+}
+
+.code-cell {
+    font-weight: 600;
+}
+
+.user-cell {
+    text-align: left;
+}
+
+.username {
+    font-weight: 500;
+}
+
+.email {
+    font-size: 12px;
+    color: #6b7280;
+}
+
+.status-pill {
+    display: flex; /* giúp dòng trạng thái chiếm trọn chiều ngang ô */
+    align-items: center;
+    justify-content: center;
+    width: 100%; /* kéo dài pill trạng thái hết chiều ngang ô (hết cột) */
+    min-width: 110px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #fff;
+}
+
+.status-pill.pending {
+    background: #f59e0b;
+}
+
+.status-pill.processing {
+    background: #2563eb;
+}
+
+.status-pill.shipping {
+    background: #8b5cf6;
+}
+
+.status-pill.completed {
+    background: #10b981;
+}
+
+.status-pill.cancelled {
+    background: #ef4444;
+}
+
+/* Tăng khoảng cách giữa cột trạng thái và cột thao tác */
+.status-cell {
+    text-align: left;
+    padding-right: 24px; /* khoảng trống giữa pill trạng thái và đường kẻ cột */
+}
+
+.actions-cell {
+    display: flex;
+    justify-content: flex-start;
+    gap: 8px;
+    padding-left: 20px; /* dịch cụm nút sang phải 10px */
+    text-align: left;
+}
+
+.btn {
+    border-radius: 6px;
+    padding: 6px 18px; /* tăng chiều ngang nút thao tác */
+    border: none;
+    font-size: 13px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.btn.view {
+    background: #e5e7eb;
+    color: #111827;
+}
+
+.btn.view:hover {
+    background: #d1d5db;
+}
+
+.btn.confirm {
+    background: #173a55;
+    color: #fff;
+}
+
+.btn.confirm:hover {
+    background: #0f2a3f;
+}
+
+.btn.cancel {
+    background: #fee2e2;
+    color: #b91c1c;
+}
+
+.btn.cancel:hover {
+    background: #fecaca;
+}
+
+.empty {
+    text-align: center;
+    padding: 24px 0;
+    color: #6b7280;
+}
+
+@media (max-width: 768px) {
+    .actions-cell {
+        flex-direction: column;
+    }
+}

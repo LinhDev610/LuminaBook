@@ -62,6 +62,90 @@ public class FileStorageService {
     }
 
     /**
+     * Xóa file avatar/profile dựa trên URL
+     * @param url URL của file cần xóa
+     */
+    public void deleteProfileMedia(String url) {
+        if (url == null || url.isBlank()) {
+            return;
+        }
+        
+        try {
+            String filename = null;
+            
+            // Parse URL để lấy filename
+            try {
+                java.net.URI uri = java.net.URI.create(url);
+                String path = uri.getPath();
+                if (path != null && !path.isBlank()) {
+                    // Loại bỏ context path nếu có (ví dụ: /lumina_book)
+                    if (path.startsWith("/lumina_book")) {
+                        path = path.substring("/lumina_book".length());
+                    }
+                    // Tìm phần path sau /profile_media/
+                    if (path.contains(PROFILE_MEDIA_URL)) {
+                        int profileIndex = path.indexOf(PROFILE_MEDIA_URL);
+                        filename = path.substring(profileIndex + PROFILE_MEDIA_URL.length());
+                    } else {
+                        // Nếu không có /profile_media/, lấy filename từ cuối path
+                        int lastSlash = path.lastIndexOf('/');
+                        if (lastSlash >= 0 && lastSlash < path.length() - 1) {
+                            filename = path.substring(lastSlash + 1);
+                        }
+                    }
+                }
+            } catch (IllegalArgumentException ignored) {
+                // Nếu không parse được URI, thử parse trực tiếp từ URL string
+            }
+
+            // Fallback: nếu không parse được từ URI, thử parse từ URL string
+            if (filename == null || filename.isBlank()) {
+                String path = url;
+                if (path.startsWith("/")) {
+                    path = path.substring(1);
+                }
+                if (path.startsWith("uploads/profile_media/")) {
+                    filename = path.substring("uploads/profile_media/".length());
+                } else if (path.startsWith("profile_media/")) {
+                    filename = path.substring("profile_media/".length());
+                } else if (path.contains("/profile_media/")) {
+                    int index = path.indexOf("/profile_media/");
+                    filename = path.substring(index + "/profile_media/".length());
+                }
+            }
+
+            // Nếu vẫn không có filename, và URL không chứa "/", coi như URL chính là filename
+            if ((filename == null || filename.isBlank()) && !url.contains("/")) {
+                filename = url;
+            }
+
+            if (filename == null || filename.isBlank()) {
+                log.warn("Could not extract filename from URL: {}", url);
+                return;
+            }
+
+            // Xóa file từ thư mục profile_media
+            Path filePath = Paths.get(PROFILE_MEDIA_DIR, filename);
+            boolean deleted = Files.deleteIfExists(filePath);
+
+            if (deleted) {
+                log.info("Deleted profile media file: {}", filePath.toAbsolutePath());
+            } else {
+                // Thử xóa từ thư mục legacy nếu có
+                Path legacyPath = Paths.get("profile_media", filename);
+                deleted = Files.deleteIfExists(legacyPath);
+                if (deleted) {
+                    log.info("Deleted profile media file from legacy folder: {}", legacyPath.toAbsolutePath());
+                } else {
+                    log.warn("Profile media file not found: {}", filename);
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Could not delete profile media file for url {}: {}", url, e.getMessage());
+        }
+    }
+
+    /**
      * Lưu file vào thư mục chỉ định
      * @param file File cần lưu
      * @param directory Thư mục đích

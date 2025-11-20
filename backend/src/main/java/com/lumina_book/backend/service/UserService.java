@@ -42,6 +42,7 @@ public class UserService {
     PasswordEncoder passwordEncoder;
     PasswordGeneratorService passwordGeneratorService;
     BrevoEmailService brevoEmailService;
+    FileStorageService fileStorageService;
 
     @NonFinal
     @Value("${app.default-avatar}")
@@ -197,7 +198,24 @@ public class UserService {
         }
         // AvatarUrl
         if (request.getAvatarUrl() != null && !request.getAvatarUrl().isEmpty()) {
-            user.setAvatarUrl(request.getAvatarUrl());
+            String oldAvatarUrl = user.getAvatarUrl();
+            String newAvatarUrl = request.getAvatarUrl();
+            
+            // Chỉ cập nhật nếu avatar mới khác với avatar cũ
+            if (!newAvatarUrl.equals(oldAvatarUrl)) {
+                user.setAvatarUrl(newAvatarUrl);
+                
+                // Xóa ảnh đại diện cũ nếu có và không phải là default avatar
+                if (oldAvatarUrl != null && !oldAvatarUrl.isEmpty() && !oldAvatarUrl.equals(defaultAvatarUrl)) {
+                    try {
+                        fileStorageService.deleteProfileMedia(oldAvatarUrl);
+//                        log.info("Deleted old avatar for user {}: {}", userId, oldAvatarUrl);
+                    } catch (Exception e) {
+                        // Log lỗi nhưng không fail việc cập nhật user
+                        log.warn("Failed to delete old avatar for user {}: {}", userId, e.getMessage());
+                    }
+                }
+            }
         }
 
         // role

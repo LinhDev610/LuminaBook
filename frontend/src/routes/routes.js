@@ -16,6 +16,7 @@ import CustomerVoucherPromotionPage from '../pages/CustomerAccount/CustomerVouch
 import CustomerChangePasswordPage from '../pages/CustomerAccount/CustomerChangePassword';
 import CartPage from '../pages/CartPage';
 import CheckoutDetailPage from '../pages/CheckoutPage/CheckoutDetails';
+import ConfirmCheckoutPage from '../pages/CheckoutPage/ConfirmCheckout';
 import CustomerAccountLayout from '../layouts/CustomerAccountLayout';
 import AdminLayout from '../layouts/AdminLayout';
 import StaffLayout from '../layouts/StaffLayout';
@@ -53,6 +54,8 @@ import BannerDetailPage from '../pages/Employees/Staff/ContentManagement/BannerD
 import BannerBookListPage from '../pages/Employees/Staff/ContentManagement/BannerDetail/BannerBookList';
 import UpdateContentPage from '../pages/Employees/Staff/ContentManagement/UpdateContent';
 import VouchersPromotionsPage from '../pages/Employees/Staff/VouchersPromotionsPage';
+import OrderManagementPage from '../pages/Employees/Staff/OrderManagement';
+import OrderDetailPage from '../pages/Employees/Staff/OrderManagement/OrderDetail';
 import AddVoucherPage from '../pages/Employees/Staff/VouchersPromotionsPage/Voucher/AddVoucher/AddVoucherPage';
 import AddPromotionPage from '../pages/Employees/Staff/VouchersPromotionsPage/Promotion/AddPromotion';
 import VoucherDetailPage from '../pages/Employees/Staff/VouchersPromotionsPage/Voucher/VoucherDetail';
@@ -74,6 +77,7 @@ const publicRoutes = [
     { path: '/product/:id', component: ProductDetailPage },
     { path: '/cart', component: CartPage },
     { path: '/checkout', component: CheckoutDetailPage },
+    { path: '/checkout/confirm', component: ConfirmCheckoutPage },
     { path: '/login', component: Login },
     { path: '/register', component: Register },
     { path: '/forgot-password', component: ForgotPassword },
@@ -169,8 +173,9 @@ const privateRoutes = [
     { path: '/staff/promotions/new', component: AddPromotionPage, layout: StaffLayout },
     { path: '/staff/promotions/:id', component: PromotionDetailPage, layout: StaffLayout },
     { path: '/staff/promotions/:id/update', component: UpdatePromotionPage, layout: StaffLayout },
-
-    { path: '/staff/orders', component: VouchersPromotionsPage, layout: StaffLayout },
+    
+    { path: '/staff/orders', component: OrderManagementPage, layout: StaffLayout },
+    { path: '/staff/orders/:id', component: OrderDetailPage, layout: StaffLayout },
 
     { path: '/staff/profile', component: ProfileStaffPage, layout: StaffLayout },
 

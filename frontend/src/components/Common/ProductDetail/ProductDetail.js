@@ -34,6 +34,13 @@ const ProductDetail = ({ productId }) => {
     const { success, error: showError } = useNotification();
     const isLoggedIn = !!getStoredToken('token');
 
+    // Khi vào trang chi tiết sản phẩm, luôn đưa viewport về đầu trang
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+        }
+    }, [productId]);
+
     useEffect(() => {
         if (!productId) {
             setLoading(false);

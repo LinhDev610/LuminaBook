@@ -8,11 +8,16 @@ import {
     getCart,
     applyVoucherToCart,
     clearVoucherFromCart,
+    getMyAddresses,
 } from '../../../services';
 import { normalizeMediaUrl } from '../../../services/productUtils';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useNotification } from '../../../components/Common/Notification';
 import defaultProductImage from '../../../assets/images/img_sach.png';
+import AddressListModal from '../../../components/Common/AddressModal/AddressListModal';
+import NewAddressModal from '../../../components/Common/AddressModal/NewAddressModal';
+import AddressDetailModal from '../../../components/Common/AddressModal/AddressDetailModal';
+import { formatFullAddress } from '../../../components/Common/AddressModal/useGhnLocations';
 
 const cx = classNames.bind(styles);
 
@@ -35,6 +40,12 @@ export default function CheckoutDetailPage() {
     const [selectedVoucherCode, setSelectedVoucherCode] = useState('');
     // Lưu meta sản phẩm: ảnh + giá gốc chưa giảm
     const [productMeta, setProductMeta] = useState({});
+    // Modal chọn / sửa địa chỉ giao hàng ngay trên trang checkout
+    const [showAddressList, setShowAddressList] = useState(false);
+    const [showNewAddressModal, setShowNewAddressModal] = useState(false);
+    const [showAddressDetailModal, setShowAddressDetailModal] = useState(false);
+    const [selectedAddress, setSelectedAddress] = useState(null);
+    const [addressRefreshKey, setAddressRefreshKey] = useState(0);
 
     const isLoggedIn = !!getStoredToken('token');
 
@@ -59,7 +70,7 @@ export default function CheckoutDetailPage() {
                     return;
                 }
 
-                const [me, cartResp] = await Promise.all([
+                const [me, cartResp, addresses] = await Promise.all([
                     getMyInfo(token),
                     (async () => {
                         const { ok, status, data } = await getCart(token);
@@ -75,6 +86,8 @@ export default function CheckoutDetailPage() {
                         }
                         return data;
                     })(),
+                    // Lấy danh sách địa chỉ để chọn địa chỉ mặc định làm địa chỉ giao hàng
+                    getMyAddresses(token),
                 ]);
 
                 if (!cartResp) return;
@@ -83,6 +96,15 @@ export default function CheckoutDetailPage() {
                 setCart(cartResp);
                 if (cartResp.appliedVoucherCode) {
                     setSelectedVoucherCode(cartResp.appliedVoucherCode);
+                }
+
+                // Ưu tiên địa chỉ mặc định của user làm địa chỉ giao hàng ban đầu
+                if (Array.isArray(addresses) && addresses.length > 0) {
+                    const defaultAddress =
+                        addresses.find((addr) => addr?.defaultAddress) || addresses[0];
+                    if (defaultAddress) {
+                        setSelectedAddress(defaultAddress);
+                    }
                 }
             } catch (err) {
                 console.error('Error loading checkout data:', err);
@@ -96,7 +118,7 @@ export default function CheckoutDetailPage() {
         fetchAll();
     }, [isLoggedIn, API_BASE_URL, openLoginModal, navigate, showError]);
 
-    // Fetch product meta (ảnh + giá gốc) cho checkout items
+    // Fetch product meta (ảnh + giá gốc & giá đang bán) cho checkout items
     useEffect(() => {
         if (!cart?.items || !cart.items.length) return;
 
@@ -120,16 +142,29 @@ export default function CheckoutDetailPage() {
                         ? normalizeMediaUrl(imageUrl, API_BASE_URL)
                         : defaultProductImage;
 
-                    const originalUnitPrice =
-                        typeof product?.price === 'number' && product.price > 0
+                    // Logic giá giống CartPage / ProductDetail:
+                    // - currentPrice: giá đang bán (đã giảm)
+                    // - originalUnitPrice: giá gốc trước khi giảm
+                    const currentPrice =
+                        (typeof product?.price === 'number' && product.price > 0
                             ? product.price
                             : typeof product?.unitPrice === 'number' &&
                               product.unitPrice > 0
                                 ? product.unitPrice
-                                : item.unitPrice || 0;
+                                : undefined) ?? item.unitPrice ?? 0;
+
+                    const originalUnitPrice =
+                        (typeof product?.originalPrice === 'number' &&
+                            product.originalPrice > 0
+                            ? product.originalPrice
+                            : typeof product?.unitPrice === 'number' &&
+                              product.unitPrice > 0
+                                ? product.unitPrice
+                                : undefined) ?? currentPrice;
 
                     metaMap[item.productId] = {
                         imageUrl: normalizedImage,
+                        currentPrice,
                         originalUnitPrice,
                     };
                     setProductMeta((prev) => ({ ...prev, ...metaMap }));
@@ -137,6 +172,7 @@ export default function CheckoutDetailPage() {
                 .catch(() => {
                     metaMap[item.productId] = {
                         imageUrl: defaultProductImage,
+                        currentPrice: item.unitPrice || 0,
                         originalUnitPrice: item.unitPrice || 0,
                     };
                     setProductMeta((prev) => ({ ...prev, ...metaMap }));
@@ -159,10 +195,16 @@ export default function CheckoutDetailPage() {
     const shippingFee =
         shippingMethod === 'standard' ? SHIPPING_FEE_STANDARD : SHIPPING_FEE_COD;
 
-    const itemsSubtotal = checkoutItems.reduce(
-        (sum, item) => sum + (item.finalPrice || 0),
-        0,
-    );
+    // Tạm tính: tính đúng theo những gì hiển thị ở từng dòng (giá đang bán * số lượng)
+    const itemsSubtotal = checkoutItems.reduce((sum, item) => {
+        const meta = productMeta[item.productId] || {};
+        const quantity = item.quantity || 1;
+        const unitPriceFromMeta =
+            typeof meta.currentPrice === 'number' ? meta.currentPrice : undefined;
+        const unitPrice = unitPriceFromMeta ?? item.unitPrice ?? 0;
+        const lineTotal = unitPrice * quantity;
+        return sum + lineTotal;
+    }, 0);
 
     const voucherDiscount = cart?.voucherDiscount || 0;
     const total = Math.max(0, itemsSubtotal + shippingFee - voucherDiscount);
@@ -249,9 +291,43 @@ export default function CheckoutDetailPage() {
             return;
         }
 
-        // TODO: Gọi API tạo đơn hàng
-        success('Đặt hàng thành công (demo)!');
-        navigate('/');
+        // Chuẩn bị dữ liệu tóm tắt đơn hàng để hiển thị ở màn hình xác nhận
+        const summaryItems = checkoutItems.map((item) => {
+            const meta = productMeta[item.productId] || {};
+            const quantity = item.quantity || 1;
+            const unitPriceFromMeta =
+                typeof meta.currentPrice === 'number' ? meta.currentPrice : undefined;
+            const unitPrice = unitPriceFromMeta ?? item.unitPrice ?? 0;
+            const lineTotal = unitPrice * quantity;
+            const imageUrl = meta.imageUrl || defaultProductImage;
+
+            return {
+                id: item.id,
+                name: item.productName,
+                quantity,
+                lineTotal,
+                imageUrl,
+            };
+        });
+
+        navigate('/checkout/confirm', {
+            state: {
+                paymentMethod,
+                address: {
+                    recipientName,
+                    recipientPhone,
+                    addressText,
+                    shippingProvider: 'GHN',
+                },
+                summary: {
+                    items: summaryItems,
+                    subtotal: itemsSubtotal,
+                    shippingFee,
+                    voucherDiscount,
+                    total,
+                },
+            },
+        });
     };
 
     if (loading) {
@@ -284,9 +360,22 @@ export default function CheckoutDetailPage() {
     }
 
     const addressText =
+        (selectedAddress && formatFullAddress(selectedAddress)) ||
         userInfo?.address ||
         userInfo?.shippingAddress ||
         'Vui lòng cập nhật địa chỉ giao hàng trong tài khoản của bạn';
+
+    const recipientName =
+        selectedAddress?.recipientName ||
+        userInfo?.fullName ||
+        userInfo?.name ||
+        'Khách hàng';
+
+    const recipientPhone =
+        selectedAddress?.recipientPhoneNumber ||
+        userInfo?.phoneNumber ||
+        userInfo?.phone ||
+        '---';
 
     return (
         <div className={cx('checkout-page')}>
@@ -299,7 +388,7 @@ export default function CheckoutDetailPage() {
                                 <button
                                     type="button"
                                     className={cx('link-button')}
-                                    onClick={() => navigate('/customer-account')}
+                                    onClick={() => setShowAddressList(true)}
                                 >
                                     Thay đổi
                                 </button>
@@ -309,13 +398,10 @@ export default function CheckoutDetailPage() {
                                     <strong>Giao đến: </strong>
                                     <span>{addressText}</span>
                                 </div>
-                                {userInfo && (
+                                {(recipientName || recipientPhone) && (
                                     <div className={cx('address-meta')}>
                                         Người nhận:{' '}
-                                        <strong>
-                                            {userInfo.fullName || userInfo.name || 'Khách hàng'}
-                                        </strong>{' '}
-                                        · {userInfo.phoneNumber || userInfo.phone || '---'}
+                                        <strong>{recipientName}</strong> · {recipientPhone}
                                     </div>
                                 )}
                             </div>
@@ -414,19 +500,26 @@ export default function CheckoutDetailPage() {
                                     const imgSrc = meta.imageUrl || defaultProductImage;
 
                                     const quantity = item.quantity || 1;
-                                    const unitPrice = item.unitPrice || 0; // giá đã giảm trong cart
+                                    // Giá đang bán ưu tiên lấy từ meta (giống CartPage),
+                                    // fallback về unitPrice trong cart
+                                    const unitPriceFromMeta =
+                                        typeof meta.currentPrice === 'number'
+                                            ? meta.currentPrice
+                                            : undefined;
+                                    const unitPrice =
+                                        unitPriceFromMeta ?? item.unitPrice ?? 0;
                                     const originalUnitPrice =
                                         typeof meta.originalUnitPrice === 'number'
                                             ? meta.originalUnitPrice
                                             : unitPrice;
 
-                                    const originalTotal = originalUnitPrice * quantity;
-                                    const finalTotal =
-                                        typeof item.finalPrice === 'number'
-                                            ? item.finalPrice
-                                            : unitPrice * quantity;
+                                    // Thành tiền mỗi sản phẩm: giống CartPage (giá đang bán * số lượng),
+                                    // nhưng vẫn giữ hiển thị giá gốc * số lượng nếu có khuyến mãi.
+                                    const currentLineTotal = unitPrice * quantity;
+                                    const originalLineTotal = originalUnitPrice * quantity;
                                     const showOriginal =
-                                        originalTotal > finalTotal && originalTotal > 0;
+                                        originalLineTotal > currentLineTotal &&
+                                        originalLineTotal > 0;
 
                                     return (
                                         <div key={item.id} className={cx('product-row')}>
@@ -449,11 +542,11 @@ export default function CheckoutDetailPage() {
                                             </div>
                                             <div className={cx('product-price')}>
                                                 <div className={cx('current-price')}>
-                                                    {formatPrice(finalTotal)}
+                                                    {formatPrice(currentLineTotal)}
                                                 </div>
                                                 {showOriginal && (
                                                     <div className={cx('unit-price')}>
-                                                        {formatPrice(originalTotal)}
+                                                        {formatPrice(originalLineTotal)}
                                                     </div>
                                                 )}
                                             </div>
@@ -541,8 +634,48 @@ export default function CheckoutDetailPage() {
                     </aside>
                 </div>
             </div>
+
+            {/* Modal chọn địa chỉ giao hàng (dùng lại logic từ trang tài khoản) */}
+            <AddressListModal
+                open={showAddressList}
+                onClose={() => setShowAddressList(false)}
+                onSelectAddress={(address) => {
+                    if (!address) return;
+                    setSelectedAddress(address);
+                    setShowAddressList(false);
+                }}
+                onViewDetail={(address) => {
+                    setSelectedAddress(address);
+                    setShowAddressDetailModal(true);
+                }}
+                onAddNewAddress={() => {
+                    setShowNewAddressModal(true);
+                }}
+                refreshKey={addressRefreshKey}
+                highlightAddressId={selectedAddress?.id || null}
+            />
+            <NewAddressModal
+                open={showNewAddressModal}
+                onClose={() => setShowNewAddressModal(false)}
+                onCreated={(newAddress) => {
+                    if (newAddress) {
+                        setSelectedAddress(newAddress);
+                    }
+                    setAddressRefreshKey((prev) => prev + 1);
+                    setShowNewAddressModal(false);
+                    setShowAddressList(false);
+                }}
+            />
+            <AddressDetailModal
+                open={showAddressDetailModal}
+                address={selectedAddress}
+                onClose={() => setShowAddressDetailModal(false)}
+                onUpdated={(updated) => {
+                    if (!updated) return;
+                    setSelectedAddress(updated);
+                    setAddressRefreshKey((prev) => prev + 1);
+                }}
+            />
         </div>
     );
 }
-
-

@@ -328,11 +328,11 @@ function Home() {
                 {/* Trending Section */}
                 <section className={cx('trending-section')}>
                     <div className={cx('trending-header')}>
-                        <h3 className={cx('trending-title')}>SÁCH THỊNH HÀNH</h3>
+                        <h3 className={cx('trending-title')}>SÁCH YÊU THÍCH</h3>
                     </div>
                     <ProductList
                         products={trendingProducts}
-                        title="SÁCH THỊNH HÀNH"
+                        title="SÁCH YÊU THÍCH"
                         showNavigation={true}
                         showHeader={false}
                         minimal={true}

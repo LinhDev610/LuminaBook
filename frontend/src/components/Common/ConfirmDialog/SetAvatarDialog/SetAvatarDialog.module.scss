@@ -1,0 +1,128 @@
+.overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    z-index: 2000;
+}
+
+.dialog {
+    background: #fff;
+    border-radius: 16px;
+    width: min(420px, 100%);
+    box-shadow: 0 30px 80px rgba(15, 23, 42, 0.35);
+    overflow: hidden;
+    animation: fadeIn 0.2s ease;
+}
+
+.header {
+    padding: 20px 24px 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    .title {
+        margin: 0;
+        font-size: 1.15rem;
+        font-weight: 700;
+        color: #13354c;
+    }
+}
+
+.close-btn {
+    border: none;
+    background: transparent;
+    font-size: 1.5rem;
+    color: #9ca3af;
+    cursor: pointer;
+
+    &:hover:not(:disabled) {
+        color: #4b5563;
+    }
+
+    &:disabled {
+        cursor: not-allowed;
+        opacity: 0.6;
+    }
+}
+
+.body {
+    padding: 0 24px 20px;
+
+    .preview-wrapper {
+        display: flex;
+        justify-content: center;
+        margin-bottom: 16px;
+    }
+
+    .preview-image {
+        width: 150px;
+        height: 150px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 3px solid #e5e7eb;
+    }
+
+    .message {
+        margin: 0;
+        color: #1f2937;
+        line-height: 1.6;
+        text-align: center;
+    }
+}
+
+.footer {
+    padding: 16px 24px 20px;
+    border-top: 1px solid #f3f4f6;
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+.btn {
+    border-radius: 999px;
+    border: none;
+    padding: 10px 20px;
+    font-weight: 600;
+    cursor: pointer;
+    min-width: 100px;
+    transition: background 0.2s ease, opacity 0.2s ease;
+
+    &.cancel {
+        background: #e5e7eb;
+        color: #111827;
+
+        &:hover:not(:disabled) {
+            background: #d1d5db;
+        }
+    }
+
+    &.confirm {
+        background: #13354c;
+        color: #fff;
+
+        &:hover:not(:disabled) {
+            background: #0f2838;
+        }
+    }
+
+    &:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(12px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+

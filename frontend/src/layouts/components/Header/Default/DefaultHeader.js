@@ -1,5 +1,6 @@
 import config from '../../../../config/';
 import routes from '../../../../config/routes';
+import { clearVoucherFromCart } from '../../../../services';
 
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -104,6 +105,21 @@ function DefaultHeader() {
     }, []);
 
     const toggleMenu = () => setMenuOpen((v) => !v);
+
+    // Khi về trang Home, tự động hủy voucher trong giỏ hàng (nếu có)
+    const handleGoHome = () => {
+        try {
+            // Nếu chưa đăng nhập vẫn có thể gọi, backend sẽ tự kiểm tra
+            clearVoucherFromCart(currentToken).catch((err) => {
+                // Không chặn điều hướng về home nếu lỗi
+                // eslint-disable-next-line no-console
+                console.error('Error clearing voucher when going home:', err);
+            });
+        } catch (err) {
+            // eslint-disable-next-line no-console
+            console.error('Unexpected error clearing voucher when going home:', err);
+        }
+    };
     const handleLogout = () => {
         // Close confirm modal immediately so it disappears before navigation
         setShowLogoutConfirm(false);
@@ -127,7 +143,7 @@ function DefaultHeader() {
         <div>
             <header className={cx('header')}>
                 <div className={cx('logo')}>
-                    <Link to="/">
+                    <Link to="/" onClick={handleGoHome}>
                         <img
                             src={logoIcon}
                             alt="LuminaBook"

@@ -12,6 +12,7 @@ import VerifyCode from '../components/Auth/VerifyCode';
 import Account from '../pages/CustomerAccount';
 import CustomerProfilePage from '../pages/CustomerAccount/CustomerProfile';
 import CustomerOrderHistoryPage from '../pages/CustomerAccount/CustomerOrderHistory';
+import CustomerOrderDetailPage from '../pages/CustomerAccount/CustomerOrderHistory/OrderDetailPage';
 import CustomerVoucherPromotionPage from '../pages/CustomerAccount/CustomerVoucherPromotion';
 import CustomerChangePasswordPage from '../pages/CustomerAccount/CustomerChangePassword';
 import CartPage from '../pages/CartPage';
@@ -93,6 +94,7 @@ const privateRoutes = [
     { path: '/customer-account', component: Account, layout: CustomerAccountLayout },
     { path: '/customer-account/profile', component: CustomerProfilePage, layout: CustomerAccountLayout },
     { path: '/customer-account/orders', component: CustomerOrderHistoryPage, layout: CustomerAccountLayout },
+    { path: '/customer-account/orders/:id', component: CustomerOrderDetailPage, layout: CustomerAccountLayout },
     { path: '/customer-account/vouchers', component: CustomerVoucherPromotionPage, layout: CustomerAccountLayout },
     { path: '/customer-account/password', component: CustomerChangePasswordPage, layout: CustomerAccountLayout },
 
@@ -175,7 +177,7 @@ const privateRoutes = [
     { path: '/staff/promotions/new', component: AddPromotionPage, layout: StaffLayout },
     { path: '/staff/promotions/:id', component: PromotionDetailPage, layout: StaffLayout },
     { path: '/staff/promotions/:id/update', component: UpdatePromotionPage, layout: StaffLayout },
-    
+
     { path: '/staff/orders', component: OrderManagementPage, layout: StaffLayout },
     { path: '/staff/orders/:id', component: OrderDetailPage, layout: StaffLayout },
 

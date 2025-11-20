@@ -8,7 +8,6 @@ export default function CustomerSideBar() {
     return (
         <div className={cx('side')}>
             {' '}
-            {/* simple placeholder, can be styled later */}
             <ul className={cx('menu')}>
                 <li>
                     <NavLink

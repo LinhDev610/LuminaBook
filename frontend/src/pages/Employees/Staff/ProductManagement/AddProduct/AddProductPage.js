@@ -147,10 +147,12 @@ export default function AddProductPage() {
             }
         }
         if (
-            stockQuantity !== undefined &&
-            stockQuantity !== null &&
-            stockQuantity !== ''
+            stockQuantity === undefined ||
+            stockQuantity === null ||
+            stockQuantity === ''
         ) {
+            newErrors.stockQuantity = 'Vui lòng nhập số lượng tồn kho.';
+        } else {
             const stockNum = Number(stockQuantity);
             if (Number.isNaN(stockNum) || stockNum < 0) {
                 newErrors.stockQuantity = 'Số lượng tồn kho tối thiểu là 0.';
@@ -265,12 +267,7 @@ export default function AddProductPage() {
             imageUrls: imageUrls.length ? imageUrls : undefined,
             videoUrls: videoUrls.length ? videoUrls : undefined,
             defaultMediaUrl: defaultUrl || undefined,
-            stockQuantity:
-                stockQuantity !== undefined &&
-                    stockQuantity !== null &&
-                    stockQuantity !== ''
-                    ? Number(stockQuantity)
-                    : undefined,
+            stockQuantity: Number(stockQuantity),
         }),
         [
             productId,

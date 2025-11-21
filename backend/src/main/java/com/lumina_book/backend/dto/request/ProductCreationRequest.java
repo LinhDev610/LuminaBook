@@ -67,6 +67,7 @@ public class ProductCreationRequest {
     // Promotion (optional)
     String promotionId;
 
+    @NotNull(message = "Số lượng tồn kho không được để trống")
     @Min(value = 0, message = "Số lượng tồn kho phải lớn hơn hoặc bằng 0")
     Integer stockQuantity;
 

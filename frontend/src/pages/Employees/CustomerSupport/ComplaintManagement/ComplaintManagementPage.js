@@ -3,6 +3,7 @@ import classNames from 'classnames/bind';
 import styles from './ComplaintManagementPage.module.scss';
 import { useNavigate } from 'react-router-dom';
 import { getApiBaseUrl, getStoredToken, formatDateTime } from '../../../../services/utils';
+import ConfirmDialog from '../../../../components/Common/ConfirmDialog/DeleteAccountDialog';
 
 const cx = classNames.bind(styles);
 
@@ -32,6 +33,13 @@ export default function ComplaintManagementPage() {
     const [actionError, setActionError] = useState('');
     const [actionSuccess, setActionSuccess] = useState('');
     const [currentUserId, setCurrentUserId] = useState(null);
+    const initialConfirmState = {
+        open: false,
+        title: '',
+        message: '',
+        onConfirm: null,
+    };
+    const [confirmDialog, setConfirmDialog] = useState(initialConfirmState);
 
     // Fetch current user ID
     useEffect(() => {
@@ -250,8 +258,8 @@ export default function ComplaintManagementPage() {
 
             if (!response.ok) {
                 // Check if it's a permission error
-                if (response.status === 403 || data?.code === 1006 || 
-                    data?.message?.includes('permission') || 
+                if (response.status === 403 || data?.code === 1006 ||
+                    data?.message?.includes('permission') ||
                     data?.message?.includes('UNAUTHORIZED')) {
                     // Check if complaint is resolved
                     if (selectedComplaint.statusRaw === 'RESOLVED') {
@@ -275,12 +283,19 @@ export default function ComplaintManagementPage() {
         }
     };
 
-    const handleTransferAdmin = async () => {
+    const handleTransferAdmin = () => {
         if (!selectedComplaint) return;
+        setConfirmDialog({
+            open: true,
+            title: 'Xác nhận chuyển khiếu nại',
+            message: 'Bạn có chắc chắn muốn chuyển khiếu nại này cho Admin không?',
+            onConfirm: () => performTransferAdmin(),
+        });
+    };
 
-        if (!window.confirm('Bạn có chắc chắn muốn chuyển khiếu nại này cho Admin không?')) {
-            return;
-        }
+    const performTransferAdmin = async () => {
+        setConfirmDialog(initialConfirmState);
+        if (!selectedComplaint) return;
 
         setActionLoading(true);
         setActionError('');
@@ -461,10 +476,10 @@ export default function ComplaintManagementPage() {
                                         <div className={cx('detail-row')}>
                                             <span className={cx('detail-label')}>Người xử lý:</span>
                                             <span className={cx('detail-value')}>
-                                                {selectedComplaint.handlerName 
+                                                {selectedComplaint.handlerName
                                                     ? `CSKH - ${selectedComplaint.handlerName}`
-                                                    : selectedComplaint.assignedToRaw === 'ADMIN' 
-                                                        ? 'Admin' 
+                                                    : selectedComplaint.assignedToRaw === 'ADMIN'
+                                                        ? 'Admin'
                                                         : 'Chưa có người xử lý'}
                                             </span>
                                         </div>
@@ -493,16 +508,16 @@ export default function ComplaintManagementPage() {
                                         <button
                                             className={cx('action-btn', 'btn-save-note')}
                                             onClick={handleAcceptComplaint}
-                                            disabled={actionLoading || 
+                                            disabled={actionLoading ||
                                                 selectedComplaint.statusRaw === 'RESOLVED' ||
                                                 (selectedComplaint.handlerId && selectedComplaint.handlerId !== '' && selectedComplaint.handlerId !== currentUserId)}
                                         >
-                                            {actionLoading 
-                                                ? 'Đang tiếp nhận...' 
+                                            {actionLoading
+                                                ? 'Đang tiếp nhận...'
                                                 : selectedComplaint.statusRaw === 'RESOLVED'
                                                     ? 'Đã giải quyết'
-                                                    : selectedComplaint.handlerId 
-                                                        ? (selectedComplaint.handlerId === currentUserId ? 'Đã tiếp nhận (Bạn)' : 'Đã có người xử lý') 
+                                                    : selectedComplaint.handlerId
+                                                        ? (selectedComplaint.handlerId === currentUserId ? 'Đã tiếp nhận (Bạn)' : 'Đã có người xử lý')
                                                         : 'Tiếp nhận khiếu nại'}
                                         </button>
                                         <button
@@ -523,6 +538,13 @@ export default function ComplaintManagementPage() {
                     </div>
                 )}
             </div>
+            <ConfirmDialog
+                open={confirmDialog.open}
+                title={confirmDialog.title}
+                message={confirmDialog.message}
+                onConfirm={confirmDialog.onConfirm || (() => { })}
+                onCancel={() => setConfirmDialog(initialConfirmState)}
+            />
         </div>
     );
 }

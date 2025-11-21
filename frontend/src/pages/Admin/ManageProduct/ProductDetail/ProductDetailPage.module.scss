@@ -249,6 +249,24 @@
         }
     }
 
+    &.btn-hide {
+        background: #f59e0b;
+        color: #ffffff;
+
+        &:hover:not(:disabled) {
+            background: #d97706;
+        }
+    }
+
+    &.btn-show {
+        background: #10b981;
+        color: #ffffff;
+
+        &:hover:not(:disabled) {
+            background: #059669;
+        }
+    }
+
     &.btn-back {
         background: #6b7280;
         color: #ffffff;

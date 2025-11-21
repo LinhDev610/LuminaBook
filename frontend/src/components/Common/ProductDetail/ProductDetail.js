@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import styles from './ProductDetail.module.scss';
 import { getApiBaseUrl, formatDateTime } from '../../../services/utils';
 import { normalizeMediaUrl } from '../../../services/productUtils';
-import { getMyInfo, getStoredToken, getReviewsByProduct, createReview, addCartItem } from '../../../services';
+import { getMyInfo, getStoredToken, getReviewsByProduct, createReview, addCartItem, getCart } from '../../../services';
 import iconShip from '../../../assets/icons/icon_ship.png';
 import iconPay from '../../../assets/icons/icon_pay.png';
 import iconRefund from '../../../assets/icons/icon_refund.png';
@@ -11,6 +12,7 @@ import { useAuth } from '../../../contexts/AuthContext';
 import { useNotification } from '../Notification';
 
 const ProductDetail = ({ productId }) => {
+    const navigate = useNavigate();
     const API_BASE_URL = useMemo(() => getApiBaseUrl(), []);
     const [product, setProduct] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -346,8 +348,104 @@ const ProductDetail = ({ productId }) => {
         }
     };
 
-    const handleBuyNow = () => {
-        alert('Chuyển đến trang thanh toán!');
+    const handleBuyNow = async () => {
+        // Kiểm tra đăng nhập
+        if (!isLoggedIn) {
+            showError('Vui lòng đăng nhập để mua sản phẩm');
+            openLoginModal();
+            return;
+        }
+
+        // Kiểm tra productId
+        if (!productId) {
+            showError('Không tìm thấy thông tin sản phẩm');
+            return;
+        }
+
+        // Kiểm tra số lượng
+        if (quantity <= 0) {
+            showError('Số lượng sản phẩm không hợp lệ');
+            return;
+        }
+
+        try {
+            const token = getStoredToken('token');
+            
+            if (!token) {
+                showError('Vui lòng đăng nhập để mua sản phẩm');
+                openLoginModal();
+                return;
+            }
+
+            // Thêm sản phẩm vào giỏ hàng (bước cần thiết để có cartItemId)
+            const { ok, status, data: cartData } = await addCartItem(productId, quantity, token);
+
+            if (!ok) {
+                if (status === 401) {
+                    showError('Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại');
+                    openLoginModal();
+                } else if (status === 403) {
+                    showError('Bạn không có quyền mua sản phẩm. Vui lòng đăng nhập với tài khoản khách hàng.');
+                    openLoginModal();
+                } else if (status === 400 || status === 404) {
+                    const errorMessage = cartData?.message || cartData?.error || 'Không thể thêm sản phẩm vào giỏ hàng';
+                    showError(errorMessage);
+                } else {
+                    const errorMessage = cartData?.message || cartData?.error || `Có lỗi xảy ra khi thêm sản phẩm vào giỏ hàng (Lỗi: ${status})`;
+                    showError(errorMessage);
+                }
+                return;
+            }
+
+            // Đợi một chút để backend xử lý xong, rồi lấy giỏ hàng mới nhất
+            await new Promise((resolve) => setTimeout(resolve, 200));
+            const { ok: cartOk, data: updatedCart } = await getCart(token);
+            
+            if (!cartOk || !updatedCart) {
+                showError('Không thể tải giỏ hàng. Vui lòng thử lại.');
+                return;
+            }
+
+            if (!updatedCart.items || updatedCart.items.length === 0) {
+                showError('Không tìm thấy sản phẩm trong giỏ hàng. Vui lòng thử lại.');
+                return;
+            }
+
+            // Tìm cartItem của sản phẩm vừa thêm (ưu tiên tìm theo productId)
+            const cartItems = updatedCart.items || [];
+            const targetCartItem = cartItems.find(
+                (item) => 
+                    item.productId === productId || 
+                    item.product?.id === productId ||
+                    (item.product && typeof item.product === 'string' && item.product === productId)
+            );
+
+            if (!targetCartItem || !targetCartItem.id) {
+                // Nếu không tìm thấy, thử lấy item mới nhất (có thể là item vừa thêm)
+                const latestItem = cartItems[cartItems.length - 1];
+                if (latestItem && latestItem.id) {
+                    // Chuyển đến trang thanh toán với cartItemId
+                    navigate('/checkout', {
+                        state: {
+                            selectedItemIds: [latestItem.id],
+                        },
+                    });
+                    return;
+                }
+                showError('Không tìm thấy sản phẩm trong giỏ hàng. Vui lòng thử lại.');
+                return;
+            }
+
+            // Chuyển đến trang thanh toán với cartItemId đã chọn
+            navigate('/checkout', {
+                state: {
+                    selectedItemIds: [targetCartItem.id],
+                },
+            });
+        } catch (err) {
+            console.error('Error in buy now:', err);
+            showError('Có lỗi xảy ra khi xử lý mua ngay');
+        }
     };
 
     const handleSubmitReview = async (e) => {

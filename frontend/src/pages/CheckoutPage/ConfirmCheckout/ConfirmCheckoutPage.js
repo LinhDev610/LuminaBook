@@ -30,6 +30,11 @@ export default function ConfirmCheckoutPage() {
     const address = state.address || {};
     const summary = state.summary || {};
     const cartItemIds = state.cartItemIds || [];
+    
+    // Direct checkout: mua ngay từ sản phẩm (không qua giỏ hàng)
+    const directCheckout = state.directCheckout || false;
+    const directProductId = state.productId || null;
+    const directQuantity = state.quantity || 1;
 
     const items = summary.items || [];
     const shippingFee = summary.shippingFee || 0;
@@ -157,24 +162,51 @@ export default function ConfirmCheckoutPage() {
             const apiBaseUrl = getApiBaseUrl();
             const token = getStoredToken('token');
 
-            // Bước 1: tạo đơn hàng từ giỏ hàng hiện tại
+            // Bước 1: tạo đơn hàng
             const shippingInfo = buildShippingInfo();
-            const orderPayload = {
-                addressId: address.id || address.addressId || null,
-                shippingAddress: JSON.stringify(shippingInfo),
-                note: '', // có thể truyền ghi chú nếu cần
-                shippingFee,
-                cartItemIds,
-            };
+            
+            let orderResp;
+            
+            if (directCheckout && directProductId) {
+                // Direct checkout: mua ngay từ sản phẩm (không qua giỏ hàng)
+                const directPayload = {
+                    productId: directProductId,
+                    quantity: directQuantity,
+                    addressId: address.id || address.addressId || null,
+                    shippingAddress: JSON.stringify(shippingInfo),
+                    note: '',
+                    shippingFee,
+                    paymentMethod: paymentMethod?.toUpperCase() || 'COD',
+                };
 
-            const orderResp = await fetch(`${apiBaseUrl}/orders/checkout`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-                },
-                body: JSON.stringify(orderPayload),
-            });
+                orderResp = await fetch(`${apiBaseUrl}/orders/checkout-direct`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                    },
+                    body: JSON.stringify(directPayload),
+                });
+            } else {
+                // Checkout từ giỏ hàng (flow cũ)
+                const orderPayload = {
+                    addressId: address.id || address.addressId || null,
+                    shippingAddress: JSON.stringify(shippingInfo),
+                    note: '',
+                    shippingFee,
+                    cartItemIds,
+                    paymentMethod: paymentMethod?.toUpperCase() || 'COD',
+                };
+
+                orderResp = await fetch(`${apiBaseUrl}/orders/checkout`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                    },
+                    body: JSON.stringify(orderPayload),
+                });
+            }
 
             if (!orderResp.ok) {
                 let message = 'Không thể tạo đơn hàng. Vui lòng thử lại.';
@@ -194,7 +226,9 @@ export default function ConfirmCheckoutPage() {
             }
 
             const orderData = await orderResp.json().catch(() => null);
-            const order = orderData?.result || orderData;
+            const initResult = orderData?.result || orderData || {};
+            const order = initResult?.order || initResult;
+            const payUrl = initResult?.payUrl;
 
             if (!order || !order.id) {
                 showError('Không nhận được thông tin đơn hàng từ server.');
@@ -207,46 +241,19 @@ export default function ConfirmCheckoutPage() {
             const amountForCurrent = Math.round(currentTotal);
 
             if (paymentMethod === 'momo') {
-                // Thanh toán MoMo
-                const amountForMomo = amountForCurrent;
-                persistLatestOrder(order, 'Thanh toán qua MoMo', amountForMomo);
-
-                const resp = await fetch(
-                    `${apiBaseUrl}/api/momo/create?amount=${amountForMomo}&orderId=${encodeURIComponent(order.id)}`,
-                    {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-                        },
-                    },
-                );
-
-                if (!resp.ok) {
-                    showError('Không thể khởi tạo thanh toán MoMo. Vui lòng thử lại.');
-                    setSubmitting(false);
-                    return;
-                }
-
-                const data = await resp.json().catch(() => null);
-                const result = data?.result || data;
-                const payUrl = result?.payUrl || result?.deepLink || result?.qrCodeUrl;
-
+                persistLatestOrder(order, 'Thanh toán qua MoMo', amountForCurrent);
                 if (!payUrl) {
                     showError('Không nhận được đường dẫn thanh toán MoMo.');
                     setSubmitting(false);
                     return;
                 }
-
-                // Điều hướng người dùng sang màn hình thanh toán của MoMo
                 window.location.href = payUrl;
                 return;
-            } else {
-                // COD: lưu thông tin đơn & sản phẩm rồi quay về trang chủ
-                persistLatestOrder(order, 'Thanh toán khi nhận hàng', amountForCurrent);
-                success('Đơn hàng COD đã được tạo thành công.');
-                navigate('/');
             }
+
+            persistLatestOrder(order, 'Thanh toán khi nhận hàng', amountForCurrent);
+            success('Đơn hàng COD đã được tạo thành công.');
+            navigate('/');
         } catch (err) {
             console.error('Error when confirming checkout:', err);
             showError('Có lỗi xảy ra khi xác nhận đặt hàng.');

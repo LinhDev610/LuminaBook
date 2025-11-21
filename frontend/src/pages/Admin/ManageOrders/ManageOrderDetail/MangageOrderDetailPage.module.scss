@@ -1,0 +1,197 @@
+.page {
+    padding: 24px;
+    min-height: 100%;
+    background: #f5f7fb;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.pageHeader {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    h1 {
+        font-size: 28px;
+        font-weight: 700;
+        color: #1a3c5a;
+        margin: 0;
+    }
+}
+
+.backBtn {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    border: none;
+    background: #1a3c5a;
+    color: #fff;
+    font-size: 18px;
+    cursor: pointer;
+}
+
+.stateCard {
+    background: #fff;
+    padding: 32px;
+    border-radius: 12px;
+    border: 1px solid rgba(26, 60, 90, 0.2);
+    text-align: center;
+    color: #1a3c5a;
+
+    &.error {
+        color: #c62828;
+    }
+
+    button {
+        margin-top: 12px;
+        padding: 10px 20px;
+        border-radius: 8px;
+        border: none;
+        background: #1a3c5a;
+        color: #fff;
+        cursor: pointer;
+    }
+}
+
+.card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+    padding: 28px;
+    border: 1px solid rgba(26, 60, 90, 0.12);
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.cardHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.orderCode {
+    font-size: 18px;
+    font-weight: 700;
+    margin: 0;
+    color: #111;
+}
+
+.statusBadge {
+    padding: 6px 18px;
+    border-radius: 999px;
+    font-weight: 600;
+    font-size: 14px;
+    color: #fff;
+
+    &.pending {
+        background: #f9a826;
+    }
+    &.processing,
+    &.shipping {
+        background: #1a3c5a;
+    }
+    &.delivered {
+        background: #1b5e20;
+    }
+    &.cancelled {
+        background: #c62828;
+    }
+}
+
+.infoSection {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 32px;
+    font-size: 15px;
+    color: #111;
+}
+
+.infoBlock {
+    flex: 1;
+    min-width: 220px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.infoRow {
+    display: flex;
+    gap: 6px;
+}
+
+.infoLabel {
+    font-weight: 600;
+    color: #111;
+    flex-shrink: 0;
+}
+
+.infoValue {
+    color: #111;
+}
+
+.tableWrapper {
+    border: 1px solid rgba(26, 60, 90, 0.12);
+    border-radius: 12px;
+    overflow: hidden;
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+
+        th,
+        td {
+            padding: 14px 18px;
+            text-align: left;
+            border-bottom: 1px solid #eef2f6;
+            font-size: 14px;
+        }
+
+        th {
+            background: #1a3c5a;
+            color: #fff;
+            font-weight: 600;
+        }
+
+        tbody tr:hover {
+            background: rgba(26, 60, 90, 0.05);
+        }
+
+        .summaryRow {
+            font-weight: 600;
+            background: rgba(26, 60, 90, 0.03);
+
+            td {
+                font-size: 15px;
+            }
+        }
+    }
+}
+
+.empty {
+    text-align: center;
+    padding: 24px;
+    color: #6b7280;
+}
+
+.actions {
+    display: flex;
+    justify-content: flex-start;
+}
+
+.refundButton {
+    border: none;
+    border-radius: 8px;
+    padding: 12px 20px;
+    background: #ef5350;
+    color: #fff;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s ease;
+
+    &:hover {
+        opacity: 0.9;
+    }
+}
+

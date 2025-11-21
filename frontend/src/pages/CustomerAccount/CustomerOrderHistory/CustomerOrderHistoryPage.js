@@ -351,8 +351,15 @@ function CustomerOrderHistoryPage() {
         return list;
     }, [orders, activeTab, searchQuery, selectedDate, sortBy]);
 
-    const handleViewDetail = (orderId) => {
-        navigate(`/customer-account/orders/${orderId}`);
+    const handleViewDetail = (orderId, orderCode) => {
+        // Use orderId if available, otherwise fallback to orderCode
+        const targetId = orderId || orderCode;
+        if (!targetId) {
+            console.error('CustomerOrderHistory: Cannot navigate - missing order ID and code');
+            return;
+        }
+        console.log('CustomerOrderHistory: Navigating to order detail with id/code:', targetId);
+        navigate(`/customer-account/orders/${targetId}`);
     };
 
     const formatOrderDate = (dateString) => {
@@ -369,7 +376,7 @@ function CustomerOrderHistoryPage() {
                 date.getMinutes() !== 0 ||
                 date.getSeconds() !== 0;
             if (!hasTime) {
-                return `${day}/${month}/${year}`;
+            return `${day}/${month}/${year}`;
             }
             const hour = String(date.getHours()).padStart(2, '0');
             const minute = String(date.getMinutes()).padStart(2, '0');
@@ -518,7 +525,7 @@ function CustomerOrderHistoryPage() {
                                             <div className={cx('order-actions')}>
                                                 <button
                                                     className={cx('view-detail-btn')}
-                                                    onClick={() => handleViewDetail(order.id)}
+                                                    onClick={() => handleViewDetail(order.id, order.code)}
                                                 >
                                                     Xem chi tiết
                                                 </button>

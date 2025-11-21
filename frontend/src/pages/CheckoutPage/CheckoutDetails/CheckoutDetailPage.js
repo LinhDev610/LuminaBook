@@ -29,9 +29,23 @@ export default function CheckoutDetailPage() {
     const API_BASE_URL = useMemo(() => getApiBaseUrl(), []);
 
     const selectedItemIds = location.state?.selectedItemIds || [];
+    const directCheckout = location.state?.directCheckout || false;
+    const directProductId = location.state?.productId || null;
+    const directQuantity = location.state?.quantity || 1;
+    
+    // Debug log
+    if (directCheckout) {
+        console.log('CheckoutDetailPage: Direct checkout detected', {
+            directCheckout,
+            directProductId,
+            directQuantity,
+            locationState: location.state,
+        });
+    }
 
     const [userInfo, setUserInfo] = useState(null);
     const [cart, setCart] = useState(null);
+    const [directProduct, setDirectProduct] = useState(null);
     const [loading, setLoading] = useState(true);
     const [shippingMethod, setShippingMethod] = useState('standard'); // 'standard' | 'cod'
     const [paymentMethod, setPaymentMethod] = useState('momo'); // 'momo' | 'cod'
@@ -70,34 +84,84 @@ export default function CheckoutDetailPage() {
                     return;
                 }
 
-                const [me, cartResp, addresses] = await Promise.all([
-                    getMyInfo(token),
-                    (async () => {
-                        const { ok, status, data } = await getCart(token);
-                        if (!ok) {
-                            if (status === 401) {
-                                showError(
-                                    'Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại',
-                                );
-                                openLoginModal();
-                            } else {
-                                showError('Không thể tải giỏ hàng để thanh toán');
+                let addresses = [];
+                
+                if (directCheckout && directProductId) {
+                    // Direct checkout: load product trực tiếp, không cần cart
+                    console.log('CheckoutDetailPage: Direct checkout, loading product:', directProductId);
+                    const [me, productResp, addressesData] = await Promise.all([
+                        getMyInfo(token),
+                        (async () => {
+                            try {
+                                const resp = await fetch(`${API_BASE_URL}/products/${directProductId}`, {
+                                    headers: { 'Content-Type': 'application/json' },
+                                });
+                                if (!resp.ok) {
+                                    console.error('CheckoutDetailPage: Failed to load product, status:', resp.status);
+                                    showError('Không thể tải thông tin sản phẩm');
+                                    navigate('/');
+                                    return null;
+                                }
+                                const data = await resp.json();
+                                const product = data?.result || data;
+                                console.log('CheckoutDetailPage: Product loaded:', product?.id, product?.name);
+                                return product;
+                            } catch (err) {
+                                console.error('Error fetching product:', err);
+                                showError('Không thể tải thông tin sản phẩm');
+                                navigate('/');
+                                return null;
                             }
-                            navigate('/cart');
-                            return null;
-                        }
-                        return data;
-                    })(),
-                    // Lấy danh sách địa chỉ để chọn địa chỉ mặc định làm địa chỉ giao hàng
-                    getMyAddresses(token),
-                ]);
+                        })(),
+                        getMyAddresses(token),
+                    ]);
 
-                if (!cartResp) return;
+                    if (!productResp || !productResp.id) {
+                        console.error('CheckoutDetailPage: Product response is invalid:', productResp);
+                        showError('Không thể tải thông tin sản phẩm');
+                        navigate('/');
+                        return;
+                    }
 
-                setUserInfo(me || null);
-                setCart(cartResp);
-                if (cartResp.appliedVoucherCode) {
-                    setSelectedVoucherCode(cartResp.appliedVoucherCode);
+                    console.log('CheckoutDetailPage: Setting directProduct:', {
+                        id: productResp.id,
+                        name: productResp.name,
+                        price: productResp.price,
+                    });
+                    setUserInfo(me || null);
+                    setDirectProduct(productResp);
+                    addresses = addressesData || [];
+                } else {
+                    // Checkout từ giỏ hàng (flow cũ)
+                    const [me, cartResp, addressesData] = await Promise.all([
+                        getMyInfo(token),
+                        (async () => {
+                            const { ok, status, data } = await getCart(token);
+                            if (!ok) {
+                                if (status === 401) {
+                                    showError(
+                                        'Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại',
+                                    );
+                                    openLoginModal();
+                                } else {
+                                    showError('Không thể tải giỏ hàng để thanh toán');
+                                }
+                                navigate('/cart');
+                                return null;
+                            }
+                            return data;
+                        })(),
+                        getMyAddresses(token),
+                    ]);
+
+                    if (!cartResp) return;
+
+                    setUserInfo(me || null);
+                    setCart(cartResp);
+                    addresses = addressesData || [];
+                    if (cartResp.appliedVoucherCode) {
+                        setSelectedVoucherCode(cartResp.appliedVoucherCode);
+                    }
                 }
 
                 // Ưu tiên địa chỉ mặc định của user làm địa chỉ giao hàng ban đầu
@@ -118,10 +182,42 @@ export default function CheckoutDetailPage() {
         };
 
         fetchAll();
-    }, [isLoggedIn, API_BASE_URL, openLoginModal, navigate, showError]);
+    }, [isLoggedIn, API_BASE_URL, openLoginModal, navigate, showError, directCheckout, directProductId]);
 
     // Fetch product meta (ảnh + giá gốc & giá đang bán) cho checkout items
     useEffect(() => {
+        if (directCheckout && directProduct) {
+            // Direct checkout: load meta cho product
+            const imageUrl =
+                directProduct?.defaultMediaUrl ||
+                (directProduct?.mediaUrls && directProduct.mediaUrls.length > 0
+                    ? directProduct.mediaUrls[0]
+                    : '');
+            const normalizedImage = imageUrl
+                ? normalizeMediaUrl(imageUrl, API_BASE_URL)
+                : defaultProductImage;
+
+            const currentPrice =
+                typeof directProduct?.price === 'number' && directProduct.price > 0
+                    ? directProduct.price
+                    : 0;
+
+            const originalUnitPrice =
+                typeof directProduct?.originalPrice === 'number' &&
+                directProduct.originalPrice > 0
+                    ? directProduct.originalPrice
+                    : currentPrice;
+
+            setProductMeta({
+                [directProductId]: {
+                    imageUrl: normalizedImage,
+                    currentPrice,
+                    originalUnitPrice,
+                },
+            });
+            return;
+        }
+
         if (!cart?.items || !cart.items.length) return;
 
         const metaMap = {};
@@ -182,16 +278,52 @@ export default function CheckoutDetailPage() {
                     setProductMeta((prev) => ({ ...prev, ...metaMap }));
                 });
         });
-    }, [cart, API_BASE_URL]);
+    }, [cart, directCheckout, directProduct, directProductId, API_BASE_URL]);
 
-    // Derived items: only selected from CartPage, fallback to all
-    const checkoutItems = (() => {
+    // Derived items: direct checkout từ product hoặc từ cart
+    const checkoutItems = useMemo(() => {
+        console.log('CheckoutDetailPage: checkoutItems useMemo called', {
+            directCheckout,
+            directProductId,
+            directProduct: directProduct ? { id: directProduct.id, name: directProduct.name } : null,
+            directQuantity,
+            cartItems: cart?.items?.length || 0,
+            selectedItemIds: selectedItemIds?.length || 0,
+        });
+        
+        if (directCheckout && directProductId) {
+            // Direct checkout: tạo item từ product
+            if (directProduct) {
+                const unitPrice = directProduct.price || 0;
+                const finalPrice = unitPrice * directQuantity;
+                const items = [
+                    {
+                        id: `direct-${directProductId}`,
+                        productId: directProductId,
+                        product: directProduct,
+                        quantity: directQuantity,
+                        unitPrice: unitPrice,
+                        finalPrice: finalPrice,
+                    },
+                ];
+                console.log('CheckoutDetailPage: checkoutItems (direct):', items);
+                return items;
+            }
+            // Nếu directProduct chưa load xong, trả về mảng rỗng tạm thời
+            console.log('CheckoutDetailPage: checkoutItems (direct, product not loaded yet)', {
+                directProductId,
+                directProduct: directProduct,
+                loading,
+            });
+            return [];
+        }
+        // Checkout từ giỏ hàng (flow cũ)
         const items = cart?.items || [];
         if (!selectedItemIds || selectedItemIds.length === 0) return items;
         const selectedSet = new Set(selectedItemIds);
         const filtered = items.filter((item) => selectedSet.has(item.id));
         return filtered.length > 0 ? filtered : items;
-    })();
+    }, [directCheckout, directProductId, directProduct, directQuantity, cart, selectedItemIds, loading]);
 
     const SHIPPING_FEE_STANDARD = 25000;
     const SHIPPING_FEE_COD = 30000;
@@ -291,9 +423,19 @@ export default function CheckoutDetailPage() {
     };
 
     const handlePlaceOrder = () => {
+        // Kiểm tra nếu đang directCheckout nhưng product chưa load xong
+        if (directCheckout && !directProduct) {
+            showError('Đang tải thông tin sản phẩm, vui lòng đợi...');
+            return;
+        }
+        
         if (!checkoutItems.length) {
             showError('Không có sản phẩm nào để thanh toán');
-            navigate('/cart');
+            if (directCheckout) {
+                navigate('/');
+            } else {
+                navigate('/cart');
+            }
             return;
         }
 
@@ -307,9 +449,16 @@ export default function CheckoutDetailPage() {
             const lineTotal = unitPrice * quantity;
             const imageUrl = meta.imageUrl || defaultProductImage;
 
+            // Lấy tên sản phẩm: từ product object hoặc productName
+            const productName = 
+                (directCheckout && item.product?.name) ||
+                item.productName ||
+                item.product?.name ||
+                'Sản phẩm';
+
             return {
                 id: item.id,
-                name: item.productName,
+                name: productName,
                 quantity,
                 lineTotal,
                 imageUrl,
@@ -342,8 +491,12 @@ export default function CheckoutDetailPage() {
         navigate('/checkout/confirm', {
             state: {
                 paymentMethod,
-                // Giữ lại danh sách cartItemId đã chọn để backend biết item nào cần thanh toán
-                cartItemIds: selectedItemIds,
+                // Direct checkout flag
+                directCheckout: directCheckout,
+                productId: directProductId,
+                quantity: directQuantity,
+                // Giữ lại danh sách cartItemId đã chọn để backend biết item nào cần thanh toán (nếu không phải direct checkout)
+                cartItemIds: directCheckout ? [] : selectedItemIds,
                 address: {
                     recipientName,
                     recipientPhone,
@@ -371,19 +524,30 @@ export default function CheckoutDetailPage() {
         );
     }
 
-    if (!cart || checkoutItems.length === 0) {
+    // Kiểm tra điều kiện hiển thị empty state
+    const shouldShowEmpty = directCheckout
+        ? !loading && checkoutItems.length === 0 // Direct checkout: chỉ cần items rỗng và không đang loading
+        : !cart || checkoutItems.length === 0; // Checkout từ cart: cần cart và items
+
+    if (shouldShowEmpty) {
         return (
             <div className={cx('checkout-page')}>
                 <div className={cx('container')}>
                     <div className={cx('empty')}>
-                        <p>Không có sản phẩm nào để thanh toán.</p>
-                        <button
-                            type="button"
-                            className={cx('back-to-cart')}
-                            onClick={() => navigate('/cart')}
-                        >
-                            Quay lại giỏ hàng
-                        </button>
+                        {loading ? (
+                            <p>Đang tải thông tin...</p>
+                        ) : (
+                            <>
+                                <p>Không có sản phẩm nào để thanh toán.</p>
+                                <button
+                                    type="button"
+                                    className={cx('back-to-cart')}
+                                    onClick={() => navigate(directCheckout ? '/' : '/cart')}
+                                >
+                                    {directCheckout ? 'Quay lại trang chủ' : 'Quay lại giỏ hàng'}
+                                </button>
+                            </>
+                        )}
                     </div>
                 </div>
             </div>
@@ -552,12 +716,18 @@ export default function CheckoutDetailPage() {
                                         originalLineTotal > currentLineTotal &&
                                         originalLineTotal > 0;
 
+                                    const displayName = 
+                                        (directCheckout && item.product?.name) ||
+                                        item.productName ||
+                                        item.product?.name ||
+                                        'Sản phẩm';
+
                                     return (
                                         <div key={item.id} className={cx('product-row')}>
                                             <div className={cx('product-image')}>
                                                 <img
                                                     src={imgSrc}
-                                                    alt={item.productName}
+                                                    alt={displayName}
                                                     onError={(e) => {
                                                         e.target.src =
                                                             defaultProductImage;
@@ -566,7 +736,7 @@ export default function CheckoutDetailPage() {
                                             </div>
                                             <div className={cx('product-info')}>
                                                 <div className={cx('product-name')}>
-                                                    {item.productName}
+                                                    {displayName}
                                                 </div>
                                                 <div className={cx('product-qty')}>
                                                     Số lượng: {quantity}

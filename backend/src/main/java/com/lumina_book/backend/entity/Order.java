@@ -7,6 +7,8 @@ import java.util.List;
 import jakarta.persistence.*;
 
 import com.lumina_book.backend.enums.OrderStatus;
+import com.lumina_book.backend.enums.PaymentMethod;
+import com.lumina_book.backend.enums.PaymentStatus;
 
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -54,8 +56,23 @@ public class Order {
     Double shippingFee;
     Double totalAmount; // subtotalAmount + shippingFee
 
+    @Column(name = "is_paid")
+    Boolean paid;
+
+    @Column(name = "cart_item_ids", columnDefinition = "TEXT")
+    String cartItemIdsSnapshot;
+
+    @Column(name = "payment_reference")
+    String paymentReference;
+
     @Enumerated(EnumType.STRING)
     OrderStatus status;
+
+    @Enumerated(EnumType.STRING)
+    PaymentMethod paymentMethod;
+
+    @Enumerated(EnumType.STRING)
+    PaymentStatus paymentStatus;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "address_id")

@@ -34,12 +34,18 @@ public class OrderResponse {
     LocalDate orderDate;
     LocalDateTime orderDateTime;
 
+    Double shippingFee;
     Double totalAmount;
 
     /**
      * Trạng thái đơn hàng dạng chuỗi (CREATED, PAID, SHIPPED, ...).
      */
     String status;
+
+    String paymentMethod;
+    String paymentStatus;
+    Boolean paid;
+    String paymentReference;
 }
 
 

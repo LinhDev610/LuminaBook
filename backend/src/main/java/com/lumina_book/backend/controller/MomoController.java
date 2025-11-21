@@ -1,16 +1,16 @@
 package com.lumina_book.backend.controller;
 
 import com.lumina_book.backend.dto.request.ApiResponse;
+import com.lumina_book.backend.dto.request.MomoIpnRequest;
 import com.lumina_book.backend.dto.response.CreateMomoResponse;
 import com.lumina_book.backend.service.MomoService;
+import com.lumina_book.backend.service.OrderService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/momo")
@@ -20,6 +20,7 @@ import java.util.Map;
 public class MomoController {
 
     MomoService momoService;
+    OrderService orderService;
 
     /**
      * API cho frontend tạo giao dịch MoMo.
@@ -40,9 +41,13 @@ public class MomoController {
      * Hiện tại chỉ log lại, bạn có thể bổ sung xử lý cập nhật trạng thái đơn hàng sau.
      */
     @PostMapping("/ipn-handler")
-    public ResponseEntity<Void> handleIpn(@RequestBody Map<String, Object> payload) {
-        log.info("Received MoMo IPN payload: {}", payload);
-        // TODO: verify signature, đối chiếu orderId/amount, cập nhật trạng thái đơn hàng
+    public ResponseEntity<Void> handleIpn(@RequestBody MomoIpnRequest request) {
+        log.info("Received MoMo IPN payload: {}", request);
+        if (!momoService.validateIpnSignature(request)) {
+            log.warn("Invalid MoMo IPN signature for order {}", request.getOrderId());
+            return ResponseEntity.badRequest().build();
+        }
+        orderService.handleMomoIpn(request);
         return ResponseEntity.noContent().build();
     }
 }

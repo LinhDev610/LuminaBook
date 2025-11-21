@@ -2,7 +2,6 @@ package com.lumina_book.backend.service;
 
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,6 +34,7 @@ public class CartService {
     CartItemRepository cartItemRepository;
     UserRepository userRepository;
     ProductRepository productRepository;
+    @SuppressWarnings("unused")
     PromotionRepository promotionRepository;
     VoucherRepository voucherRepository;
     OrderRepository orderRepository;
@@ -330,5 +330,22 @@ public class CartService {
         cart.setVoucherDiscount(0.0);
         recalcCartTotals(cart);
         return cart;
+    }
+
+    @Transactional
+    public void removeCartItemsForOrder(User user, java.util.List<String> cartItemIds) {
+        if (user == null || cartItemIds == null || cartItemIds.isEmpty()) {
+            return;
+        }
+        Cart cart = cartRepository.findByUserId(user.getId()).orElse(null);
+        if (cart == null) {
+            return;
+        }
+        cartItemIds.forEach(id -> cartItemRepository.findById(id).ifPresent(item -> {
+            if (item.getCart() != null && item.getCart().getId().equals(cart.getId())) {
+                cartItemRepository.delete(item);
+            }
+        }));
+        recalcCartTotals(cart);
     }
 }

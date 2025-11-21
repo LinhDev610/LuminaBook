@@ -1,7 +1,5 @@
 package com.lumina_book.backend.dto.request;
 
-import java.util.List;
-
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
@@ -11,7 +9,17 @@ import lombok.experimental.FieldDefaults;
 @NoArgsConstructor
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class CreateOrderRequest {
+public class DirectCheckoutRequest {
+
+    /**
+     * ID của sản phẩm muốn mua ngay.
+     */
+    String productId;
+
+    /**
+     * Số lượng sản phẩm (mặc định 1).
+     */
+    Integer quantity;
 
     /**
      * Snapshot đầy đủ của thông tin giao hàng (JSON string).
@@ -34,15 +42,8 @@ public class CreateOrderRequest {
     Double shippingFee;
 
     /**
-     * Danh sách id của các CartItem được chọn để thanh toán.
-     * Nếu null hoặc rỗng thì backend sẽ hiểu là thanh toán toàn bộ giỏ hàng.
-     */
-    List<String> cartItemIds;
-
-    /**
      * Phương thức thanh toán khách chọn (momo | cod).
      */
     String paymentMethod;
 }
-
 

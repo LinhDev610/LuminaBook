@@ -27,8 +27,13 @@ public class OrderDetailResponse {
     LocalDate orderDate;
     LocalDateTime orderDateTime;
 
+    Double shippingFee;
     Double totalAmount;
     String status;
+    String paymentMethod;
+    String paymentStatus;
+    Boolean paid;
+    String paymentReference;
 
     List<OrderItemResponse> items;
 }

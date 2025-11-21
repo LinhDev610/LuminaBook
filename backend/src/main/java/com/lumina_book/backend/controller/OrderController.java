@@ -11,6 +11,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumina_book.backend.dto.request.ApiResponse;
 import com.lumina_book.backend.dto.request.CreateOrderRequest;
+import com.lumina_book.backend.dto.request.DirectCheckoutRequest;
+import com.lumina_book.backend.dto.response.CheckoutInitResponse;
 import com.lumina_book.backend.dto.response.OrderDetailResponse;
 import com.lumina_book.backend.dto.response.OrderItemResponse;
 import com.lumina_book.backend.dto.response.OrderResponse;
@@ -33,10 +35,27 @@ public class OrderController {
 
     @PostMapping("/checkout")
     @PreAuthorize("hasRole('CUSTOMER')")
-    public ApiResponse<OrderResponse> createOrder(@RequestBody CreateOrderRequest request) {
-        Order order = orderService.createOrderFromCurrentCart(request);
-        return ApiResponse.<OrderResponse>builder()
-                .result(toResponse(order))
+    public ApiResponse<CheckoutInitResponse> createOrder(@RequestBody CreateOrderRequest request) {
+        OrderService.CheckoutResult result = orderService.createOrderFromCurrentCart(request);
+        CheckoutInitResponse response = CheckoutInitResponse.builder()
+                .order(toResponse(result.getOrder()))
+                .payUrl(result.getPayUrl())
+                .build();
+        return ApiResponse.<CheckoutInitResponse>builder()
+                .result(response)
+                .build();
+    }
+
+    @PostMapping("/checkout-direct")
+    @PreAuthorize("hasRole('CUSTOMER')")
+    public ApiResponse<CheckoutInitResponse> createOrderDirectly(@RequestBody DirectCheckoutRequest request) {
+        OrderService.CheckoutResult result = orderService.createOrderDirectly(request);
+        CheckoutInitResponse response = CheckoutInitResponse.builder()
+                .order(toResponse(result.getOrder()))
+                .payUrl(result.getPayUrl())
+                .build();
+        return ApiResponse.<CheckoutInitResponse>builder()
+                .result(response)
                 .build();
     }
 
@@ -102,8 +121,13 @@ public class OrderController {
                 .shippingAddress(resolveShippingAddressText(order))
                 .orderDate(order.getOrderDate())
                 .orderDateTime(resolveOrderDateTime(order))
+                .shippingFee(order.getShippingFee())
                 .totalAmount(order.getTotalAmount())
                 .status(order.getStatus() != null ? order.getStatus().name() : null)
+                .paymentMethod(order.getPaymentMethod() != null ? order.getPaymentMethod().name() : null)
+                .paymentStatus(order.getPaymentStatus() != null ? order.getPaymentStatus().name() : null)
+                .paid(order.getPaid())
+                .paymentReference(order.getPaymentReference())
                 .build();
     }
 
@@ -159,8 +183,13 @@ public class OrderController {
                 .shippingAddress(resolveShippingAddressText(order))
                 .orderDate(order.getOrderDate())
                 .orderDateTime(resolveOrderDateTime(order))
+                .shippingFee(order.getShippingFee())
                 .totalAmount(order.getTotalAmount())
                 .status(order.getStatus() != null ? order.getStatus().name() : null)
+                .paymentMethod(order.getPaymentMethod() != null ? order.getPaymentMethod().name() : null)
+                .paymentStatus(order.getPaymentStatus() != null ? order.getPaymentStatus().name() : null)
+                .paid(order.getPaid())
+                .paymentReference(order.getPaymentReference())
                 .items(items)
                 .build();
     }

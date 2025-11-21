@@ -21,6 +21,8 @@ public class OrderDetailResponse {
     String customerEmail;
 
     String shippingAddress;
+    String receiverName;
+    String receiverPhone;
     LocalDate orderDate;
 
     Double totalAmount;

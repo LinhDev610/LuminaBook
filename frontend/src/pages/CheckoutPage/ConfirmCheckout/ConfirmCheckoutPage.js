@@ -7,6 +7,7 @@ import { getApiBaseUrl, getStoredToken } from '../../../services/utils';
 import { removeCartItem } from '../../../services';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useNotification } from '../../../components/Common/Notification';
+import { formatFullAddress } from '../../../components/Common/AddressModal/useGhnLocations';
 
 const cx = classNames.bind(styles);
 
@@ -81,6 +82,33 @@ export default function ConfirmCheckoutPage() {
         }
     };
 
+    const buildShippingInfo = () => {
+        const name =
+            address.recipientName ||
+            address.receiverName ||
+            address.recipient ||
+            state.receiverName ||
+            'Khách hàng';
+        const phone =
+            address.recipientPhone ||
+            address.recipientPhoneNumber ||
+            address.phone ||
+            state.receiverPhone ||
+            '';
+        const addressText =
+            address.addressText ||
+            formatFullAddress(address) ||
+            address.rawAddress ||
+            state.shippingAddress ||
+            '';
+
+        return {
+            name,
+            phone,
+            address: addressText,
+        };
+    };
+
     // Lưu đơn hàng gần nhất (bao gồm danh sách sản phẩm) để các màn khác có thể đọc lại
     const persistLatestOrder = (order, paymentMethodLabel, totalOverride) => {
         if (!order || !order.id) return;
@@ -94,10 +122,13 @@ export default function ConfirmCheckoutPage() {
                 imageUrl: item.imageUrl,
             }));
 
+            const shippingInfo = buildShippingInfo();
+
             const latestOrderInfo = {
                 orderId: order.id,
                 code: order.code || order.orderCode || order.id || null,
-                receiverName: address.recipientName || 'Khách hàng',
+                receiverName: shippingInfo.name,
+                receiverPhone: shippingInfo.phone || '---',
                 paymentMethod: paymentMethodLabel,
                 subtotal: currentSubtotal,
                 shippingFee,
@@ -107,6 +138,7 @@ export default function ConfirmCheckoutPage() {
                         ? totalOverride
                         : Math.max(0, currentSubtotal + shippingFee - voucherDiscount),
                 shippingProvider: address.shippingProvider || 'GHN',
+                shippingAddress: shippingInfo.address,
                 items: itemsForStorage,
             };
 
@@ -126,8 +158,10 @@ export default function ConfirmCheckoutPage() {
             const token = getStoredToken('token');
 
             // Bước 1: tạo đơn hàng từ giỏ hàng hiện tại
+            const shippingInfo = buildShippingInfo();
             const orderPayload = {
-                shippingAddress: address.addressText || '',
+                addressId: address.id || address.addressId || null,
+                shippingAddress: JSON.stringify(shippingInfo),
                 note: '', // có thể truyền ghi chú nếu cần
                 shippingFee,
                 cartItemIds,

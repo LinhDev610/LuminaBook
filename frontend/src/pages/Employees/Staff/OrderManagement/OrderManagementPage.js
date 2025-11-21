@@ -72,16 +72,39 @@ const MOCK_ORDERS = [
     },
 ];
 
+const parseShippingInfo = (raw) => {
+    if (!raw || typeof raw !== 'string') return null;
+    try {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object') {
+            return {
+                name: parsed.name || parsed.receiverName || '',
+                phone: parsed.phone || parsed.receiverPhone || '',
+                address: parsed.address || parsed.fullAddress || '',
+            };
+        }
+    } catch {
+        return { address: raw };
+    }
+    return { address: raw };
+};
+
 // Chuyển đổi dữ liệu đơn hàng từ API sang dạng hiển thị
 const mapOrderFromApi = (order) => {
     if (!order) return null;
     const rawStatus = order.status || order.rawStatus;
     const { label, css } = mapOrderStatus(rawStatus);
+    const shippingInfo = parseShippingInfo(order.shippingAddress);
 
     return {
         id: order.id || '',
         code: order.code || order.orderCode || order.id || '',
-        username: order.customerName || 'Khách hàng',
+        username:
+            order.receiverName ||
+            shippingInfo?.name ||
+            order.customerName ||
+            'Khách hàng',
+        phoneDisplay: order.receiverPhone || shippingInfo?.phone || '',
         email: order.customerEmail || '',
         orderDate: order.orderDate || order.createdAt || null,
         totalAmount: typeof order.totalAmount === 'number' ? order.totalAmount : 0,
@@ -332,6 +355,9 @@ export default function OrderManagementPage() {
                                             <div className={cx('username')}>{order.username}</div>
                                             {order.email && (
                                                 <div className={cx('email')}>{order.email}</div>
+                                            )}
+                                            {order.phoneDisplay && (
+                                                <div className={cx('email')}>{order.phoneDisplay}</div>
                                             )}
                                         </td>
                                         <td>

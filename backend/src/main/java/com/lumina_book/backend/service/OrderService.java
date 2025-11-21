@@ -13,13 +13,20 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.lumina_book.backend.dto.request.CreateOrderRequest;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.lumina_book.backend.entity.Address;
 import com.lumina_book.backend.entity.Cart;
 import com.lumina_book.backend.entity.CartItem;
 import com.lumina_book.backend.entity.Order;
 import com.lumina_book.backend.entity.OrderItem;
+import com.lumina_book.backend.entity.User;
 import com.lumina_book.backend.enums.OrderStatus;
 import com.lumina_book.backend.exception.AppException;
 import com.lumina_book.backend.exception.ErrorCode;
+import com.lumina_book.backend.repository.AddressRepository;
 import com.lumina_book.backend.repository.OrderRepository;
 import com.lumina_book.backend.repository.OrderItemRepository;
 import com.lumina_book.backend.util.SecurityUtil;
@@ -35,7 +42,10 @@ public class OrderService {
 
     OrderRepository orderRepository;
     OrderItemRepository orderItemRepository;
+    AddressRepository addressRepository;
     CartService cartService;
+
+    ObjectMapper objectMapper = new ObjectMapper();
 
     /**
      * Tạo đơn hàng mới từ giỏ hàng hiện tại của khách hàng.
@@ -86,13 +96,20 @@ public class OrderService {
         double rawOrderTotal = selectedSubtotal + shippingFee - voucherDiscount;
         double orderTotal = Math.round(Math.max(0.0, rawOrderTotal));
 
+        Address shippingAddressEntity = resolveShippingAddress(request, cart.getUser());
+        String shippingAddressSnapshot = buildShippingAddressSnapshot(
+                shippingAddressEntity,
+                request.getShippingAddress(),
+                cart.getUser());
+
         Order order = Order.builder()
                 .user(cart.getUser())
                 // Không gắn cart trực tiếp để tránh ràng buộc 1 cart - nhiều order,
                 // order sẽ lưu tổng tiền còn cart chỉ là giỏ hiện tại.
                 .code(generateOrderCode())
                 .note(request.getNote())
-                .shippingAddress(request.getShippingAddress())
+                .shippingAddress(shippingAddressSnapshot)
+                .address(shippingAddressEntity)
                 .orderDate(LocalDate.now())
                 .shippingFee(shippingFee)
                 .totalAmount(orderTotal)
@@ -121,6 +138,135 @@ public class OrderService {
         }
 
         return savedOrder;
+    }
+
+    private Address resolveShippingAddress(CreateOrderRequest request, User user) {
+        if (request.getAddressId() == null || request.getAddressId().isBlank()) {
+            return null;
+        }
+        Address address = addressRepository.findById(request.getAddressId())
+                .orElseThrow(() -> new AppException(ErrorCode.ADDRESS_NOT_EXISTED));
+
+        if (user != null && address.getUsers() != null) {
+            boolean belongsToUser = address.getUsers().stream()
+                    .anyMatch(u -> u != null && u.getId().equals(user.getId()));
+            if (!belongsToUser) {
+                throw new AppException(ErrorCode.UNAUTHORIZED);
+            }
+        }
+        return address;
+    }
+
+    private String buildShippingAddressSnapshot(Address address, String rawSnapshot, User user) {
+        ShippingSnapshot incoming = parseSnapshot(rawSnapshot);
+        ObjectNode node = objectMapper.createObjectNode();
+
+        if (address != null) {
+            node.put("addressId", address.getAddressId());
+        }
+
+        String resolvedName = firstNonBlank(
+                incoming.name,
+                address != null ? address.getRecipientName() : null,
+                safeValue(null, user));
+
+        String resolvedPhone = firstNonBlank(
+                incoming.phone,
+                address != null ? address.getRecipientPhoneNumber() : null,
+                "");
+
+        String resolvedAddress = firstNonBlank(
+                incoming.address,
+                address != null ? buildAddressText(address) : null,
+                rawSnapshot);
+
+        node.put("name", resolvedName);
+        node.put("phone", resolvedPhone);
+        node.put("address", resolvedAddress != null ? resolvedAddress : "");
+
+        try {
+            return objectMapper.writeValueAsString(node);
+        } catch (JsonProcessingException e) {
+            return rawSnapshot != null ? rawSnapshot : "";
+        }
+    }
+
+    private ShippingSnapshot parseSnapshot(String rawSnapshot) {
+        ShippingSnapshot snapshot = new ShippingSnapshot();
+        if (rawSnapshot == null || rawSnapshot.isBlank()) {
+            return snapshot;
+        }
+
+        try {
+            JsonNode node = objectMapper.readTree(rawSnapshot);
+            snapshot.name = firstNonBlank(
+                    node.path("name").asText(null),
+                    node.path("receiverName").asText(null),
+                    node.path("recipientName").asText(null));
+            snapshot.phone = firstNonBlank(
+                    node.path("phone").asText(null),
+                    node.path("receiverPhone").asText(null),
+                    node.path("recipientPhone").asText(null),
+                    node.path("recipientPhoneNumber").asText(null));
+            snapshot.address = firstNonBlank(
+                    node.path("address").asText(null),
+                    node.path("fullAddress").asText(null),
+                    node.path("addressText").asText(null),
+                    rawSnapshot);
+        } catch (Exception e) {
+            snapshot.address = rawSnapshot;
+        }
+
+        return snapshot;
+    }
+
+    private String firstNonBlank(String... values) {
+        if (values == null) {
+            return null;
+        }
+        for (String value : values) {
+            if (value != null && !value.isBlank()) {
+                return value;
+            }
+        }
+        return null;
+    }
+
+    private String safeValue(String value, User user) {
+        if (value != null && !value.isBlank()) {
+            return value;
+        }
+        if (user != null && user.getFullName() != null && !user.getFullName().isBlank()) {
+            return user.getFullName();
+        }
+        if (user != null && user.getEmail() != null) {
+            return user.getEmail();
+        }
+        return "Khách hàng";
+    }
+
+    private String buildAddressText(Address address) {
+        StringBuilder sb = new StringBuilder();
+        appendPart(sb, address.getAddress());
+        appendPart(sb, address.getWardName());
+        appendPart(sb, address.getDistrictName());
+        appendPart(sb, address.getProvinceName());
+        appendPart(sb, address.getCountry());
+        return sb.toString();
+    }
+
+    private void appendPart(StringBuilder sb, String value) {
+        if (value == null || value.isBlank()) return;
+        if (sb.length() > 0) {
+            sb.append(", ");
+        }
+        sb.append(value);
+    }
+
+    private static class ShippingSnapshot {
+        String name;
+        String phone;
+        String address;
     }
 
     /**

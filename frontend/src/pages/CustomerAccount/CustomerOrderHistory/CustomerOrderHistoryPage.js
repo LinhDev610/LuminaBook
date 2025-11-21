@@ -6,6 +6,23 @@ import { formatCurrency, getApiBaseUrl, getStoredToken } from '../../../services
 
 const cx = classNames.bind(styles);
 
+const parseShippingInfo = (raw) => {
+    if (!raw || typeof raw !== 'string') return null;
+    try {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object') {
+            return {
+                name: parsed.name || parsed.receiverName || '',
+                phone: parsed.phone || parsed.receiverPhone || '',
+                address: parsed.address || parsed.fullAddress || '',
+            };
+        }
+    } catch {
+        return { address: raw };
+    }
+    return { address: raw };
+};
+
 // Mock data - sẽ được thay thế bằng API sau
 const MOCK_ORDERS = [
     {
@@ -191,6 +208,7 @@ const mapOrderStatus = (statusRaw) => {
 const mapOrderFromApi = (order) => {
     if (!order) return null;
     const { mappedStatus, key } = mapOrderStatus(order.status);
+    const shippingInfo = parseShippingInfo(order.shippingAddress);
 
     return {
         id: order.id || '',
@@ -200,12 +218,14 @@ const mapOrderFromApi = (order) => {
         status: mappedStatus,
         rawStatus: order.status || mappedStatus,
         statusKey: key,
-        // Các trường dưới đây hiện backend chưa cung cấp ở API /orders/my-orders,
-        // nên tạm thời để trống, khi có API chi tiết sẽ bổ sung.
-        items: [],
-        recipient: '',
-        phone: '',
-        address: '',
+        recipient:
+            order.receiverName ||
+            shippingInfo?.name ||
+            order.customerName ||
+            'Khách hàng',
+        phone: order.receiverPhone || shippingInfo?.phone || '',
+        address: shippingInfo?.address || '',
+        items: Array.isArray(order.items) ? order.items : [],
     };
 };
 

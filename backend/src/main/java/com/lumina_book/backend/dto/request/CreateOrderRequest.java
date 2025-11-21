@@ -14,9 +14,14 @@ import lombok.experimental.FieldDefaults;
 public class CreateOrderRequest {
 
     /**
-     * Địa chỉ giao hàng dạng text (có thể ghép từ địa chỉ mặc định của user phía frontend).
+     * Snapshot đầy đủ của thông tin giao hàng (JSON string).
      */
     String shippingAddress;
+
+    /**
+     * ID của địa chỉ mà khách đã chọn (nếu có trong sổ địa chỉ).
+     */
+    String addressId;
 
     /**
      * Ghi chú đơn hàng từ phía khách hàng.

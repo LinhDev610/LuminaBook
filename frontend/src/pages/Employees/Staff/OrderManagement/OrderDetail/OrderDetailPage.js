@@ -85,6 +85,23 @@ const mapItemsFromOrder = (order) => {
     });
 };
 
+const parseShippingInfo = (raw) => {
+    if (!raw || typeof raw !== 'string') return null;
+    try {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object') {
+            return {
+                name: parsed.name || parsed.receiverName || '',
+                phone: parsed.phone || parsed.receiverPhone || '',
+                address: parsed.address || parsed.fullAddress || '',
+            };
+        }
+    } catch {
+        return { address: raw };
+    }
+    return { address: raw };
+};
+
 const mapOrderDetailFromApi = (order) => {
     if (!order) return null;
     const user = order.user || {};
@@ -92,6 +109,7 @@ const mapOrderDetailFromApi = (order) => {
     const { label, css } = mapOrderStatus(order.status || shipment.status);
 
     const items = mapItemsFromOrder(order);
+    const shippingInfo = parseShippingInfo(order.shippingAddress);
     const totalAmount =
         typeof order.totalAmount === 'number'
             ? order.totalAmount
@@ -113,12 +131,13 @@ const mapOrderDetailFromApi = (order) => {
         code: order.code || order.orderCode || order.id || '',
         customerName:
             order.customerName ||
+            shippingInfo?.name ||
             user.fullName ||
             user.name ||
             `${user.firstName || ''} ${user.lastName || ''}`.trim() ||
             'Khách hàng',
-        address: order.shippingAddress || order.address || user.address || '',
-        phone: order.phone || user.phone || user.phoneNumber || '',
+        address: shippingInfo?.address || order.shippingAddress || order.address || user.address || '',
+        phone: order.receiverPhone || shippingInfo?.phone || order.phone || user.phone || user.phoneNumber || '',
         orderDate: order.orderDate || order.createdAt || null,
         ghnStatus: order.status || shipment.status,
         ghnStatusLabel: label,

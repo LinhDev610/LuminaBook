@@ -6,11 +6,14 @@ import java.util.stream.Collectors;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumina_book.backend.dto.request.ApiResponse;
 import com.lumina_book.backend.dto.request.CreateOrderRequest;
-import com.lumina_book.backend.dto.response.OrderResponse;
 import com.lumina_book.backend.dto.response.OrderDetailResponse;
 import com.lumina_book.backend.dto.response.OrderItemResponse;
+import com.lumina_book.backend.dto.response.OrderResponse;
+import com.lumina_book.backend.entity.Address;
 import com.lumina_book.backend.entity.Order;
 import com.lumina_book.backend.service.OrderService;
 
@@ -25,6 +28,7 @@ import lombok.experimental.FieldDefaults;
 public class OrderController {
 
     OrderService orderService;
+    ObjectMapper objectMapper = new ObjectMapper();
 
     @PostMapping("/checkout")
     @PreAuthorize("hasRole('CUSTOMER')")
@@ -83,6 +87,9 @@ public class OrderController {
                 .code(order.getCode() != null ? order.getCode() : order.getId())
                 .customerName(customerName)
                 .customerEmail(customerEmail)
+                .receiverName(resolveReceiverName(order, customerName))
+                .receiverPhone(resolveReceiverPhone(order))
+                .shippingAddress(resolveShippingAddressText(order))
                 .orderDate(order.getOrderDate())
                 .totalAmount(order.getTotalAmount())
                 .status(order.getStatus() != null ? order.getStatus().name() : null)
@@ -136,12 +143,110 @@ public class OrderController {
                 .code(order.getCode() != null ? order.getCode() : order.getId())
                 .customerName(customerName)
                 .customerEmail(customerEmail)
-                .shippingAddress(order.getShippingAddress())
+                .receiverName(resolveReceiverName(order, customerName))
+                .receiverPhone(resolveReceiverPhone(order))
+                .shippingAddress(resolveShippingAddressText(order))
                 .orderDate(order.getOrderDate())
                 .totalAmount(order.getTotalAmount())
                 .status(order.getStatus() != null ? order.getStatus().name() : null)
                 .items(items)
                 .build();
+    }
+
+    private String resolveReceiverName(Order order, String fallback) {
+        ShippingSnapshot snapshot = parseShippingSnapshot(order.getShippingAddress());
+        if (snapshot.name != null && !snapshot.name.isBlank()) {
+            return snapshot.name;
+        }
+        if (order.getAddress() != null && order.getAddress().getRecipientName() != null
+                && !order.getAddress().getRecipientName().isBlank()) {
+            return order.getAddress().getRecipientName();
+        }
+        return fallback;
+    }
+
+    private String resolveReceiverPhone(Order order) {
+        ShippingSnapshot snapshot = parseShippingSnapshot(order.getShippingAddress());
+        if (snapshot.phone != null && !snapshot.phone.isBlank()) {
+            return snapshot.phone;
+        }
+        if (order.getAddress() != null) {
+            return order.getAddress().getRecipientPhoneNumber();
+        }
+        return "";
+    }
+
+    private String resolveShippingAddressText(Order order) {
+        ShippingSnapshot snapshot = parseShippingSnapshot(order.getShippingAddress());
+        if (snapshot.address != null && !snapshot.address.isBlank()) {
+            return snapshot.address;
+        }
+        if (order.getAddress() != null) {
+            return buildAddressText(order.getAddress());
+        }
+        return order.getShippingAddress();
+    }
+
+    private ShippingSnapshot parseShippingSnapshot(String raw) {
+        ShippingSnapshot snapshot = new ShippingSnapshot();
+        if (raw == null || raw.isBlank()) {
+            return snapshot;
+        }
+        try {
+            JsonNode node = objectMapper.readTree(raw);
+            snapshot.name = firstNonBlank(
+                    node.path("name").asText(null),
+                    node.path("receiverName").asText(null),
+                    node.path("recipientName").asText(null));
+            snapshot.phone = firstNonBlank(
+                    node.path("phone").asText(null),
+                    node.path("receiverPhone").asText(null),
+                    node.path("recipientPhone").asText(null),
+                    node.path("recipientPhoneNumber").asText(null));
+            snapshot.address = firstNonBlank(
+                    node.path("address").asText(null),
+                    node.path("addressText").asText(null),
+                    node.path("fullAddress").asText(null),
+                    raw);
+        } catch (Exception e) {
+            snapshot.address = raw;
+        }
+        return snapshot;
+    }
+
+    private String buildAddressText(Address address) {
+        if (address == null) return "";
+        StringBuilder sb = new StringBuilder();
+        appendPart(sb, address.getAddress());
+        appendPart(sb, address.getWardName());
+        appendPart(sb, address.getDistrictName());
+        appendPart(sb, address.getProvinceName());
+        appendPart(sb, address.getCountry());
+        return sb.toString();
+    }
+
+    private void appendPart(StringBuilder sb, String value) {
+        if (value == null || value.isBlank()) return;
+        if (sb.length() > 0) {
+            sb.append(", ");
+        }
+        sb.append(value);
+    }
+
+    private String firstNonBlank(String... values) {
+        if (values == null) return null;
+        for (String value : values) {
+            if (value != null && !value.isBlank()) {
+                return value;
+            }
+        }
+        return null;
+    }
+
+    private static class ShippingSnapshot {
+        String name;
+        String phone;
+        String address;
     }
 }
 

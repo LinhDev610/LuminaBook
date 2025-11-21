@@ -6,6 +6,24 @@ import { formatCurrency, getApiBaseUrl, getStoredToken } from '../../../../servi
 
 const cx = classNames.bind(styles);
 
+
+const parseShippingInfo = (raw) => {
+    if (!raw || typeof raw !== 'string') return null;
+    try {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object') {
+            return {
+                name: parsed.name || parsed.receiverName || '',
+                phone: parsed.phone || parsed.receiverPhone || '',
+                address: parsed.address || parsed.fullAddress || '',
+            };
+        }
+    } catch {
+        return { address: raw };
+    }
+    return { address: raw };
+};
+
 // Mock data - sẽ được thay thế bằng API sau
 const MOCK_ORDER_DETAILS = {
     '1': {
@@ -126,6 +144,7 @@ const mapOrderFromApi = (apiOrder) => {
     if (!apiOrder) return null;
 
     const rawStatus = (apiOrder.status || 'PENDING').toUpperCase();
+    const shippingInfo = parseShippingInfo(apiOrder.shippingAddress);
 
     // Map items từ API response
     const items = Array.isArray(apiOrder.items)
@@ -144,9 +163,14 @@ const mapOrderFromApi = (apiOrder) => {
         orderDate: apiOrder.orderDate || null,
         status: rawStatus,
         totalAmount: typeof apiOrder.totalAmount === 'number' ? apiOrder.totalAmount : 0,
-        recipient: apiOrder.customerName || 'Khách hàng',
-        phone: apiOrder.customerEmail || '',
-        address: apiOrder.shippingAddress || '',
+        recipient:
+            apiOrder.receiverName ||
+            shippingInfo?.name ||
+            apiOrder.customerName ||
+            apiOrder.customerEmail ||
+            'Khách hàng',
+        phone: apiOrder.receiverPhone || shippingInfo?.phone || apiOrder.customerEmail || '',
+        address: shippingInfo?.address || apiOrder.shippingAddress || '',
         paymentMethod: 'ONLINE',
         paymentMethodLabel: 'Thanh toán online',
         items,

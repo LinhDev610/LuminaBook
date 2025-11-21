@@ -1,5 +1,6 @@
 package com.lumina_book.backend.controller;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -66,6 +67,15 @@ public class OrderController {
                 .build();
     }
 
+    @PostMapping("/{id}/confirm")
+    @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
+    public ApiResponse<OrderDetailResponse> confirmOrder(@PathVariable String id) {
+        Order order = orderService.confirmOrder(id);
+        return ApiResponse.<OrderDetailResponse>builder()
+                .result(toDetailResponse(order))
+                .build();
+    }
+
     private OrderResponse toResponse(Order order) {
         if (order == null) {
             return null;
@@ -91,6 +101,7 @@ public class OrderController {
                 .receiverPhone(resolveReceiverPhone(order))
                 .shippingAddress(resolveShippingAddressText(order))
                 .orderDate(order.getOrderDate())
+                .orderDateTime(resolveOrderDateTime(order))
                 .totalAmount(order.getTotalAmount())
                 .status(order.getStatus() != null ? order.getStatus().name() : null)
                 .build();
@@ -147,6 +158,7 @@ public class OrderController {
                 .receiverPhone(resolveReceiverPhone(order))
                 .shippingAddress(resolveShippingAddressText(order))
                 .orderDate(order.getOrderDate())
+                .orderDateTime(resolveOrderDateTime(order))
                 .totalAmount(order.getTotalAmount())
                 .status(order.getStatus() != null ? order.getStatus().name() : null)
                 .items(items)
@@ -239,6 +251,16 @@ public class OrderController {
             if (value != null && !value.isBlank()) {
                 return value;
             }
+        }
+        return null;
+    }
+
+    private LocalDateTime resolveOrderDateTime(Order order) {
+        if (order.getOrderDateTime() != null) {
+            return order.getOrderDateTime();
+        }
+        if (order.getOrderDate() != null) {
+            return order.getOrderDate().atStartOfDay();
         }
         return null;
     }

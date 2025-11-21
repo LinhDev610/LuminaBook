@@ -229,7 +229,7 @@ public class CartService {
         
         // Lấy tổng giá trị đơn hàng để tính toán cuối cùng
         double fullSubtotal = cart.getSubtotal();
-        
+
         cart.setAppliedVoucherCode(voucher.getCode());
         cart.setVoucherDiscount(discount);
         // Tổng sau voucher cũng làm tròn về đồng

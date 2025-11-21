@@ -209,11 +209,13 @@ const mapOrderFromApi = (order) => {
     if (!order) return null;
     const { mappedStatus, key } = mapOrderStatus(order.status);
     const shippingInfo = parseShippingInfo(order.shippingAddress);
+    const orderDateValue = order.orderDateTime || order.orderDate || null;
 
     return {
         id: order.id || '',
         code: order.code || order.orderCode || order.id || '',
-        orderDate: order.orderDate || null,
+        orderDate: orderDateValue,
+        orderDateOnly: order.orderDate || null,
         totalAmount: typeof order.totalAmount === 'number' ? order.totalAmount : 0,
         status: mappedStatus,
         rawStatus: order.status || mappedStatus,
@@ -320,10 +322,10 @@ function CustomerOrderHistoryPage() {
         // Date filter
         if (selectedDate) {
             list = list.filter((order) => {
-                if (!order.orderDate) return false;
+                const base = order.orderDateOnly || order.orderDate;
+                if (!base) return false;
                 try {
-                    // orderDate từ backend là LocalDate (yyyy-MM-dd) nên có thể so sánh trực tiếp
-                    return String(order.orderDate).substring(0, 10) === selectedDate;
+                    return String(base).substring(0, 10) === selectedDate;
                 } catch {
                     return false;
                 }
@@ -354,12 +356,24 @@ function CustomerOrderHistoryPage() {
     };
 
     const formatOrderDate = (dateString) => {
+        if (!dateString) return '--';
         try {
             const date = new Date(dateString);
+            if (Number.isNaN(date.getTime())) return dateString;
             const day = String(date.getDate()).padStart(2, '0');
             const month = String(date.getMonth() + 1).padStart(2, '0');
             const year = date.getFullYear();
-            return `${day}/${month}/${year}`;
+            const hasTime =
+                (typeof dateString === 'string' && dateString.includes('T')) ||
+                date.getHours() !== 0 ||
+                date.getMinutes() !== 0 ||
+                date.getSeconds() !== 0;
+            if (!hasTime) {
+                return `${day}/${month}/${year}`;
+            }
+            const hour = String(date.getHours()).padStart(2, '0');
+            const minute = String(date.getMinutes()).padStart(2, '0');
+            return `${hour}:${minute} ${day}/${month}/${year}`;
         } catch {
             return dateString;
         }
@@ -480,25 +494,25 @@ function CustomerOrderHistoryPage() {
                                             </div>
 
                                             {Array.isArray(order.items) && order.items.length > 0 && (
-                                                <div className={cx('order-items')}>
-                                                    {order.items.map((item) => (
-                                                        <div key={item.id} className={cx('order-item')}>
-                                                            <img
-                                                                src={item.image}
-                                                                alt={item.name}
-                                                                className={cx('item-image')}
-                                                            />
-                                                            <div className={cx('item-info')}>
-                                                                <p className={cx('item-name')}>
-                                                                    {item.name}
-                                                                </p>
-                                                                <p className={cx('item-quantity')}>
-                                                                    Số lượng: {item.quantity}
-                                                                </p>
-                                                            </div>
+                                            <div className={cx('order-items')}>
+                                                {order.items.map((item) => (
+                                                    <div key={item.id} className={cx('order-item')}>
+                                                        <img
+                                                            src={item.image}
+                                                            alt={item.name}
+                                                            className={cx('item-image')}
+                                                        />
+                                                        <div className={cx('item-info')}>
+                                                            <p className={cx('item-name')}>
+                                                                {item.name}
+                                                            </p>
+                                                            <p className={cx('item-quantity')}>
+                                                                Số lượng: {item.quantity}
+                                                            </p>
                                                         </div>
-                                                    ))}
-                                                </div>
+                                                    </div>
+                                                ))}
+                                            </div>
                                             )}
 
                                             <div className={cx('order-actions')}>

@@ -90,11 +90,17 @@ const parseShippingInfo = (raw) => {
 };
 
 // Chuyển đổi dữ liệu đơn hàng từ API sang dạng hiển thị
+const getOrderDateValue = (order) => {
+    if (!order) return null;
+    return order.orderDateTime || order.orderDate || order.createdAt || null;
+};
+
 const mapOrderFromApi = (order) => {
     if (!order) return null;
     const rawStatus = order.status || order.rawStatus;
     const { label, css } = mapOrderStatus(rawStatus);
     const shippingInfo = parseShippingInfo(order.shippingAddress);
+    const orderDateValue = getOrderDateValue(order);
 
     return {
         id: order.id || '',
@@ -106,7 +112,8 @@ const mapOrderFromApi = (order) => {
             'Khách hàng',
         phoneDisplay: order.receiverPhone || shippingInfo?.phone || '',
         email: order.customerEmail || '',
-        orderDate: order.orderDate || order.createdAt || null,
+        orderDate: orderDateValue,
+        orderDateOnly: order.orderDate || null,
         totalAmount: typeof order.totalAmount === 'number' ? order.totalAmount : 0,
         rawStatus: rawStatus,
         statusLabel: label,
@@ -118,14 +125,26 @@ const mapOrderFromApi = (order) => {
 const formatOrderDateTime = (value) => {
     if (!value) return '--';
     try {
-        const d = new Date(value);
+        const raw = typeof value === 'string' ? value.trim() : value;
+        const hasExplicitTime =
+            typeof raw === 'string' &&
+            (raw.includes('T') || /\d{2}:\d{2}/.test(raw));
+
+        const d = new Date(raw);
         if (Number.isNaN(d.getTime())) return '--';
+
         const dd = String(d.getDate()).padStart(2, '0');
         const mm = String(d.getMonth() + 1).padStart(2, '0');
-        const yy = String(d.getFullYear()).slice(-2);
+        const yyyy = String(d.getFullYear());
+        const datePart = `${dd}/${mm}/${yyyy}`;
+
+        if (!hasExplicitTime) {
+            return datePart;
+        }
+
         const hh = String(d.getHours()).padStart(2, '0');
         const mi = String(d.getMinutes()).padStart(2, '0');
-        return `${hh}:${mi} ${dd}/${mm}/${yy}`;
+        return `${hh}:${mi} ${datePart}`;
     } catch {
         // fallback: dùng formatDateTime chung nếu có lỗi bất ngờ
         return formatDateTime(value);
@@ -137,6 +156,8 @@ export default function OrderManagementPage() {
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [actionError, setActionError] = useState('');
+    const [processingOrderId, setProcessingOrderId] = useState(null);
 
     const [keyword, setKeyword] = useState('');
     const [dateFilter, setDateFilter] = useState('');
@@ -216,12 +237,13 @@ export default function OrderManagementPage() {
 
         if (dateFilter) {
             result = result.filter((o) => {
-                if (!o.orderDate) return false;
+                const base = o.orderDateOnly || o.orderDate;
+                if (!base) return false;
                 try {
                     const orderDateStr =
-                        typeof o.orderDate === 'string'
-                            ? o.orderDate.substring(0, 10)
-                            : new Date(o.orderDate).toISOString().substring(0, 10);
+                        typeof base === 'string'
+                            ? base.substring(0, 10)
+                            : new Date(base).toISOString().substring(0, 10);
                     return orderDateStr === dateFilter;
                 } catch {
                     return false;
@@ -244,19 +266,41 @@ export default function OrderManagementPage() {
         });
     }, [orders, keyword, dateFilter, statusFilter]);
 
-    const handleConfirmOrder = (orderId) => {
-        // TODO: Gọi API cập nhật trạng thái đơn sang CONFIRMED
-        setOrders((prev) =>
-            prev.map((o) =>
-                o.id === orderId
-                    ? {
-                          ...o,
-                          rawStatus: 'CONFIRMED',
-                          ...mapOrderStatus('CONFIRMED'),
-                      }
-                    : o,
-            ),
-        );
+    const handleConfirmOrder = async (orderId) => {
+        if (!orderId) return;
+        try {
+            setActionError('');
+            setProcessingOrderId(orderId);
+
+            const token = getStoredToken('token');
+            const apiBaseUrl = getApiBaseUrl();
+            const resp = await fetch(`${apiBaseUrl}/orders/${orderId}/confirm`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                },
+            });
+
+            if (!resp.ok) {
+                throw new Error(`Confirm API error ${resp.status}`);
+            }
+
+            const data = await resp.json().catch(() => ({}));
+            const raw = data?.result || data || null;
+            const mapped = mapOrderFromApi(raw);
+
+            if (!mapped) {
+                throw new Error('Không nhận được dữ liệu đơn hàng sau khi xác nhận');
+            }
+
+            setOrders((prev) => prev.map((o) => (o.id === orderId ? mapped : o)));
+        } catch (err) {
+            console.error('OrderManagement: xác nhận đơn hàng thất bại', err);
+            setActionError('Không thể xác nhận đơn hàng. Vui lòng thử lại.');
+        } finally {
+            setProcessingOrderId(null);
+        }
     };
 
     const handleCancelOrder = (orderId) => {
@@ -327,6 +371,9 @@ export default function OrderManagementPage() {
                 {error && !loading && (
                     <div className={cx('info-row', 'error')}>{error}</div>
                 )}
+                {actionError && (
+                    <div className={cx('info-row', 'error')}>{actionError}</div>
+                )}
 
                 <div className={cx('card')}>
                     <div className={cx('card-header')}>Danh sách đơn hàng</div>
@@ -379,22 +426,26 @@ export default function OrderManagementPage() {
                                             >
                                                 Xem chi tiết
                                             </button>
-                                            {isPending && (
-                                                <>
-                                                    <button
-                                                        className={cx('btn', 'confirm')}
-                                                        onClick={() => handleConfirmOrder(order.id)}
-                                                    >
-                                                        Xác nhận
-                                                    </button>
-                                                    <button
-                                                        className={cx('btn', 'cancel')}
-                                                        onClick={() => handleCancelOrder(order.id)}
-                                                    >
-                                                        Hủy
-                                                    </button>
-                                                </>
-                                            )}
+                                            <div
+                                                className={cx('action-buttons')}
+                                                style={{
+                                                    visibility: isPending ? 'visible' : 'hidden',
+                                                }}
+                                            >
+                                                <button
+                                                    className={cx('btn', 'confirm')}
+                                                    onClick={() => handleConfirmOrder(order.id)}
+                                                    disabled={processingOrderId === order.id}
+                                                >
+                                                    Xác nhận
+                                                </button>
+                                                <button
+                                                    className={cx('btn', 'cancel')}
+                                                    onClick={() => handleCancelOrder(order.id)}
+                                                >
+                                                    Hủy
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 );

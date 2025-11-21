@@ -1,6 +1,7 @@
 package com.lumina_book.backend.entity;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 import jakarta.persistence.*;
@@ -43,6 +44,12 @@ public class Order {
     String note;
     String shippingAddress;
     LocalDate orderDate;
+
+    /**
+     * Thời điểm tạo đơn hàng đầy đủ (bao gồm giờ/phút/giây).
+     */
+    @Column(name = "order_date_time")
+    LocalDateTime orderDateTime;
     LocalDate expectedDeliveryDate;
     Double shippingFee;
     Double totalAmount; // subtotalAmount + shippingFee

@@ -4,6 +4,7 @@ import classNames from 'classnames/bind';
 import styles from './OrderSuccessPage.module.scss';
 
 const cx = classNames.bind(styles);
+ 
 
 const formatPrice = (value) =>
     new Intl.NumberFormat('vi-VN', {
@@ -62,8 +63,8 @@ export default function OrderSuccessPage() {
                     <div className={cx('icon-wrapper', 'icon-error')}>!</div>
                     <h1 className={cx('title')}>Thanh toán thất bại</h1>
                     <p className={cx('subtitle')}>
-                        Rất tiếc, thanh toán MoMo của bạn chưa được hoàn tất. Vui lòng thử
-                        lại hoặc chọn phương thức thanh toán khác.
+                        Rất tiếc, thanh toán MoMo của bạn chưa được hoàn tất. Vui lòng thử lại
+                        hoặc chọn phương thức thanh toán khác.
                     </p>
                     <div className={cx('actions')}>
                         <button
@@ -102,18 +103,15 @@ export default function OrderSuccessPage() {
                 </div>
                 <h1 className={cx('title')}>Cảm ơn bạn đã đặt hàng tại Lumina Book!</h1>
                 <p className={cx('subtitle')}>
-                    Đơn hàng của bạn đã được xác nhận. Chúng tôi sẽ sớm xử lý và giao hàng
-                    qua GHN đến địa chỉ của bạn.
+                    Đơn hàng của bạn đã được xác nhận. Chúng tôi sẽ sớm xử lý và giao hàng qua GHN
+                    đến địa chỉ của bạn.
                 </p>
 
                 <div className={cx('order-box')}>
                     <div className={cx('order-row', 'order-row--header')}>
                         <span>Mã đơn hàng:</span>
                         <span className={cx('order-code')}>
-                            {orderInfo?.code ||
-                                orderInfo?.orderCode ||
-                                orderInfo?.orderId ||
-                                '#'}
+                            {orderInfo?.code || orderInfo?.orderCode || orderInfo?.orderId || '#'}
                         </span>
                     </div>
                     <div className={cx('order-row')}>
@@ -178,3 +176,4 @@ export default function OrderSuccessPage() {
         </div>
     );
 }
+

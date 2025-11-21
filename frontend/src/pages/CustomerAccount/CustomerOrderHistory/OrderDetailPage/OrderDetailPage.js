@@ -157,10 +157,13 @@ const mapOrderFromApi = (apiOrder) => {
           }))
         : [];
 
+    const orderDateValue = apiOrder.orderDateTime || apiOrder.orderDate || null;
+
     return {
         id: apiOrder.id || '',
         code: apiOrder.code || apiOrder.orderCode || apiOrder.id || '',
-        orderDate: apiOrder.orderDate || null,
+        orderDate: orderDateValue,
+        orderDateOnly: apiOrder.orderDate || null,
         status: rawStatus,
         totalAmount: typeof apiOrder.totalAmount === 'number' ? apiOrder.totalAmount : 0,
         recipient:
@@ -247,8 +250,8 @@ function OrderDetailPage() {
                 setError(
                     'Không thể tải chi tiết đơn hàng từ server. Đang hiển thị dữ liệu mẫu.',
                 );
-                const mockOrder = MOCK_ORDER_DETAILS[id] || MOCK_ORDER_DETAILS['1'];
-                setOrder(mockOrder);
+        const mockOrder = MOCK_ORDER_DETAILS[id] || MOCK_ORDER_DETAILS['1'];
+        setOrder(mockOrder);
             } finally {
                 setLoading(false);
             }
@@ -262,12 +265,24 @@ function OrderDetailPage() {
     };
 
     const formatOrderDate = (dateString) => {
+        if (!dateString) return '--';
         try {
             const date = new Date(dateString);
+            if (Number.isNaN(date.getTime())) return dateString;
             const day = String(date.getDate()).padStart(2, '0');
             const month = String(date.getMonth() + 1).padStart(2, '0');
             const year = date.getFullYear();
-            return `${day}/${month}/${year}`;
+            const hasTime =
+                (typeof dateString === 'string' && dateString.includes('T')) ||
+                date.getHours() !== 0 ||
+                date.getMinutes() !== 0 ||
+                date.getSeconds() !== 0;
+            if (!hasTime) {
+                return `${day}/${month}/${year}`;
+            }
+            const hour = String(date.getHours()).padStart(2, '0');
+            const minute = String(date.getMinutes()).padStart(2, '0');
+            return `${hour}:${minute} ${day}/${month}/${year}`;
         } catch {
             return dateString;
         }

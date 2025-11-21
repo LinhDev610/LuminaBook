@@ -1,6 +1,7 @@
 package com.lumina_book.backend.dto.response;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 import lombok.*;
@@ -24,6 +25,7 @@ public class OrderDetailResponse {
     String receiverName;
     String receiverPhone;
     LocalDate orderDate;
+    LocalDateTime orderDateTime;
 
     Double totalAmount;
     String status;

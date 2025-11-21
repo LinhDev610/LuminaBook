@@ -1,6 +1,7 @@
 package com.lumina_book.backend.dto.response;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -31,6 +32,7 @@ public class OrderResponse {
     String shippingAddress;
 
     LocalDate orderDate;
+    LocalDateTime orderDateTime;
 
     Double totalAmount;
 

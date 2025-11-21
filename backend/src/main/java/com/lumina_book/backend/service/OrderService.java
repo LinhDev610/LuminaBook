@@ -1,6 +1,7 @@
 package com.lumina_book.backend.service;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Locale;
@@ -111,6 +112,7 @@ public class OrderService {
                 .shippingAddress(shippingAddressSnapshot)
                 .address(shippingAddressEntity)
                 .orderDate(LocalDate.now())
+                .orderDateTime(LocalDateTime.now())
                 .shippingFee(shippingFee)
                 .totalAmount(orderTotal)
                 .status(OrderStatus.CREATED)
@@ -341,6 +343,27 @@ public class OrderService {
                     }
                 }
             });
+        }
+
+        return order;
+    }
+
+    /**
+     * Nhân viên xác nhận đơn hàng (chuyển trạng thái sang CONFIRMED).
+     */
+    @Transactional
+    @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
+    public Order confirmOrder(String orderId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_EXISTED));
+
+        if (order.getStatus() == OrderStatus.CANCELLED || order.getStatus() == OrderStatus.DELIVERED) {
+            return order;
+        }
+
+        if (order.getStatus() != OrderStatus.CONFIRMED) {
+            order.setStatus(OrderStatus.CONFIRMED);
+            orderRepository.save(order);
         }
 
         return order;

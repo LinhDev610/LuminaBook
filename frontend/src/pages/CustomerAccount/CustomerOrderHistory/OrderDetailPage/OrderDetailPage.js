@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import classNames from 'classnames/bind';
 import styles from './OrderDetailPage.module.scss';
-import { formatCurrency } from '../../../services';
+import { formatCurrency, getApiBaseUrl, getStoredToken } from '../../../../services';
 
 const cx = classNames.bind(styles);
 
@@ -121,28 +121,116 @@ const REFUND_STEPS = [
     { key: 'completed', label: 'Hoàn tất' },
 ];
 
+// Map dữ liệu đơn hàng từ API /orders/{id} sang dạng dùng cho UI chi tiết của khách
+const mapOrderFromApi = (apiOrder) => {
+    if (!apiOrder) return null;
+
+    const rawStatus = (apiOrder.status || 'PENDING').toUpperCase();
+
+    // Map items từ API response
+    const items = Array.isArray(apiOrder.items)
+        ? apiOrder.items.map((item, index) => ({
+              id: item.id || String(index),
+              name: item.name || 'Sản phẩm',
+              quantity: item.quantity || 1,
+              price: item.unitPrice || 0,
+              image: item.imageUrl || 'https://via.placeholder.com/80x100',
+          }))
+        : [];
+
+    return {
+        id: apiOrder.id || '',
+        code: apiOrder.code || apiOrder.orderCode || apiOrder.id || '',
+        orderDate: apiOrder.orderDate || null,
+        status: rawStatus,
+        totalAmount: typeof apiOrder.totalAmount === 'number' ? apiOrder.totalAmount : 0,
+        recipient: apiOrder.customerName || 'Khách hàng',
+        phone: apiOrder.customerEmail || '',
+        address: apiOrder.shippingAddress || '',
+        paymentMethod: 'ONLINE',
+        paymentMethodLabel: 'Thanh toán online',
+        items,
+        refundStatus: null,
+        refundProgress: null,
+        refundMessage: '',
+    };
+};
+
 function OrderDetailPage() {
     const navigate = useNavigate();
     const { id } = useParams();
     const [order, setOrder] = useState(null);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
 
     useEffect(() => {
-        // TODO: Fetch order detail from API
-        // const fetchOrderDetail = async () => {
-        //     const token = getStoredToken();
-        //     const response = await fetch(`${getApiBaseUrl()}/orders/${id}`, {
-        //         headers: {
-        //             Authorization: `Bearer ${token}`,
-        //         },
-        //     });
-        //     const data = await response.json();
-        //     setOrder(data.result);
-        // };
-        // fetchOrderDetail();
+        const fetchOrderDetail = async () => {
+            try {
+                setLoading(true);
+                setError('');
 
-        // Using mock data for now
-        const mockOrder = MOCK_ORDER_DETAILS[id] || MOCK_ORDER_DETAILS['1'];
-        setOrder(mockOrder);
+                const token = getStoredToken('token');
+                const apiBaseUrl = getApiBaseUrl();
+
+                // Gọi API /orders/{id} để lấy chi tiết đơn hàng kèm danh sách sản phẩm
+                const resp = await fetch(`${apiBaseUrl}/orders/${id}`, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                    },
+                });
+
+                if (!resp.ok) {
+                    console.warn(
+                        'CustomerOrderDetail: API /orders/{id} trả lỗi, dùng MOCK_ORDER_DETAILS',
+                    );
+                    setError(
+                        'Không thể tải chi tiết đơn hàng từ server. Đang hiển thị dữ liệu mẫu.',
+                    );
+                    const mockOrder = MOCK_ORDER_DETAILS[id] || MOCK_ORDER_DETAILS['1'];
+                    setOrder(mockOrder);
+                    return;
+                }
+
+                const data = await resp.json().catch(() => ({}));
+                const raw = data?.result || data || null;
+
+                if (!raw) {
+                    setError(
+                        'Không tìm thấy đơn hàng này trong lịch sử của bạn. Đang hiển thị dữ liệu mẫu.',
+                    );
+                    const mockOrder = MOCK_ORDER_DETAILS[id] || MOCK_ORDER_DETAILS['1'];
+                    setOrder(mockOrder);
+                    return;
+                }
+
+                const mapped = mapOrderFromApi(raw);
+                
+                // Nếu đơn hàng cũ không có items (chưa được lưu OrderItem), fallback về mock items
+                if (!mapped.items || mapped.items.length === 0) {
+                    const mockOrder = MOCK_ORDER_DETAILS[id] || MOCK_ORDER_DETAILS['1'];
+                    if (mockOrder && mockOrder.items && mockOrder.items.length > 0) {
+                        mapped.items = mockOrder.items;
+                    }
+                }
+
+                setOrder(mapped);
+            } catch (err) {
+                console.error(
+                    'CustomerOrderDetail: lỗi khi tải chi tiết đơn hàng, dùng MOCK_ORDER_DETAILS',
+                    err,
+                );
+                setError(
+                    'Không thể tải chi tiết đơn hàng từ server. Đang hiển thị dữ liệu mẫu.',
+                );
+                const mockOrder = MOCK_ORDER_DETAILS[id] || MOCK_ORDER_DETAILS['1'];
+                setOrder(mockOrder);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchOrderDetail();
     }, [id]);
 
     const handleBack = () => {
@@ -164,7 +252,9 @@ function OrderDetailPage() {
     if (!order) {
         return (
             <div className={cx('order-detail-wrapper')}>
-                <div className={cx('loading')}>Đang tải...</div>
+                <div className={cx('loading')}>
+                    {loading ? 'Đang tải...' : 'Không tìm thấy đơn hàng.'}
+                </div>
             </div>
         );
     }

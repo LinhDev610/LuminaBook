@@ -199,18 +199,20 @@ export default function CheckoutDetailPage() {
     const shippingFee =
         shippingMethod === 'standard' ? SHIPPING_FEE_STANDARD : SHIPPING_FEE_COD;
 
-    // Tạm tính: tính đúng theo những gì hiển thị ở từng dòng (giá đang bán * số lượng)
+    // Tạm tính: CHỈ tính trên các item được chọn (checkoutItems),
+    // dùng finalPrice backend để khớp công thức trong OrderService.createOrderFromCurrentCart.
     const itemsSubtotal = checkoutItems.reduce((sum, item) => {
-        const meta = productMeta[item.productId] || {};
         const quantity = item.quantity || 1;
-        const unitPriceFromMeta =
-            typeof meta.currentPrice === 'number' ? meta.currentPrice : undefined;
-        const unitPrice = unitPriceFromMeta ?? item.unitPrice ?? 0;
-        const lineTotal = unitPrice * quantity;
+        const lineTotal =
+            typeof item.finalPrice === 'number'
+                ? item.finalPrice
+                : (item.unitPrice || 0) * quantity;
         return sum + lineTotal;
     }, 0);
 
     const voucherDiscount = cart?.voucherDiscount || 0;
+
+    // Tổng cộng hiển thị: giống backend = selectedSubtotal + shippingFee - voucherDiscount
     const total = Math.max(0, itemsSubtotal + shippingFee - voucherDiscount);
 
     const formatPrice = (value) =>
@@ -538,9 +540,12 @@ export default function CheckoutDetailPage() {
                                             ? meta.originalUnitPrice
                                             : unitPrice;
 
-                                    // Thành tiền mỗi sản phẩm: giống CartPage (giá đang bán * số lượng),
-                                    // nhưng vẫn giữ hiển thị giá gốc * số lượng nếu có khuyến mãi.
-                                    const currentLineTotal = unitPrice * quantity;
+                                    // Thành tiền mỗi sản phẩm: ưu tiên dùng finalPrice backend
+                                    const backendLineTotal =
+                                        typeof item.finalPrice === 'number'
+                                            ? item.finalPrice
+                                            : unitPrice * quantity;
+                                    const currentLineTotal = backendLineTotal;
                                     const originalLineTotal =
                                         originalUnitPrice * quantity;
                                     const showOriginal =

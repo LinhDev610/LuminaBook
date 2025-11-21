@@ -81,6 +81,41 @@ export default function ConfirmCheckoutPage() {
         }
     };
 
+    // Lưu đơn hàng gần nhất (bao gồm danh sách sản phẩm) để các màn khác có thể đọc lại
+    const persistLatestOrder = (order, paymentMethodLabel, totalOverride) => {
+        if (!order || !order.id) return;
+
+        try {
+            const itemsForStorage = (orderItems || []).map((item) => ({
+                id: item.id,
+                name: item.name,
+                quantity: item.quantity,
+                lineTotal: item.lineTotal,
+                imageUrl: item.imageUrl,
+            }));
+
+            const latestOrderInfo = {
+                orderId: order.id,
+                code: order.code || order.orderCode || order.id || null,
+                receiverName: address.recipientName || 'Khách hàng',
+                paymentMethod: paymentMethodLabel,
+                subtotal: currentSubtotal,
+                shippingFee,
+                voucherDiscount: summary.voucherDiscount || 0,
+                total:
+                    typeof totalOverride === 'number'
+                        ? totalOverride
+                        : Math.max(0, currentSubtotal + shippingFee - voucherDiscount),
+                shippingProvider: address.shippingProvider || 'GHN',
+                items: itemsForStorage,
+            };
+
+            window.localStorage.setItem('lumina_latest_order', JSON.stringify(latestOrderInfo));
+        } catch (storageErr) {
+            console.warn('Cannot persist latest order info', storageErr);
+        }
+    };
+
     const handleConfirm = async () => {
         if (submitting) return;
 
@@ -133,55 +168,14 @@ export default function ConfirmCheckoutPage() {
                 return;
             }
 
-            // Bước 2: Nếu là MOMO thì khởi tạo thanh toán MoMo cho đơn hàng này
+            // Bước 2: lưu thông tin đơn hàng mới nhất
+            // (kèm danh sách sản phẩm) để OrderSuccess & OrderDetail có thể hiển thị
+            const amountForCurrent = Math.round(currentTotal);
+
             if (paymentMethod === 'momo') {
-                // Sử dụng đúng tổng tiền đang hiển thị trên UI để gửi sang MoMo,
-                // tránh lệch số do khác biệt cách tính giữa frontend và backend.
-                const amountForMomo = Math.round(currentTotal);
-
-                // Lưu / cập nhật thông tin đơn hàng gần nhất để hiển thị ở màn hình OrderSuccess
-                try {
-                    const existingRaw = window.localStorage.getItem('lumina_latest_order');
-                    let existing = {};
-                    if (existingRaw) {
-                        try {
-                            existing = JSON.parse(existingRaw) || {};
-                        } catch {
-                            existing = {};
-                        }
-                    }
-
-                    const latestOrderInfo = {
-                        ...existing,
-                        orderId: order.id,
-                        code: order.code || order.orderCode || existing.code || null,
-                        // Đảm bảo các field quan trọng luôn có giá trị
-                        receiverName:
-                            existing.receiverName || address.recipientName || 'Khách hàng',
-                        paymentMethod: existing.paymentMethod || 'Thanh toán qua MoMo',
-                        subtotal:
-                            typeof existing.subtotal === 'number'
-                                ? existing.subtotal
-                                : currentSubtotal,
-                        shippingFee:
-                            typeof existing.shippingFee === 'number'
-                                ? existing.shippingFee
-                                : shippingFee,
-                        voucherDiscount:
-                            typeof existing.voucherDiscount === 'number'
-                                ? existing.voucherDiscount
-                                : summary.voucherDiscount || 0,
-                        total: amountForMomo,
-                        shippingProvider:
-                            existing.shippingProvider || address.shippingProvider || 'GHN',
-                    };
-                    window.localStorage.setItem(
-                        'lumina_latest_order',
-                        JSON.stringify(latestOrderInfo),
-                    );
-                } catch (storageErr) {
-                    console.warn('Cannot persist latest order info', storageErr);
-                }
+                // Thanh toán MoMo
+                const amountForMomo = amountForCurrent;
+                persistLatestOrder(order, 'Thanh toán qua MoMo', amountForMomo);
 
                 const resp = await fetch(
                     `${apiBaseUrl}/api/momo/create?amount=${amountForMomo}&orderId=${encodeURIComponent(order.id)}`,
@@ -213,11 +207,12 @@ export default function ConfirmCheckoutPage() {
                 // Điều hướng người dùng sang màn hình thanh toán của MoMo
                 window.location.href = payUrl;
                 return;
+            } else {
+                // COD: lưu thông tin đơn & sản phẩm rồi quay về trang chủ
+                persistLatestOrder(order, 'Thanh toán khi nhận hàng', amountForCurrent);
+                success('Đơn hàng COD đã được tạo thành công.');
+                navigate('/');
             }
-
-            // COD: tạo đơn xong thì quay về trang chủ (có thể điều hướng sang trang "Đơn hàng của tôi" sau này)
-            success('Đơn hàng COD đã được tạo thành công.');
-            navigate('/');
         } catch (err) {
             console.error('Error when confirming checkout:', err);
             showError('Có lỗi xảy ra khi xác nhận đặt hàng.');

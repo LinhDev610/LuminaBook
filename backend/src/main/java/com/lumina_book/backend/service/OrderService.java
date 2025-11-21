@@ -16,10 +16,12 @@ import com.lumina_book.backend.dto.request.CreateOrderRequest;
 import com.lumina_book.backend.entity.Cart;
 import com.lumina_book.backend.entity.CartItem;
 import com.lumina_book.backend.entity.Order;
+import com.lumina_book.backend.entity.OrderItem;
 import com.lumina_book.backend.enums.OrderStatus;
 import com.lumina_book.backend.exception.AppException;
 import com.lumina_book.backend.exception.ErrorCode;
 import com.lumina_book.backend.repository.OrderRepository;
+import com.lumina_book.backend.repository.OrderItemRepository;
 import com.lumina_book.backend.util.SecurityUtil;
 
 import lombok.AccessLevel;
@@ -32,6 +34,7 @@ import lombok.experimental.FieldDefaults;
 public class OrderService {
 
     OrderRepository orderRepository;
+    OrderItemRepository orderItemRepository;
     CartService cartService;
 
     /**
@@ -75,7 +78,13 @@ public class OrderService {
         Double rawVoucherDiscount = cart.getVoucherDiscount();
         double voucherDiscount = rawVoucherDiscount == null ? 0.0 : rawVoucherDiscount;
 
-        double orderTotal = Math.max(0.0, selectedSubtotal + shippingFee - voucherDiscount);
+        // Đảm bảo các thành phần là số nguyên đồng
+        selectedSubtotal = Math.round(selectedSubtotal);
+        shippingFee = Math.round(shippingFee);
+        voucherDiscount = Math.round(voucherDiscount);
+
+        double rawOrderTotal = selectedSubtotal + shippingFee - voucherDiscount;
+        double orderTotal = Math.round(Math.max(0.0, rawOrderTotal));
 
         Order order = Order.builder()
                 .user(cart.getUser())
@@ -91,6 +100,20 @@ public class OrderService {
                 .build();
 
         Order savedOrder = orderRepository.save(order);
+
+        // Tạo các OrderItem tương ứng với CartItem đã chọn, lưu lại ảnh snapshot sản phẩm
+        List<OrderItem> orderItems = selectedItems.stream()
+                .map(ci -> OrderItem.builder()
+                        .order(savedOrder)
+                        .product(ci.getProduct())
+                        .quantity(ci.getQuantity())
+                        .unitPrice(ci.getUnitPrice())
+                        .finalPrice(ci.getFinalPrice())
+                        .build())
+                .toList();
+
+        orderItemRepository.saveAll(orderItems);
+        savedOrder.setItems(orderItems);
 
         // Sau khi tạo đơn hàng thành công: xóa các CartItem đã thanh toán khỏi giỏ
         for (CartItem item : selectedItems) {
@@ -131,6 +154,50 @@ public class OrderService {
     public List<Order> getMyOrders() {
         String email = SecurityUtil.getAuthentication().getName();
         return orderRepository.findByUserEmail(email);
+    }
+
+    /**
+     * Lấy chi tiết một đơn hàng theo id, đảm bảo:
+     * - STAFF / ADMIN có thể xem mọi đơn
+     * - CUSTOMER chỉ được xem đơn của chính mình
+     */
+    @Transactional(readOnly = true)
+    @PreAuthorize("hasAnyRole('CUSTOMER','STAFF','ADMIN')")
+    public Order getOrderByIdForCurrentUser(String orderId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_EXISTED));
+
+        var auth = SecurityUtil.getAuthentication();
+        boolean isStaffOrAdmin = auth.getAuthorities().stream()
+                .anyMatch(a -> {
+                    String role = a.getAuthority();
+                    return "ROLE_STAFF".equals(role) || "ROLE_ADMIN".equals(role);
+                });
+
+        if (!isStaffOrAdmin) {
+            String email = auth.getName();
+            if (order.getUser() == null || order.getUser().getEmail() == null
+                    || !order.getUser().getEmail().equalsIgnoreCase(email)) {
+                throw new AppException(ErrorCode.UNAUTHORIZED);
+            }
+        }
+
+        // Ensure items, products, and media are loaded to avoid lazy loading issues
+        if (order.getItems() != null) {
+            order.getItems().forEach(item -> {
+                if (item.getProduct() != null) {
+                    // Load product media
+                    if (item.getProduct().getDefaultMedia() != null) {
+                        item.getProduct().getDefaultMedia().getMediaUrl();
+                    }
+                    if (item.getProduct().getMediaList() != null) {
+                        item.getProduct().getMediaList().size();
+                    }
+                }
+            });
+        }
+
+        return order;
     }
 }
 

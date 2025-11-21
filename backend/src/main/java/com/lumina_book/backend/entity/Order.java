@@ -1,6 +1,7 @@
 package com.lumina_book.backend.entity;
 
 import java.time.LocalDate;
+import java.util.List;
 
 import jakarta.persistence.*;
 
@@ -48,4 +49,7 @@ public class Order {
 
     @Enumerated(EnumType.STRING)
     OrderStatus status;
+
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
+    List<OrderItem> items;
 }

@@ -2,6 +2,7 @@ package com.lumina_book.backend.dto.response;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -12,40 +13,29 @@ import lombok.experimental.FieldDefaults;
 @NoArgsConstructor
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class OrderResponse {
+public class OrderDetailResponse {
 
     String id;
-
-    /**
-     * Mã đơn hàng hiển thị (hiện tại dùng luôn id, có thể thay đổi sau).
-     */
     String code;
 
     String customerName;
-
     String customerEmail;
 
-    String receiverName;
-
-    String receiverPhone;
-
     String shippingAddress;
-
+    String receiverName;
+    String receiverPhone;
     LocalDate orderDate;
     LocalDateTime orderDateTime;
 
     Double shippingFee;
     Double totalAmount;
-
-    /**
-     * Trạng thái đơn hàng dạng chuỗi (CREATED, PAID, SHIPPED, ...).
-     */
     String status;
-
     String paymentMethod;
     String paymentStatus;
     Boolean paid;
     String paymentReference;
+
+    List<OrderItemResponse> items;
 }
 
 

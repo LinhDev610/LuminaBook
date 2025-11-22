@@ -4,6 +4,7 @@ import classNames from 'classnames/bind';
 import styles from './OrderSuccessPage.module.scss';
 
 const cx = classNames.bind(styles);
+ 
 
 const formatPrice = (value) =>
     new Intl.NumberFormat('vi-VN', {
@@ -152,7 +153,21 @@ export default function OrderSuccessPage() {
                     <button
                         type="button"
                         className={cx('secondary-btn')}
-                        onClick={() => navigate('/customer-account')}
+                        onClick={() => {
+                            // Navigate đến trang chi tiết đơn hàng vừa tạo
+                            // Ưu tiên orderId (UUID) > id > code > orderCode
+                            const targetId =
+                                orderInfo?.orderId ||
+                                orderInfo?.id ||
+                                orderInfo?.code ||
+                                orderInfo?.orderCode;
+                            if (targetId) {
+                                navigate(`/customer-account/orders/${targetId}`);
+                            } else {
+                                // Fallback: nếu không có orderId/code thì chuyển đến danh sách đơn hàng
+                                navigate('/customer-account/orders');
+                            }
+                        }}
                     >
                         Xem đơn hàng
                     </button>

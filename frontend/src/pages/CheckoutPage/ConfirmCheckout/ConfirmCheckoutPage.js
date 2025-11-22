@@ -7,6 +7,7 @@ import { getApiBaseUrl, getStoredToken } from '../../../services/utils';
 import { removeCartItem } from '../../../services';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useNotification } from '../../../components/Common/Notification';
+import { formatFullAddress } from '../../../components/Common/AddressModal/useGhnLocations';
 
 const cx = classNames.bind(styles);
 
@@ -29,6 +30,11 @@ export default function ConfirmCheckoutPage() {
     const address = state.address || {};
     const summary = state.summary || {};
     const cartItemIds = state.cartItemIds || [];
+    
+    // Direct checkout: mua ngay từ sản phẩm (không qua giỏ hàng)
+    const directCheckout = state.directCheckout || false;
+    const directProductId = state.productId || null;
+    const directQuantity = state.quantity || 1;
 
     const items = summary.items || [];
     const shippingFee = summary.shippingFee || 0;
@@ -81,6 +87,72 @@ export default function ConfirmCheckoutPage() {
         }
     };
 
+    const buildShippingInfo = () => {
+        const name =
+            address.recipientName ||
+            address.receiverName ||
+            address.recipient ||
+            state.receiverName ||
+            'Khách hàng';
+        const phone =
+            address.recipientPhone ||
+            address.recipientPhoneNumber ||
+            address.phone ||
+            state.receiverPhone ||
+            '';
+        const addressText =
+            address.addressText ||
+            formatFullAddress(address) ||
+            address.rawAddress ||
+            state.shippingAddress ||
+            '';
+
+        return {
+            name,
+            phone,
+            address: addressText,
+        };
+    };
+
+    // Lưu đơn hàng gần nhất (bao gồm danh sách sản phẩm) để các màn khác có thể đọc lại
+    const persistLatestOrder = (order, paymentMethodLabel, totalOverride) => {
+        if (!order || !order.id) return;
+
+        try {
+            const itemsForStorage = (orderItems || []).map((item) => ({
+                id: item.id,
+                name: item.name,
+                quantity: item.quantity,
+                lineTotal: item.lineTotal,
+                imageUrl: item.imageUrl,
+            }));
+
+            const shippingInfo = buildShippingInfo();
+
+            const latestOrderInfo = {
+                orderId: order.id,
+                code: order.code || order.orderCode || order.id || null,
+                receiverName: shippingInfo.name,
+                receiverPhone: shippingInfo.phone || '---',
+                paymentMethod: paymentMethodLabel,
+                subtotal: currentSubtotal,
+                shippingFee,
+                voucherDiscount: summary.voucherDiscount || 0,
+                total:
+                    typeof totalOverride === 'number'
+                        ? totalOverride
+                        : Math.max(0, currentSubtotal + shippingFee - voucherDiscount),
+                shippingProvider: address.shippingProvider || 'GHN',
+                shippingAddress: shippingInfo.address,
+                items: itemsForStorage,
+            };
+
+            window.localStorage.setItem('lumina_latest_order', JSON.stringify(latestOrderInfo));
+        } catch (storageErr) {
+            console.warn('Cannot persist latest order info', storageErr);
+        }
+    };
+
     const handleConfirm = async () => {
         if (submitting) return;
 
@@ -90,22 +162,51 @@ export default function ConfirmCheckoutPage() {
             const apiBaseUrl = getApiBaseUrl();
             const token = getStoredToken('token');
 
-            // Bước 1: tạo đơn hàng từ giỏ hàng hiện tại
-            const orderPayload = {
-                shippingAddress: address.addressText || '',
-                note: '', // có thể truyền ghi chú nếu cần
-                shippingFee,
-                cartItemIds,
-            };
+            // Bước 1: tạo đơn hàng
+            const shippingInfo = buildShippingInfo();
+            
+            let orderResp;
+            
+            if (directCheckout && directProductId) {
+                // Direct checkout: mua ngay từ sản phẩm (không qua giỏ hàng)
+                const directPayload = {
+                    productId: directProductId,
+                    quantity: directQuantity,
+                    addressId: address.id || address.addressId || null,
+                    shippingAddress: JSON.stringify(shippingInfo),
+                    note: '',
+                    shippingFee,
+                    paymentMethod: paymentMethod?.toUpperCase() || 'COD',
+                };
 
-            const orderResp = await fetch(`${apiBaseUrl}/orders/checkout`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-                },
-                body: JSON.stringify(orderPayload),
-            });
+                orderResp = await fetch(`${apiBaseUrl}/orders/checkout-direct`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                    },
+                    body: JSON.stringify(directPayload),
+                });
+            } else {
+                // Checkout từ giỏ hàng (flow cũ)
+                const orderPayload = {
+                    addressId: address.id || address.addressId || null,
+                    shippingAddress: JSON.stringify(shippingInfo),
+                    note: '',
+                    shippingFee,
+                    cartItemIds,
+                    paymentMethod: paymentMethod?.toUpperCase() || 'COD',
+                };
+
+                orderResp = await fetch(`${apiBaseUrl}/orders/checkout`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                    },
+                    body: JSON.stringify(orderPayload),
+                });
+            }
 
             if (!orderResp.ok) {
                 let message = 'Không thể tạo đơn hàng. Vui lòng thử lại.';
@@ -125,7 +226,9 @@ export default function ConfirmCheckoutPage() {
             }
 
             const orderData = await orderResp.json().catch(() => null);
-            const order = orderData?.result || orderData;
+            const initResult = orderData?.result || orderData || {};
+            const order = initResult?.order || initResult;
+            const payUrl = initResult?.payUrl;
 
             if (!order || !order.id) {
                 showError('Không nhận được thông tin đơn hàng từ server.');
@@ -133,89 +236,22 @@ export default function ConfirmCheckoutPage() {
                 return;
             }
 
-            // Bước 2: Nếu là MOMO thì khởi tạo thanh toán MoMo cho đơn hàng này
+            // Bước 2: lưu thông tin đơn hàng mới nhất
+            // (kèm danh sách sản phẩm) để OrderSuccess & OrderDetail có thể hiển thị
+            const amountForCurrent = Math.round(currentTotal);
+
             if (paymentMethod === 'momo') {
-                // Sử dụng đúng tổng tiền đang hiển thị trên UI để gửi sang MoMo,
-                // tránh lệch số do khác biệt cách tính giữa frontend và backend.
-                const amountForMomo = Math.round(currentTotal);
-
-                // Lưu / cập nhật thông tin đơn hàng gần nhất để hiển thị ở màn hình OrderSuccess
-                try {
-                    const existingRaw = window.localStorage.getItem('lumina_latest_order');
-                    let existing = {};
-                    if (existingRaw) {
-                        try {
-                            existing = JSON.parse(existingRaw) || {};
-                        } catch {
-                            existing = {};
-                        }
-                    }
-
-                    const latestOrderInfo = {
-                        ...existing,
-                        orderId: order.id,
-                        code: order.code || order.orderCode || existing.code || null,
-                        // Đảm bảo các field quan trọng luôn có giá trị
-                        receiverName:
-                            existing.receiverName || address.recipientName || 'Khách hàng',
-                        paymentMethod: existing.paymentMethod || 'Thanh toán qua MoMo',
-                        subtotal:
-                            typeof existing.subtotal === 'number'
-                                ? existing.subtotal
-                                : currentSubtotal,
-                        shippingFee:
-                            typeof existing.shippingFee === 'number'
-                                ? existing.shippingFee
-                                : shippingFee,
-                        voucherDiscount:
-                            typeof existing.voucherDiscount === 'number'
-                                ? existing.voucherDiscount
-                                : summary.voucherDiscount || 0,
-                        total: amountForMomo,
-                        shippingProvider:
-                            existing.shippingProvider || address.shippingProvider || 'GHN',
-                    };
-                    window.localStorage.setItem(
-                        'lumina_latest_order',
-                        JSON.stringify(latestOrderInfo),
-                    );
-                } catch (storageErr) {
-                    console.warn('Cannot persist latest order info', storageErr);
-                }
-
-                const resp = await fetch(
-                    `${apiBaseUrl}/api/momo/create?amount=${amountForMomo}&orderId=${encodeURIComponent(order.id)}`,
-                    {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-                        },
-                    },
-                );
-
-                if (!resp.ok) {
-                    showError('Không thể khởi tạo thanh toán MoMo. Vui lòng thử lại.');
-                    setSubmitting(false);
-                    return;
-                }
-
-                const data = await resp.json().catch(() => null);
-                const result = data?.result || data;
-                const payUrl = result?.payUrl || result?.deepLink || result?.qrCodeUrl;
-
+                persistLatestOrder(order, 'Thanh toán qua MoMo', amountForCurrent);
                 if (!payUrl) {
                     showError('Không nhận được đường dẫn thanh toán MoMo.');
                     setSubmitting(false);
                     return;
                 }
-
-                // Điều hướng người dùng sang màn hình thanh toán của MoMo
                 window.location.href = payUrl;
                 return;
             }
 
-            // COD: tạo đơn xong thì quay về trang chủ (có thể điều hướng sang trang "Đơn hàng của tôi" sau này)
+            persistLatestOrder(order, 'Thanh toán khi nhận hàng', amountForCurrent);
             success('Đơn hàng COD đã được tạo thành công.');
             navigate('/');
         } catch (err) {

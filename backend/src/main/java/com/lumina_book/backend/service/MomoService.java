@@ -2,6 +2,7 @@ package com.lumina_book.backend.service;
 
 import com.lumina_book.backend.client.MomoApi;
 import com.lumina_book.backend.dto.request.CreateMomoRequest;
+import com.lumina_book.backend.dto.request.MomoIpnRequest;
 import com.lumina_book.backend.dto.response.CreateMomoResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -88,6 +89,32 @@ public class MomoService {
         CreateMomoResponse response = momoApi.createMomoQR(request);
         log.info("Received create MoMo payment response: {}", response);
         return response;
+    }
+
+    public boolean validateIpnSignature(MomoIpnRequest request) {
+        if (request == null || request.getSignature() == null) {
+            return false;
+        }
+        String rawSignature =
+                "accessKey=" + ACCESS_KEY
+                        + "&amount=" + safeValue(request.getAmount())
+                        + "&extraData=" + safeValue(request.getExtraData())
+                        + "&message=" + safeValue(request.getMessage())
+                        + "&orderId=" + safeValue(request.getOrderId())
+                        + "&orderInfo=" + safeValue(request.getOrderInfo())
+                        + "&orderType=" + safeValue(request.getOrderType())
+                        + "&partnerCode=" + safeValue(request.getPartnerCode())
+                        + "&payType=" + safeValue(request.getPayType())
+                        + "&requestId=" + safeValue(request.getRequestId())
+                        + "&responseTime=" + safeValue(request.getResponseTime())
+                        + "&resultCode=" + safeValue(request.getResultCode())
+                        + "&transId=" + safeValue(request.getTransId());
+        String expectedSignature = hmacSHA256(rawSignature, SECRET_KEY);
+        return expectedSignature.equals(request.getSignature());
+    }
+
+    private String safeValue(Object value) {
+        return value == null ? "" : value.toString();
     }
 
     // Tính chữ ký HMAC-SHA256 dạng hex lowercase theo yêu cầu của MoMo.

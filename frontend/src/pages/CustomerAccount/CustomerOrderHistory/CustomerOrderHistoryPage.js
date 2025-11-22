@@ -1,10 +1,27 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import classNames from 'classnames/bind';
 import styles from './CustomerOrderHistoryPage.module.scss';
-import { formatCurrency } from '../../../services';
+import { formatCurrency, getApiBaseUrl, getStoredToken } from '../../../services';
 
 const cx = classNames.bind(styles);
+
+const parseShippingInfo = (raw) => {
+    if (!raw || typeof raw !== 'string') return null;
+    try {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object') {
+            return {
+                name: parsed.name || parsed.receiverName || '',
+                phone: parsed.phone || parsed.receiverPhone || '',
+                address: parsed.address || parsed.fullAddress || '',
+            };
+        }
+    } catch {
+        return { address: raw };
+    }
+    return { address: raw };
+};
 
 // Mock data - sẽ được thay thế bằng API sau
 const MOCK_ORDERS = [
@@ -165,6 +182,55 @@ const SORT_OPTIONS = [
     { value: 'price-low', label: 'Giá thấp đến cao' },
 ];
 
+// Chuyển trạng thái từ backend (CREATED, PENDING, PAID, SHIPPED, DELIVERED, CANCELLED)
+// sang trạng thái hiển thị cho khách (PENDING, CONFIRMED, SHIPPING, DELIVERED, CANCELLED)
+const mapOrderStatus = (statusRaw) => {
+    const status = String(statusRaw || '').toUpperCase();
+    switch (status) {
+        case 'CREATED':
+        case 'PENDING':
+        case 'PAID':
+            return { mappedStatus: 'PENDING', ...STATUS_MAP.PENDING };
+        case 'CONFIRMED':
+            return { mappedStatus: 'CONFIRMED', ...STATUS_MAP.CONFIRMED };
+        case 'SHIPPED':
+            return { mappedStatus: 'SHIPPING', ...STATUS_MAP.SHIPPING };
+        case 'DELIVERED':
+            return { mappedStatus: 'DELIVERED', ...STATUS_MAP.DELIVERED };
+        case 'CANCELLED':
+            return { mappedStatus: 'CANCELLED', ...STATUS_MAP.CANCELLED };
+        default:
+            return { mappedStatus: 'PENDING', ...STATUS_MAP.PENDING };
+    }
+};
+
+// Chuyển dữ liệu đơn hàng từ API sang dạng dùng trong UI khách hàng
+const mapOrderFromApi = (order) => {
+    if (!order) return null;
+    const { mappedStatus, key } = mapOrderStatus(order.status);
+    const shippingInfo = parseShippingInfo(order.shippingAddress);
+    const orderDateValue = order.orderDateTime || order.orderDate || null;
+
+    return {
+        id: order.id || '',
+        code: order.code || order.orderCode || order.id || '',
+        orderDate: orderDateValue,
+        orderDateOnly: order.orderDate || null,
+        totalAmount: typeof order.totalAmount === 'number' ? order.totalAmount : 0,
+        status: mappedStatus,
+        rawStatus: order.status || mappedStatus,
+        statusKey: key,
+        recipient:
+            order.receiverName ||
+            shippingInfo?.name ||
+            order.customerName ||
+            'Khách hàng',
+        phone: order.receiverPhone || shippingInfo?.phone || '',
+        address: shippingInfo?.address || '',
+        items: Array.isArray(order.items) ? order.items : [],
+    };
+};
+
 function CustomerOrderHistoryPage() {
     const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState('pending');
@@ -172,59 +238,149 @@ function CustomerOrderHistoryPage() {
     const [selectedDate, setSelectedDate] = useState('');
     const [sortBy, setSortBy] = useState('newest');
 
+    const [orders, setOrders] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
+
+    // Lấy lịch sử đơn hàng thật từ backend (/orders/my-orders)
+    useEffect(() => {
+        const fetchOrders = async () => {
+            try {
+                setLoading(true);
+                setError('');
+
+                const token = getStoredToken('token');
+                const apiBaseUrl = getApiBaseUrl();
+
+                const resp = await fetch(`${apiBaseUrl}/orders/my-orders`, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                    },
+                });
+
+                if (!resp.ok) {
+                    console.warn('CustomerOrderHistory: API /orders/my-orders trả lỗi, dùng MOCK_ORDERS');
+                    setError('Không thể tải lịch sử đơn hàng từ server. Đang hiển thị dữ liệu mẫu.');
+                    setOrders(
+                        MOCK_ORDERS.map((o) => {
+                            const mapped = mapOrderStatus(o.status);
+                            return {
+                                ...o,
+                                rawStatus: o.status,
+                                statusKey: mapped.key,
+                            };
+                        }),
+                    );
+                    return;
+                }
+
+                const data = await resp.json().catch(() => ({}));
+                const raw = data?.result || data || [];
+                const list = Array.isArray(raw) ? raw : [];
+                const mapped = list
+                    .map(mapOrderFromApi)
+                    .filter(Boolean);
+                setOrders(mapped);
+            } catch (err) {
+                console.error('CustomerOrderHistory: Lỗi khi tải lịch sử đơn hàng, dùng MOCK_ORDERS:', err);
+                setError('Không thể tải lịch sử đơn hàng từ server. Đang hiển thị dữ liệu mẫu.');
+                setOrders(
+                    MOCK_ORDERS.map((o) => {
+                        const mapped = mapOrderStatus(o.status);
+                        return {
+                            ...o,
+                            rawStatus: o.status,
+                            statusKey: mapped.key,
+                        };
+                    }),
+                );
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchOrders();
+    }, []);
+
     // Filter orders based on active tab
     const filteredOrders = useMemo(() => {
-        let orders = MOCK_ORDERS.filter((order) => {
-            const statusMap = STATUS_MAP[order.status];
-            if (!statusMap) return false;
-            return statusMap.key === activeTab;
-        });
+        let list = orders.filter((order) => order.statusKey === activeTab);
 
         // Search filter
         if (searchQuery.trim()) {
             const query = searchQuery.toLowerCase();
-            orders = orders.filter(
-                (order) =>
-                    order.code.toLowerCase().includes(query) ||
-                    order.items.some((item) => item.name.toLowerCase().includes(query)),
-            );
+            list = list.filter((order) => {
+                const matchesCode = order.code?.toLowerCase().includes(query);
+                const matchesItems =
+                    Array.isArray(order.items) &&
+                    order.items.some((item) => item.name?.toLowerCase().includes(query));
+                return matchesCode || matchesItems;
+            });
         }
 
         // Date filter
         if (selectedDate) {
-            orders = orders.filter((order) => order.orderDate === selectedDate);
+            list = list.filter((order) => {
+                const base = order.orderDateOnly || order.orderDate;
+                if (!base) return false;
+                try {
+                    return String(base).substring(0, 10) === selectedDate;
+                } catch {
+                    return false;
+                }
+            });
         }
 
         // Sort
-        orders = [...orders].sort((a, b) => {
+        list = [...list].sort((a, b) => {
             switch (sortBy) {
                 case 'newest':
-                    return new Date(b.orderDate) - new Date(a.orderDate);
+                    return new Date(b.orderDate || 0) - new Date(a.orderDate || 0);
                 case 'oldest':
-                    return new Date(a.orderDate) - new Date(b.orderDate);
+                    return new Date(a.orderDate || 0) - new Date(b.orderDate || 0);
                 case 'price-high':
-                    return b.totalAmount - a.totalAmount;
+                    return (b.totalAmount || 0) - (a.totalAmount || 0);
                 case 'price-low':
-                    return a.totalAmount - b.totalAmount;
+                    return (a.totalAmount || 0) - (b.totalAmount || 0);
                 default:
                     return 0;
             }
         });
 
-        return orders;
-    }, [activeTab, searchQuery, selectedDate, sortBy]);
+        return list;
+    }, [orders, activeTab, searchQuery, selectedDate, sortBy]);
 
-    const handleViewDetail = (orderId) => {
-        navigate(`/customer-account/orders/${orderId}`);
+    const handleViewDetail = (orderId, orderCode) => {
+        // Use orderId if available, otherwise fallback to orderCode
+        const targetId = orderId || orderCode;
+        if (!targetId) {
+            console.error('CustomerOrderHistory: Cannot navigate - missing order ID and code');
+            return;
+        }
+        console.log('CustomerOrderHistory: Navigating to order detail with id/code:', targetId);
+        navigate(`/customer-account/orders/${targetId}`);
     };
 
     const formatOrderDate = (dateString) => {
+        if (!dateString) return '--';
         try {
             const date = new Date(dateString);
+            if (Number.isNaN(date.getTime())) return dateString;
             const day = String(date.getDate()).padStart(2, '0');
             const month = String(date.getMonth() + 1).padStart(2, '0');
             const year = date.getFullYear();
+            const hasTime =
+                (typeof dateString === 'string' && dateString.includes('T')) ||
+                date.getHours() !== 0 ||
+                date.getMinutes() !== 0 ||
+                date.getSeconds() !== 0;
+            if (!hasTime) {
             return `${day}/${month}/${year}`;
+            }
+            const hour = String(date.getHours()).padStart(2, '0');
+            const minute = String(date.getMinutes()).padStart(2, '0');
+            return `${hour}:${minute} ${day}/${month}/${year}`;
         } catch {
             return dateString;
         }
@@ -305,14 +461,22 @@ function CustomerOrderHistoryPage() {
 
                     {/* Orders List */}
                     <section className={cx('orders-section')}>
-                        {filteredOrders.length === 0 ? (
+                        {loading ? (
+                            <div className={cx('empty-state')}>
+                                <p>Đang tải lịch sử đơn hàng...</p>
+                            </div>
+                        ) : error ? (
+                            <div className={cx('empty-state')}>
+                                <p>{error}</p>
+                            </div>
+                        ) : filteredOrders.length === 0 ? (
                             <div className={cx('empty-state')}>
                                 <p>Không có đơn hàng nào</p>
                             </div>
                         ) : (
                             <div className={cx('orders-list')}>
                                 {filteredOrders.map((order) => {
-                                    const statusInfo = STATUS_MAP[order.status];
+                                    const statusInfo = STATUS_MAP[order.status] || STATUS_MAP.PENDING;
                                     return (
                                         <div key={order.id} className={cx('order-card')}>
                                             <div className={cx('order-header')}>
@@ -336,6 +500,7 @@ function CustomerOrderHistoryPage() {
                                                 </div>
                                             </div>
 
+                                            {Array.isArray(order.items) && order.items.length > 0 && (
                                             <div className={cx('order-items')}>
                                                 {order.items.map((item) => (
                                                     <div key={item.id} className={cx('order-item')}>
@@ -355,11 +520,12 @@ function CustomerOrderHistoryPage() {
                                                     </div>
                                                 ))}
                                             </div>
+                                            )}
 
                                             <div className={cx('order-actions')}>
                                                 <button
                                                     className={cx('view-detail-btn')}
-                                                    onClick={() => handleViewDetail(order.id)}
+                                                    onClick={() => handleViewDetail(order.id, order.code)}
                                                 >
                                                     Xem chi tiết
                                                 </button>

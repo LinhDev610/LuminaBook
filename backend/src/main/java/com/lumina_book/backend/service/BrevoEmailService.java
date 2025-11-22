@@ -1,6 +1,8 @@
 package com.lumina_book.backend.service;
 
+import java.text.NumberFormat;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -10,6 +12,8 @@ import org.springframework.web.client.RestTemplate;
 
 import com.lumina_book.backend.exception.AppException;
 import com.lumina_book.backend.exception.ErrorCode;
+import com.lumina_book.backend.entity.Order;
+import com.lumina_book.backend.entity.OrderItem;
 
 import lombok.AccessLevel;
 import lombok.experimental.FieldDefaults;
@@ -63,6 +67,7 @@ public class BrevoEmailService {
             HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
 
             // Send request
+            @SuppressWarnings("rawtypes")
             ResponseEntity<Map> response = restTemplate.postForEntity(BREVO_API_URL, request, Map.class);
 
             if (response.getStatusCode() == HttpStatus.CREATED) {
@@ -113,6 +118,7 @@ public class BrevoEmailService {
             HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
 
             // Send request
+            @SuppressWarnings("rawtypes")
             ResponseEntity<Map> response = restTemplate.postForEntity(BREVO_API_URL, request, Map.class);
 
             if (response.getStatusCode() == HttpStatus.CREATED) {
@@ -181,6 +187,7 @@ public class BrevoEmailService {
             HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
 
             // Send request
+            @SuppressWarnings("rawtypes")
             ResponseEntity<Map> response = restTemplate.postForEntity(BREVO_API_URL, request, Map.class);
 
             if (response.getStatusCode() == HttpStatus.CREATED) {
@@ -195,6 +202,77 @@ public class BrevoEmailService {
                     "Failed to send account locked email via Brevo API to: {} - Error: {}", toEmail, e.getMessage(), e);
             // Don't throw exception here - account lock should succeed even if email fails
             // Just log the error
+        }
+    }
+
+    public void sendOrderConfirmationEmail(Order order) {
+        if (order == null || order.getUser() == null || order.getUser().getEmail() == null) {
+            return;
+        }
+        try {
+            String toEmail = order.getUser().getEmail();
+            String customerName = order.getUser().getFullName() != null
+                    ? order.getUser().getFullName()
+                    : "Quý khách";
+
+            log.info("Sending order confirmation email to {}", toEmail);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.set("api-key", apiKey);
+
+            NumberFormat currencyFormat = NumberFormat.getCurrencyInstance(Locale.forLanguageTag("vi-VN"));
+
+            StringBuilder itemsBuilder = new StringBuilder();
+            if (order.getItems() != null) {
+                for (OrderItem item : order.getItems()) {
+                    String name = item.getProduct() != null ? item.getProduct().getName() : "Sản phẩm";
+                    itemsBuilder.append("- ")
+                            .append(name)
+                            .append(" x")
+                            .append(item.getQuantity())
+                            .append(" : ")
+                            .append(currencyFormat.format(item.getFinalPrice()))
+                            .append("\n");
+                }
+            }
+
+            String content = String.format(
+                    "Xin chào %s,\n\n"
+                            + "Cảm ơn bạn đã đặt hàng tại LuminaBook. Đơn hàng %s của bạn đã được ghi nhận.\n\n"
+                            + "Tổng tiền: %s\n"
+                            + "Phí vận chuyển: %s\n"
+                            + "Phương thức thanh toán: %s\n\n"
+                            + "Chi tiết sản phẩm:\n%s\n"
+                            + "Địa chỉ giao hàng: %s\n\n"
+                            + "Chúng tôi sẽ liên hệ khi đơn hàng được giao cho đơn vị vận chuyển.\n\n"
+                            + "Trân trọng,\nĐội ngũ LuminaBook",
+                    customerName,
+                    order.getCode(),
+                    currencyFormat.format(order.getTotalAmount()),
+                    currencyFormat.format(order.getShippingFee() != null ? order.getShippingFee() : 0),
+                    order.getPaymentMethod() != null ? order.getPaymentMethod().name() : "Không xác định",
+                    itemsBuilder.toString(),
+                    order.getShippingAddress());
+
+            Map<String, Object> requestBody = new HashMap<>();
+            requestBody.put("sender", Map.of("email", senderEmail, "name", "LuminaBook"));
+            requestBody.put("to", new Object[] {Map.of("email", toEmail, "name", customerName)});
+            requestBody.put("subject", "Xác nhận đơn hàng " + order.getCode());
+            requestBody.put("textContent", content);
+            requestBody.put("htmlContent", content.replace("\n", "<br>"));
+
+            HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
+            @SuppressWarnings("rawtypes")
+            ResponseEntity<Map> response = restTemplate.postForEntity(BREVO_API_URL, request, Map.class);
+
+            if (response.getStatusCode() == HttpStatus.CREATED) {
+                log.info("Order confirmation email sent to {}", toEmail);
+            } else {
+                log.warn("Failed to send order confirmation email. Status {}", response.getStatusCode());
+            }
+        } catch (Exception e) {
+            log.error("Failed to send order confirmation email", e);
         }
     }
 }

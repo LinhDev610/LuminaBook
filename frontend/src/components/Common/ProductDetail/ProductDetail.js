@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import styles from './ProductDetail.module.scss';
 import { getApiBaseUrl, formatDateTime } from '../../../services/utils';
 import { normalizeMediaUrl } from '../../../services/productUtils';
-import { getMyInfo, getStoredToken, getReviewsByProduct, createReview, addCartItem } from '../../../services';
+import { getMyInfo, getStoredToken, getReviewsByProduct, createReview, addCartItem, getCart, refreshToken } from '../../../services';
 import iconShip from '../../../assets/icons/icon_ship.png';
 import iconPay from '../../../assets/icons/icon_pay.png';
 import iconRefund from '../../../assets/icons/icon_refund.png';
@@ -11,6 +12,7 @@ import { useAuth } from '../../../contexts/AuthContext';
 import { useNotification } from '../Notification';
 
 const ProductDetail = ({ productId }) => {
+    const navigate = useNavigate();
     const API_BASE_URL = useMemo(() => getApiBaseUrl(), []);
     const [product, setProduct] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -346,8 +348,45 @@ const ProductDetail = ({ productId }) => {
         }
     };
 
-    const handleBuyNow = () => {
-        success('Chuyển đến trang thanh toán!');
+    const handleBuyNow = async () => {
+        // Kiểm tra đăng nhập
+        if (!isLoggedIn) {
+            showError('Vui lòng đăng nhập để mua sản phẩm');
+            openLoginModal();
+            return;
+        }
+
+        // Kiểm tra productId
+        if (!productId) {
+            showError('Không tìm thấy thông tin sản phẩm');
+            return;
+        }
+
+        // Mua ngay: mặc định số lượng là 1, không liên quan đến giỏ hàng
+        const buyNowQuantity = 1;
+
+        try {
+            let token = getStoredToken('token');
+            
+            if (!token) {
+                showError('Vui lòng đăng nhập để mua sản phẩm');
+                openLoginModal();
+                return;
+            }
+
+            // Chuyển đến trang checkout với thông tin sản phẩm để checkout trực tiếp
+            // Không thêm vào giỏ hàng
+            navigate('/checkout', {
+                state: {
+                    directCheckout: true,
+                    productId: productId,
+                    quantity: buyNowQuantity,
+                },
+            });
+        } catch (err) {
+            console.error('Error in buy now:', err);
+            showError('Có lỗi xảy ra khi xử lý mua ngay');
+        }
     };
 
     const handleSubmitReview = async (e) => {

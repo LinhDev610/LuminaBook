@@ -85,6 +85,74 @@ const mapItemsFromOrder = (order) => {
     });
 };
 
+const parseShippingInfo = (raw) => {
+    if (!raw || typeof raw !== 'string') return null;
+    try {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object') {
+            return {
+                name: parsed.name || parsed.receiverName || '',
+                phone: parsed.phone || parsed.receiverPhone || '',
+                address: parsed.address || parsed.fullAddress || '',
+            };
+        }
+    } catch {
+        return { address: raw };
+    }
+    return { address: raw };
+};
+
+const toDate = (value) => {
+    if (!value) return null;
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date;
+};
+
+const formatIso = (date) => {
+    if (!date) return null;
+    try {
+        return date.toISOString();
+    } catch {
+        return null;
+    }
+};
+
+const generateFallbackHistory = (order) => {
+    const fallback = [];
+    const baseDate =
+        toDate(order.orderDateTime || order.orderDate || order.createdAt) || new Date();
+    const status = String(order.status || order.ghnStatus || '').toUpperCase();
+
+    const pushEntry = (id, minutesOffset, description) => {
+        const time = new Date(baseDate.getTime() + minutesOffset * 60 * 1000);
+        fallback.push({
+            id,
+            time: formatIso(time),
+            description,
+        });
+    };
+
+    pushEntry('created', 0, 'Đơn được tạo (Chờ xác nhận)');
+
+    if (['CONFIRMED', 'PAID', 'SHIPPED', 'DELIVERED'].includes(status)) {
+        pushEntry('confirmed', 15, 'Đơn đã được xác nhận nội bộ');
+    }
+
+    if (['SHIPPED', 'DELIVERED'].includes(status)) {
+        pushEntry('shipped', 60, 'Đơn đã bàn giao cho GHN');
+    }
+
+    if (status === 'DELIVERED') {
+        pushEntry('delivered', 120, 'Đơn đã giao thành công');
+    }
+
+    if (status === 'CANCELLED') {
+        pushEntry('cancelled', 5, 'Đơn đã bị hủy');
+    }
+
+    return fallback;
+};
+
 const mapOrderDetailFromApi = (order) => {
     if (!order) return null;
     const user = order.user || {};
@@ -92,6 +160,7 @@ const mapOrderDetailFromApi = (order) => {
     const { label, css } = mapOrderStatus(order.status || shipment.status);
 
     const items = mapItemsFromOrder(order);
+    const shippingInfo = parseShippingInfo(order.shippingAddress);
     const totalAmount =
         typeof order.totalAmount === 'number'
             ? order.totalAmount
@@ -103,29 +172,31 @@ const mapOrderDetailFromApi = (order) => {
     const history = Array.isArray(historyRaw)
         ? historyRaw.map((h, idx) => ({
               id: h.id || String(idx),
-              time: h.time || h.createdAt || order.orderDate || null,
+              time: h.time || h.createdAt || order.orderDateTime || order.orderDate || null,
               description: h.description || h.note || h.message || '',
           }))
         : [];
+    const timeline = history.length > 0 ? history : generateFallbackHistory(order);
 
     return {
         id: order.id || '',
         code: order.code || order.orderCode || order.id || '',
         customerName:
             order.customerName ||
+            shippingInfo?.name ||
             user.fullName ||
             user.name ||
             `${user.firstName || ''} ${user.lastName || ''}`.trim() ||
             'Khách hàng',
-        address: order.shippingAddress || order.address || user.address || '',
-        phone: order.phone || user.phone || user.phoneNumber || '',
-        orderDate: order.orderDate || order.createdAt || null,
+        address: shippingInfo?.address || order.shippingAddress || order.address || user.address || '',
+        phone: order.receiverPhone || shippingInfo?.phone || order.phone || user.phone || user.phoneNumber || '',
+        orderDate: order.orderDateTime || order.orderDate || order.createdAt || null,
         ghnStatus: order.status || shipment.status,
         ghnStatusLabel: label,
         ghnStatusClass: css,
         items,
         totalAmount,
-        history: history.length > 0 ? history : MOCK_ORDER_DETAIL.history,
+        history: timeline,
     };
 };
 
@@ -137,6 +208,9 @@ export default function OrderDetailPage() {
     const [order, setOrder] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const [confirming, setConfirming] = useState(false);
+    const [actionMessage, setActionMessage] = useState('');
+    const [actionError, setActionError] = useState('');
 
     useEffect(() => {
         let isMounted = true;
@@ -198,6 +272,44 @@ export default function OrderDetailPage() {
         navigate(-1);
     };
 
+    const handleConfirmOrder = async () => {
+        if (!id) return;
+        try {
+            setActionError('');
+            setActionMessage('');
+            setConfirming(true);
+
+            const token = getStoredToken('token');
+            const resp = await fetch(`${apiBaseUrl}/orders/${id}/confirm`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                },
+            });
+
+            if (!resp.ok) {
+                throw new Error(`Confirm API error ${resp.status}`);
+            }
+
+            const data = await resp.json().catch(() => ({}));
+            const raw = data?.result || data || null;
+            const mapped = mapOrderDetailFromApi(raw);
+
+            if (!mapped) {
+                throw new Error('Không nhận được dữ liệu đơn hàng sau khi xác nhận');
+            }
+
+            setOrder(mapped);
+            setActionMessage('Đã xác nhận đơn hàng thành công.');
+        } catch (err) {
+            console.error('OrderDetail: xác nhận đơn hàng thất bại', err);
+            setActionError('Không thể xác nhận đơn hàng. Vui lòng thử lại.');
+        } finally {
+            setConfirming(false);
+        }
+    };
+
     if (loading) {
         return (
             <div className={cx('page')}>
@@ -226,6 +338,8 @@ export default function OrderDetailPage() {
     }
 
     const { ghnStatusLabel, ghnStatusClass } = mapOrderStatus(order.ghnStatus);
+    const orderStatusUpper = String(order.ghnStatus || '').toUpperCase();
+    const isConfirmable = ['CREATED', 'PENDING', 'PAID'].includes(orderStatusUpper);
     const items = order.items || [];
 
     return (
@@ -276,12 +390,23 @@ export default function OrderDetailPage() {
                             <span className={cx('status-pill', ghnStatusClass)}>{ghnStatusLabel}</span>
                         </div>
 
-                        <div className={cx('actions')}>
-                            <button className={cx('btn', 'primary')}>Xác nhận đơn hàng</button>
-                            <p className={cx('note')}>
-                                (Trạng thái sẽ tự động đồng bộ từ GHN sau khi xác nhận)
-                            </p>
-                        </div>
+                        {actionMessage && <div className={cx('note', 'success')}>{actionMessage}</div>}
+                        {actionError && <div className={cx('note', 'error')}>{actionError}</div>}
+
+                        {isConfirmable && (
+                            <div className={cx('actions')}>
+                                <button
+                                    className={cx('btn', 'primary')}
+                                    onClick={handleConfirmOrder}
+                                    disabled={confirming}
+                                >
+                                    Xác nhận đơn hàng
+                                </button>
+                                <p className={cx('note')}>
+                                    (Trạng thái sẽ tự động đồng bộ từ GHN sau khi xác nhận)
+                                </p>
+                            </div>
+                        )}
                     </div>
                 </div>
 

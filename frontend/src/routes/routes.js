@@ -24,6 +24,8 @@ import AdminLayout from '../layouts/AdminLayout';
 import StaffLayout from '../layouts/StaffLayout';
 import CustomerSupportLayout from '../layouts/CustomerSupportLayout';
 import ManageStaffAccountsPage from '../pages/Admin/ManageStaffAccounts';
+import ManageOrdersPage from '../pages/Admin/ManageOrders';
+import ManageOrderDetailPage from '../pages/Admin/ManageOrders/ManageOrderDetail';
 
 import StaffDetailPage from '../pages/Admin/ManageStaffAccounts/StaffDetail';
 import ManageCustomerAccountsPage from '../pages/Admin/ManageCustomerAccounts';
@@ -122,7 +124,8 @@ const privateRoutes = [
         component: UpdateCategoryPage,
         layout: AdminLayout,
     },
-    { path: '/admin/orders', component: ManageStaffAccountsPage, layout: AdminLayout },
+    { path: '/admin/orders', component: ManageOrdersPage, layout: AdminLayout },
+    { path: '/admin/orders/:id', component: ManageOrderDetailPage, layout: AdminLayout },
     { path: '/admin/complaints', component: ManageComplaintsPage, layout: AdminLayout },
     {
         path: '/admin/complaints/:id',

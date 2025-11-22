@@ -2,7 +2,6 @@ package com.lumina_book.backend.service;
 
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,6 +34,7 @@ public class CartService {
     CartItemRepository cartItemRepository;
     UserRepository userRepository;
     ProductRepository productRepository;
+    @SuppressWarnings("unused")
     PromotionRepository promotionRepository;
     VoucherRepository voucherRepository;
     OrderRepository orderRepository;
@@ -97,32 +97,16 @@ public class CartService {
         return cart;
     }
 
+    /**
+     * Tính đơn giá sản phẩm cho giỏ hàng.
+     * Hiện tại giá khuyến mãi đã được áp trực tiếp vào product.price
+     * (PromotionService.applyPricingForProducts), nên ở đây chỉ cần lấy lại
+     * product.price và làm tròn về đồng, KHÔNG áp khuyến mãi lần nữa để tránh
+     * giảm hai lần (ví dụ 100k giảm 10% => 90k, không phải 89.980).
+     */
     private double calculateUnitPrice(Product product) {
-        double basePrice = product.getPrice();
-        double discounted = basePrice;
-        // Apply active promotions by product
-        var today = java.time.LocalDate.now();
-        var promosByProduct = promotionRepository.findActiveByProductId(product.getId(), today);
-        var promosByCategory = product.getCategory() == null
-                ? java.util.List.<com.lumina_book.backend.entity.Promotion>of()
-                : promotionRepository.findActiveByCategoryId(
-                        product.getCategory().getId(), today);
-
-        for (var p : java.util.stream.Stream.concat(promosByProduct.stream(), promosByCategory.stream())
-                .toList()) {
-            Double dv = p.getDiscountValue();
-            if (dv == null || dv <= 0) continue;
-            // Heuristic: <=1 => percent, else amount
-            double candidate = dv <= 1.0 ? basePrice * (1.0 - dv) : basePrice - dv;
-            if (p.getMaxDiscountValue() != null && p.getMaxDiscountValue() > 0 && dv > 1.0) {
-                candidate = Math.max(basePrice - p.getMaxDiscountValue(), candidate);
-            }
-            discounted = Math.min(discounted, Math.max(candidate, 0));
-        }
-
-        // Apply tax if provided (assume tax is percentage, e.g., 0.1 for 10%) to derive pre-tax unit price? Keep
-        // unitPrice pre-tax
-        return discounted;
+        double price = product.getPrice() != null ? product.getPrice() : 0.0;
+        return Math.round(price);
     }
 
     private void recalcCartTotals(Cart cart) {
@@ -148,14 +132,20 @@ public class CartService {
                 : cart.getCartItems().stream()
                         .mapToDouble(CartItem::getFinalPrice)
                         .sum();
+        // Làm tròn subtotal về đơn vị đồng
+        subtotal = Math.round(subtotal);
         cart.setSubtotal(subtotal);
 
         // voucherDiscount có thể null với giỏ hàng mới => mặc định 0
         Double rawVoucherDiscount = cart.getVoucherDiscount();
         double voucherDiscount = rawVoucherDiscount == null ? 0.0 : rawVoucherDiscount;
+        // Làm tròn tiền giảm giá về đơn vị đồng
+        voucherDiscount = Math.round(voucherDiscount);
         cart.setVoucherDiscount(voucherDiscount);
 
         double total = Math.max(0.0, subtotal - voucherDiscount);
+        // Làm tròn tổng tiền về đơn vị đồng
+        total = Math.round(total);
         cart.setTotalAmount(total);
 
         // Lưu lại cart với giá trị subtotal / totalAmount mới
@@ -234,12 +224,16 @@ public class CartService {
         // Nếu giá trị giảm giá vượt quá giá trị đơn hàng có thể áp dụng voucher, set giá trị giảm giá tối đa của voucher
         discount = Math.min(discount, applicableSubtotal);
         
+        // Làm tròn tiền giảm giá về đơn vị đồng
+        discount = Math.round(discount);
+        
         // Lấy tổng giá trị đơn hàng để tính toán cuối cùng
         double fullSubtotal = cart.getSubtotal();
 
         cart.setAppliedVoucherCode(voucher.getCode());
         cart.setVoucherDiscount(discount);
-        cart.setTotalAmount(Math.max(0.0, fullSubtotal - discount));
+        // Tổng sau voucher cũng làm tròn về đồng
+        cart.setTotalAmount((double) Math.round(Math.max(0.0, fullSubtotal - discount)));
         return cartRepository.save(cart);
     }
 
@@ -336,5 +330,22 @@ public class CartService {
         cart.setVoucherDiscount(0.0);
         recalcCartTotals(cart);
         return cart;
+    }
+
+    @Transactional
+    public void removeCartItemsForOrder(User user, java.util.List<String> cartItemIds) {
+        if (user == null || cartItemIds == null || cartItemIds.isEmpty()) {
+            return;
+        }
+        Cart cart = cartRepository.findByUserId(user.getId()).orElse(null);
+        if (cart == null) {
+            return;
+        }
+        cartItemIds.forEach(id -> cartItemRepository.findById(id).ifPresent(item -> {
+            if (item.getCart() != null && item.getCart().getId().equals(cart.getId())) {
+                cartItemRepository.delete(item);
+            }
+        }));
+        recalcCartTotals(cart);
     }
 }

@@ -1,10 +1,14 @@
 package com.lumina_book.backend.entity;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.List;
 
 import jakarta.persistence.*;
 
 import com.lumina_book.backend.enums.OrderStatus;
+import com.lumina_book.backend.enums.PaymentMethod;
+import com.lumina_book.backend.enums.PaymentStatus;
 
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -42,10 +46,38 @@ public class Order {
     String note;
     String shippingAddress;
     LocalDate orderDate;
+
+    /**
+     * Thời điểm tạo đơn hàng đầy đủ (bao gồm giờ/phút/giây).
+     */
+    @Column(name = "order_date_time")
+    LocalDateTime orderDateTime;
     LocalDate expectedDeliveryDate;
     Double shippingFee;
     Double totalAmount; // subtotalAmount + shippingFee
 
+    @Column(name = "is_paid")
+    Boolean paid;
+
+    @Column(name = "cart_item_ids", columnDefinition = "TEXT")
+    String cartItemIdsSnapshot;
+
+    @Column(name = "payment_reference")
+    String paymentReference;
+
     @Enumerated(EnumType.STRING)
     OrderStatus status;
+
+    @Enumerated(EnumType.STRING)
+    PaymentMethod paymentMethod;
+
+    @Enumerated(EnumType.STRING)
+    PaymentStatus paymentStatus;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "address_id")
+    Address address;
+
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
+    List<OrderItem> items;
 }

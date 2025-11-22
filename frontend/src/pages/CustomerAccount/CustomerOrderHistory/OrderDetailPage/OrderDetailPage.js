@@ -2,9 +2,27 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import classNames from 'classnames/bind';
 import styles from './OrderDetailPage.module.scss';
-import { formatCurrency } from '../../../services';
+import { formatCurrency, getApiBaseUrl, getStoredToken } from '../../../../services';
 
 const cx = classNames.bind(styles);
+
+
+const parseShippingInfo = (raw) => {
+    if (!raw || typeof raw !== 'string') return null;
+    try {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object') {
+            return {
+                name: parsed.name || parsed.receiverName || '',
+                phone: parsed.phone || parsed.receiverPhone || '',
+                address: parsed.address || parsed.fullAddress || '',
+            };
+        }
+    } catch {
+        return { address: raw };
+    }
+    return { address: raw };
+};
 
 // Mock data - sẽ được thay thế bằng API sau
 const MOCK_ORDER_DETAILS = {
@@ -121,28 +139,145 @@ const REFUND_STEPS = [
     { key: 'completed', label: 'Hoàn tất' },
 ];
 
+// Map dữ liệu đơn hàng từ API /orders/{id} sang dạng dùng cho UI chi tiết của khách
+const mapOrderFromApi = (apiOrder) => {
+    if (!apiOrder) return null;
+
+    const rawStatus = (apiOrder.status || 'PENDING').toUpperCase();
+    const shippingInfo = parseShippingInfo(apiOrder.shippingAddress);
+
+    // Map items từ API response
+    const items = Array.isArray(apiOrder.items)
+        ? apiOrder.items.map((item, index) => ({
+              id: item.id || String(index),
+              name: item.name || 'Sản phẩm',
+              quantity: item.quantity || 1,
+              price: item.unitPrice || 0,
+              image: item.imageUrl || 'https://via.placeholder.com/80x100',
+          }))
+        : [];
+
+    const orderDateValue = apiOrder.orderDateTime || apiOrder.orderDate || null;
+
+    return {
+        id: apiOrder.id || '',
+        code: apiOrder.code || apiOrder.orderCode || apiOrder.id || '',
+        orderDate: orderDateValue,
+        orderDateOnly: apiOrder.orderDate || null,
+        status: rawStatus,
+        totalAmount: typeof apiOrder.totalAmount === 'number' ? apiOrder.totalAmount : 0,
+        recipient:
+            apiOrder.receiverName ||
+            shippingInfo?.name ||
+            apiOrder.customerName ||
+            apiOrder.customerEmail ||
+            'Khách hàng',
+        phone: apiOrder.receiverPhone || shippingInfo?.phone || apiOrder.customerEmail || '',
+        address: shippingInfo?.address || apiOrder.shippingAddress || '',
+        paymentMethod: 'ONLINE',
+        paymentMethodLabel: 'Thanh toán online',
+        items,
+        refundStatus: null,
+        refundProgress: null,
+        refundMessage: '',
+    };
+};
+
 function OrderDetailPage() {
     const navigate = useNavigate();
     const { id } = useParams();
     const [order, setOrder] = useState(null);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
 
     useEffect(() => {
-        // TODO: Fetch order detail from API
-        // const fetchOrderDetail = async () => {
-        //     const token = getStoredToken();
-        //     const response = await fetch(`${getApiBaseUrl()}/orders/${id}`, {
-        //         headers: {
-        //             Authorization: `Bearer ${token}`,
-        //         },
-        //     });
-        //     const data = await response.json();
-        //     setOrder(data.result);
-        // };
-        // fetchOrderDetail();
+        const fetchOrderDetail = async () => {
+            try {
+                setLoading(true);
+                setError('');
 
-        // Using mock data for now
-        const mockOrder = MOCK_ORDER_DETAILS[id] || MOCK_ORDER_DETAILS['1'];
-        setOrder(mockOrder);
+                const token = getStoredToken('token');
+                const apiBaseUrl = getApiBaseUrl();
+
+                if (!id) {
+                    setError('Không tìm thấy mã đơn hàng.');
+                    setLoading(false);
+                    return;
+                }
+
+                console.log('CustomerOrderDetail: Fetching order with id/code:', id);
+                const apiUrl = `${apiBaseUrl}/orders/${encodeURIComponent(id)}`;
+                console.log('CustomerOrderDetail: API URL:', apiUrl);
+
+                // Gọi API /orders/{id} để lấy chi tiết đơn hàng kèm danh sách sản phẩm
+                const resp = await fetch(apiUrl, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                    },
+                });
+
+                if (!resp.ok) {
+                    const errorText = await resp.text().catch(() => 'Unknown error');
+                    console.error(
+                        `CustomerOrderDetail: API /orders/${id} trả lỗi ${resp.status}:`,
+                        errorText,
+                    );
+                    setError(
+                        `Không thể tải chi tiết đơn hàng từ server (${resp.status}). Vui lòng thử lại sau.`,
+                    );
+                    setLoading(false);
+                    return;
+                }
+
+                const data = await resp.json().catch((parseErr) => {
+                    console.error('CustomerOrderDetail: Lỗi parse JSON:', parseErr);
+                    return null;
+                });
+
+                if (!data) {
+                    setError('Không thể đọc dữ liệu từ server.');
+                    setLoading(false);
+                    return;
+                }
+
+                const raw = data?.result || data || null;
+
+                if (!raw) {
+                    setError('Không tìm thấy đơn hàng này trong lịch sử của bạn.');
+                    setLoading(false);
+                    return;
+                }
+
+                const mapped = mapOrderFromApi(raw);
+                
+                if (!mapped) {
+                    setError('Không thể xử lý dữ liệu đơn hàng.');
+                    setLoading(false);
+                    return;
+                }
+
+                // Log để debug nếu items rỗng
+                if (!mapped.items || mapped.items.length === 0) {
+                    console.warn('CustomerOrderDetail: Đơn hàng không có items:', {
+                        orderId: id,
+                        orderCode: mapped.code,
+                        rawData: raw,
+                    });
+                }
+
+                setOrder(mapped);
+            } catch (err) {
+                console.error('CustomerOrderDetail: Lỗi khi tải chi tiết đơn hàng:', err);
+                setError(
+                    `Không thể tải chi tiết đơn hàng từ server: ${err.message || 'Lỗi không xác định'}.`,
+                );
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchOrderDetail();
     }, [id]);
 
     const handleBack = () => {
@@ -150,12 +285,24 @@ function OrderDetailPage() {
     };
 
     const formatOrderDate = (dateString) => {
+        if (!dateString) return '--';
         try {
             const date = new Date(dateString);
+            if (Number.isNaN(date.getTime())) return dateString;
             const day = String(date.getDate()).padStart(2, '0');
             const month = String(date.getMonth() + 1).padStart(2, '0');
             const year = date.getFullYear();
+            const hasTime =
+                (typeof dateString === 'string' && dateString.includes('T')) ||
+                date.getHours() !== 0 ||
+                date.getMinutes() !== 0 ||
+                date.getSeconds() !== 0;
+            if (!hasTime) {
             return `${day}/${month}/${year}`;
+            }
+            const hour = String(date.getHours()).padStart(2, '0');
+            const minute = String(date.getMinutes()).padStart(2, '0');
+            return `${hour}:${minute} ${day}/${month}/${year}`;
         } catch {
             return dateString;
         }
@@ -164,7 +311,9 @@ function OrderDetailPage() {
     if (!order) {
         return (
             <div className={cx('order-detail-wrapper')}>
-                <div className={cx('loading')}>Đang tải...</div>
+                <div className={cx('loading')}>
+                    {loading ? 'Đang tải...' : 'Không tìm thấy đơn hàng.'}
+                </div>
             </div>
         );
     }
@@ -236,22 +385,22 @@ function OrderDetailPage() {
                 {/* Shipping Information */}
                 <div className={cx('info-section')}>
                     <h2 className={cx('section-title')}>Thông tin giao hàng</h2>
-                    <div className={cx('info-grid')}>
-                        <div className={cx('info-item')}>
-                            <span className={cx('info-label')}>Người nhận:</span>
+                    <div className={cx('shipping-card')}>
+                        <div className={cx('info-line')}>
+                            <span className={cx('info-label')}>Người nhận :</span>
                             <span className={cx('info-value')}>{order.recipient}</span>
                         </div>
-                        <div className={cx('info-item')}>
-                            <span className={cx('info-label')}>Số điện thoại:</span>
+                        <div className={cx('info-line')}>
+                            <span className={cx('info-label')}>Số điện thoại :</span>
                             <span className={cx('info-value')}>{order.phone}</span>
                         </div>
-                        <div className={cx('info-item', 'full-width')}>
-                            <span className={cx('info-label')}>Địa chỉ:</span>
+                        <div className={cx('info-line')}>
+                            <span className={cx('info-label')}>Địa chỉ :</span>
                             <span className={cx('info-value')}>{order.address}</span>
                         </div>
                         {isReturning && (
-                            <div className={cx('info-item', 'full-width')}>
-                                <span className={cx('info-label')}>Hình thức thanh toán:</span>
+                            <div className={cx('info-line')}>
+                                <span className={cx('info-label')}>Hình thức thanh toán :</span>
                                 <span className={cx('info-value')}>
                                     {order.paymentMethodLabel}
                                     {order.refundStatus === 'REFUNDING' && ' (đang hoàn tiền)'}
@@ -301,18 +450,14 @@ function OrderDetailPage() {
                 {!isReturning && (
                     <div className={cx('payment-section')}>
                         <h2 className={cx('section-title')}>Thanh toán</h2>
-                        <div className={cx('payment-info-box')}>
-                            <div className={cx('payment-item')}>
-                                <span className={cx('payment-label')}>Phương thức:</span>
-                                <span className={cx('payment-value')}>
-                                    {order.paymentMethodLabel}
-                                </span>
+                        <div className={cx('payment-card')}>
+                            <div className={cx('info-line')}>
+                                <span className={cx('info-label')}>Phương thức :</span>
+                                <span className={cx('info-value')}>{order.paymentMethodLabel}</span>
                             </div>
-                            <div className={cx('payment-item')}>
-                                <span className={cx('payment-label')}>Ngày đặt hàng:</span>
-                                <span className={cx('payment-value')}>
-                                    {formatOrderDate(order.orderDate)}
-                                </span>
+                            <div className={cx('info-line')}>
+                                <span className={cx('info-label')}>Ngày đặt hàng :</span>
+                                <span className={cx('info-value')}>{formatOrderDate(order.orderDate)}</span>
                             </div>
                         </div>
                     </div>

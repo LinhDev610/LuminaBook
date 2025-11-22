@@ -3,11 +3,11 @@ import classNames from 'classnames/bind';
 import styles from './CustomerProfilePage.module.scss';
 import useLocalStorage from '../../../hooks/useLocalStorage';
 import Notification from '../../../components/Common/Notification/Notification';
-import { getMyInfo, updateUser, getMyAddresses, getStoredToken } from '../../../services';
+import { getMyInfo, updateUser, getMyAddresses, updateAddress, getStoredToken } from '../../../services';
 import AddressListModal from '../../../components/Common/AddressModal/AddressListModal';
 import NewAddressModal from '../../../components/Common/AddressModal/NewAddressModal';
 import AddressDetailModal from '../../../components/Common/AddressModal/AddressDetailModal';
-import { formatFullAddress } from '../../../components/Common/AddressModal/useGhnLocations';
+import { formatFullAddress, normalizeAddressPayload } from '../../../components/Common/AddressModal/useGhnLocations';
 
 const cx = classNames.bind(styles);
 
@@ -31,6 +31,30 @@ function CustomerProfilePage() {
 
     const isValidPhone = (phone) => {
         return /^0\d{9}$/.test((phone || '').trim());
+    };
+
+    const persistDefaultAddress = async (address) => {
+        if (!address || !isLoggedIn) return;
+        const targetId = address.id || address.addressId;
+        if (!targetId) return;
+
+        const tk = getStoredToken();
+        if (!tk) return;
+
+        if (address.defaultAddress) return;
+
+        try {
+            const payload = normalizeAddressPayload({
+                ...address,
+                defaultAddress: true,
+            });
+            const { ok } = await updateAddress(targetId, payload, tk);
+            if (ok) {
+                setAddressRefreshKey((prev) => prev + 1);
+            }
+        } catch (err) {
+            console.error('Không thể cập nhật địa chỉ mặc định', err);
+        }
     };
 
     // Fetch current user info
@@ -91,11 +115,10 @@ function CustomerProfilePage() {
                 const addresses = await getMyAddresses(tk);
                 if (Array.isArray(addresses) && addresses.length > 0) {
                     const defaultAddress = addresses.find((addr) => addr?.defaultAddress === true);
+
                     if (defaultAddress) {
-                        setUser((prev) => ({
-                            ...(prev || {}),
-                            address: formatFullAddress(defaultAddress),
-                        }));
+                        const formatted = formatFullAddress(defaultAddress);
+                        setUser((prev) => ({ ...(prev || {}), address: formatted }));
                         setSelectedAddress(defaultAddress);
                     } else {
                         // No default address, clear if no address selected
@@ -255,6 +278,7 @@ function CustomerProfilePage() {
                     if (!address) return;
                     setUser((prev) => ({ ...(prev || {}), address: formatFullAddress(address) }));
                     setSelectedAddress(address);
+                    persistDefaultAddress(address);
                 }}
                 onViewDetail={(address) => {
                     setSelectedAddress(address);
@@ -276,6 +300,7 @@ function CustomerProfilePage() {
                             ...(prev || {}),
                             address: formatFullAddress(newAddress),
                         }));
+                        persistDefaultAddress(newAddress);
                     }
                     setAddressRefreshKey((prev) => prev + 1);
                     setShowNewAddressModal(false);
@@ -294,6 +319,7 @@ function CustomerProfilePage() {
                         ...(prev || {}),
                         address: formatFullAddress(updated),
                     }));
+                    persistDefaultAddress(updated);
                 }}
                 onDeleted={(deletedId) => {
                     setShowAddressDetailModal(false);

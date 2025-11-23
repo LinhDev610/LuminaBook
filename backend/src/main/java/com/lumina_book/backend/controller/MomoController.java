@@ -42,9 +42,7 @@ public class MomoController {
      */
     @PostMapping("/ipn-handler")
     public ResponseEntity<Void> handleIpn(@RequestBody MomoIpnRequest request) {
-        log.info("Received MoMo IPN payload: {}", request);
         if (!momoService.validateIpnSignature(request)) {
-            log.warn("Invalid MoMo IPN signature for order {}", request.getOrderId());
             return ResponseEntity.badRequest().build();
         }
         orderService.handleMomoIpn(request);

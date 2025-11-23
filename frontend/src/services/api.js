@@ -12,6 +12,7 @@ const {
     addresses,
     ghn,
     notifications,
+    orders,
 } = API_ROUTES;
 
 // Get API base URL
@@ -786,6 +787,19 @@ export async function deleteNotification(notificationId, token = null) {
 export async function deleteAllReadNotifications(token = null) {
     const { data, ok, status } = await apiRequest(notifications.deleteAllRead, {
         method: 'DELETE',
+        token,
+    });
+    return { ok, status, data: extractResult(data) };
+}
+
+// ========== ORDERS API ==========
+/**
+ * Verify payment status và gửi email nếu payment thành công.
+ * Được gọi khi user quay lại từ MoMo sau khi thanh toán.
+ */
+export async function verifyPaymentAndSendEmail(orderId, token = null) {
+    const { data, ok, status } = await apiRequest(orders.verifyPayment(orderId), {
+        method: 'POST',
         token,
     });
     return { ok, status, data: extractResult(data) };

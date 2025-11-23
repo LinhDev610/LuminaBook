@@ -88,6 +88,15 @@ export const API_ROUTES = {
         delete: (notificationId) => `/notifications/${notificationId}`,
         deleteAllRead: '/notifications/delete-all-read',
     },
+    orders: {
+        root: '/orders',
+        checkout: '/orders/checkout',
+        checkoutDirect: '/orders/checkout-direct',
+        detail: (orderId) => `/orders/${orderId}`,
+        myOrders: '/orders/my-orders',
+        resendEmail: (orderId) => `/orders/${orderId}/resend-email`,
+        verifyPayment: (orderId) => `/orders/${orderId}/verify-payment`,
+    },
 };
 
 // =========== Product Constants ===========

@@ -39,9 +39,6 @@ public class BrevoEmailService {
 
     public void sendOtpEmail(String toEmail, String otpCode) {
         try {
-            log.info("Sending OTP email via Brevo API to: {}", toEmail);
-            log.info("OTP Code for {}: {}", toEmail, otpCode);
-
             // Prepare headers
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
@@ -70,9 +67,7 @@ public class BrevoEmailService {
             @SuppressWarnings("rawtypes")
             ResponseEntity<Map> response = restTemplate.postForEntity(BREVO_API_URL, request, Map.class);
 
-            if (response.getStatusCode() == HttpStatus.CREATED) {
-                log.info("Email sent successfully to: {} via Brevo API", toEmail);
-            } else {
+            if (response.getStatusCode() != HttpStatus.CREATED) {
                 log.error("Failed to send email via Brevo API. Status: {}", response.getStatusCode());
                 throw new AppException(ErrorCode.EMAIL_SEND_FAILED);
             }
@@ -85,8 +80,6 @@ public class BrevoEmailService {
 
     public void sendStaffPasswordEmail(String toEmail, String staffName, String password, String role) {
         try {
-            log.info("Sending staff password email via Brevo API to: {}", toEmail);
-
             // Prepare headers
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
@@ -121,9 +114,7 @@ public class BrevoEmailService {
             @SuppressWarnings("rawtypes")
             ResponseEntity<Map> response = restTemplate.postForEntity(BREVO_API_URL, request, Map.class);
 
-            if (response.getStatusCode() == HttpStatus.CREATED) {
-                log.info("Staff password email sent successfully to: {} via Brevo API", toEmail);
-            } else {
+            if (response.getStatusCode() != HttpStatus.CREATED) {
                 log.error("Failed to send staff password email via Brevo API. Status: {}", response.getStatusCode());
                 throw new AppException(ErrorCode.EMAIL_SEND_FAILED);
             }
@@ -137,8 +128,6 @@ public class BrevoEmailService {
 
     public void sendAccountLockedEmail(String toEmail, String userName, String roleName) {
         try {
-            log.info("Sending account locked notification email via Brevo API to: {}", toEmail);
-
             // Prepare headers
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
@@ -190,9 +179,7 @@ public class BrevoEmailService {
             @SuppressWarnings("rawtypes")
             ResponseEntity<Map> response = restTemplate.postForEntity(BREVO_API_URL, request, Map.class);
 
-            if (response.getStatusCode() == HttpStatus.CREATED) {
-                log.info("Account locked notification email sent successfully to: {} via Brevo API", toEmail);
-            } else {
+            if (response.getStatusCode() != HttpStatus.CREATED) {
                 log.error("Failed to send account locked email via Brevo API. Status: {}", response.getStatusCode());
                 throw new AppException(ErrorCode.EMAIL_SEND_FAILED);
             }
@@ -215,64 +202,166 @@ public class BrevoEmailService {
                     ? order.getUser().getFullName()
                     : "Quý khách";
 
-            log.info("Sending order confirmation email to {}", toEmail);
-
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
             headers.set("api-key", apiKey);
 
             NumberFormat currencyFormat = NumberFormat.getCurrencyInstance(Locale.forLanguageTag("vi-VN"));
 
-            StringBuilder itemsBuilder = new StringBuilder();
-            if (order.getItems() != null) {
+            // Build items list for text
+            StringBuilder itemsTextBuilder = new StringBuilder();
+            // Build items list for HTML
+            StringBuilder itemsHtmlBuilder = new StringBuilder();
+            if (order.getItems() != null && !order.getItems().isEmpty()) {
                 for (OrderItem item : order.getItems()) {
                     String name = item.getProduct() != null ? item.getProduct().getName() : "Sản phẩm";
-                    itemsBuilder.append("- ")
-                            .append(name)
-                            .append(" x")
-                            .append(item.getQuantity())
-                            .append(" : ")
-                            .append(currencyFormat.format(item.getFinalPrice()))
-                            .append("\n");
+                    String itemText = String.format("- %s x%d : %s\n", 
+                            name, item.getQuantity(), currencyFormat.format(item.getFinalPrice()));
+                    itemsTextBuilder.append(itemText);
+                    
+                    String itemHtml = String.format(
+                            "<tr><td style='padding: 8px; border-bottom: 1px solid #eee;'>%s</td>" +
+                            "<td style='padding: 8px; border-bottom: 1px solid #eee; text-align: center;'>x%d</td>" +
+                            "<td style='padding: 8px; border-bottom: 1px solid #eee; text-align: right;'>%s</td></tr>",
+                            name, item.getQuantity(), currencyFormat.format(item.getFinalPrice()));
+                    itemsHtmlBuilder.append(itemHtml);
+                }
+            } else {
+                // Nếu không có items, vẫn gửi email nhưng với thông báo
+                itemsTextBuilder.append("Không có sản phẩm trong đơn hàng.\n");
+                itemsHtmlBuilder.append("<tr><td colspan='3' style='padding: 8px; text-align: center; color: #999;'>Không có sản phẩm trong đơn hàng.</td></tr>");
+            }
+
+            // Parse shipping address
+            String shippingAddressText = order.getShippingAddress();
+            if (shippingAddressText != null && shippingAddressText.startsWith("{")) {
+                try {
+                    com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                    com.fasterxml.jackson.databind.JsonNode jsonNode = mapper.readTree(shippingAddressText);
+                    String name = jsonNode.path("name").asText("");
+                    String phone = jsonNode.path("phone").asText("");
+                    String address = jsonNode.path("address").asText("");
+                    shippingAddressText = String.format("%s - %s\n%s", name, phone, address);
+                } catch (Exception e) {
+                    // Keep original if parsing fails
                 }
             }
 
-            String content = String.format(
+            // Payment method display name
+            String paymentMethodDisplay = "Không xác định";
+            if (order.getPaymentMethod() != null) {
+                switch (order.getPaymentMethod().name()) {
+                    case "MOMO":
+                        paymentMethodDisplay = "Thanh toán qua MoMo";
+                        break;
+                    case "COD":
+                        paymentMethodDisplay = "Thanh toán khi nhận hàng (COD)";
+                        break;
+                    default:
+                        paymentMethodDisplay = order.getPaymentMethod().name();
+                }
+            }
+
+            // Text content
+            String textContent = String.format(
                     "Xin chào %s,\n\n"
-                            + "Cảm ơn bạn đã đặt hàng tại LuminaBook. Đơn hàng %s của bạn đã được ghi nhận.\n\n"
+                            + "Cảm ơn bạn đã đặt hàng tại LuminaBook!\n\n"
+                            + "Đơn hàng %s của bạn đã được xác nhận thành công.\n\n"
+                            + "THÔNG TIN ĐƠN HÀNG:\n"
+                            + "Mã đơn hàng: %s\n"
+                            + "Ngày đặt: %s\n"
                             + "Tổng tiền: %s\n"
                             + "Phí vận chuyển: %s\n"
                             + "Phương thức thanh toán: %s\n\n"
-                            + "Chi tiết sản phẩm:\n%s\n"
-                            + "Địa chỉ giao hàng: %s\n\n"
-                            + "Chúng tôi sẽ liên hệ khi đơn hàng được giao cho đơn vị vận chuyển.\n\n"
+                            + "CHI TIẾT SẢN PHẨM:\n%s\n"
+                            + "ĐỊA CHỈ GIAO HÀNG:\n%s\n\n"
+                            + "Chúng tôi sẽ liên hệ với bạn khi đơn hàng được giao cho đơn vị vận chuyển.\n"
+                            + "Bạn có thể theo dõi trạng thái đơn hàng tại: http://localhost:3000/customer-account/orders\n\n"
                             + "Trân trọng,\nĐội ngũ LuminaBook",
                     customerName,
                     order.getCode(),
+                    order.getCode(),
+                    order.getOrderDate() != null ? order.getOrderDate().toString() : "Hôm nay",
                     currencyFormat.format(order.getTotalAmount()),
                     currencyFormat.format(order.getShippingFee() != null ? order.getShippingFee() : 0),
-                    order.getPaymentMethod() != null ? order.getPaymentMethod().name() : "Không xác định",
-                    itemsBuilder.toString(),
-                    order.getShippingAddress());
+                    paymentMethodDisplay,
+                    itemsTextBuilder.toString(),
+                    shippingAddressText != null ? shippingAddressText : "Chưa có địa chỉ");
+
+            // HTML content
+            String htmlContent = String.format(
+                    "<!DOCTYPE html>" +
+                    "<html><head><meta charset='UTF-8'><style>" +
+                    "body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }" +
+                    ".container { max-width: 600px; margin: 0 auto; padding: 20px; }" +
+                    ".header { background-color: #1A3C5A; color: white; padding: 20px; text-align: center; border-radius: 5px 5px 0 0; }" +
+                    ".content { background-color: #f9f9f9; padding: 20px; border: 1px solid #ddd; }" +
+                    ".order-info { background-color: white; padding: 15px; margin: 15px 0; border-radius: 5px; }" +
+                    ".order-info h3 { margin-top: 0; color: #1A3C5A; }" +
+                    ".items-table { width: 100%%; border-collapse: collapse; margin: 15px 0; background-color: white; }" +
+                    ".items-table th { background-color: #1A3C5A; color: white; padding: 10px; text-align: left; }" +
+                    ".items-table td { padding: 8px; border-bottom: 1px solid #eee; }" +
+                    ".total-row { font-weight: bold; font-size: 18px; color: #1A3C5A; }" +
+                    ".footer { text-align: center; padding: 20px; color: #666; font-size: 12px; }" +
+                    "</style></head><body>" +
+                    "<div class='container'>" +
+                    "<div class='header'><h1>Xác nhận đơn hàng</h1></div>" +
+                    "<div class='content'>" +
+                    "<p>Xin chào <strong>%s</strong>,</p>" +
+                    "<p>Cảm ơn bạn đã đặt hàng tại <strong>LuminaBook</strong>!</p>" +
+                    "<div class='order-info'>" +
+                    "<h3>Thông tin đơn hàng</h3>" +
+                    "<p><strong>Mã đơn hàng:</strong> %s</p>" +
+                    "<p><strong>Ngày đặt:</strong> %s</p>" +
+                    "<p><strong>Phương thức thanh toán:</strong> %s</p>" +
+                    "</div>" +
+                    "<h3>Chi tiết sản phẩm</h3>" +
+                    "<table class='items-table'>" +
+                    "<thead><tr><th>Sản phẩm</th><th style='text-align: center;'>Số lượng</th><th style='text-align: right;'>Thành tiền</th></tr></thead>" +
+                    "<tbody>%s</tbody>" +
+                    "<tfoot>" +
+                    "<tr><td colspan='2' style='text-align: right; padding-top: 10px;'><strong>Phí vận chuyển:</strong></td>" +
+                    "<td style='text-align: right; padding-top: 10px;'>%s</td></tr>" +
+                    "<tr class='total-row'><td colspan='2' style='text-align: right; padding-top: 10px;'><strong>Tổng cộng:</strong></td>" +
+                    "<td style='text-align: right; padding-top: 10px;'>%s</td></tr>" +
+                    "</tfoot></table>" +
+                    "<div class='order-info'>" +
+                    "<h3>Địa chỉ giao hàng</h3>" +
+                    "<p style='white-space: pre-line;'>%s</p>" +
+                    "</div>" +
+                    "<p>Chúng tôi sẽ liên hệ với bạn khi đơn hàng được giao cho đơn vị vận chuyển.</p>" +
+                    "<p>Bạn có thể theo dõi trạng thái đơn hàng tại: " +
+                    "<a href='http://localhost:3000/customer-account/orders'>Xem đơn hàng của tôi</a></p>" +
+                    "</div>" +
+                    "<div class='footer'>" +
+                    "<p>Trân trọng,<br>Đội ngũ LuminaBook</p>" +
+                    "</div></div></body></html>",
+                    customerName,
+                    order.getCode(),
+                    order.getOrderDate() != null ? order.getOrderDate().toString() : "Hôm nay",
+                    paymentMethodDisplay,
+                    itemsHtmlBuilder.toString(),
+                    currencyFormat.format(order.getShippingFee() != null ? order.getShippingFee() : 0),
+                    currencyFormat.format(order.getTotalAmount()),
+                    shippingAddressText != null ? shippingAddressText.replace("\n", "<br>") : "Chưa có địa chỉ");
 
             Map<String, Object> requestBody = new HashMap<>();
             requestBody.put("sender", Map.of("email", senderEmail, "name", "LuminaBook"));
             requestBody.put("to", new Object[] {Map.of("email", toEmail, "name", customerName)});
-            requestBody.put("subject", "Xác nhận đơn hàng " + order.getCode());
-            requestBody.put("textContent", content);
-            requestBody.put("htmlContent", content.replace("\n", "<br>"));
+            requestBody.put("subject", "Xác nhận đơn hàng " + order.getCode() + " - LuminaBook");
+            requestBody.put("textContent", textContent);
+            requestBody.put("htmlContent", htmlContent);
 
             HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
             @SuppressWarnings("rawtypes")
             ResponseEntity<Map> response = restTemplate.postForEntity(BREVO_API_URL, request, Map.class);
 
-            if (response.getStatusCode() == HttpStatus.CREATED) {
-                log.info("Order confirmation email sent to {}", toEmail);
-            } else {
-                log.warn("Failed to send order confirmation email. Status {}", response.getStatusCode());
+            if (response.getStatusCode() != HttpStatus.CREATED) {
+                log.error("Failed to send order confirmation email. Status: {}, Response: {}", 
+                        response.getStatusCode(), response.getBody());
             }
         } catch (Exception e) {
-            log.error("Failed to send order confirmation email", e);
+            log.error("Exception when sending order confirmation email: {}", e.getMessage(), e);
         }
     }
 }

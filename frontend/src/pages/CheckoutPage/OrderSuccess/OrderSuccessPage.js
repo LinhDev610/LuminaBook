@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import classNames from 'classnames/bind';
 import styles from './OrderSuccessPage.module.scss';
+import { verifyPaymentAndSendEmail } from '../../../services/api';
+import { getStoredToken } from '../../../services/api';
 
 const cx = classNames.bind(styles);
  
@@ -18,6 +20,7 @@ export default function OrderSuccessPage() {
 
     const [orderInfo, setOrderInfo] = useState(null);
     const [isError, setIsError] = useState(false);
+    const [emailSent, setEmailSent] = useState(false);
 
     const searchParams = useMemo(
         () => new URLSearchParams(location.search || ''),
@@ -54,6 +57,22 @@ export default function OrderSuccessPage() {
                 orderId: orderIdFromQuery || '',
             },
         );
+
+        // Nếu thanh toán thành công (resultCode = '0'), verify payment và gửi email
+        // Chỉ gửi 1 lần bằng cách check emailSent flag
+        if (resultCode === '0' && !emailSent) {
+            const orderId = saved?.orderId || saved?.id || orderIdFromQuery;
+            if (orderId) {
+                const token = getStoredToken();
+                if (token) {
+                    setEmailSent(true); // Đánh dấu đã gửi
+                    verifyPaymentAndSendEmail(orderId, token).catch((error) => {
+                        console.error('Error verifying payment:', error);
+                        setEmailSent(false); // Reset nếu lỗi
+                    });
+                }
+            }
+        }
     }, [searchParams]);
 
     if (isError) {

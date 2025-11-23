@@ -86,12 +86,14 @@ public interface ProductRepository extends JpaRepository<Product, String> {
     List<Product> findByPromotionId(String promotionId);
 
     // Find product by ID with promotion, category, and other relationships loaded
-    @Query("SELECT p FROM Product p " +
+    @Query("SELECT DISTINCT p FROM Product p " +
            "LEFT JOIN FETCH p.promotion " +
            "LEFT JOIN FETCH p.category " +
            "LEFT JOIN FETCH p.submittedBy " +
            "LEFT JOIN FETCH p.approvedBy " +
            "LEFT JOIN FETCH p.inventory " +
+           "LEFT JOIN FETCH p.mediaList " +
+           "LEFT JOIN FETCH p.defaultMedia " +
            "WHERE p.id = :productId")
     java.util.Optional<Product> findByIdWithRelations(@Param("productId") String productId);
 }

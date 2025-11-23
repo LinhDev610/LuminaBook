@@ -57,15 +57,18 @@ public class PromotionService {
 
     @Transactional
     public PromotionResponse createPromotion(PromotionCreationRequest request) {
-        // Get current user from security context
+        // Get user hiện tại từ security context
         User staff = getCurrentUser();
 
-        // Check code uniqueness
+        // Kiểm tra xem mã promotion đã tồn tại chưa
         if (promotionRepository.existsByCode(request.getCode())) {
             throw new AppException(ErrorCode.PROMOTION_CODE_ALREADY_EXISTS);
         }
 
-        // Create promotion entity using mapper
+        // Kiểm tra trùng lặp promotion khi tạo mới
+        validatePromotionOverlap(request);
+
+        // Tạo promotion entity
         Promotion promotion = promotionMapper.toPromotion(request);
 
         // Set workflow fields
@@ -463,9 +466,169 @@ public class PromotionService {
             return false; // Nếu thiếu thông tin, không thể xác định overlap
         }
         
-        // Hai khoảng thời gian overlap nếu:
         // start1 <= end2 && start2 <= end1
         return !start1.isAfter(end2) && !start2.isAfter(end1);
+    }
+
+    /**
+     * Kiểm tra trùng lặp promotion khi tạo mới
+     * Kiểm tra xem có promotion nào (APPROVED hoặc PENDING_APPROVAL) trùng lặp về:
+     * - Date range
+     * - Apply scope (ORDER, CATEGORY, PRODUCT)
+     */
+    private void validatePromotionOverlap(PromotionCreationRequest request) {
+        LocalDate newStartDate = request.getStartDate();
+        LocalDate newExpiryDate = request.getExpiryDate();
+        DiscountApplyScope newScope = request.getApplyScope();
+
+        if (newStartDate == null || newExpiryDate == null) {
+            return; // Không thể kiểm tra nếu thiếu thông tin
+        }
+
+        // Lấy tất cả promotions đã được approve hoặc đang chờ duyệt
+        List<Promotion> existingPromotions = new ArrayList<>();
+        existingPromotions.addAll(promotionRepository.findByStatus(PromotionStatus.APPROVED));
+        existingPromotions.addAll(promotionRepository.findByStatus(PromotionStatus.PENDING_APPROVAL));
+
+        for (Promotion existingPromo : existingPromotions) {
+            // Bỏ qua nếu không có date range
+            if (existingPromo.getStartDate() == null || existingPromo.getExpiryDate() == null) {
+                continue;
+            }
+
+            // Kiểm tra date range overlap
+            if (!hasDateRangeOverlap(
+                    newStartDate, newExpiryDate,
+                    existingPromo.getStartDate(), existingPromo.getExpiryDate())) {
+                continue; // Không overlap về thời gian, bỏ qua
+            }
+
+            // Kiểm tra apply scope overlap
+            boolean hasScopeOverlap = false;
+            String conflictMessage = "";
+
+            if (newScope == DiscountApplyScope.ORDER) {
+                // ORDER overlap với ORDER
+                if (existingPromo.getApplyScope() == DiscountApplyScope.ORDER) {
+                    hasScopeOverlap = true;
+                    conflictMessage = String.format(
+                            "Đã có khuyến mãi \"%s\" (mã: %s) áp dụng cho toàn bộ đơn hàng trong khoảng thời gian từ %s đến %s",
+                            existingPromo.getName(), existingPromo.getCode(),
+                            existingPromo.getStartDate(), existingPromo.getExpiryDate());
+                }
+            } else if (newScope == DiscountApplyScope.CATEGORY) {
+                // CATEGORY overlap với ORDER hoặc CATEGORY (cùng category)
+                if (existingPromo.getApplyScope() == DiscountApplyScope.ORDER) {
+                    hasScopeOverlap = true;
+                    conflictMessage = String.format(
+                            "Đã có khuyến mãi \"%s\" (mã: %s) áp dụng cho toàn bộ đơn hàng trong khoảng thời gian từ %s đến %s",
+                            existingPromo.getName(), existingPromo.getCode(),
+                            existingPromo.getStartDate(), existingPromo.getExpiryDate());
+                } else if (existingPromo.getApplyScope() == DiscountApplyScope.CATEGORY) {
+                    // Kiểm tra xem có category nào trùng không
+                    if (request.getCategoryIds() != null && !request.getCategoryIds().isEmpty()) {
+                        Set<String> existingCategoryIds = existingPromo.getCategoryApply().stream()
+                                .map(Category::getId)
+                                .collect(Collectors.toSet());
+                        Set<String> newCategoryIds = request.getCategoryIds();
+                        
+                        // Kiểm tra xem có category nào trùng không
+                        boolean hasCommonCategory = newCategoryIds.stream()
+                                .anyMatch(existingCategoryIds::contains);
+                        
+                        if (hasCommonCategory) {
+                            hasScopeOverlap = true;
+                            Set<String> commonCategories = newCategoryIds.stream()
+                                    .filter(existingCategoryIds::contains)
+                                    .collect(Collectors.toSet());
+                            List<String> commonCategoryNames = commonCategories.stream()
+                                    .map(catId -> categoryRepository.findById(catId)
+                                            .map(Category::getName)
+                                            .orElse(catId))
+                                    .collect(Collectors.toList());
+                            conflictMessage = String.format(
+                                    "Đã có khuyến mãi \"%s\" (mã: %s) áp dụng cho danh mục %s trong khoảng thời gian từ %s đến %s",
+                                    existingPromo.getName(), existingPromo.getCode(),
+                                    String.join(", ", commonCategoryNames),
+                                    existingPromo.getStartDate(), existingPromo.getExpiryDate());
+                        }
+                    }
+                }
+            } else if (newScope == DiscountApplyScope.PRODUCT) {
+                // PRODUCT overlap với ORDER, CATEGORY (của category của product), hoặc PRODUCT (cùng product)
+                if (existingPromo.getApplyScope() == DiscountApplyScope.ORDER) {
+                    hasScopeOverlap = true;
+                    conflictMessage = String.format(
+                            "Đã có khuyến mãi \"%s\" (mã: %s) áp dụng cho toàn bộ đơn hàng trong khoảng thời gian từ %s đến %s",
+                            existingPromo.getName(), existingPromo.getCode(),
+                            existingPromo.getStartDate(), existingPromo.getExpiryDate());
+                } else if (existingPromo.getApplyScope() == DiscountApplyScope.CATEGORY) {
+                    // Kiểm tra xem có product nào thuộc category của existing promotion không
+                    if (request.getProductIds() != null && !request.getProductIds().isEmpty()) {
+                        Set<String> existingCategoryIds = existingPromo.getCategoryApply().stream()
+                                .map(Category::getId)
+                                .collect(Collectors.toSet());
+                        
+                        // Kiểm tra xem có product nào thuộc category của existing promotion không
+                        List<Product> newProducts = productRepository.findAllById(request.getProductIds());
+                        boolean hasProductInCategory = newProducts.stream()
+                                .anyMatch(product -> product.getCategory() != null
+                                        && product.getCategory().getId() != null
+                                        && existingCategoryIds.contains(product.getCategory().getId()));
+                        
+                        if (hasProductInCategory) {
+                            hasScopeOverlap = true;
+                            List<String> conflictProductNames = newProducts.stream()
+                                    .filter(product -> product.getCategory() != null
+                                            && product.getCategory().getId() != null
+                                            && existingCategoryIds.contains(product.getCategory().getId()))
+                                    .map(Product::getName)
+                                    .limit(3) // Chỉ lấy 3 sản phẩm đầu tiên để message không quá dài
+                                    .collect(Collectors.toList());
+                            conflictMessage = String.format(
+                                    "Đã có khuyến mãi \"%s\" (mã: %s) áp dụng cho danh mục chứa các sản phẩm %s trong khoảng thời gian từ %s đến %s",
+                                    existingPromo.getName(), existingPromo.getCode(),
+                                    String.join(", ", conflictProductNames) + (newProducts.size() > 3 ? "..." : ""),
+                                    existingPromo.getStartDate(), existingPromo.getExpiryDate());
+                        }
+                    }
+                } else if (existingPromo.getApplyScope() == DiscountApplyScope.PRODUCT) {
+                    // Kiểm tra xem có product nào trùng không
+                    if (request.getProductIds() != null && !request.getProductIds().isEmpty()) {
+                        Set<String> existingProductIds = existingPromo.getProductApply().stream()
+                                .map(Product::getId)
+                                .collect(Collectors.toSet());
+                        Set<String> newProductIds = request.getProductIds();
+                        
+                        // Kiểm tra xem có product nào trùng không
+                        boolean hasCommonProduct = newProductIds.stream()
+                                .anyMatch(existingProductIds::contains);
+                        
+                        if (hasCommonProduct) {
+                            hasScopeOverlap = true;
+                            Set<String> commonProducts = newProductIds.stream()
+                                    .filter(existingProductIds::contains)
+                                    .collect(Collectors.toSet());
+                            List<String> commonProductNames = commonProducts.stream()
+                                    .map(prodId -> productRepository.findById(prodId)
+                                            .map(Product::getName)
+                                            .orElse(prodId))
+                                    .limit(3) // Chỉ lấy 3 sản phẩm đầu tiên để message không quá dài
+                                    .collect(Collectors.toList());
+                            conflictMessage = String.format(
+                                    "Đã có khuyến mãi \"%s\" (mã: %s) áp dụng cho các sản phẩm %s trong khoảng thời gian từ %s đến %s",
+                                    existingPromo.getName(), existingPromo.getCode(),
+                                    String.join(", ", commonProductNames) + (commonProducts.size() > 3 ? "..." : ""),
+                                    existingPromo.getStartDate(), existingPromo.getExpiryDate());
+                        }
+                    }
+                }
+            }
+
+            if (hasScopeOverlap) {
+                throw new AppException(ErrorCode.PROMOTION_OVERLAP_CONFLICT, conflictMessage);
+            }
+        }
     }
 
     private void applyPricingForProducts(Promotion promotion, List<Product> products) {

@@ -229,29 +229,62 @@ export default function ConfirmCheckoutPage() {
             const initResult = orderData?.result || orderData || {};
             const order = initResult?.order || initResult;
             const payUrl = initResult?.payUrl;
+            const orderCode = initResult?.orderCode; // For MoMo: order code to be created
 
+            if (paymentMethod === 'momo') {
+                // Với MoMo: chưa có đơn hàng, chỉ có payment URL
+                if (!payUrl) {
+                    showError('Không nhận được đường dẫn thanh toán MoMo.');
+                    setSubmitting(false);
+                    return;
+                }
+                
+                // Lưu thông tin checkout để tạo đơn hàng sau khi thanh toán thành công
+                const checkoutInfo = {
+                    paymentMethod: 'momo',
+                    orderCode: orderCode,
+                    directCheckout: directCheckout,
+                    productId: directProductId,
+                    quantity: directQuantity,
+                    addressId: address.id || address.addressId || null,
+                    shippingAddress: JSON.stringify(buildShippingInfo()),
+                    shippingFee: shippingFee,
+                    cartItemIds: directCheckout ? [] : cartItemIds,
+                    summary: {
+                        items: orderItems,
+                        subtotal: currentSubtotal,
+                        shippingFee: shippingFee,
+                        voucherDiscount: voucherDiscount,
+                        total: currentTotal,
+                    },
+                    address: {
+                        recipientName: address.recipientName || address.name,
+                        recipientPhone: address.recipientPhone || address.phone,
+                        addressText: address.addressText || address.address,
+                    },
+                };
+                
+                // Lưu checkout info vào localStorage
+                window.localStorage.setItem('lumina_checkout_info', JSON.stringify(checkoutInfo));
+                
+                // Lưu preview order info để hiển thị trong OrderSuccess
+                persistLatestOrder({
+                    code: orderCode,
+                    orderCode: orderCode,
+                }, 'Thanh toán qua MoMo', Math.round(currentTotal));
+                
+                window.location.href = payUrl;
+                return;
+            }
+
+            // COD: Đơn hàng đã được tạo
             if (!order || !order.id) {
                 showError('Không nhận được thông tin đơn hàng từ server.');
                 setSubmitting(false);
                 return;
             }
 
-            // Bước 2: lưu thông tin đơn hàng mới nhất
-            // (kèm danh sách sản phẩm) để OrderSuccess & OrderDetail có thể hiển thị
-            const amountForCurrent = Math.round(currentTotal);
-
-            if (paymentMethod === 'momo') {
-                persistLatestOrder(order, 'Thanh toán qua MoMo', amountForCurrent);
-                if (!payUrl) {
-                    showError('Không nhận được đường dẫn thanh toán MoMo.');
-                    setSubmitting(false);
-                    return;
-                }
-                window.location.href = payUrl;
-                return;
-            }
-
-            persistLatestOrder(order, 'Thanh toán khi nhận hàng', amountForCurrent);
+            persistLatestOrder(order, 'Thanh toán khi nhận hàng', Math.round(currentTotal));
             // COD: Chuyển về trang cảm ơn (giống MoMo)
             navigate('/order-success', {
                 state: {

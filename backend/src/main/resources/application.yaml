@@ -38,7 +38,7 @@ brevo:
 jwt:
   signerKey: "/nvphzRqEgduNfnKy2ztU3XBeojbmK8jzDivxOxLIGnl+D5GfkjyXdLq15xz9af/\n"
   valid-duration: 3600  # in second
-  refreshable-duration: 360000 # in seconds
+  refreshable-duration: 360000 # in secondsor
 
 # Default avatar configuration
 app:

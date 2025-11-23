@@ -3,7 +3,7 @@ import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import classNames from 'classnames/bind';
 import styles from './RefundRequestPage.module.scss';
 import { getApiBaseUrl, getStoredToken, formatCurrency } from '../../../../services';
-import { getMyInfo, getMyAddresses } from '../../../../services';
+import { getMyInfo, getMyAddresses, uploadProductMedia } from '../../../../services';
 import AddressListModal from '../../../../components/Common/AddressModal/AddressListModal';
 import NewAddressModal from '../../../../components/Common/AddressModal/NewAddressModal';
 import AddressDetailModal from '../../../../components/Common/AddressModal/AddressDetailModal';
@@ -300,18 +300,50 @@ export default function RefundRequestPage() {
             const token = getStoredToken();
             const apiBaseUrl = getApiBaseUrl();
 
+            // Step 1: Upload media files if any
+            let mediaUrls = [];
+            if (attachedFiles.length > 0) {
+                try {
+                    const { ok, urls, message } = await uploadProductMedia(attachedFiles, token);
+                    if (!ok || !urls || urls.length === 0) {
+                        throw new Error(message || 'Upload ảnh/video thất bại');
+                    }
+                    mediaUrls = urls;
+                } catch (uploadError) {
+                    console.error('Error uploading media:', uploadError);
+                    throw new Error('Không thể upload ảnh/video. Vui lòng thử lại.');
+                }
+            }
+
+            // Step 2: Prepare refund request payload with structured data
+            const orderId = order?.id || id || orderCode;
+            const requestPayload = {
+                reasonType: selectedReasonType, // 'store' or 'customer'
+                description: formData.description,
+                email: formData.email,
+                returnAddress: formData.returnAddress,
+                refundMethod: formData.refundMethod,
+                selectedProductIds: selectedProducts, // Array of product/item IDs
+                mediaUrls: mediaUrls, // Array of uploaded media URLs
+            };
+
+            // Add bank details if refund method is bank transfer
+            if (formData.refundMethod === 'Hoàn tiền bằng tài khoản ngân hàng') {
+                requestPayload.bank = formData.bank;
+                requestPayload.accountNumber = formData.accountNumber;
+                requestPayload.accountHolder = formData.accountHolder;
+            }
+
+            // Also include note for backward compatibility
             const reasonText = selectedReasonType === 'store' 
                 ? 'Sản phẩm gặp sự cố từ cửa hàng'
                 : 'Thay đổi nhu cầu / Mua nhầm';
-
-            // Combine all information into content field
             const contentParts = [
                 `Yêu cầu hoàn tiền/trả hàng - ${reasonText}`,
                 `\nMô tả: ${formData.description}`,
                 `\nĐịa chỉ gửi hàng: ${formData.returnAddress}`,
                 `\nPhương thức hoàn tiền: ${formData.refundMethod}`,
             ];
-            
             if (formData.bank) {
                 contentParts.push(
                     `\nNgân hàng: ${formData.bank}`,
@@ -319,20 +351,15 @@ export default function RefundRequestPage() {
                     `\nChủ tài khoản: ${formData.accountHolder}`
                 );
             }
+            requestPayload.note = contentParts.join('').trim();
 
-            const content = contentParts.join('');
-
-            // Update order status to RETURN_REQUESTED instead of creating ticket
-            const orderId = order?.id || id || orderCode;
             const response = await fetch(`${apiBaseUrl}/orders/${encodeURIComponent(orderId)}/request-return`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     Authorization: `Bearer ${token}`,
                 },
-                body: JSON.stringify({
-                    note: content.trim(),
-                }),
+                body: JSON.stringify(requestPayload),
             });
 
             const data = await response.json();

@@ -121,6 +121,9 @@ const STATUS_MAP = {
     DELIVERED: { label: 'Đã giao', key: 'delivered' },
     RETURNING: { label: 'Trả hàng', key: 'returning' },
     CANCELLED: { label: 'Đã hủy', key: 'cancelled' },
+    RETURN_REQUESTED: { label: 'Hoàn tiền/ trả hàng', key: 'return-requested' },
+    REFUNDED: { label: 'Đã hoàn tiền/ trả hàng', key: 'refunded' },
+    RETURN_REJECTED: { label: 'Từ chối hoàn tiền/ trả hàng', key: 'return-rejected' },
 };
 
 const TABS = [
@@ -128,9 +131,36 @@ const TABS = [
     { key: 'confirmed', label: 'Chờ lấy hàng', status: 'CONFIRMED' },
     { key: 'shipping', label: 'Chờ giao hàng', status: 'SHIPPING' },
     { key: 'delivered', label: 'Đã giao', status: 'DELIVERED' },
-    { key: 'returning', label: 'Trả hàng', status: 'RETURNING' },
+    { key: 'return-requested', label: 'Hoàn tiền/ trả hàng', status: 'RETURN_REQUESTED' },
     { key: 'cancelled', label: 'Đã hủy', status: 'CANCELLED' },
 ];
+
+// Map status từ backend sang status key cho UI
+const mapOrderStatus = (statusRaw) => {
+    const status = String(statusRaw || '').toUpperCase();
+    switch (status) {
+        case 'CREATED':
+        case 'PENDING':
+        case 'PAID':
+            return { mappedStatus: 'PENDING', ...STATUS_MAP.PENDING };
+        case 'CONFIRMED':
+            return { mappedStatus: 'CONFIRMED', ...STATUS_MAP.CONFIRMED };
+        case 'SHIPPED':
+            return { mappedStatus: 'SHIPPING', ...STATUS_MAP.SHIPPING };
+        case 'DELIVERED':
+            return { mappedStatus: 'DELIVERED', ...STATUS_MAP.DELIVERED };
+        case 'CANCELLED':
+            return { mappedStatus: 'CANCELLED', ...STATUS_MAP.CANCELLED };
+        case 'RETURN_REQUESTED':
+            return { mappedStatus: 'RETURN_REQUESTED', ...STATUS_MAP.RETURN_REQUESTED };
+        case 'REFUNDED':
+            return { mappedStatus: 'REFUNDED', ...STATUS_MAP.REFUNDED };
+        case 'RETURN_REJECTED':
+            return { mappedStatus: 'RETURN_REJECTED', ...STATUS_MAP.RETURN_REJECTED };
+        default:
+            return { mappedStatus: 'PENDING', ...STATUS_MAP.PENDING };
+    }
+};
 
 const REFUND_STEPS = [
     { key: 'requestReturn', label: 'Yêu cầu trả hàng' },
@@ -172,12 +202,17 @@ const mapOrderFromApi = (apiOrder) => {
         paymentMethodLabel = 'Thanh toán qua MoMo';
     }
 
+    // Map status để có key đúng cho UI
+    const statusMapped = mapOrderStatus(rawStatus);
+
     return {
         id: apiOrder.id || '',
         code: apiOrder.code || apiOrder.orderCode || apiOrder.id || '',
         orderDate: orderDateValue,
         orderDateOnly: apiOrder.orderDate || null,
-        status: rawStatus,
+        status: statusMapped.mappedStatus,
+        rawStatus: rawStatus, // Giữ nguyên raw status từ backend
+        statusKey: statusMapped.key, // Key để match với tabs
         totalAmount: typeof apiOrder.totalAmount === 'number' ? apiOrder.totalAmount : 0,
         recipient:
             apiOrder.receiverName ||
@@ -331,8 +366,10 @@ function OrderDetailPage() {
         );
     }
 
+    // Sử dụng statusKey từ order nếu có, nếu không thì map lại
+    const statusKey = order.statusKey || mapOrderStatus(order.status || order.rawStatus).key;
     const statusInfo = STATUS_MAP[order.status] || STATUS_MAP.PENDING;
-    const isReturning = order.status === 'RETURNING';
+    const isReturning = order.status === 'RETURNING' || order.status === 'RETURN_REQUESTED' || order.rawStatus === 'RETURN_REQUESTED';
 
     return (
         <div className={cx('order-detail-wrapper')}>
@@ -362,7 +399,7 @@ function OrderDetailPage() {
                         {TABS.map((tab) => (
                             <button
                                 key={tab.key}
-                                className={cx('tab', { active: statusInfo.key === tab.key })}
+                                className={cx('tab', { active: statusKey === tab.key })}
                             >
                                 {tab.label}
                             </button>
@@ -491,6 +528,14 @@ function OrderDetailPage() {
                             onClick={() => navigate(`/customer-account/orders/${order.id || order.code}/refund`, { state: { orderCode: order.code, orderId: order.id } })}
                         >
                             Hoàn tiền/ Trả hàng
+                        </button>
+                    )}
+                    {(order.status === 'RETURN_REQUESTED' || order.rawStatus === 'RETURN_REQUESTED') && (
+                        <button 
+                            className={cx('contact-btn', 'refund-detail-btn')}
+                            onClick={() => navigate(`/customer-account/orders/${order.id || order.code}/refund-detail`)}
+                        >
+                            Xem yêu cầu hoàn tiền
                         </button>
                     )}
                 </div>

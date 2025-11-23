@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import classNames from 'classnames/bind';
 import styles from './OrderSuccessPage.module.scss';
 import { verifyPaymentAndSendEmail } from '../../../services/api';
-import { getStoredToken } from '../../../services/api';
+import { getStoredToken, getApiBaseUrl } from '../../../services';
 
 const cx = classNames.bind(styles);
  
@@ -72,18 +72,90 @@ export default function OrderSuccessPage() {
             },
         );
 
-        // Nếu thanh toán thành công (resultCode = '0'), verify payment và gửi email
-        // Chỉ gửi 1 lần bằng cách check emailSent flag
+        // Nếu thanh toán thành công (resultCode = '0'), tạo đơn hàng và gửi email
+        // Chỉ thực hiện 1 lần bằng cách check emailSent flag
         if (resultCode === '0' && !emailSent) {
-            const orderId = saved?.orderId || saved?.id || orderIdFromQuery;
-            if (orderId) {
-                const token = getStoredToken();
-                if (token) {
-                    setEmailSent(true); // Đánh dấu đã gửi
-                    verifyPaymentAndSendEmail(orderId, token).catch((error) => {
-                        console.error('Error verifying payment:', error);
-                        setEmailSent(false); // Reset nếu lỗi
-                    });
+            const token = getStoredToken();
+            if (token) {
+                setEmailSent(true); // Đánh dấu đã xử lý
+                
+                // Kiểm tra xem có checkout info được lưu không (cho MoMo)
+                const checkoutInfoRaw = window.localStorage.getItem('lumina_checkout_info');
+                if (checkoutInfoRaw) {
+                    try {
+                        const checkoutInfo = JSON.parse(checkoutInfoRaw);
+                        const apiBaseUrl = getApiBaseUrl();
+                        
+                        // Tạo đơn hàng sau khi thanh toán thành công
+                        const createOrderEndpoint = checkoutInfo.directCheckout 
+                            ? `${apiBaseUrl}/orders/create-direct-after-payment`
+                            : `${apiBaseUrl}/orders/create-after-payment`;
+                        
+                        const createOrderPayload = checkoutInfo.directCheckout ? {
+                            productId: checkoutInfo.productId,
+                            quantity: checkoutInfo.quantity,
+                            addressId: checkoutInfo.addressId,
+                            shippingAddress: checkoutInfo.shippingAddress,
+                            note: '',
+                            shippingFee: checkoutInfo.shippingFee,
+                            paymentMethod: 'MOMO',
+                        } : {
+                            addressId: checkoutInfo.addressId,
+                            shippingAddress: checkoutInfo.shippingAddress,
+                            note: '',
+                            shippingFee: checkoutInfo.shippingFee,
+                            cartItemIds: checkoutInfo.cartItemIds,
+                            paymentMethod: 'MOMO',
+                        };
+                        
+                        fetch(createOrderEndpoint, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                Authorization: `Bearer ${token}`,
+                            },
+                            body: JSON.stringify(createOrderPayload),
+                        })
+                        .then(resp => resp.json())
+                        .then(data => {
+                            const createdOrder = data?.result || data;
+                            if (createdOrder && createdOrder.id) {
+                                // Cập nhật orderInfo với đơn hàng vừa tạo
+                                setOrderInfo(prev => ({
+                                    ...prev,
+                                    orderId: createdOrder.id,
+                                    id: createdOrder.id,
+                                    code: createdOrder.code || checkoutInfo.orderCode,
+                                    orderCode: createdOrder.code || checkoutInfo.orderCode,
+                                }));
+                                
+                                // Xóa checkout info đã dùng
+                                window.localStorage.removeItem('lumina_checkout_info');
+                                
+                                // Verify payment và gửi email
+                                return verifyPaymentAndSendEmail(createdOrder.id, token);
+                            } else {
+                                console.error('Failed to create order after payment:', data);
+                                setEmailSent(false);
+                            }
+                        })
+                        .catch((error) => {
+                            console.error('Error creating order after payment:', error);
+                            setEmailSent(false); // Reset để có thể thử lại
+                        });
+                    } catch (parseError) {
+                        console.error('Error parsing checkout info:', parseError);
+                        setEmailSent(false);
+                    }
+                } else {
+                    // COD hoặc đơn hàng đã được tạo trước đó
+                    const orderId = saved?.orderId || saved?.id || orderIdFromQuery;
+                    if (orderId) {
+                        verifyPaymentAndSendEmail(orderId, token).catch((error) => {
+                            console.error('Error verifying payment:', error);
+                            setEmailSent(false);
+                        });
+                    }
                 }
             }
         }

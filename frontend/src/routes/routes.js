@@ -14,6 +14,7 @@ import CustomerProfilePage from '../pages/CustomerAccount/CustomerProfile';
 import CustomerOrderHistoryPage from '../pages/CustomerAccount/CustomerOrderHistory';
 import CustomerOrderDetailPage from '../pages/CustomerAccount/CustomerOrderHistory/CustomerOrderDetailPage';
 import RefundRequestPage from '../pages/CustomerAccount/CustomerOrderHistory/RefundRequest';
+import CustomerRefundDetailPage from '../pages/CustomerAccount/CustomerOrderHistory/RefundDetail';
 import CustomerVoucherPromotionPage from '../pages/CustomerAccount/CustomerVoucherPromotion';
 import CustomerChangePasswordPage from '../pages/CustomerAccount/CustomerChangePassword';
 import CartPage from '../pages/CartPage';
@@ -72,6 +73,8 @@ import UpdatePromotionPage from '../pages/Employees/Staff/VouchersPromotionsPage
 import CustomerSupportMainPage from '../pages/Employees/CustomerSupport/CustomerSupportMain';
 import ComplaintManagementPage from '../pages/Employees/CustomerSupport/ComplaintManagement';
 import ReviewCommentManagementPage from '../pages/Employees/CustomerSupport/ReviewCommentManagement';
+import RefundManagementPage from '../pages/Employees/CustomerSupport/RefundManagement';
+import RefundDetailPage from '../pages/Employees/CustomerSupport/RefundManagement/RefundDetail';
 import ProfileCustomerSupportPage from '../pages/Employees/CustomerSupport/ProfileCustomerSupport';
 import CustomerSupportNotificationPage from '../pages/Employees/CustomerSupport/CustomerSupportNotification';
 import SupportUserPage from '../pages/SupportUser';
@@ -112,6 +115,7 @@ const privateRoutes = [
     { path: '/customer-account/orders', component: CustomerOrderHistoryPage, layout: CustomerAccountLayout },
     { path: '/customer-account/orders/:id', component: CustomerOrderDetailPage, layout: CustomerAccountLayout },
     { path: '/customer-account/orders/:id/refund', component: RefundRequestPage, layout: CustomerAccountLayout },
+    { path: '/customer-account/orders/:id/refund-detail', component: CustomerRefundDetailPage, layout: CustomerAccountLayout },
     { path: '/customer-account/vouchers', component: CustomerVoucherPromotionPage, layout: CustomerAccountLayout },
     { path: '/customer-account/password', component: CustomerChangePasswordPage, layout: CustomerAccountLayout },
 
@@ -225,6 +229,16 @@ const privateRoutes = [
         component: ReviewCommentManagementPage,
         layout: CustomerSupportLayout,
     },
+        {
+            path: '/customer-support/refund-management',
+            component: RefundManagementPage,
+            layout: CustomerSupportLayout,
+        },
+        {
+            path: '/customer-support/refund-management/:id',
+            component: RefundDetailPage,
+            layout: CustomerSupportLayout,
+        },
     {
         path: '/customer-support/profile',
         component: ProfileCustomerSupportPage,

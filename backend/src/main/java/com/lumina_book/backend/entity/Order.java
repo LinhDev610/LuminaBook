@@ -81,4 +81,41 @@ public class Order {
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     List<OrderItem> items;
+
+    // Refund/Return request fields
+    @Column(name = "refund_reason_type", length = 50)
+    String refundReasonType; // 'store' or 'customer'
+
+    @Column(name = "refund_description", columnDefinition = "TEXT")
+    String refundDescription;
+
+    @Column(name = "refund_email", length = 255)
+    String refundEmail;
+
+    @Column(name = "refund_return_address", columnDefinition = "TEXT")
+    String refundReturnAddress;
+
+    @Column(name = "refund_method", length = 100)
+    String refundMethod;
+
+    @Column(name = "refund_bank", length = 100)
+    String refundBank;
+
+    @Column(name = "refund_account_number", length = 50)
+    String refundAccountNumber;
+
+    @Column(name = "refund_account_holder", length = 255)
+    String refundAccountHolder;
+
+    @Column(name = "refund_amount")
+    Double refundAmount;
+
+    @Column(name = "refund_return_fee")
+    Double refundReturnFee; // Phí trả hàng (10% giá trị sản phẩm nếu lý do là customer, 0 nếu lý do là store)
+
+    @Column(name = "refund_selected_product_ids", columnDefinition = "TEXT")
+    String refundSelectedProductIds; // JSON array of product IDs
+
+    @Column(name = "refund_media_urls", columnDefinition = "TEXT")
+    String refundMediaUrls; // JSON array of media URLs (images/videos)
 }

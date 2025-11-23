@@ -3,6 +3,7 @@ import EmployeesSideBar from '../EmployeesSideBar';
 const menuItems = [
     { path: '/customer-support/complaints', label: 'Quản lý khiếu nại' },
     { path: '/customer-support/reviews', label: 'Quản lý đánh giá và bình luận' },
+    { path: '/customer-support/refund-management', label: 'Quản lý Trả hàng/ Hoàn tiền' },
     { path: '/customer-support/profile', label: 'Hồ sơ cá nhân' },
 ];
 

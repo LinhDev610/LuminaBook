@@ -193,3 +193,32 @@
     }
 }
 
+.refundSection {
+    margin-top: 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.refundSectionTitle {
+    font-size: 24px;
+    font-weight: 700;
+    color: #1a3c5a;
+    margin: 0;
+}
+
+.statusBadge {
+    &.return-pending {
+        background: #fff4e2;
+        color: #c77800;
+    }
+    &.refunded {
+        background: #e6f7ed;
+        color: #1b5e20;
+    }
+    &.return-rejected {
+        background: #fde8e8;
+        color: #c62828;
+    }
+}
+

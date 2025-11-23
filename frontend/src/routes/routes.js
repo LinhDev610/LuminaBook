@@ -71,6 +71,7 @@ import CustomerSupportMainPage from '../pages/Employees/CustomerSupport/Customer
 import ComplaintManagementPage from '../pages/Employees/CustomerSupport/ComplaintManagement';
 import ReviewCommentManagementPage from '../pages/Employees/CustomerSupport/ReviewCommentManagement';
 import ProfileCustomerSupportPage from '../pages/Employees/CustomerSupport/ProfileCustomerSupport';
+import CustomerSupportNotificationPage from '../pages/Employees/CustomerSupport/CustomerSupportNotification';
 
 // Public routes
 const publicRoutes = [
@@ -198,6 +199,11 @@ const privateRoutes = [
     {
         path: '/customer-support/complaints',
         component: ComplaintManagementPage,
+        layout: CustomerSupportLayout,
+    },
+    {
+        path: '/customer-support/notifications',
+        component: CustomerSupportNotificationPage,
         layout: CustomerSupportLayout,
     },
     {

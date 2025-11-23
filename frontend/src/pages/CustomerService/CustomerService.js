@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import classNames from 'classnames/bind';
 import homeStyles from '../Home/Home.module.scss';
 import supportStyles from './CustomerService.module.scss';
 import { useAuth } from '../../contexts/AuthContext';
 import { getApiBaseUrl, getStoredToken } from '../../services/utils';
+import { getMyInfo } from '../../services';
 import { useNavigate } from 'react-router-dom';
 
 // Import icons
@@ -23,15 +24,76 @@ export default function CustomerService() {
     const API_BASE_URL = getApiBaseUrl();
     const [formData, setFormData] = useState({
         orderId: '',
-        customerName: user?.name || '',
-        email: user?.email || '',
-        phone: user?.phone || '',
+        customerName: '',
+        email: '',
+        phone: '',
         issue: '',
         notes: ''
     });
+    const [orders, setOrders] = useState([]);
+    const [loadingOrders, setLoadingOrders] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [submitError, setSubmitError] = useState('');
     const [submitSuccess, setSubmitSuccess] = useState(false);
+
+    // Tự động điền thông tin user và lấy danh sách đơn hàng khi đăng nhập
+    useEffect(() => {
+        const fetchUserInfo = async () => {
+            const token = getStoredToken();
+            if (!token) {
+                // Nếu chưa đăng nhập, giữ form trống
+                return;
+            }
+
+            try {
+                const userInfo = await getMyInfo(token);
+                if (userInfo) {
+                    setFormData(prev => ({
+                        ...prev,
+                        customerName: userInfo.fullName || userInfo.full_name || prev.customerName || '',
+                        email: userInfo.email || prev.email || '',
+                        phone: userInfo.phoneNumber || userInfo.phone_number || prev.phone || '',
+                    }));
+                }
+            } catch (error) {
+                console.error('Error fetching user info:', error);
+                // Không hiển thị lỗi, chỉ log để không làm gián đoạn UX
+            }
+        };
+
+        const fetchOrders = async () => {
+            const token = getStoredToken();
+            if (!token) {
+                return;
+            }
+
+            setLoadingOrders(true);
+            try {
+                const response = await fetch(`${API_BASE_URL}/orders/my-orders`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`,
+                    },
+                });
+
+                const data = await response.json();
+                if (response.ok && data?.result) {
+                    // Lấy danh sách đơn hàng và format để hiển thị
+                    const ordersList = Array.isArray(data.result) ? data.result : [];
+                    setOrders(ordersList);
+                }
+            } catch (error) {
+                console.error('Error fetching orders:', error);
+                // Không hiển thị lỗi, chỉ log
+            } finally {
+                setLoadingOrders(false);
+            }
+        };
+
+        fetchUserInfo();
+        fetchOrders();
+    }, [API_BASE_URL]); // Chạy một lần khi component mount
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
@@ -107,15 +169,15 @@ export default function CustomerService() {
 
             // Success
             setSubmitSuccess(true);
-            // Reset form
-            setFormData({
+            // Reset form nhưng giữ lại thông tin user
+            setFormData(prev => ({
                 orderId: '',
-                customerName: user?.name || '',
-                email: user?.email || '',
-                phone: user?.phone || '',
+                customerName: prev.customerName,
+                email: prev.email,
+                phone: prev.phone,
                 issue: '',
                 notes: ''
-            });
+            }));
 
             // Hide success message after 5 seconds
             setTimeout(() => {
@@ -202,14 +264,34 @@ export default function CustomerService() {
                         <div className={cxSupport('form-row')}>
                             <div className={cxSupport('form-group')}>
                                 <label className={cxSupport('form-label')}>Mã đơn hàng:</label>
-                                <input
-                                    type="text"
-                                    name="orderId"
-                                    value={formData.orderId}
-                                    onChange={handleInputChange}
-                                    placeholder="Nhập mã đơn hàng"
-                                    className={cxSupport('form-input')}
-                                />
+                                {loadingOrders ? (
+                                    <div style={{ padding: '12px', color: '#666' }}>Đang tải danh sách đơn hàng...</div>
+                                ) : orders.length > 0 ? (
+                                    <select
+                                        name="orderId"
+                                        value={formData.orderId}
+                                        onChange={handleInputChange}
+                                        className={cxSupport('form-input')}
+                                        style={{ padding: '12px', cursor: 'pointer' }}
+                                    >
+                                        <option value="">-- Chọn đơn hàng --</option>
+                                        {orders.map((order) => (
+                                            <option key={order.id} value={order.code || order.orderCode || order.id}>
+                                                {order.code || order.orderCode || `Đơn hàng #${order.id.substring(0, 8)}`}
+                                                {order.createdAt && ` - ${new Date(order.createdAt).toLocaleDateString('vi-VN')}`}
+                                            </option>
+                                        ))}
+                                    </select>
+                                ) : (
+                                    <input
+                                        type="text"
+                                        name="orderId"
+                                        value={formData.orderId}
+                                        onChange={handleInputChange}
+                                        placeholder="Nhập mã đơn hàng"
+                                        className={cxSupport('form-input')}
+                                    />
+                                )}
                             </div>
                         </div>
 
@@ -237,6 +319,8 @@ export default function CustomerService() {
                                     onChange={handleInputChange}
                                     placeholder="Nhập email đã đăng ký tài khoản"
                                     className={cxSupport('form-input')}
+                                    readOnly
+                                    style={{ backgroundColor: '#f5f5f5', cursor: 'not-allowed' }}
                                 />
                             </div>
                         </div>

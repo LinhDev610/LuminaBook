@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import classNames from 'classnames/bind';
 import styles from './ComplaintsDetailPage.module.scss';
 import { getApiBaseUrl, getStoredToken, formatDateTime } from '../../../../services/utils';
+import { sendNotificationToUser } from '../../../../services';
 
 const cx = classNames.bind(styles);
 
@@ -175,6 +176,12 @@ export default function ComplaintsDetailPage() {
                 handlerNote: note || '',
             };
 
+            // Track changes for notifications
+            const oldStatus = complaint.statusRaw;
+            const oldAssignee = complaint.assignedToRaw;
+            const newStatus = selectedStatus && statusReverseMap[selectedStatus] ? statusReverseMap[selectedStatus] : oldStatus;
+            const newAssignee = selectedAssignee || oldAssignee;
+
             // Add status if changed
             if (selectedStatus && statusReverseMap[selectedStatus]) {
                 updateData.status = statusReverseMap[selectedStatus];
@@ -198,6 +205,63 @@ export default function ComplaintsDetailPage() {
 
             if (!response.ok) {
                 throw new Error(data?.message || 'Không thể lưu thay đổi');
+            }
+
+            // Gửi thông báo cho CustomerSupport nếu admin nhận hoặc hoàn thành khiếu nại
+            try {
+                // Lấy danh sách CustomerSupport để gửi thông báo
+                const usersResponse = await fetch(`${API_BASE_URL}/users`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`,
+                    },
+                });
+
+                if (usersResponse.ok) {
+                    const usersData = await usersResponse.json();
+                    const customerSupportUsers = (usersData?.result || []).filter(
+                        (user) => user?.role?.name === 'CUSTOMER_SUPPORT'
+                    );
+
+                    const orderCode = complaint.orderCode || `#KN${complaint.id.substring(0, 6).toUpperCase()}`;
+
+                    // Case 1: Admin nhận khiếu nại (chuyển từ CS sang ADMIN hoặc status = IN_PROGRESS với ADMIN)
+                    if (
+                        (oldAssignee === 'CS' && newAssignee === 'ADMIN') ||
+                        (newAssignee === 'ADMIN' && newStatus === 'IN_PROGRESS' && oldStatus !== 'IN_PROGRESS')
+                    ) {
+                        for (const user of customerSupportUsers) {
+                            await sendNotificationToUser(
+                                user.id,
+                                {
+                                    title: 'Admin đã nhận khiếu nại',
+                                    message: `Admin đã nhận khiếu nại ${orderCode} để xử lý.`,
+                                    type: 'INFO',
+                                },
+                                token
+                            );
+                        }
+                    }
+
+                    // Case 2: Admin hoàn thành khiếu nại (status = RESOLVED)
+                    if (oldStatus !== 'RESOLVED' && newStatus === 'RESOLVED') {
+                        for (const user of customerSupportUsers) {
+                            await sendNotificationToUser(
+                                user.id,
+                                {
+                                    title: 'Admin đã hoàn thành khiếu nại',
+                                    message: `Admin đã hoàn thành xử lý khiếu nại ${orderCode}.`,
+                                    type: 'SUCCESS',
+                                },
+                                token
+                            );
+                        }
+                    }
+                }
+            } catch (notifError) {
+                // Không throw error để không ảnh hưởng đến flow chính
+                console.error('Error sending notification:', notifError);
             }
 
             setActionSuccess('Đã lưu thay đổi thành công!');

@@ -692,6 +692,22 @@ public class OrderService {
 
         return order;
     }
+
+    @Transactional
+    public Order requestReturn(String orderId, String returnRequestNote) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_EXISTED));
+
+        if (order.getStatus() != OrderStatus.DELIVERED) {
+            throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION, "Chỉ có thể yêu cầu trả hàng cho đơn hàng đã giao");
+        }
+
+        order.setStatus(OrderStatus.RETURN_REQUESTED);
+        if (returnRequestNote != null && !returnRequestNote.isBlank()) {
+            order.setNote(returnRequestNote);
+        }
+        return orderRepository.save(order);
+    }
 }
 
 

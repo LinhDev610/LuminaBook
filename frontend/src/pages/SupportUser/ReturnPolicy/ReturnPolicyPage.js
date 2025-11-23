@@ -11,7 +11,7 @@ export default function ReturnPolicyPage() {
     return (
         <div className={cx('wrapper')}>
             <div className={cx('container')}>
-                <button className={cx('back-button')} onClick={() => navigate('/support')}>
+                <button className={cx('back-button')} onClick={() => navigate('/support/user')}>
                     ← Quay lại
                 </button>
 
@@ -67,11 +67,53 @@ export default function ReturnPolicyPage() {
                     </div>
 
                     <div className={cx('section')}>
-                        <h2 className={cx('section-title')}>5. Phí đổi trả</h2>
-                        <ul className={cx('list')}>
-                            <li><strong>Miễn phí:</strong> Nếu sản phẩm có lỗi từ phía chúng tôi</li>
-                            <li><strong>Khách hàng chịu phí:</strong> Nếu đổi trả do lý do cá nhân (không vừa, không thích,...)</li>
-                        </ul>
+                        <h2 className={cx('section-title')}>5. Chính sách Trả hàng & Hoàn tiền</h2>
+                        
+                        <div className={cx('subsection')}>
+                            <h3 className={cx('subsection-title')}>Thời hạn yêu cầu</h3>
+                            <p className={cx('section-text')}>
+                                Yêu cầu trả hàng phải được gửi trong vòng <strong>07 ngày</strong> kể từ ngày khách hàng nhận sách thành công.
+                            </p>
+                        </div>
+
+                        <div className={cx('subsection')}>
+                            <h3 className={cx('subsection-title')}>Điều kiện sản phẩm</h3>
+                            <p className={cx('section-text')}>
+                                Sách phải còn nguyên vẹn (không rách, không ướt, không có dấu vết đã sử dụng, không đánh dấu hay ghi chú).
+                            </p>
+                        </div>
+
+                        <div className={cx('subsection')}>
+                            <h3 className={cx('subsection-title')}>Bằng chứng</h3>
+                            <p className={cx('section-text')}>
+                                Vui lòng cung cấp ảnh/video rõ ràng về tình trạng sản phẩm và lý do trả hàng để làm bằng chứng xác thực.
+                            </p>
+                        </div>
+
+                        <div className={cx('subsection')}>
+                            <h3 className={cx('subsection-title')}>💰 Quy định về Chi phí Trả hàng</h3>
+                            
+                            <div className={cx('cost-item')}>
+                                <h4 className={cx('cost-title')}>Khách hàng trả trước:</h4>
+                                <p className={cx('section-text')}>
+                                    Khách hàng vui lòng thanh toán trước chi phí vận chuyển cho đơn hàng trả về cửa hàng.
+                                </p>
+                            </div>
+
+                            <div className={cx('cost-item')}>
+                                <h4 className={cx('cost-title')}>Chi phí được hoàn trả:</h4>
+                                <ul className={cx('list')}>
+                                    <li>
+                                        <strong>Nếu sản phẩm có lỗi từ phía cửa hàng</strong> (sách bị rách, sai phiên bản, thiếu trang, lỗi in ấn), 
+                                        chúng tôi sẽ hoàn lại <strong>100% giá trị sản phẩm và chi phí vận chuyển</strong> cho quý khách.
+                                    </li>
+                                    <li>
+                                        <strong>Nếu yêu cầu trả hàng/hoàn tiền xuất phát từ lý do cá nhân của khách hàng</strong> 
+                                        (đặt nhầm, không thích, không còn nhu cầu), chúng tôi sẽ trừ <strong>10% giá trị sản phẩm</strong> và khách hàng sẽ tự chịu toàn bộ chi phí vận chuyển trả hàng.
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
                     </div>
 
                     <div className={cx('section')}>

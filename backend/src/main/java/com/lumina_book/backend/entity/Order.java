@@ -43,6 +43,7 @@ public class Order {
     @Column(name = "order_code", unique = true)
     String code;
 
+    @Column(columnDefinition = "TEXT")
     String note;
     String shippingAddress;
     LocalDate orderDate;

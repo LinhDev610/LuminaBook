@@ -12,7 +12,8 @@ import VerifyCode from '../components/Auth/VerifyCode';
 import Account from '../pages/CustomerAccount';
 import CustomerProfilePage from '../pages/CustomerAccount/CustomerProfile';
 import CustomerOrderHistoryPage from '../pages/CustomerAccount/CustomerOrderHistory';
-import CustomerOrderDetailPage from '../pages/CustomerAccount/CustomerOrderHistory/OrderDetailPage';
+import CustomerOrderDetailPage from '../pages/CustomerAccount/CustomerOrderHistory/CustomerOrderDetailPage';
+import RefundRequestPage from '../pages/CustomerAccount/CustomerOrderHistory/RefundRequest';
 import CustomerVoucherPromotionPage from '../pages/CustomerAccount/CustomerVoucherPromotion';
 import CustomerChangePasswordPage from '../pages/CustomerAccount/CustomerChangePassword';
 import CartPage from '../pages/CartPage';
@@ -110,6 +111,7 @@ const privateRoutes = [
     { path: '/customer-account/profile', component: CustomerProfilePage, layout: CustomerAccountLayout },
     { path: '/customer-account/orders', component: CustomerOrderHistoryPage, layout: CustomerAccountLayout },
     { path: '/customer-account/orders/:id', component: CustomerOrderDetailPage, layout: CustomerAccountLayout },
+    { path: '/customer-account/orders/:id/refund', component: RefundRequestPage, layout: CustomerAccountLayout },
     { path: '/customer-account/vouchers', component: CustomerVoucherPromotionPage, layout: CustomerAccountLayout },
     { path: '/customer-account/password', component: CustomerChangePasswordPage, layout: CustomerAccountLayout },
 

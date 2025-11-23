@@ -1,0 +1,714 @@
+import { useState, useEffect } from 'react';
+import { useNavigate, useLocation, useParams } from 'react-router-dom';
+import classNames from 'classnames/bind';
+import styles from './RefundRequestPage.module.scss';
+import { getApiBaseUrl, getStoredToken, formatCurrency } from '../../../../services';
+import { getMyInfo, getMyAddresses } from '../../../../services';
+import AddressListModal from '../../../../components/Common/AddressModal/AddressListModal';
+import NewAddressModal from '../../../../components/Common/AddressModal/NewAddressModal';
+import AddressDetailModal from '../../../../components/Common/AddressModal/AddressDetailModal';
+import { formatFullAddress, normalizeAddressPayload } from '../../../../components/Common/AddressModal/useGhnLocations';
+
+const cx = classNames.bind(styles);
+
+const parseShippingInfo = (raw) => {
+    if (!raw || typeof raw !== 'string') return null;
+    try {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object') {
+            return {
+                name: parsed.name || parsed.receiverName || '',
+                phone: parsed.phone || parsed.receiverPhone || '',
+                address: parsed.address || parsed.fullAddress || '',
+            };
+        }
+    } catch {
+        return { address: raw };
+    }
+    return { address: raw };
+};
+
+const BANKS = [
+    'Vietcombank',
+    'BIDV',
+    'Vietinbank',
+    'Agribank',
+    'ACB',
+    'Techcombank',
+    'MBBank',
+    'VPBank',
+    'TPBank',
+    'Sacombank',
+];
+
+export default function RefundRequestPage() {
+    const navigate = useNavigate();
+    const location = useLocation();
+    const { id } = useParams();
+    const orderCode = location.state?.orderCode || '';
+    
+    const [step, setStep] = useState(1); // 1: Select reason, 2: Fill form
+    const [selectedReasonType, setSelectedReasonType] = useState(null); // 'store' or 'customer'
+    const [order, setOrder] = useState(null);
+    const [selectedProducts, setSelectedProducts] = useState([]);
+    const [attachedFiles, setAttachedFiles] = useState([]);
+    const [imagePreviews, setImagePreviews] = useState([]);
+    
+    const [formData, setFormData] = useState({
+        customerName: '',
+        description: '',
+        email: '',
+        phone: '',
+        returnAddress: '',
+        refundMethod: 'Hoàn tiền bằng tài khoản ngân hàng',
+        bank: '',
+        accountNumber: '',
+        accountHolder: '',
+    });
+    
+    const [loading, setLoading] = useState(false);
+    const [submitting, setSubmitting] = useState(false);
+    const [error, setError] = useState('');
+
+    // Address modal states
+    const [showAddressList, setShowAddressList] = useState(false);
+    const [showNewAddressModal, setShowNewAddressModal] = useState(false);
+    const [showAddressDetailModal, setShowAddressDetailModal] = useState(false);
+    const [selectedAddress, setSelectedAddress] = useState(null);
+    const [addressRefreshKey, setAddressRefreshKey] = useState(0);
+
+    useEffect(() => {
+        const fetchData = async () => {
+            const token = getStoredToken();
+            if (!token) {
+                navigate('/login');
+                return;
+            }
+
+            try {
+                setLoading(true);
+                const apiBaseUrl = getApiBaseUrl();
+                
+                // Fetch user info
+                const userInfo = await getMyInfo(token);
+                if (userInfo) {
+                    setFormData(prev => ({
+                        ...prev,
+                        customerName: userInfo.fullName || userInfo.full_name || prev.customerName || '',
+                        email: userInfo.email || prev.email || '',
+                        phone: userInfo.phoneNumber || userInfo.phone_number || prev.phone || '',
+                    }));
+                }
+
+                // Fetch default address
+                try {
+                    const addresses = await getMyAddresses(token);
+                    if (Array.isArray(addresses) && addresses.length > 0) {
+                        const defaultAddress = addresses.find((addr) => addr?.defaultAddress === true);
+                        if (defaultAddress) {
+                            const formattedAddress = formatFullAddress(defaultAddress);
+                            setFormData(prev => ({
+                                ...prev,
+                                returnAddress: formattedAddress,
+                            }));
+                            setSelectedAddress(defaultAddress);
+                        }
+                    }
+                } catch (_addrErr) {
+                    // Ignore address fetch errors
+                }
+
+                // Fetch order details
+                const orderId = id || orderCode;
+                if (orderId) {
+                    const orderResp = await fetch(`${apiBaseUrl}/orders/${encodeURIComponent(orderId)}`, {
+                        headers: {
+                            'Content-Type': 'application/json',
+                            Authorization: `Bearer ${token}`,
+                        },
+                    });
+
+                    if (orderResp.ok) {
+                        const orderData = await orderResp.json();
+                        const rawOrder = orderData?.result || orderData;
+                        
+                        if (rawOrder) {
+                            const items = Array.isArray(rawOrder.items)
+                                ? rawOrder.items.map((item, index) => ({
+                                      id: item.id || String(index),
+                                      productId: item.productId || item.product?.id,
+                                      name: item.name || item.product?.name || 'Sản phẩm',
+                                      quantity: item.quantity || 1,
+                                      unitPrice: item.unitPrice || item.unit_price || 0,
+                                      totalPrice: (item.totalPrice || item.finalPrice || item.unitPrice || 0) * (item.quantity || 1),
+                                      image: item.imageUrl || item.product?.defaultMedia?.mediaUrl || 'https://via.placeholder.com/80x100',
+                                      productCode: item.productCode || item.product?.code || `SP${String(index + 1).padStart(3, '0')}`,
+                                  }))
+                                : [];
+
+                            setOrder({
+                                id: rawOrder.id || '',
+                                code: rawOrder.code || rawOrder.orderCode || orderId,
+                                items,
+                                totalAmount: rawOrder.totalAmount || 0,
+                                shippingFee: rawOrder.shippingFee || 0,
+                            });
+
+                            // Auto-select all products
+                            setSelectedProducts(items.map(item => item.id));
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('Error fetching data:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchData();
+    }, [id, orderCode, navigate]);
+
+    const handleReasonSelect = (type) => {
+        setSelectedReasonType(type);
+    };
+
+    const handleContinue = () => {
+        if (!selectedReasonType) {
+            setError('Vui lòng chọn lý do trả hàng');
+            return;
+        }
+        setStep(2);
+        setError('');
+    };
+
+    const handleProductToggle = (productId) => {
+        setSelectedProducts(prev => 
+            prev.includes(productId)
+                ? prev.filter(id => id !== productId)
+                : [...prev, productId]
+        );
+    };
+
+    const handleFileChange = (e) => {
+        const newFiles = Array.from(e.target.files);
+        const remainingSlots = 5 - attachedFiles.length;
+        
+        if (remainingSlots <= 0) {
+            e.target.value = ''; // Reset input
+            return;
+        }
+
+        const filesToAdd = newFiles.slice(0, remainingSlots);
+        const updatedFiles = [...attachedFiles, ...filesToAdd];
+        setAttachedFiles(updatedFiles);
+
+        // Create previews for new images
+        filesToAdd.forEach((file, index) => {
+            if (file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    setImagePreviews(prev => [...prev, {
+                        id: Date.now() + Math.random() + index,
+                        url: reader.result,
+                        file: file,
+                        name: file.name
+                    }]);
+                };
+                reader.readAsDataURL(file);
+            } else {
+                // For non-image files (videos), create a placeholder preview
+                setImagePreviews(prev => [...prev, {
+                    id: Date.now() + Math.random() + index,
+                    url: null,
+                    file: file,
+                    name: file.name,
+                    isVideo: true
+                }]);
+            }
+        });
+
+        // Reset input to allow selecting the same file again
+        e.target.value = '';
+    };
+
+    const handleRemoveImage = (imageId) => {
+        setImagePreviews(prev => {
+            const imageToRemove = prev.find(img => img.id === imageId);
+            if (imageToRemove) {
+                setAttachedFiles(prevFiles => 
+                    prevFiles.filter(file => file !== imageToRemove.file)
+                );
+            }
+            return prev.filter(img => img.id !== imageId);
+        });
+    };
+
+    const handleInputChange = (e) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({
+            ...prev,
+            [name]: value,
+        }));
+    };
+
+    const calculateRefund = () => {
+        if (!order) return { productValue: 0, shippingFee: 0, returnFee: 0, total: 0 };
+        
+        const selectedItems = order.items.filter(item => selectedProducts.includes(item.id));
+        const productValue = selectedItems.reduce((sum, item) => sum + (item.totalPrice || 0), 0);
+        const shippingFee = order.shippingFee || 0;
+        
+        // Nếu đổi trả hàng sẽ trừ 10% giá trị sản phẩm
+        const returnFee = selectedReasonType === 'store' 
+            ? 0  // Miễn phí nếu lỗi từ cửa hàng
+            : Math.round(productValue * 0.1); // Trừ 10% giá trị sản phẩm nếu lý do khách hàng
+        
+        const total = productValue + shippingFee - returnFee;
+        
+        return { productValue, shippingFee, returnFee, total };
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setError('');
+
+        if (selectedProducts.length === 0) {
+            setError('Vui lòng chọn ít nhất một sản phẩm');
+            return;
+        }
+
+        if (!formData.description) {
+            setError('Vui lòng mô tả chi tiết vấn đề');
+            return;
+        }
+
+        if (!formData.returnAddress || !formData.returnAddress.trim()) {
+            setError('Vui lòng nhập địa chỉ gửi hàng');
+            return;
+        }
+
+        if (formData.refundMethod === 'Hoàn tiền bằng tài khoản ngân hàng') {
+            if (!formData.bank || !formData.accountNumber || !formData.accountHolder) {
+                setError('Vui lòng điền đầy đủ thông tin ngân hàng');
+                return;
+            }
+        }
+
+        try {
+            setSubmitting(true);
+            const token = getStoredToken();
+            const apiBaseUrl = getApiBaseUrl();
+
+            const reasonText = selectedReasonType === 'store' 
+                ? 'Sản phẩm gặp sự cố từ cửa hàng'
+                : 'Thay đổi nhu cầu / Mua nhầm';
+
+            // Combine all information into content field
+            const contentParts = [
+                `Yêu cầu hoàn tiền/trả hàng - ${reasonText}`,
+                `\nMô tả: ${formData.description}`,
+                `\nĐịa chỉ gửi hàng: ${formData.returnAddress}`,
+                `\nPhương thức hoàn tiền: ${formData.refundMethod}`,
+            ];
+            
+            if (formData.bank) {
+                contentParts.push(
+                    `\nNgân hàng: ${formData.bank}`,
+                    `\nSố tài khoản: ${formData.accountNumber}`,
+                    `\nChủ tài khoản: ${formData.accountHolder}`
+                );
+            }
+
+            const content = contentParts.join('');
+
+            // Update order status to RETURN_REQUESTED instead of creating ticket
+            const orderId = order?.id || id || orderCode;
+            const response = await fetch(`${apiBaseUrl}/orders/${encodeURIComponent(orderId)}/request-return`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                    note: content.trim(),
+                }),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.message || 'Không thể gửi yêu cầu. Vui lòng thử lại.');
+            }
+
+            navigate('/customer-account/orders');
+        } catch (err) {
+            console.error('Error submitting refund request:', err);
+            setError(err.message || 'Có lỗi xảy ra khi gửi yêu cầu. Vui lòng thử lại.');
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    const handleBack = () => {
+        if (step === 2) {
+            setStep(1);
+            setError('');
+        } else {
+            navigate(-1);
+        }
+    };
+
+    if (loading) {
+        return (
+            <div className={cx('page')}>
+                <div className={cx('loading')}>Đang tải...</div>
+            </div>
+        );
+    }
+
+    const refund = calculateRefund();
+
+    return (
+        <div className={cx('page')}>
+            <div className={cx('container')}>
+                {/* Return Conditions */}
+                <div className={cx('conditions-box')}>
+                    <h3 className={cx('conditions-title')}>Điều kiện áp dụng trả hàng</h3>
+                    <ul className={cx('conditions-list')}>
+                        <li>Yêu cầu gửi trong vòng 7 ngày kể từ khi nhận sách.</li>
+                        <li>Sách còn nguyên trạng (không rách, không viết/đánh dấu).</li>
+                        <li>Cung cấp ảnh/video làm bằng chứng.</li>
+                    </ul>
+                </div>
+
+                {step === 1 ? (
+                    <>
+                        {/* Reason Selection */}
+                        <div className={cx('reason-section')}>
+                            <h2 className={cx('section-title')}>Lý do trả hàng / hoàn tiền</h2>
+                            <div className={cx('reason-cards')}>
+                                <div 
+                                    className={cx('reason-card', { selected: selectedReasonType === 'store' })}
+                                    onClick={() => handleReasonSelect('store')}
+                                >
+                                    <h3 className={cx('reason-title')}>Sản phẩm gặp sự cố từ cửa hàng</h3>
+                                    <p className={cx('reason-desc')}>
+                                        Sản phẩm có lỗi kỹ thuật, thiếu trang, bị hỏng do đóng gói, hoặc thông tin hiển thị không đúng.
+                                    </p>
+                                    <button className={cx('reason-badge', 'free')}>Miễn phí trả hàng</button>
+                                </div>
+
+                                <div 
+                                    className={cx('reason-card', { selected: selectedReasonType === 'customer' })}
+                                    onClick={() => handleReasonSelect('customer')}
+                                >
+                                    <h3 className={cx('reason-title')}>Thay đổi nhu cầu / Mua nhầm</h3>
+                                    <p className={cx('reason-desc')}>
+                                        Khách hàng muốn đổi phiên bản, đặt nhầm, hoặc thay đổi nhu cầu sử dụng sản phẩm.
+                                    </p>
+                                    <button className={cx('reason-badge', 'paid')}>Khách hỗ trợ phí trả hàng</button>
+                                </div>
+                            </div>
+
+                            {error && <div className={cx('error-message')}>{error}</div>}
+
+                            <div className={cx('continue-wrapper')}>
+                                <button className={cx('continue-btn')} onClick={handleContinue}>
+                                    Tiếp tục
+                                </button>
+                            </div>
+                        </div>
+                    </>
+                ) : (
+                    <form className={cx('form')} onSubmit={handleSubmit}>
+                        <h2 className={cx('section-title')}>Yêu cầu trả hàng / hoàn tiền</h2>
+
+                        {/* Products in Order */}
+                        <div className={cx('form-section')}>
+                            <label className={cx('section-label')}>Sản phẩm trong đơn</label>
+                            <div className={cx('products-list')}>
+                                {order?.items?.map((item) => (
+                                    <div key={item.id} className={cx('product-item')}>
+                                        <input
+                                            type="checkbox"
+                                            checked={selectedProducts.includes(item.id)}
+                                            onChange={() => handleProductToggle(item.id)}
+                                            className={cx('product-checkbox')}
+                                        />
+                                        <img src={item.image} alt={item.name} className={cx('product-image')} />
+                                        <div className={cx('product-info')}>
+                                            <h4 className={cx('product-name')}>{item.name}</h4>
+                                            <p className={cx('product-details')}>
+                                                Số lượng: {item.quantity} | Mã SP: {item.productCode}
+                                            </p>
+                                            <p className={cx('product-price')}>{formatCurrency(item.unitPrice || item.totalPrice)}</p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Attached Files */}
+                        <div className={cx('form-section')}>
+                            <label className={cx('section-label')}>Ảnh / Video đính kèm</label>
+                            <div className={cx('file-upload')}>
+                                <label className={cx('file-label')}>
+                                    <input
+                                        type="file"
+                                        multiple
+                                        accept="image/*,video/*"
+                                        onChange={handleFileChange}
+                                        className={cx('file-input')}
+                                        disabled={attachedFiles.length >= 5}
+                                    />
+                                    <span className={cx('file-button')}>Chọn tệp</span>
+                                    <span className={cx('file-text')}>
+                                        {attachedFiles.length > 0 
+                                            ? `${attachedFiles.length}/5 tệp đã chọn`
+                                            : 'Chưa có tệp nào được chọn'}
+                                    </span>
+                                </label>
+                                <p className={cx('file-hint')}>
+                                    Chọn tối đa 5 tệp. Vui lòng đảm bảo hình ảnh/video rõ ràng.
+                                </p>
+                            </div>
+
+                            {/* Image Previews */}
+                            {imagePreviews.length > 0 && (
+                                <div className={cx('image-previews')}>
+                                    {imagePreviews.map((preview) => (
+                                        <div key={preview.id} className={cx('image-preview-item')}>
+                                            {preview.url ? (
+                                                <img 
+                                                    src={preview.url} 
+                                                    alt={preview.name}
+                                                    className={cx('preview-image')}
+                                                />
+                                            ) : (
+                                                <div className={cx('preview-placeholder')}>
+                                                    <span className={cx('preview-icon')}>📹</span>
+                                                    <span className={cx('preview-filename')}>{preview.name}</span>
+                                                </div>
+                                            )}
+                                            <button
+                                                type="button"
+                                                className={cx('remove-image-btn')}
+                                                onClick={() => handleRemoveImage(preview.id)}
+                                                title="Xóa tệp"
+                                            >
+                                                ×
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Description */}
+                        <div className={cx('form-section')}>
+                            <label className={cx('section-label')}>Mô tả chi tiết</label>
+                            <textarea
+                                name="description"
+                                value={formData.description}
+                                onChange={handleInputChange}
+                                className={cx('textarea')}
+                                placeholder="Mô tả vấn đề... (bắt buộc)"
+                                rows="6"
+                                required
+                            />
+                        </div>
+
+                        {/* Contact Email */}
+                        <div className={cx('form-section')}>
+                            <label className={cx('section-label')}>Email liên hệ</label>
+                            <input
+                                type="email"
+                                name="email"
+                                value={formData.email}
+                                onChange={handleInputChange}
+                                className={cx('input')}
+                                required
+                            />
+                        </div>
+
+                        {/* Return Address */}
+                        <div className={cx('form-section')}>
+                            <label className={cx('section-label')}>Địa chỉ gửi hàng</label>
+                            <input
+                                type="text"
+                                value={formData.returnAddress || ''}
+                                readOnly
+                                onClick={() => setShowAddressList(true)}
+                                onFocus={() => setShowAddressList(true)}
+                                className={cx('input')}
+                                placeholder="Chọn từ danh sách địa chỉ của bạn"
+                                required
+                            />
+                        </div>
+
+                        {/* Refund Method */}
+                        <div className={cx('form-section')}>
+                            <label className={cx('section-label')}>Hình thức hoàn tiền</label>
+                            <select
+                                name="refundMethod"
+                                value={formData.refundMethod}
+                                onChange={handleInputChange}
+                                className={cx('select')}
+                                disabled
+                            >
+                                <option value="Hoàn tiền bằng tài khoản ngân hàng">Hoàn tiền bằng tài khoản ngân hàng</option>
+                            </select>
+
+                            {formData.refundMethod === 'Hoàn tiền bằng tài khoản ngân hàng' && (
+                                <div className={cx('bank-details')}>
+                                    <select
+                                        name="bank"
+                                        value={formData.bank}
+                                        onChange={handleInputChange}
+                                        className={cx('select')}
+                                        required
+                                    >
+                                        <option value="">Chọn ngân hàng</option>
+                                        {BANKS.map(bank => (
+                                            <option key={bank} value={bank}>{bank}</option>
+                                        ))}
+                                    </select>
+                                    <input
+                                        type="text"
+                                        name="accountNumber"
+                                        value={formData.accountNumber}
+                                        onChange={handleInputChange}
+                                        className={cx('input')}
+                                        placeholder="Nhập số tài khoản"
+                                        required
+                                    />
+                                    <input
+                                        type="text"
+                                        name="accountHolder"
+                                        value={formData.accountHolder}
+                                        onChange={handleInputChange}
+                                        className={cx('input')}
+                                        placeholder="Nhập tên chủ tài khoản"
+                                        required
+                                    />
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Summary */}
+                        <div className={cx('form-section', 'summary-section')}>
+                            <label className={cx('section-label')}>Tóm tắt hoàn tiền</label>
+                            <div className={cx('summary-list')}>
+                                <div className={cx('summary-row')}>
+                                    <span>Giá trị sản phẩm</span>
+                                    <span>{formatCurrency(refund.productValue)}</span>
+                                </div>
+                                <div className={cx('summary-row')}>
+                                    <span>Phí vận chuyển (lần đầu)</span>
+                                    <span>{formatCurrency(refund.shippingFee)}</span>
+                                </div>
+                                <div className={cx('summary-row')}>
+                                    <span>Phí trả hàng</span>
+                                    <span>{formatCurrency(refund.returnFee)}</span>
+                                </div>
+                                <div className={cx('summary-row', 'total')}>
+                                    <span>Tổng hoàn</span>
+                                    <span>{formatCurrency(refund.total)}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {error && <div className={cx('error-message')}>{error}</div>}
+
+                        <div className={cx('actions')}>
+                            <button
+                                type="button"
+                                className={cx('btn', 'cancel-btn')}
+                                onClick={handleBack}
+                                disabled={submitting}
+                            >
+                                Hủy
+                            </button>
+                            <button
+                                type="submit"
+                                className={cx('btn', 'submit-btn')}
+                                disabled={submitting}
+                            >
+                                {submitting ? 'Đang gửi...' : 'Gửi yêu cầu'}
+                            </button>
+                        </div>
+                    </form>
+                )}
+            </div>
+
+            {/* Address Modals */}
+            <AddressListModal
+                open={showAddressList}
+                onClose={() => setShowAddressList(false)}
+                onSelectAddress={(address) => {
+                    if (!address) return;
+                    const formattedAddress = formatFullAddress(address);
+                    setFormData(prev => ({
+                        ...prev,
+                        returnAddress: formattedAddress,
+                    }));
+                    setSelectedAddress(address);
+                    setShowAddressList(false);
+                }}
+                onViewDetail={(address) => {
+                    setSelectedAddress(address);
+                    setShowAddressDetailModal(true);
+                }}
+                onAddNewAddress={() => {
+                    setShowNewAddressModal(true);
+                }}
+                refreshKey={addressRefreshKey}
+                highlightAddressId={selectedAddress?.id || null}
+            />
+            <NewAddressModal
+                open={showNewAddressModal}
+                onClose={() => setShowNewAddressModal(false)}
+                onCreated={(newAddress) => {
+                    if (newAddress) {
+                        const formattedAddress = formatFullAddress(newAddress);
+                        setFormData(prev => ({
+                            ...prev,
+                            returnAddress: formattedAddress,
+                        }));
+                        setSelectedAddress(newAddress);
+                        setAddressRefreshKey((prev) => prev + 1);
+                    }
+                    setShowNewAddressModal(false);
+                    setShowAddressList(false);
+                }}
+            />
+            <AddressDetailModal
+                open={showAddressDetailModal}
+                address={selectedAddress}
+                onClose={() => setShowAddressDetailModal(false)}
+                onUpdated={(updated) => {
+                    if (!updated) return;
+                    const formattedAddress = formatFullAddress(updated);
+                    setFormData(prev => ({
+                        ...prev,
+                        returnAddress: formattedAddress,
+                    }));
+                    setSelectedAddress(updated);
+                    setAddressRefreshKey((prev) => prev + 1);
+                }}
+                onDeleted={(deletedId) => {
+                    setShowAddressDetailModal(false);
+                    setAddressRefreshKey((prev) => prev + 1);
+                    if (selectedAddress?.id === deletedId) {
+                        setSelectedAddress(null);
+                        setFormData(prev => ({
+                            ...prev,
+                            returnAddress: '',
+                        }));
+                    }
+                }}
+            />
+        </div>
+    );
+}

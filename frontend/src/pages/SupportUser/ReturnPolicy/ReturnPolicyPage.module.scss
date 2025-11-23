@@ -33,3 +33,30 @@
     }
 }
 
+.subsection {
+    margin-bottom: 24px;
+    padding-left: 20px;
+}
+
+.subsection-title {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #1A3C5A;
+    margin-bottom: 8px;
+}
+
+.cost-item {
+    margin-top: 16px;
+    padding: 16px;
+    background: #f9fafb;
+    border-radius: 8px;
+    border-left: 4px solid #1A3C5A;
+}
+
+.cost-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 8px;
+}
+

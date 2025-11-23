@@ -56,9 +56,53 @@ export function getStoredToken(key = 'token') {
     }
 }
 
+// Flag to prevent multiple simultaneous logout attempts
+let isLoggingOut = false;
+
+// Helper function to clear all tokens and logout
+function clearTokensAndLogout() {
+    // Prevent multiple simultaneous logout attempts
+    if (isLoggingOut) {
+        return;
+    }
+    
+    isLoggingOut = true;
+    
+    try {
+        localStorage.removeItem('token');
+        localStorage.removeItem('refreshToken');
+        localStorage.removeItem('displayName');
+        sessionStorage.removeItem('token');
+        sessionStorage.removeItem('_checking_role');
+        
+        // Dispatch events to notify other components
+        window.dispatchEvent(new Event('tokenUpdated'));
+        window.dispatchEvent(new CustomEvent('displayNameUpdated'));
+        
+        // Only redirect if we're in browser environment
+        if (typeof window !== 'undefined' && window.location) {
+            // Don't redirect if already on login page or home page
+            const currentPath = window.location.pathname;
+            if (!currentPath.includes('/login') && currentPath !== '/') {
+                // Use setTimeout to allow current request to complete
+                setTimeout(() => {
+                    window.location.href = '/';
+                }, 100);
+            }
+        }
+    } catch (error) {
+        console.error('Error clearing tokens:', error);
+    } finally {
+        // Reset flag after a delay to allow redirect
+        setTimeout(() => {
+            isLoggingOut = false;
+        }, 1000);
+    }
+}
+
 // Hàm helper để tạo request API
 async function apiRequest(endpoint, options = {}) {
-    const { method = 'GET', body = null, token = null, isFormData = false } = options;
+    const { method = 'GET', body = null, token = null, isFormData = false, skipAuthCheck = false } = options;
     const apiBaseUrl = getApiBaseUrl();
     const tokenToUse = token || getStoredToken('token');
 
@@ -77,6 +121,29 @@ async function apiRequest(endpoint, options = {}) {
             headers,
             ...(body && { body: isFormData ? body : JSON.stringify(body) }),
         });
+        
+        // Auto-handle 401 Unauthorized (token expired/invalid)
+        if (resp.status === 401 && !skipAuthCheck && tokenToUse) {
+            const errorData = await resp.json().catch(() => ({}));
+            const errorMessage = errorData?.message || errorData?.error || 'Token invalid';
+            
+            // Check if it's a token validation error
+            if (errorMessage.includes('Token invalid') || errorMessage.includes('expired') || errorMessage.includes('Unauthorized')) {
+                console.warn('Token expired or invalid. Auto-logging out...');
+                clearTokensAndLogout();
+                
+                // Return error response
+                return { 
+                    ok: false, 
+                    status: 401, 
+                    data: { 
+                        message: 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.',
+                        autoLoggedOut: true 
+                    } 
+                };
+            }
+        }
+        
         const data = await resp.json().catch(() => ({}));
         return { ok: resp.ok, status: resp.status, data };
     } catch (error) {

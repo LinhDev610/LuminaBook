@@ -119,6 +119,19 @@ public class OrderController {
                 .build();
     }
 
+    @PostMapping("/{id}/request-return")
+    @PreAuthorize("hasRole('CUSTOMER')")
+    public ApiResponse<OrderDetailResponse> requestReturn(
+            @PathVariable String id,
+            @RequestBody(required = false) java.util.Map<String, String> request) {
+        String returnRequestNote = request != null ? request.get("note") : null;
+        Order order = orderService.requestReturn(id, returnRequestNote);
+        return ApiResponse.<OrderDetailResponse>builder()
+                .result(toDetailResponse(order))
+                .message("Đã gửi yêu cầu trả hàng/hoàn tiền thành công.")
+                .build();
+    }
+
     private OrderResponse toResponse(Order order) {
         if (order == null) {
             return null;

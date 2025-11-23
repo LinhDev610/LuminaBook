@@ -11,7 +11,7 @@ export default function ShoppingGuidePage() {
     return (
         <div className={cx('wrapper')}>
             <div className={cx('container')}>
-                <button className={cx('back-button')} onClick={() => navigate('/support')}>
+                <button className={cx('back-button')} onClick={() => navigate('/support/user')}>
                     ← Quay lại
                 </button>
 

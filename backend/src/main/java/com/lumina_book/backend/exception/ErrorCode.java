@@ -59,6 +59,8 @@ public enum ErrorCode {
     ORDER_NOT_EXISTED(7002, "Đơn hàng không tồn tại", HttpStatus.NOT_FOUND),
     EXTERNAL_SERVICE_ERROR(7003, "Lỗi kết nối dịch vụ vận chuyển", HttpStatus.BAD_GATEWAY),
     ADDRESS_NOT_EXISTED(7004, "Địa chỉ không tồn tại", HttpStatus.NOT_FOUND),
+    SHIPMENT_NOT_EXISTED(7005, "Vận đơn không tồn tại", HttpStatus.NOT_FOUND),
+    BAD_REQUEST(7006, "Yêu cầu không hợp lệ", HttpStatus.BAD_REQUEST),
 
     // FILE UPLOAD
     FILE_UPLOAD_FAILED(8001, "Không thể upload file", HttpStatus.INTERNAL_SERVER_ERROR);

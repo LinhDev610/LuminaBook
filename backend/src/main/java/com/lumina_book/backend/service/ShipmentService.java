@@ -1,134 +1,364 @@
 package com.lumina_book.backend.service;
 
-import java.time.OffsetDateTime;
-import java.time.format.DateTimeParseException;
-import java.util.HashMap;
-import java.util.Map;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
 
-import org.springframework.http.*;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.transaction.annotation.Transactional;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.lumina_book.backend.configuration.GhnProperties;
-import com.lumina_book.backend.dto.request.CreateGhnShipmentRequest;
-import com.lumina_book.backend.dto.response.GhnShipmentFee;
-import com.lumina_book.backend.dto.response.GhnShipmentResponse;
+import com.lumina_book.backend.constant.GhnConstants;
+import com.lumina_book.backend.dto.request.GhnCalculateFeeRequest;
+import com.lumina_book.backend.dto.request.GhnCreateOrderRequest;
+import com.lumina_book.backend.dto.request.GhnOrderItemCategoryRequest;
+import com.lumina_book.backend.dto.request.GhnOrderItemRequest;
+import com.lumina_book.backend.dto.response.GhnFeeResponse;
+import com.lumina_book.backend.dto.response.GhnLeadtimeResponse;
+import com.lumina_book.backend.dto.response.GhnPickShiftResponse;
+import com.lumina_book.backend.dto.response.GhnShipmentDataResponse;
+import com.lumina_book.backend.entity.Address;
 import com.lumina_book.backend.entity.Order;
+import com.lumina_book.backend.entity.OrderItem;
+import com.lumina_book.backend.entity.Product;
 import com.lumina_book.backend.entity.Shipment;
 import com.lumina_book.backend.enums.ShipmentProvider;
 import com.lumina_book.backend.enums.ShipmentStatus;
 import com.lumina_book.backend.exception.AppException;
 import com.lumina_book.backend.exception.ErrorCode;
+import com.lumina_book.backend.mapper.ShipmentMapper;
 import com.lumina_book.backend.repository.OrderRepository;
 import com.lumina_book.backend.repository.ShipmentRepository;
 
+import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
+import lombok.experimental.FieldDefaults;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
+@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class ShipmentService {
-    private final ShipmentRepository shipmentRepository;
-    private final OrderRepository orderRepository;
-    private final GhnProperties ghnProperties;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    ShipmentRepository shipmentRepository;
+    OrderRepository orderRepository;
+    GhnService ghnService;
+    ShipmentMapper shipmentMapper;
 
-    public Shipment createGhnOrder(CreateGhnShipmentRequest req) {
-        Order order = orderRepository
-                .findById(req.getOrderId())
-                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_EXISTED));
+    public List<GhnPickShiftResponse> getPickShifts() {
+        return ghnService.getPickShifts();
+    }
 
-        // Prepare GHN request payload
-        Map<String, Object> payload = new HashMap<>();
-        payload.put("payment_type_id", req.getPayment_type_id());
-        payload.put("required_note", req.getRequired_note());
-        payload.put("service_type_id", req.getService_type_id());
-        payload.put("note", req.getNote());
+    public GhnFeeResponse calculateShippingFee(String orderId) {
+        Order order = validateOrderWithAddress(orderId);
+        GhnCreateOrderRequest ghnRequest = buildGhnCreateOrderRequest(order, null);
+        
+        GhnCalculateFeeRequest feeRequest = GhnCalculateFeeRequest.builder()
+                .serviceTypeId(ghnRequest.getServiceTypeId())
+                .insuranceValue(ghnRequest.getInsuranceValue())
+                .fromDistrictId(ghnRequest.getFromDistrictId())
+                .fromWardCode(ghnRequest.getFromWardCode())
+                .toDistrictId(ghnRequest.getToDistrictId())
+                .toWardCode(ghnRequest.getToWardCode())
+                .length(ghnRequest.getLength())
+                .width(ghnRequest.getWidth())
+                .height(ghnRequest.getHeight())
+                .weight(ghnRequest.getWeight())
+                .items(ghnRequest.getItems())
+                .build();
 
-        // sender
-        if (req.getFrom_name() != null) payload.put("from_name", req.getFrom_name());
-        if (req.getFrom_phone() != null) payload.put("from_phone", req.getFrom_phone());
-        if (req.getFrom_address() != null) payload.put("from_address", req.getFrom_address());
-        if (req.getFrom_ward_name() != null) payload.put("from_ward_name", req.getFrom_ward_name());
-        if (req.getFrom_district_name() != null) payload.put("from_district_name", req.getFrom_district_name());
-        if (req.getFrom_province_name() != null) payload.put("from_province_name", req.getFrom_province_name());
+        return ghnService.calculateShippingFee(feeRequest);
+    }
 
-        // receiver
-        payload.put("to_name", req.getTo_name());
-        payload.put("to_phone", req.getTo_phone());
-        payload.put("to_address", req.getTo_address());
-        payload.put("to_ward_name", req.getTo_ward_name());
-        payload.put("to_district_name", req.getTo_district_name());
-        payload.put("to_province_name", req.getTo_province_name());
+    public GhnLeadtimeResponse getLeadtime(String orderId) {
+        Order order = validateOrderWithAddress(orderId);
+        GhnCreateOrderRequest ghnRequest = buildGhnCreateOrderRequest(order, null);
+        
+        return ghnService.getLeadtime(
+                ghnRequest.getFromDistrictId(),
+                ghnRequest.getFromWardCode(),
+                ghnRequest.getToDistrictId(),
+                ghnRequest.getToWardCode(),
+                ghnRequest.getServiceTypeId());
+    }
 
-        // parcel
-        payload.put("length", req.getLength());
-        payload.put("width", req.getWidth());
-        payload.put("height", req.getHeight());
-        payload.put("weight", req.getWeight());
-        payload.put("cod_amount", req.getCod_amount());
+    public GhnShipmentDataResponse previewOrder(String orderId, List<Integer> pickShiftIds) {
+        Order order = validateOrderWithAddress(orderId);
+        GhnCreateOrderRequest ghnRequest = buildGhnCreateOrderRequest(order, pickShiftIds);
+        return ghnService.previewOrder(ghnRequest);
+    }
 
-        if (req.getItems() != null && !req.getItems().isEmpty()) {
-            payload.put("items", req.getItems());
-        }
+    @Transactional
+    public Shipment createGhnOrder(String orderId, List<Integer> pickShiftIds) {
+        Order order = validateOrderWithAddress(orderId);
+        
+        shipmentRepository.findByOrderId(orderId)
+                .ifPresent(existing -> {
+                    throw new AppException(ErrorCode.BAD_REQUEST, "Đơn hàng đã có vận đơn GHN");
+                });
 
-        // Call GHN API
-        RestTemplate restTemplate = new RestTemplate();
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.add("ShopId", String.valueOf(ghnProperties.getShopId()));
-        headers.add("Token", ghnProperties.getToken());
-
-        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(payload, headers);
-        String url = ghnProperties.getBaseUrl() + "/shiip/public-api/v2/shipping-order/create";
-
-        ResponseEntity<GhnShipmentResponse> response =
-                restTemplate.exchange(url, HttpMethod.POST, entity, GhnShipmentResponse.class);
-
-        GhnShipmentResponse body = response.getBody();
-        if (body == null || body.getCode() == null || body.getCode() != 200 || body.getData() == null) {
+        GhnCreateOrderRequest ghnRequest = buildGhnCreateOrderRequest(order, pickShiftIds);
+        GhnShipmentDataResponse ghnData = ghnService.createOrder(ghnRequest);
+        
+        if (ghnData == null) {
             throw new AppException(ErrorCode.EXTERNAL_SERVICE_ERROR);
         }
 
-        // Persist shipment
-        Shipment shipment = Shipment.builder()
+        return shipmentRepository.save(buildShipmentFromGhnData(order, ghnData));
+    }
+
+    public Shipment getShipmentByOrderId(String orderId) {
+        return shipmentRepository.findByOrderId(orderId)
+                .orElseThrow(() -> new AppException(ErrorCode.SHIPMENT_NOT_EXISTED));
+    }
+
+    public Shipment getShipmentByOrderCode(String orderCode) {
+        return shipmentRepository.findByOrderCode(orderCode)
+                .orElseThrow(() -> new AppException(ErrorCode.SHIPMENT_NOT_EXISTED));
+    }
+
+    // Build GHN CreateOrderRequest từ Order.
+    private GhnCreateOrderRequest buildGhnCreateOrderRequest(Order order, List<Integer> pickShiftIds) {
+        Address address = order.getAddress();
+        int totalWeight = calculateTotalWeight(order);
+        int serviceTypeId = determineServiceType(totalWeight);
+        Long codAmount = calculateCodAmount(order);
+
+        var builder = GhnCreateOrderRequest.builder()
+                .paymentTypeId(GhnConstants.PAYMENT_TYPE_RECEIVER)
+                .requiredNote(GhnConstants.REQUIRED_NOTE)
+                .returnPhone(GhnConstants.DEFAULT_FROM_PHONE)
+                .clientOrderCode(order.getCode())
+                .fromName(GhnConstants.DEFAULT_FROM_NAME)
+                .fromPhone(GhnConstants.DEFAULT_FROM_PHONE)
+                .fromAddress(GhnConstants.DEFAULT_FROM_ADDRESS)
+                .fromWardCode(GhnConstants.DEFAULT_FROM_WARD_CODE)
+                .fromDistrictId(GhnConstants.DEFAULT_FROM_DISTRICT_ID)
+                .fromProvinceId(GhnConstants.DEFAULT_FROM_PROVINCE_ID)
+                .toName(address.getRecipientName())
+                .toPhone(address.getRecipientPhoneNumber())
+                .toAddress(buildFullAddress(address))
+                .toWardCode(address.getWardCode())
+                .toDistrictId(parseInteger(address.getDistrictID()))
+                .toProvinceId(parseInteger(address.getProvinceID()))
+                .codAmount(codAmount)
+                .content(GhnConstants.CONTENT)
+                .codFailedAmount(GhnConstants.COD_FAILED_AMOUNT)
+                .pickStationId(null)
+                .deliverStationId(null)
+                .insuranceValue(codAmount)
+                .serviceTypeId(serviceTypeId)
+                .coupon(null)
+                .pickupTime(Instant.now().getEpochSecond())
+                .pickShift(pickShiftIds != null ? pickShiftIds : new ArrayList<>())
+                .note(order.getNote());
+
+        if (serviceTypeId == GhnConstants.SERVICE_TYPE_LIGHT) {
+            var lightDims = calculateLightServiceDimensions(order);
+            builder.length(lightDims.length)
+                    .width(lightDims.width)
+                    .height(lightDims.height)
+                    .weight(lightDims.weight);
+        } else {
+            var heavyItems = buildHeavyServiceItems(order);
+            builder.length(null)
+                    .width(null)
+                    .height(null)
+                    .weight(null)
+                    .items(heavyItems);
+        }
+
+        return builder.build();
+    }
+
+    private int calculateTotalWeight(Order order) {
+        if (order.getItems() == null || order.getItems().isEmpty()) {
+            return 0;
+        }
+
+        return order.getItems().stream()
+                .mapToInt(item -> {
+                    Product product = item.getProduct();
+                    if (product == null || product.getWeight() == null) {
+                        return 0;
+                    }
+                    int weightInGrams = (int) (product.getWeight() * 1000);
+                    return weightInGrams * (item.getQuantity() != null ? item.getQuantity() : 1);
+                })
+                .sum();
+    }
+
+    private int determineServiceType(int totalWeightGrams) {
+        return totalWeightGrams >= GhnConstants.HEAVY_SERVICE_WEIGHT_THRESHOLD 
+                ? GhnConstants.SERVICE_TYPE_HEAVY 
+                : GhnConstants.SERVICE_TYPE_LIGHT;
+    }
+
+    private Long calculateCodAmount(Order order) {
+        if (order.getTotalAmount() == null || order.getShippingFee() == null) {
+            return 0L;
+        }
+        return Math.round(order.getTotalAmount() - order.getShippingFee());
+    }
+
+    private ParcelDimensions calculateLightServiceDimensions(Order order) {
+        if (order.getItems() == null || order.getItems().isEmpty()) {
+            return new ParcelDimensions(
+                GhnConstants.DEFAULT_DIMENSION,
+                GhnConstants.DEFAULT_DIMENSION,
+                GhnConstants.DEFAULT_DIMENSION,
+                GhnConstants.DEFAULT_WEIGHT
+            );
+        }
+
+        int maxLength = GhnConstants.DEFAULT_DIMENSION;
+        int maxWidth = GhnConstants.DEFAULT_DIMENSION;
+        int sumHeight = 0;
+        int totalWeight = 0;
+
+        for (OrderItem item : order.getItems()) {
+            Product product = item.getProduct();
+            if (product == null) continue;
+
+            int quantity = item.getQuantity() != null ? item.getQuantity() : 1;
+            var dims = getProductDimensions(product);
+            
+            maxLength = Math.max(maxLength, dims.length);
+            maxWidth = Math.max(maxWidth, dims.width);
+            sumHeight += dims.height * quantity;
+            totalWeight += dims.weight * quantity;
+        }
+
+        return new ParcelDimensions(
+            maxLength,
+            maxWidth,
+            Math.max(sumHeight, GhnConstants.DEFAULT_DIMENSION),
+            Math.max(totalWeight, GhnConstants.DEFAULT_WEIGHT)
+        );
+    }
+
+    private List<GhnOrderItemRequest> buildHeavyServiceItems(Order order) {
+        if (order.getItems() == null || order.getItems().isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        return order.getItems().stream()
+                .map(item -> {
+                    var product = item.getProduct();
+                    if (product == null) {
+                        throw new IllegalArgumentException("OrderItem must have a product");
+                    }
+
+                    var dims = getProductDimensions(product);
+                    var category = GhnOrderItemCategoryRequest.builder()
+                            .level1(product.getCategory() != null ? product.getCategory().getName() : "Sách")
+                            .build();
+
+                    return GhnOrderItemRequest.builder()
+                            .name(product.getName())
+                            .code(product.getId())
+                            .quantity(item.getQuantity() != null ? item.getQuantity() : 1)
+                            .price(item.getFinalPrice() != null ? item.getFinalPrice().intValue() : 0)
+                            .length(dims.length)
+                            .width(dims.width)
+                            .height(dims.height)
+                            .weight(dims.weight)
+                            .category(category)
+                            .build();
+                })
+                .collect(Collectors.toList());
+    }
+
+    private ProductDimensions getProductDimensions(Product product) {
+        if (product == null) {
+            return new ProductDimensions(
+                GhnConstants.DEFAULT_DIMENSION,
+                GhnConstants.DEFAULT_DIMENSION,
+                GhnConstants.DEFAULT_DIMENSION,
+                GhnConstants.DEFAULT_WEIGHT
+            );
+        }
+
+        int length = product.getLength() != null ? product.getLength().intValue() : GhnConstants.DEFAULT_DIMENSION;
+        int width = product.getWidth() != null ? product.getWidth().intValue() : GhnConstants.DEFAULT_DIMENSION;
+        int height = product.getHeight() != null ? product.getHeight().intValue() : GhnConstants.DEFAULT_DIMENSION;
+        int weight = product.getWeight() != null ? (int) (product.getWeight() * 1000) : GhnConstants.DEFAULT_WEIGHT;
+
+        return new ProductDimensions(
+            Math.max(length, GhnConstants.DEFAULT_DIMENSION),
+            Math.max(width, GhnConstants.DEFAULT_DIMENSION),
+            Math.max(height, GhnConstants.DEFAULT_DIMENSION),
+            Math.max(weight, GhnConstants.DEFAULT_WEIGHT)
+        );
+    }
+
+    private String buildFullAddress(Address address) {
+        StringBuilder sb = new StringBuilder();
+        appendIfNotBlank(sb, address.getAddress());
+        appendIfNotBlank(sb, address.getWardName());
+        appendIfNotBlank(sb, address.getDistrictName());
+        appendIfNotBlank(sb, address.getProvinceName());
+        appendIfNotBlank(sb, address.getCountry());
+        return sb.toString();
+    }
+
+    private void appendIfNotBlank(StringBuilder sb, String value) {
+        if (value != null && !value.isBlank()) {
+            if (sb.length() > 0) sb.append(", ");
+            sb.append(value);
+        }
+    }
+
+    private Integer parseInteger(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return Integer.parseInt(value.trim());
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private Order validateOrderWithAddress(String orderId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_EXISTED));
+        
+        if (order.getAddress() == null) {
+            throw new AppException(ErrorCode.ADDRESS_NOT_EXISTED);
+        }
+        
+        return order;
+    }
+
+    private Shipment buildShipmentFromGhnData(Order order, GhnShipmentDataResponse ghnData) {
+        return Shipment.builder()
                 .order(order)
                 .provider(ShipmentProvider.GHN)
                 .status(ShipmentStatus.CREATED)
-                .orderCode(body.getData().getOrder_code())
-                .sortCode(body.getData().getSort_code())
-                .transType(body.getData().getTrans_type())
-                .wardEncode(body.getData().getWard_encode())
-                .districtEncode(body.getData().getDistrict_encode())
-                .feeMainService(getLongSafe(body.getData().getFee(), "main_service"))
-                .feeInsurance(getLongSafe(body.getData().getFee(), "insurance"))
-                .feeStationDo(getLongSafe(body.getData().getFee(), "station_do"))
-                .feeStationPu(getLongSafe(body.getData().getFee(), "station_pu"))
-                .feeReturn(getLongSafe(body.getData().getFee(), "return"))
-                .feeR2s(getLongSafe(body.getData().getFee(), "r2s"))
-                .feeCoupon(getLongSafe(body.getData().getFee(), "coupon"))
-                .feeCodFailedFee(getLongSafe(body.getData().getFee(), "cod_failed_fee"))
-                .totalFee(body.getData().getTotal_fee())
-                .expectedDeliveryTime(parseDateTime(body.getData().getExpected_delivery_time()))
+                .orderCode(ghnData.getOrder_code())
+                .totalFee(ghnData.getTotal_fee())
                 .build();
-
-        shipmentRepository.save(shipment);
-        return shipment;
     }
 
-    private Long getLongSafe(GhnShipmentFee fee, String field) {
-        if (fee == null) return null;
-        JsonNode node = objectMapper.valueToTree(fee).get(field);
-        return node != null && node.isNumber() ? node.longValue() : null;
+    // Helper classes
+    private static class ParcelDimensions {
+        final int length, width, height, weight;
+        ParcelDimensions(int length, int width, int height, int weight) {
+            this.length = length;
+            this.width = width;
+            this.height = height;
+            this.weight = weight;
+        }
     }
 
-    private OffsetDateTime parseDateTime(String iso) {
-        if (iso == null) return null;
-        try {
-            return OffsetDateTime.parse(iso);
-        } catch (DateTimeParseException e) {
-            return null;
+    private static class ProductDimensions {
+        final int length, width, height, weight;
+        ProductDimensions(int length, int width, int height, int weight) {
+            this.length = length;
+            this.width = width;
+            this.height = height;
+            this.weight = weight;
         }
     }
 }

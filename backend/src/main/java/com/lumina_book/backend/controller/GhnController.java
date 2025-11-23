@@ -2,10 +2,11 @@ package com.lumina_book.backend.controller;
 
 import java.util.List;
 
+import com.lumina_book.backend.dto.response.GhnFeeResponse;
 import org.springframework.web.bind.annotation.*;
 
 import com.lumina_book.backend.dto.request.ApiResponse;
-import com.lumina_book.backend.dto.request.GhnShippingFeeRequest;
+import com.lumina_book.backend.dto.request.GhnCalculateFeeRequest;
 import com.lumina_book.backend.dto.response.GhnDistrictResponse;
 import com.lumina_book.backend.dto.response.GhnProvinceResponse;
 import com.lumina_book.backend.dto.response.GhnWardResponse;
@@ -54,9 +55,10 @@ public class GhnController {
     }
 
     @PostMapping("/shipping-fees")
-    public ApiResponse<Object> calculateShippingFee(@RequestBody GhnShippingFeeRequest request) {
+    public ApiResponse<GhnFeeResponse> calculateShippingFee(
+            @RequestBody GhnCalculateFeeRequest request) {
         log.info("Calculating GHN shipping fee");
-        return ApiResponse.<Object>builder()
+        return ApiResponse.<GhnFeeResponse>builder()
                 .result(ghnService.calculateShippingFee(request))
                 .build();
     }

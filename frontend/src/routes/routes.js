@@ -47,6 +47,7 @@ import ContentDetailPage from '../pages/Admin/ManageContent/ContentDetail';
 
 import StaffMainPage from '../pages/Employees/Staff/StaffMain';
 import ProfileStaffPage from '../pages/Employees/Staff/ProfileStaff';
+import StaffNotificationPage from '../pages/Employees/Staff/StaffNotification';
 import AddEmployeePage from '../pages/Admin/ManageStaffAccounts/AddEmployee';
 import StaffProductsPage from '../pages/Employees/Staff/ProductManagement';
 import StaffAddProductPage from '../pages/Employees/Staff/ProductManagement/AddProduct';
@@ -183,6 +184,8 @@ const privateRoutes = [
 
     { path: '/staff/orders', component: OrderManagementPage, layout: StaffLayout },
     { path: '/staff/orders/:id', component: OrderDetailPage, layout: StaffLayout },
+
+    { path: '/staff/notifications', component: StaffNotificationPage, layout: StaffLayout },
 
     { path: '/staff/profile', component: ProfileStaffPage, layout: StaffLayout },
 

@@ -15,7 +15,10 @@ import {
     getVoucherImageUrl,
     normalizeVoucherImageUrl,
     getProductsByIds,
-    getActiveCategories
+    getActiveCategories,
+    notifyStaffOnApproval,
+    notifyStaffOnRejection,
+    notifyStaffOnDelete,
 } from '../../../../services';
 import { useNotification } from '../../../../components/Common/Notification';
 
@@ -96,6 +99,10 @@ function VoucherDetailPage() {
                 setVoucher(result.data);
                 setShowApproveModal(false);
                 success('Voucher đã được duyệt thành công!');
+                
+                // Gửi thông báo cho nhân viên
+                const voucherName = result.data?.name || voucher?.name || 'Voucher';
+                await notifyStaffOnApproval('voucher', voucherName, token);
             } else {
                 throw new Error('Không thể duyệt voucher');
             }
@@ -127,8 +134,13 @@ function VoucherDetailPage() {
             if (result.ok && result.data) {
                 setVoucher(result.data);
                 setShowRejectModal(false);
+                const reason = rejectReason;
                 setRejectReason('');
                 success('Voucher đã bị từ chối!');
+                
+                // Gửi thông báo cho nhân viên
+                const voucherName = result.data?.name || voucher?.name || 'Voucher';
+                await notifyStaffOnRejection('voucher', voucherName, reason, token);
             } else {
                 throw new Error('Không thể từ chối voucher');
             }
@@ -148,6 +160,11 @@ function VoucherDetailPage() {
             if (result.ok) {
                 setShowDeleteModal(false);
                 success('Voucher đã được xóa thành công!');
+                
+                // Gửi thông báo cho nhân viên
+                const voucherName = voucher?.name || 'Voucher';
+                await notifyStaffOnDelete('voucher', voucherName, token);
+                
                 navigate(isAdmin ? '/admin/vouchers-promotions' : '/staff/vouchers-promotions');
             } else {
                 throw new Error(result.data?.message || 'Không thể xóa voucher');

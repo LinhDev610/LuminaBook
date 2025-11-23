@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import classNames from 'classnames/bind';
 import styles from './ContentDetailPage.module.scss';
-import { getApiBaseUrl, getStoredToken, formatDateTime } from '../../../../services/utils';
+import { getApiBaseUrl, getStoredToken, formatDateTime, notifyStaffOnApproval, notifyStaffOnRejection, notifyStaffOnDelete } from '../../../../services';
 import { useNotification } from '../../../../components/Common/Notification';
 import { normalizeMediaUrl } from '../../../../services/productUtils';
 
@@ -119,6 +119,11 @@ export default function ContentDetailPage() {
             }
 
             notifySuccess('Đã duyệt banner thành công!');
+            
+            // Gửi thông báo cho nhân viên
+            const bannerName = updateData?.result?.name || updateData?.name || banner?.name || 'Banner';
+            await notifyStaffOnApproval('banner', bannerName, token);
+            
             setTimeout(() => {
                 navigate('/admin/content');
             }, 1500);
@@ -216,8 +221,13 @@ export default function ContentDetailPage() {
             }
 
             setShowRejectModal(false);
+            const reason = rejectReason;
             setRejectReason('');
             notifySuccess('Đã từ chối banner');
+            
+            // Gửi thông báo cho nhân viên
+            const bannerName = bannerData?.title || banner?.title || 'Banner';
+            await notifyStaffOnRejection('banner', bannerName, reason, token);
         } catch (err) {
             console.error('Error rejecting banner:', err);
             notifyError(err.message || 'Đã xảy ra lỗi khi từ chối banner');
@@ -251,6 +261,11 @@ export default function ContentDetailPage() {
             }
 
             notifySuccess('Đã xóa banner thành công!');
+            
+            // Gửi thông báo cho nhân viên
+            const bannerName = banner?.title || 'Banner';
+            await notifyStaffOnDelete('banner', bannerName, token);
+            
             setTimeout(() => {
                 navigate('/admin/content');
             }, 1500);

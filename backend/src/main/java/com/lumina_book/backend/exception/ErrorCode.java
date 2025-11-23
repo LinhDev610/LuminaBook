@@ -61,7 +61,10 @@ public enum ErrorCode {
     ADDRESS_NOT_EXISTED(7004, "Địa chỉ không tồn tại", HttpStatus.NOT_FOUND),
 
     // FILE UPLOAD
-    FILE_UPLOAD_FAILED(8001, "Không thể upload file", HttpStatus.INTERNAL_SERVER_ERROR);
+    FILE_UPLOAD_FAILED(8001, "Không thể upload file", HttpStatus.INTERNAL_SERVER_ERROR),
+
+    // NOTIFICATION
+    NOTIFICATION_NOT_EXISTED(9001, "Thông báo không tồn tại", HttpStatus.NOT_FOUND);
 
     ErrorCode(int code, String message, HttpStatusCode statusCode) {
         this.code = code;

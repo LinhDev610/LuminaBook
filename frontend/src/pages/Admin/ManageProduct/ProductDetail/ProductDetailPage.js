@@ -8,6 +8,9 @@ import {
     getStoredToken,
     formatDateTime,
     getProductById,
+    notifyStaffOnApproval,
+    notifyStaffOnRejection,
+    notifyStaffOnDelete,
 } from '../../../../services';
 import { useNotification } from '../../../../components/Common/Notification';
 
@@ -105,6 +108,10 @@ function ProductDetailPage() {
             setProduct(data?.result || data);
             setShowApproveModal(false);
             success('Sản phẩm đã được duyệt thành công!');
+            
+            // Gửi thông báo cho nhân viên
+            const productName = data?.result?.name || data?.name || 'Sản phẩm';
+            await notifyStaffOnApproval('product', productName, token);
         } catch (e) {
             notifyError('Lỗi: ' + (e?.message || 'Không thể duyệt sản phẩm'));
         } finally {
@@ -142,8 +149,13 @@ function ProductDetailPage() {
             const data = await resp.json().catch(() => ({}));
             setProduct(data?.result || data);
             setShowRejectModal(false);
+            const reason = rejectReason;
             setRejectReason('');
             success('Sản phẩm đã bị từ chối!');
+            
+            // Gửi thông báo cho nhân viên
+            const productName = data?.result?.name || data?.name || 'Sản phẩm';
+            await notifyStaffOnRejection('product', productName, reason, token);
         } catch (e) {
             notifyError('Lỗi: ' + (e?.message || 'Không thể từ chối sản phẩm'));
         } finally {
@@ -170,6 +182,11 @@ function ProductDetailPage() {
 
             setShowDeleteModal(false);
             success('Sản phẩm đã được xóa thành công!');
+            
+            // Gửi thông báo cho nhân viên
+            const productName = product?.name || 'Sản phẩm';
+            await notifyStaffOnDelete('product', productName, token);
+            
             navigate('/admin/products');
         } catch (e) {
             notifyError('Lỗi: ' + (e?.message || 'Không thể xóa sản phẩm'));

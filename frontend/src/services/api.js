@@ -11,6 +11,7 @@ const {
     promotions,
     addresses,
     ghn,
+    notifications,
 } = API_ROUTES;
 
 // Get API base URL
@@ -573,4 +574,219 @@ export async function clearVoucherFromCart(token = null) {
 export async function calculateGhnShippingFee(feeData, token = null) {
     const { data, ok } = await apiRequest(ghn.shippingFees, { method: 'POST', body: feeData, token });
     return { ok, data: extractResult(data) };
+}
+
+// ========== NOTIFICATION API ==========
+/**
+ * Gửi thông báo cho tất cả nhân viên
+ * @param {Object} notificationData - { title, message, type?, link? }
+ * @param {string} token - Authentication token
+ * @returns {Promise<{ok: boolean, data: any}>}
+ */
+export async function sendNotificationToStaff(notificationData, token = null) {
+    const { data, ok, status } = await apiRequest(notifications.sendToStaff, {
+        method: 'POST',
+        body: notificationData,
+        token,
+    });
+    return { ok, status, data: extractResult(data) };
+}
+
+/**
+ * Gửi thông báo cho một user cụ thể
+ * @param {string} userId - ID của user
+ * @param {Object} notificationData - { title, message, type?, link? }
+ * @param {string} token - Authentication token
+ * @returns {Promise<{ok: boolean, data: any}>}
+ */
+export async function sendNotificationToUser(userId, notificationData, token = null) {
+    const { data, ok, status } = await apiRequest(notifications.sendToUser(userId), {
+        method: 'POST',
+        body: notificationData,
+        token,
+    });
+    return { ok, status, data: extractResult(data) };
+}
+
+/**
+ * Helper function: Gửi thông báo cho tất cả nhân viên khi admin duyệt
+ * @param {string} itemType - Loại item được duyệt: 'product', 'banner', 'voucher', 'promotion'
+ * @param {string} itemName - Tên của item được duyệt
+ * @param {string} token - Authentication token
+ * @returns {Promise<void>}
+ */
+export async function notifyStaffOnApproval(itemType, itemName, token = null) {
+    try {
+        const typeLabels = {
+            product: 'Sản phẩm',
+            banner: 'Banner',
+            voucher: 'Mã giảm giá',
+            promotion: 'Chương trình khuyến mãi',
+        };
+
+        const typeLabel = typeLabels[itemType] || itemType;
+        const notificationData = {
+            title: `Admin đã duyệt ${typeLabel.toLowerCase()}`,
+            message: `${typeLabel} "${itemName}" đã được admin duyệt thành công.`,
+            type: 'SUCCESS',
+        };
+
+        await sendNotificationToStaff(notificationData, token);
+    } catch (error) {
+        // Không throw error để không ảnh hưởng đến flow chính
+        // Chỉ log để debug
+        console.error('Error sending notification to staff:', error);
+    }
+}
+
+/**
+ * Helper function: Gửi thông báo cho tất cả nhân viên khi admin từ chối
+ * @param {string} itemType - Loại item bị từ chối: 'product', 'banner', 'voucher', 'promotion'
+ * @param {string} itemName - Tên của item bị từ chối
+ * @param {string} reason - Lý do từ chối
+ * @param {string} token - Authentication token
+ * @returns {Promise<void>}
+ */
+export async function notifyStaffOnRejection(itemType, itemName, reason, token = null) {
+    try {
+        const typeLabels = {
+            product: 'Sản phẩm',
+            banner: 'Banner',
+            voucher: 'Mã giảm giá',
+            promotion: 'Chương trình khuyến mãi',
+        };
+
+        const typeLabel = typeLabels[itemType] || itemType;
+        const notificationData = {
+            title: `Admin đã từ chối ${typeLabel.toLowerCase()}`,
+            message: `${typeLabel} "${itemName}" đã bị admin từ chối. Lý do: ${reason}`,
+            type: 'ERROR',
+        };
+
+        await sendNotificationToStaff(notificationData, token);
+    } catch (error) {
+        console.error('Error sending notification to staff:', error);
+    }
+}
+
+/**
+ * Helper function: Gửi thông báo cho tất cả nhân viên khi admin xóa
+ * @param {string} itemType - Loại item bị xóa: 'product', 'banner', 'voucher', 'promotion'
+ * @param {string} itemName - Tên của item bị xóa
+ * @param {string} token - Authentication token
+ * @returns {Promise<void>}
+ */
+export async function notifyStaffOnDelete(itemType, itemName, token = null) {
+    try {
+        const typeLabels = {
+            product: 'Sản phẩm',
+            banner: 'Banner',
+            voucher: 'Mã giảm giá',
+            promotion: 'Chương trình khuyến mãi',
+        };
+
+        const typeLabel = typeLabels[itemType] || itemType;
+        const notificationData = {
+            title: `Admin đã xóa ${typeLabel.toLowerCase()}`,
+            message: `${typeLabel} "${itemName}" đã bị admin xóa khỏi hệ thống.`,
+            type: 'WARNING',
+        };
+
+        await sendNotificationToStaff(notificationData, token);
+    } catch (error) {
+        console.error('Error sending notification to staff:', error);
+    }
+}
+
+/**
+ * Helper function: Gửi thông báo cho tất cả nhân viên khi admin cập nhật/sửa
+ * @param {string} itemType - Loại item được sửa: 'product', 'banner', 'voucher', 'promotion'
+ * @param {string} itemName - Tên của item được sửa
+ * @param {string} token - Authentication token
+ * @returns {Promise<void>}
+ */
+export async function notifyStaffOnUpdate(itemType, itemName, token = null) {
+    try {
+        const typeLabels = {
+            product: 'Sản phẩm',
+            banner: 'Banner',
+            voucher: 'Mã giảm giá',
+            promotion: 'Chương trình khuyến mãi',
+        };
+
+        const typeLabel = typeLabels[itemType] || itemType;
+        const notificationData = {
+            title: `Admin đã cập nhật ${typeLabel.toLowerCase()}`,
+            message: `${typeLabel} "${itemName}" đã được admin cập nhật thông tin.`,
+            type: 'INFO',
+        };
+
+        await sendNotificationToStaff(notificationData, token);
+    } catch (error) {
+        console.error('Error sending notification to staff:', error);
+    }
+}
+
+/**
+ * Lấy danh sách thông báo của user hiện tại
+ * @param {string} token - Authentication token
+ * @returns {Promise<{ok: boolean, data: any[]}>}
+ */
+export async function getMyNotifications(token = null) {
+    const { data, ok, status } = await apiRequest(notifications.mine, { token });
+    return { ok, status, data: extractResult(data, true) };
+}
+
+/**
+ * Đánh dấu thông báo là đã đọc
+ * @param {string} notificationId - ID của thông báo
+ * @param {string} token - Authentication token
+ * @returns {Promise<{ok: boolean, data: any}>}
+ */
+export async function markNotificationAsRead(notificationId, token = null) {
+    const { data, ok, status } = await apiRequest(notifications.markAsRead(notificationId), {
+        method: 'PUT',
+        token,
+    });
+    return { ok, status, data: extractResult(data) };
+}
+
+/**
+ * Đánh dấu tất cả thông báo là đã đọc
+ * @param {string} token - Authentication token
+ * @returns {Promise<{ok: boolean, data: any}>}
+ */
+export async function markAllNotificationsAsRead(token = null) {
+    const { data, ok, status } = await apiRequest(notifications.markAllAsRead, {
+        method: 'PUT',
+        token,
+    });
+    return { ok, status, data: extractResult(data) };
+}
+
+/**
+ * Xóa thông báo
+ * @param {string} notificationId - ID của thông báo
+ * @param {string} token - Authentication token
+ * @returns {Promise<{ok: boolean, data: any}>}
+ */
+export async function deleteNotification(notificationId, token = null) {
+    const { data, ok, status } = await apiRequest(notifications.delete(notificationId), {
+        method: 'DELETE',
+        token,
+    });
+    return { ok, status, data: extractResult(data) };
+}
+
+/**
+ * Xóa tất cả thông báo đã đọc
+ * @param {string} token - Authentication token
+ * @returns {Promise<{ok: boolean, data: any}>}
+ */
+export async function deleteAllReadNotifications(token = null) {
+    const { data, ok, status } = await apiRequest(notifications.deleteAllRead, {
+        method: 'DELETE',
+        token,
+    });
+    return { ok, status, data: extractResult(data) };
 }

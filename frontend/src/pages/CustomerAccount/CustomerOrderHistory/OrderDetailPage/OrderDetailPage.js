@@ -159,6 +159,19 @@ const mapOrderFromApi = (apiOrder) => {
 
     const orderDateValue = apiOrder.orderDateTime || apiOrder.orderDate || null;
 
+    // Map payment method từ API
+    const rawPaymentMethod = (apiOrder.paymentMethod || '').toUpperCase();
+    let paymentMethod = 'ONLINE';
+    let paymentMethodLabel = 'Thanh toán online';
+    
+    if (rawPaymentMethod === 'COD') {
+        paymentMethod = 'COD';
+        paymentMethodLabel = 'Thanh toán khi nhận hàng';
+    } else if (rawPaymentMethod === 'MOMO') {
+        paymentMethod = 'MOMO';
+        paymentMethodLabel = 'Thanh toán qua MoMo';
+    }
+
     return {
         id: apiOrder.id || '',
         code: apiOrder.code || apiOrder.orderCode || apiOrder.id || '',
@@ -174,8 +187,8 @@ const mapOrderFromApi = (apiOrder) => {
             'Khách hàng',
         phone: apiOrder.receiverPhone || shippingInfo?.phone || apiOrder.customerEmail || '',
         address: shippingInfo?.address || apiOrder.shippingAddress || '',
-        paymentMethod: 'ONLINE',
-        paymentMethodLabel: 'Thanh toán online',
+        paymentMethod,
+        paymentMethodLabel,
         items,
         refundStatus: null,
         refundProgress: null,

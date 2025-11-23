@@ -252,8 +252,13 @@ export default function ConfirmCheckoutPage() {
             }
 
             persistLatestOrder(order, 'Thanh toán khi nhận hàng', amountForCurrent);
-            success('Đơn hàng COD đã được tạo thành công.');
-            navigate('/');
+            // COD: Chuyển về trang cảm ơn (giống MoMo)
+            navigate('/order-success', {
+                state: {
+                    orderId: order.id,
+                    orderCode: order.code || order.orderCode,
+                },
+            });
         } catch (err) {
             console.error('Error when confirming checkout:', err);
             showError('Có lỗi xảy ra khi xác nhận đặt hàng.');

@@ -110,8 +110,13 @@ public class OrderService {
         persistOrderItems(savedOrder, selectedItems);
         orderRepository.flush();
 
+        // Xóa cart items sau khi tạo đơn hàng (cho cả COD và MoMo)
+        if (savedOrder.getUser() != null && pricing.selectedCartItemIds != null && !pricing.selectedCartItemIds.isEmpty()) {
+            cartService.removeCartItemsForOrder(savedOrder.getUser(), pricing.selectedCartItemIds);
+        }
+
         if (paymentMethod == PaymentMethod.COD) {
-            finalizePaidOrder(savedOrder, pricing.selectedCartItemIds);
+            // COD: Giữ status CREATED, chờ admin/staff xác nhận (giống MoMo)
             return new CheckoutResult(savedOrder, null);
         }
 
@@ -194,17 +199,9 @@ public class OrderService {
         // Sử dụng ArrayList thay vì List.of() để tránh UnsupportedOperationException
         savedOrder.setItems(new ArrayList<>(List.of(orderItem)));
 
-        // Nếu là COD, finalize ngay
+        // COD: Giữ status CREATED, chờ admin/staff xác nhận (giống MoMo)
         if (paymentMethod == PaymentMethod.COD) {
-            if (savedOrder.getStatus() == OrderStatus.CREATED) {
-                savedOrder.setStatus(OrderStatus.CONFIRMED);
-            }
-            orderRepository.save(savedOrder);
-            orderRepository.flush();
-            
-            Order reloadedOrder = orderRepository.findById(savedOrder.getId()).orElse(savedOrder);
-            sendOrderConfirmationEmail(reloadedOrder);
-            return new CheckoutResult(reloadedOrder, null);
+            return new CheckoutResult(savedOrder, null);
         }
 
         // Nếu là MoMo, tạo payment link
@@ -309,9 +306,7 @@ public class OrderService {
         if (order.getUser() != null && cartItemIds != null && !cartItemIds.isEmpty()) {
             cartService.removeCartItemsForOrder(order.getUser(), cartItemIds);
         }
-        if (order.getStatus() == OrderStatus.CREATED) {
-            order.setStatus(OrderStatus.CONFIRMED);
-        }
+        // Không tự động chuyển sang CONFIRMED - giữ ở CREATED để admin/staff xác nhận
         orderRepository.save(order);
         orderRepository.flush();
         
@@ -398,9 +393,7 @@ public class OrderService {
             !Boolean.TRUE.equals(order.getPaid())) {
             order.setPaymentStatus(PaymentStatus.PAID);
             order.setPaid(true);
-            if (order.getStatus() == OrderStatus.CREATED) {
-                order.setStatus(OrderStatus.CONFIRMED);
-            }
+            // Không tự động chuyển sang CONFIRMED - giữ ở CREATED để admin/staff xác nhận
             orderRepository.save(order);
             orderRepository.flush();
         }

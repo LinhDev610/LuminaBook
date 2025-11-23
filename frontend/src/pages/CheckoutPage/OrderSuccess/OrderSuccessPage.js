@@ -30,8 +30,12 @@ export default function OrderSuccessPage() {
     useEffect(() => {
         const resultCode = searchParams.get('resultCode');
         const orderIdFromQuery = searchParams.get('orderId');
+        
+        // Lấy thông tin từ location.state (cho COD) hoặc query params (cho MoMo)
+        const stateOrderId = location.state?.orderId;
+        const stateOrderCode = location.state?.orderCode;
 
-        // Đọc thông tin đơn hàng được lưu trước khi redirect sang MoMo
+        // Đọc thông tin đơn hàng được lưu trước khi redirect sang MoMo hoặc từ COD
         const savedRaw = window.localStorage.getItem('lumina_latest_order');
         let saved = null;
         if (savedRaw) {
@@ -47,14 +51,24 @@ export default function OrderSuccessPage() {
             setIsError(true);
         }
 
-        // Ưu tiên orderId từ query nếu có
-        if (saved && orderIdFromQuery && saved.orderId !== orderIdFromQuery) {
-            saved = { ...saved, orderId: orderIdFromQuery };
+        // Ưu tiên: location.state > query params > localStorage
+        const finalOrderId = stateOrderId || orderIdFromQuery || saved?.orderId || saved?.id;
+        const finalOrderCode = stateOrderCode || saved?.code || saved?.orderCode;
+
+        // Cập nhật saved với thông tin từ state nếu có
+        if (saved) {
+            if (finalOrderId && saved.orderId !== finalOrderId) {
+                saved = { ...saved, orderId: finalOrderId };
+            }
+            if (finalOrderCode && saved.code !== finalOrderCode) {
+                saved = { ...saved, code: finalOrderCode };
+            }
         }
 
         setOrderInfo(
             saved || {
-                orderId: orderIdFromQuery || '',
+                orderId: finalOrderId || '',
+                code: finalOrderCode || '',
             },
         );
 
@@ -73,7 +87,7 @@ export default function OrderSuccessPage() {
                 }
             }
         }
-    }, [searchParams]);
+    }, [searchParams, location.state]);
 
     if (isError) {
         return (

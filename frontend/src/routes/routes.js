@@ -26,6 +26,7 @@ import CustomerSupportLayout from '../layouts/CustomerSupportLayout';
 import ManageStaffAccountsPage from '../pages/Admin/ManageStaffAccounts';
 import ManageOrdersPage from '../pages/Admin/ManageOrders';
 import ManageOrderDetailPage from '../pages/Admin/ManageOrders/ManageOrderDetail';
+import OrderReturnPage from '../pages/Admin/ManageOrders/OrderReturn';
 
 import StaffDetailPage from '../pages/Admin/ManageStaffAccounts/StaffDetail';
 import ManageCustomerAccountsPage from '../pages/Admin/ManageCustomerAccounts';
@@ -72,6 +73,11 @@ import ComplaintManagementPage from '../pages/Employees/CustomerSupport/Complain
 import ReviewCommentManagementPage from '../pages/Employees/CustomerSupport/ReviewCommentManagement';
 import ProfileCustomerSupportPage from '../pages/Employees/CustomerSupport/ProfileCustomerSupport';
 import CustomerSupportNotificationPage from '../pages/Employees/CustomerSupport/CustomerSupportNotification';
+import SupportUserPage from '../pages/SupportUser';
+import ShoppingGuidePage from '../pages/SupportUser/ShoppingGuide';
+import PaymentPolicyPage from '../pages/SupportUser/PaymentPolicy';
+import ShippingPolicyPage from '../pages/SupportUser/ShippingPolicy';
+import ReturnPolicyPage from '../pages/SupportUser/ReturnPolicy';
 
 // Public routes
 const publicRoutes = [
@@ -80,6 +86,11 @@ const publicRoutes = [
     { path: '/newbook', component: NewBookPage },
     { path: '/contact', component: Contact },
     { path: '/support', component: CustomerService },
+    { path: '/support/user', component: SupportUserPage },
+    { path: '/support/shopping-guide', component: ShoppingGuidePage },
+    { path: '/support/payment-policy', component: PaymentPolicyPage },
+    { path: '/support/shipping-policy', component: ShippingPolicyPage },
+    { path: '/support/return-policy', component: ReturnPolicyPage },
     { path: '/product/:id', component: ProductDetailPage },
     { path: '/cart', component: CartPage },
     { path: '/checkout', component: CheckoutDetailPage },
@@ -128,6 +139,7 @@ const privateRoutes = [
     },
     { path: '/admin/orders', component: ManageOrdersPage, layout: AdminLayout },
     { path: '/admin/orders/:id', component: ManageOrderDetailPage, layout: AdminLayout },
+    { path: '/admin/orders/:id/return', component: OrderReturnPage, layout: AdminLayout },
     { path: '/admin/complaints', component: ManageComplaintsPage, layout: AdminLayout },
     {
         path: '/admin/complaints/:id',

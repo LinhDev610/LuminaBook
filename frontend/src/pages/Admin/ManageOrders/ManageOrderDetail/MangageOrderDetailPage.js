@@ -278,7 +278,11 @@ export default function MangageOrderDetailPage() {
                 </div>
 
                 <div className={cx('actions')}>
-                    <button type="button" className={cx('refundButton')}>
+                    <button 
+                        type="button" 
+                        className={cx('refundButton')}
+                        onClick={() => navigate(`/admin/orders/${id}/return`, { state: { order } })}
+                    >
                         Xử lý hoàn tiền / trả hàng
                     </button>
                 </div>

@@ -37,11 +37,11 @@ function Footer() {
 
                 <div className={cx('footer-col')}>
                 <h4>Hỗ trợ khách hàng</h4>
-                <Link to="#">Hướng dẫn mua hàng</Link>
-                <Link to="#">Chính sách thanh toán</Link>
-                <Link to="#">Chính sách vận chuyển</Link>
-                <Link to="#">Chính sách đổi trả</Link>
-                <Link to="#">FAQ</Link>
+                <Link to="/support/user">Hỗ trợ khách hàng</Link>
+                <Link to="/support/shopping-guide">Hướng dẫn mua hàng</Link>
+                <Link to="/support/payment-policy">Chính sách thanh toán</Link>
+                <Link to="/support/shipping-policy">Chính sách vận chuyển</Link>
+                <Link to="/support/return-policy">Chính sách đổi trả</Link>
                 </div>
             </div>
             

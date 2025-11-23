@@ -4,6 +4,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
+import com.lumina_book.backend.constant.ApiConstants;
 import com.lumina_book.backend.dto.response.*;
 import com.lumina_book.backend.exception.AppException;
 import com.lumina_book.backend.exception.ErrorCode;
@@ -33,7 +34,7 @@ public class GhnService {
         try {
             log.info("Fetching GHN provinces from: {}", ghnProperties.getBaseUrl());
             GhnProvinceResponse[] data = apiUtil.callGhnApi(
-                    "/shiip/public-api/master-data/province",
+                    ApiConstants.GHN_MASTER_DATA_PROVINCE,
                     HttpMethod.GET,
                     null,
                     new ParameterizedTypeReference<GhnApiResponse<GhnProvinceResponse[]>>() {},
@@ -49,7 +50,7 @@ public class GhnService {
 
     public List<GhnDistrictResponse> getDistricts(Integer provinceId) {
         GhnDistrictResponse[] data = apiUtil.callGhnApi(
-                "/shiip/public-api/master-data/district",
+                ApiConstants.GHN_MASTER_DATA_DISTRICT,
                 HttpMethod.POST,
                 Map.of("province_id", provinceId),
                 new ParameterizedTypeReference<GhnApiResponse<GhnDistrictResponse[]>>() {},
@@ -61,7 +62,7 @@ public class GhnService {
 
     public List<GhnWardResponse> getWards(Integer districtId) {
         GhnWardResponse[] data = apiUtil.callGhnApi(
-                "/shiip/public-api/master-data/ward",
+                ApiConstants.GHN_MASTER_DATA_WARD,
                 HttpMethod.POST,
                 Map.of("district_id", districtId),
                 new ParameterizedTypeReference<GhnApiResponse<GhnWardResponse[]>>() {},
@@ -73,7 +74,7 @@ public class GhnService {
 
     public GhnFeeResponse calculateShippingFee(GhnCalculateFeeRequest request) {
         return apiUtil.callGhnApi(
-                "/shiip/public-api/v2/shipping-order/fee",
+                ApiConstants.GHN_SHIPPING_ORDER_FEE,
                 HttpMethod.GET,
                 request,
                 new ParameterizedTypeReference<GhnApiResponse<GhnFeeResponse>>() {},
@@ -83,7 +84,7 @@ public class GhnService {
 
     public List<GhnPickShiftResponse> getPickShifts() {
         GhnPickShiftResponse[] data = apiUtil.callGhnApi(
-                "/shiip/public-api/v2/shift/date",
+                ApiConstants.GHN_SHIFT_DATE,
                 HttpMethod.GET,
                 null,
                 new ParameterizedTypeReference<GhnApiResponse<GhnPickShiftResponse[]>>() {},
@@ -107,7 +108,7 @@ public class GhnService {
                 "service_type_id", serviceTypeId);
 
         return apiUtil.callGhnApi(
-                "/shiip/public-api/v2/shipping-order/leadtime",
+                ApiConstants.GHN_SHIPPING_ORDER_LEADTIME,
                 HttpMethod.GET,
                 payload,
                 new ParameterizedTypeReference<GhnApiResponse<GhnLeadtimeResponse>>() {},
@@ -117,7 +118,7 @@ public class GhnService {
 
     public GhnShipmentDataResponse previewOrder(GhnCreateOrderRequest request) {
         return apiUtil.callGhnApi(
-                "/shiip/public-api/v2/shipping-order/preview",
+                ApiConstants.GHN_SHIPPING_ORDER_PREVIEW,
                 HttpMethod.POST,
                 request,
                 new ParameterizedTypeReference<GhnApiResponse<GhnShipmentDataResponse>>() {},
@@ -127,7 +128,7 @@ public class GhnService {
 
     public GhnShipmentDataResponse createOrder(GhnCreateOrderRequest request) {
         return apiUtil.callGhnApi(
-                "/shiip/public-api/v2/shipping-order/create",
+                ApiConstants.GHN_SHIPPING_ORDER_CREATE,
                 HttpMethod.POST,
                 request,
                 new ParameterizedTypeReference<GhnApiResponse<GhnShipmentDataResponse>>() {},

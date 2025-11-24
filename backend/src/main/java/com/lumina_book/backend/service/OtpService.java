@@ -46,6 +46,7 @@ public class OtpService {
                 .build();
 
         otpRepository.save(otp);
+        log.info("Generated OTP {} for email {}", otpCode, email);
         sendOtpEmail(email, otpCode);
         return otpCode;
     }

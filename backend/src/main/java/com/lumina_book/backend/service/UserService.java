@@ -232,9 +232,6 @@ public class UserService {
 
         // active - chỉ cập nhật nếu active có trong request và user là ADMIN
         Boolean requestedActiveValue = request.getActive();
-        if (requestedActiveValue == null) {
-            requestedActiveValue = request.getIsActive();
-        }
 
         if (requestedActiveValue != null) {
             if (isAdmin) {

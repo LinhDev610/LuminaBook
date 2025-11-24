@@ -15,7 +15,10 @@ import {
     getPromotionImageUrl,
     normalizePromotionImageUrl,
     getProductsByIds,
-    getActiveCategories
+    getActiveCategories,
+    notifyStaffOnApproval,
+    notifyStaffOnRejection,
+    notifyStaffOnDelete,
 } from '../../../../services';
 import { useNotification } from '../../../../components/Common/Notification';
 
@@ -98,6 +101,10 @@ function PromotionDetailPage() {
                 setPromotion(result.data);
                 setShowApproveModal(false);
                 success('Chương trình khuyến mãi đã được duyệt thành công!');
+                
+                // Gửi thông báo cho nhân viên
+                const promotionName = result.data?.name || promotion?.name || 'Chương trình khuyến mãi';
+                await notifyStaffOnApproval('promotion', promotionName, token);
             } else {
                 throw new Error('Không thể duyệt chương trình khuyến mãi');
             }
@@ -129,8 +136,13 @@ function PromotionDetailPage() {
             if (result.ok && result.data) {
                 setPromotion(result.data);
                 setShowRejectModal(false);
+                const reason = rejectReason;
                 setRejectReason('');
                 success('Chương trình khuyến mãi đã bị từ chối!');
+                
+                // Gửi thông báo cho nhân viên
+                const promotionName = result.data?.name || promotion?.name || 'Chương trình khuyến mãi';
+                await notifyStaffOnRejection('promotion', promotionName, reason, token);
             } else {
                 throw new Error('Không thể từ chối chương trình khuyến mãi');
             }
@@ -150,6 +162,11 @@ function PromotionDetailPage() {
             if (result.ok) {
                 setShowDeleteModal(false);
                 success('Chương trình khuyến mãi đã được xóa thành công!');
+                
+                // Gửi thông báo cho nhân viên
+                const promotionName = promotion?.name || 'Chương trình khuyến mãi';
+                await notifyStaffOnDelete('promotion', promotionName, token);
+                
                 navigate(isAdmin ? '/admin/vouchers-promotions' : '/staff/vouchers-promotions');
             } else {
                 throw new Error(result.data?.message || 'Không thể xóa chương trình khuyến mãi');

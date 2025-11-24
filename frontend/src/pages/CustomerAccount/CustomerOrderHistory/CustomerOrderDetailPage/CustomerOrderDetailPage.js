@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import classNames from 'classnames/bind';
-import styles from './OrderDetailPage.module.scss';
+import styles from './CustomerOrderDetailPage.scss';
 import { formatCurrency, getApiBaseUrl, getStoredToken } from '../../../../services';
 
 const cx = classNames.bind(styles);
@@ -159,6 +159,19 @@ const mapOrderFromApi = (apiOrder) => {
 
     const orderDateValue = apiOrder.orderDateTime || apiOrder.orderDate || null;
 
+    // Map payment method từ API
+    const rawPaymentMethod = (apiOrder.paymentMethod || '').toUpperCase();
+    let paymentMethod = 'ONLINE';
+    let paymentMethodLabel = 'Thanh toán online';
+    
+    if (rawPaymentMethod === 'COD') {
+        paymentMethod = 'COD';
+        paymentMethodLabel = 'Thanh toán khi nhận hàng';
+    } else if (rawPaymentMethod === 'MOMO') {
+        paymentMethod = 'MOMO';
+        paymentMethodLabel = 'Thanh toán qua MoMo';
+    }
+
     return {
         id: apiOrder.id || '',
         code: apiOrder.code || apiOrder.orderCode || apiOrder.id || '',
@@ -174,8 +187,8 @@ const mapOrderFromApi = (apiOrder) => {
             'Khách hàng',
         phone: apiOrder.receiverPhone || shippingInfo?.phone || apiOrder.customerEmail || '',
         address: shippingInfo?.address || apiOrder.shippingAddress || '',
-        paymentMethod: 'ONLINE',
-        paymentMethodLabel: 'Thanh toán online',
+        paymentMethod,
+        paymentMethodLabel,
         items,
         refundStatus: null,
         refundProgress: null,
@@ -472,9 +485,13 @@ function OrderDetailPage() {
 
                 {/* Action Buttons */}
                 <div className={cx('actions-section')}>
-                    <button className={cx('contact-btn')}>Liên hệ CSKH</button>
                     {order.status === 'DELIVERED' && (
-                        <button className={cx('buy-again-btn')}>Mua lại</button>
+                        <button 
+                            className={cx('contact-btn')}
+                            onClick={() => navigate(`/customer-account/orders/${order.id || order.code}/refund`, { state: { orderCode: order.code, orderId: order.id } })}
+                        >
+                            Hoàn tiền/ Trả hàng
+                        </button>
                     )}
                 </div>
             </div>

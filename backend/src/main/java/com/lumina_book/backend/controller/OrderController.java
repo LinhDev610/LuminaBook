@@ -23,11 +23,13 @@ import com.lumina_book.backend.service.OrderService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import lombok.extern.slf4j.Slf4j;
 
 @RestController
 @RequestMapping("/orders")
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
+@Slf4j
 public class OrderController {
 
     OrderService orderService;
@@ -92,6 +94,41 @@ public class OrderController {
         Order order = orderService.confirmOrder(id);
         return ApiResponse.<OrderDetailResponse>builder()
                 .result(toDetailResponse(order))
+                .build();
+    }
+
+    /**
+     * Test endpoint để gửi lại email xác nhận đơn hàng
+     * Chỉ dùng cho testing/debugging
+     */
+    @PostMapping("/{id}/resend-email")
+    @PreAuthorize("hasAnyRole('CUSTOMER','STAFF','ADMIN')")
+    public ApiResponse<String> resendOrderConfirmationEmail(@PathVariable String id) {
+        orderService.sendOrderConfirmationEmailForTesting(id);
+        return ApiResponse.<String>builder()
+                .result("Email đã được gửi lại")
+                .build();
+    }
+
+    @PostMapping("/{id}/verify-payment")
+    @PreAuthorize("hasRole('CUSTOMER')")
+    public ApiResponse<Void> verifyPaymentAndSendEmail(@PathVariable String id) {
+        orderService.verifyPaymentAndSendEmail(id);
+        return ApiResponse.<Void>builder()
+                .message("Đã xác minh thanh toán và gửi email xác nhận.")
+                .build();
+    }
+
+    @PostMapping("/{id}/request-return")
+    @PreAuthorize("hasRole('CUSTOMER')")
+    public ApiResponse<OrderDetailResponse> requestReturn(
+            @PathVariable String id,
+            @RequestBody(required = false) java.util.Map<String, String> request) {
+        String returnRequestNote = request != null ? request.get("note") : null;
+        Order order = orderService.requestReturn(id, returnRequestNote);
+        return ApiResponse.<OrderDetailResponse>builder()
+                .result(toDetailResponse(order))
+                .message("Đã gửi yêu cầu trả hàng/hoàn tiền thành công.")
                 .build();
     }
 

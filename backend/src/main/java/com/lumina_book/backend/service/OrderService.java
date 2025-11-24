@@ -108,9 +108,15 @@ public class OrderService {
 
         Order savedOrder = orderRepository.save(order);
         persistOrderItems(savedOrder, selectedItems);
+        orderRepository.flush();
+
+        // Xóa cart items sau khi tạo đơn hàng (cho cả COD và MoMo)
+        if (savedOrder.getUser() != null && pricing.selectedCartItemIds != null && !pricing.selectedCartItemIds.isEmpty()) {
+            cartService.removeCartItemsForOrder(savedOrder.getUser(), pricing.selectedCartItemIds);
+        }
 
         if (paymentMethod == PaymentMethod.COD) {
-            finalizePaidOrder(savedOrder, pricing.selectedCartItemIds);
+            // COD: Giữ status CREATED, chờ admin/staff xác nhận (giống MoMo)
             return new CheckoutResult(savedOrder, null);
         }
 
@@ -193,15 +199,8 @@ public class OrderService {
         // Sử dụng ArrayList thay vì List.of() để tránh UnsupportedOperationException
         savedOrder.setItems(new ArrayList<>(List.of(orderItem)));
 
-        // Nếu là COD, finalize ngay
+        // COD: Giữ status CREATED, chờ admin/staff xác nhận (giống MoMo)
         if (paymentMethod == PaymentMethod.COD) {
-            // Không cần xóa cart items vì không có
-            // Chỉ cần update status và gửi email
-            if (savedOrder.getStatus() == OrderStatus.CREATED) {
-                savedOrder.setStatus(OrderStatus.CONFIRMED);
-            }
-            orderRepository.save(savedOrder);
-            sendOrderConfirmationEmail(savedOrder);
             return new CheckoutResult(savedOrder, null);
         }
 
@@ -307,11 +306,12 @@ public class OrderService {
         if (order.getUser() != null && cartItemIds != null && !cartItemIds.isEmpty()) {
             cartService.removeCartItemsForOrder(order.getUser(), cartItemIds);
         }
-        if (order.getStatus() == OrderStatus.CREATED) {
-            order.setStatus(OrderStatus.CONFIRMED);
-        }
+        // Không tự động chuyển sang CONFIRMED - giữ ở CREATED để admin/staff xác nhận
         orderRepository.save(order);
-        sendOrderConfirmationEmail(order);
+        orderRepository.flush();
+        
+        Order reloadedOrder = orderRepository.findById(order.getId()).orElse(order);
+        sendOrderConfirmationEmail(reloadedOrder);
     }
 
     @Transactional
@@ -319,6 +319,7 @@ public class OrderService {
         if (request == null || request.getOrderId() == null) {
             return;
         }
+        
         Order order = orderRepository.findByCode(request.getOrderId())
                 .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_EXISTED));
 
@@ -336,6 +337,7 @@ public class OrderService {
         order.setPaid(true);
         order.setPaymentReference(request.getTransId() != null ? String.valueOf(request.getTransId()) : null);
         orderRepository.save(order);
+        orderRepository.flush();
 
         finalizePaidOrder(order, parseCartItemIds(order.getCartItemIdsSnapshot()));
     }
@@ -363,14 +365,78 @@ public class OrderService {
         }
     }
 
+    /**
+     * Public method để test gửi email (chỉ dùng cho testing)
+     */
+    public void sendOrderConfirmationEmailForTesting(String orderId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_EXISTED));
+        sendOrderConfirmationEmail(order);
+    }
+
+
+    @Transactional
+    public void verifyPaymentAndSendEmail(String orderId) {
+        Order order = orderRepository.findByCode(orderId).orElse(null);
+        if (order == null) {
+            order = orderRepository.findById(orderId).orElse(null);
+        }
+        
+        if (order == null) {
+            throw new AppException(ErrorCode.ORDER_NOT_EXISTED);
+        }
+
+        // Nếu là MoMo và payment status vẫn là PENDING, cập nhật thành PAID
+        // (Vì user đã quay lại từ MoMo với resultCode=0, nghĩa là thanh toán thành công)
+        if (order.getPaymentMethod() == PaymentMethod.MOMO && 
+            order.getPaymentStatus() == PaymentStatus.PENDING && 
+            !Boolean.TRUE.equals(order.getPaid())) {
+            order.setPaymentStatus(PaymentStatus.PAID);
+            order.setPaid(true);
+            // Không tự động chuyển sang CONFIRMED - giữ ở CREATED để admin/staff xác nhận
+            orderRepository.save(order);
+            orderRepository.flush();
+        }
+
+        // Kiểm tra nếu payment đã thành công
+        if (Boolean.TRUE.equals(order.getPaid()) || 
+            order.getPaymentStatus() == PaymentStatus.PAID ||
+            (order.getPaymentMethod() == PaymentMethod.COD && order.getStatus() == OrderStatus.CONFIRMED)) {
+            Order reloadedOrder = orderRepository.findById(order.getId()).orElse(order);
+            sendOrderConfirmationEmail(reloadedOrder);
+        }
+    }
+
+    // Set để track các order đã gửi email trong session này (tránh gửi trùng)
+    private static final java.util.Set<String> emailSentOrders = java.util.Collections.synchronizedSet(new java.util.HashSet<>());
+    
     private void sendOrderConfirmationEmail(Order order) {
         if (order == null || order.getUser() == null || order.getUser().getEmail() == null) {
             return;
         }
-        if (order.getItems() != null) {
-            order.getItems().size();
+        
+        // Kiểm tra xem email đã được gửi cho order này chưa
+        String orderKey = order.getId();
+        if (emailSentOrders.contains(orderKey)) {
+            return; // Đã gửi rồi, không gửi lại
         }
-        brevoEmailService.sendOrderConfirmationEmail(order);
+        
+        try {
+            // Force load lazy-loaded fields
+            if (order.getItems() != null) {
+                order.getItems().size();
+                for (var item : order.getItems()) {
+                    if (item.getProduct() != null) {
+                        item.getProduct().getName();
+                    }
+                }
+            }
+            
+            brevoEmailService.sendOrderConfirmationEmail(order);
+            emailSentOrders.add(orderKey); // Đánh dấu đã gửi
+        } catch (Exception e) {
+            log.error("Error sending order confirmation email: {}", e.getMessage(), e);
+        }
     }
 
     private Address resolveShippingAddress(CreateOrderRequest request, User user) {
@@ -588,18 +654,11 @@ public class OrderService {
         }
 
         // Force load items to avoid lazy loading issues
-        // @EntityGraph should have loaded items, but we ensure it here
         if (order.getItems() != null) {
-            int itemsCount = order.getItems().size(); // Force load collection
-            log.debug("Order {} has {} items", orderId, itemsCount);
-            
+            order.getItems().size();
             order.getItems().forEach(item -> {
                 if (item.getProduct() != null) {
-                    // Load product name to ensure product is loaded
-                    String productName = item.getProduct().getName();
-                    log.debug("Item {} has product: {}", item.getId(), productName);
-                    
-                    // Load product media
+                    item.getProduct().getName();
                     if (item.getProduct().getDefaultMedia() != null) {
                         item.getProduct().getDefaultMedia().getMediaUrl();
                     }
@@ -608,8 +667,6 @@ public class OrderService {
                     }
                 }
             });
-        } else {
-            log.warn("Order {} has null items collection", orderId);
         }
 
         return order;
@@ -634,6 +691,22 @@ public class OrderService {
         }
 
         return order;
+    }
+
+    @Transactional
+    public Order requestReturn(String orderId, String returnRequestNote) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_EXISTED));
+
+        if (order.getStatus() != OrderStatus.DELIVERED) {
+            throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION, "Chỉ có thể yêu cầu trả hàng cho đơn hàng đã giao");
+        }
+
+        order.setStatus(OrderStatus.RETURN_REQUESTED);
+        if (returnRequestNote != null && !returnRequestNote.isBlank()) {
+            order.setNote(returnRequestNote);
+        }
+        return orderRepository.save(order);
     }
 }
 

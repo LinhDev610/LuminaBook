@@ -43,15 +43,21 @@ public class CustomJwtDecoder implements JwtDecoder {
                     IntrospectRequest.builder().token(token).build());
 
             if (!response.isValid()) {
-                log.warn("Token validation failed: token is invalid");
+                log.warn("Token validation failed: token is invalid (expired or malformed). Token prefix: {}", 
+                    token.length() > 20 ? token.substring(0, 20) + "..." : token);
                 throw new JwtException("Token invalid");
             }
         } catch (JOSEException | ParseException e) {
-            log.warn("Token parsing/verification failed: {}", e.getMessage());
+            log.warn("Token parsing/verification failed: {}. Token prefix: {}", 
+                e.getMessage(), token.length() > 20 ? token.substring(0, 20) + "..." : token);
             throw new JwtException("Token invalid: " + e.getMessage());
+        } catch (JwtException e) {
+            // Re-throw JwtException as-is
+            throw e;
         } catch (Exception e) {
             // Catch any other unexpected exceptions
-            log.error("Unexpected error during token introspection: {}", e.getMessage(), e);
+            log.error("Unexpected error during token introspection: {}. Token prefix: {}", 
+                e.getMessage(), token.length() > 20 ? token.substring(0, 20) + "..." : token, e);
             throw new JwtException("Token validation failed: " + e.getMessage());
         }
 

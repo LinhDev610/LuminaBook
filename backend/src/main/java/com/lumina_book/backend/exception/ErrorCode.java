@@ -64,7 +64,10 @@ public enum ErrorCode {
     BAD_REQUEST(7006, "Yêu cầu không hợp lệ", HttpStatus.BAD_REQUEST),
 
     // FILE UPLOAD
-    FILE_UPLOAD_FAILED(8001, "Không thể upload file", HttpStatus.INTERNAL_SERVER_ERROR);
+    FILE_UPLOAD_FAILED(8001, "Không thể upload file", HttpStatus.INTERNAL_SERVER_ERROR),
+
+    // NOTIFICATION
+    NOTIFICATION_NOT_EXISTED(9001, "Thông báo không tồn tại", HttpStatus.NOT_FOUND);
 
     ErrorCode(int code, String message, HttpStatusCode statusCode) {
         this.code = code;

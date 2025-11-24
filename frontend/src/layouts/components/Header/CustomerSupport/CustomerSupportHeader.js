@@ -25,7 +25,12 @@ function CustomerSupportHeader() {
             <header className={cx('header')}>
                 <h2 className={cx('title')}>Bảng điều khiển</h2>
                 <div className={cx('actions')}>
-                    <button className={cx('btn', 'btn-secondary')}>Thông báo</button>
+                    <button 
+                        className={cx('btn', 'btn-secondary')} 
+                        onClick={() => navigate('/customer-support/notifications')}
+                    >
+                        Thông báo
+                    </button>
                     <button className={cx('btn', 'btn-danger')} onClick={() => setShowLogoutConfirm(true)}>
                         Đăng xuất
                     </button>

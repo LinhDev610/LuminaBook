@@ -72,9 +72,6 @@ function NavBar() {
             >
                 HỖ TRỢ KHÁCH HÀNG
             </Link>
-            <Link to={routes.contact} className={cx({ active: false })}>
-                LIÊN HỆ
-            </Link>
 
             {/* Mobile navbar */}
             <div className={cx('mobile-nav')}>

@@ -1,41 +1,45 @@
--- Script để xóa toàn bộ đơn hàng và các bản ghi liên quan
--- CẢNH BÁO: Script này sẽ xóa TẤT CẢ dữ liệu đơn hàng trong database!
--- Hãy chắc chắn bạn đã backup database trước khi chạy script này.
+-- Script để xóa toàn bộ đơn hàng
+-- Sử dụng database: lumina_book
+-- LƯU Ý: Script này sẽ xóa TẤT CẢ đơn hàng và dữ liệu liên quan. Hãy cẩn thận!
 
--- Tắt chế độ safe update để cho phép xóa hàng loạt
-SET SQL_SAFE_UPDATES = 0;
+USE lumina_book;
 
--- Bắt đầu transaction để đảm bảo tính toàn vẹn dữ liệu
-START TRANSACTION;
+-- ============================================
+-- XÓA TOÀN BỘ ĐƠN HÀNG
+-- ============================================
 
--- Xóa các bản ghi liên quan theo thứ tự (tránh lỗi foreign key constraint)
-
--- 1. Xóa chi tiết đơn hàng (order_items)
+-- Bước 1: Xóa order_items (bảng con)
 DELETE FROM order_items;
-SELECT CONCAT('Đã xóa ', ROW_COUNT(), ' bản ghi từ order_items') AS result;
 
--- 2. Xóa thông tin vận chuyển (shipments)
+-- Bước 2: Xóa shipments (bảng con)
 DELETE FROM shipments;
-SELECT CONCAT('Đã xóa ', ROW_COUNT(), ' bản ghi từ shipments') AS result;
 
--- 3. Xóa bản ghi tài chính liên quan đến đơn hàng (financial_records)
-DELETE FROM financial_records WHERE order_id IS NOT NULL;
-SELECT CONCAT('Đã xóa ', ROW_COUNT(), ' bản ghi từ financial_records') AS result;
-
--- 4. Xóa thông tin thanh toán (payments)
-DELETE FROM payments WHERE order_id IS NOT NULL;
-SELECT CONCAT('Đã xóa ', ROW_COUNT(), ' bản ghi từ payments') AS result;
-
--- 5. Cuối cùng, xóa tất cả đơn hàng (orders)
+-- Bước 3: Xóa orders (bảng chính)
 DELETE FROM orders;
-SELECT CONCAT('Đã xóa ', ROW_COUNT(), ' bản ghi từ orders') AS result;
 
--- Xác nhận transaction
-COMMIT;
+-- ============================================
+-- KIỂM TRA SAU KHI XÓA
+-- ============================================
+-- Chạy các lệnh sau để kiểm tra:
+-- SELECT COUNT(*) FROM orders;
+-- SELECT COUNT(*) FROM order_items;
+-- SELECT COUNT(*) FROM shipments;
 
--- Bật lại chế độ safe update
-SET SQL_SAFE_UPDATES = 1;
+-- ============================================
+-- XÓA THEO ĐIỀU KIỆN (Nếu cần)
+-- ============================================
 
--- Hiển thị kết quả
-SELECT 'Đã xóa toàn bộ đơn hàng và dữ liệu liên quan!' AS message;
+-- Xóa đơn hàng theo trạng thái
+-- DELETE FROM order_items WHERE order_id IN (SELECT id FROM orders WHERE status = 'CANCELLED');
+-- DELETE FROM shipments WHERE order_id IN (SELECT id FROM orders WHERE status = 'CANCELLED');
+-- DELETE FROM orders WHERE status = 'CANCELLED';
 
+-- Xóa đơn hàng theo ngày
+-- DELETE FROM order_items WHERE order_id IN (SELECT id FROM orders WHERE order_date < '2024-01-01');
+-- DELETE FROM shipments WHERE order_id IN (SELECT id FROM orders WHERE order_date < '2024-01-01');
+-- DELETE FROM orders WHERE order_date < '2024-01-01';
+
+-- Xóa đơn hàng theo mã đơn hàng
+-- DELETE FROM order_items WHERE order_id IN (SELECT id FROM orders WHERE order_code = 'LMN20251123-XXXXXX');
+-- DELETE FROM shipments WHERE order_id IN (SELECT id FROM orders WHERE order_code = 'LMN20251123-XXXXXX');
+-- DELETE FROM orders WHERE order_code = 'LMN20251123-XXXXXX';

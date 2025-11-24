@@ -78,6 +78,25 @@ export const API_ROUTES = {
         wards: (districtId) => `/ghn/wards?district_id=${districtId}`,
         shippingFees: '/ghn/shipping-fees',
     },
+    notifications: {
+        root: '/notifications',
+        mine: '/notifications/my',
+        sendToStaff: '/notifications/send-to-staff',
+        sendToUser: (userId) => `/notifications/send-to-user/${userId}`,
+        markAsRead: (notificationId) => `/notifications/${notificationId}/mark-as-read`,
+        markAllAsRead: '/notifications/mark-all-as-read',
+        delete: (notificationId) => `/notifications/${notificationId}`,
+        deleteAllRead: '/notifications/delete-all-read',
+    },
+    orders: {
+        root: '/orders',
+        checkout: '/orders/checkout',
+        checkoutDirect: '/orders/checkout-direct',
+        detail: (orderId) => `/orders/${orderId}`,
+        myOrders: '/orders/my-orders',
+        resendEmail: (orderId) => `/orders/${orderId}/resend-email`,
+        verifyPayment: (orderId) => `/orders/${orderId}/verify-payment`,
+    },
 };
 
 // =========== Product Constants ===========

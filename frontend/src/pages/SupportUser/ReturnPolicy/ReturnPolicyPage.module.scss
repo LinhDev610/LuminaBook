@@ -1,0 +1,62 @@
+@import '../ShoppingGuide/ShoppingGuidePage.module.scss';
+
+.ordered-list {
+    list-style: none;
+    padding-left: 0;
+    margin: 0;
+    counter-reset: step-counter;
+}
+
+.ordered-list li {
+    padding: 12px 0;
+    padding-left: 40px;
+    position: relative;
+    color: #555;
+    line-height: 1.6;
+    counter-increment: step-counter;
+
+    &::before {
+        content: counter(step-counter);
+        position: absolute;
+        left: 0;
+        top: 12px;
+        width: 28px;
+        height: 28px;
+        background: #1A3C5A;
+        color: #fff;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        font-size: 0.9rem;
+    }
+}
+
+.subsection {
+    margin-bottom: 24px;
+    padding-left: 20px;
+}
+
+.subsection-title {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #1A3C5A;
+    margin-bottom: 8px;
+}
+
+.cost-item {
+    margin-top: 16px;
+    padding: 16px;
+    background: #f9fafb;
+    border-radius: 8px;
+    border-left: 4px solid #1A3C5A;
+}
+
+.cost-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 8px;
+}
+

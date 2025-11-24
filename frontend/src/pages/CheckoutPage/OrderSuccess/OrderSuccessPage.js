@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import classNames from 'classnames/bind';
 import styles from './OrderSuccessPage.module.scss';
+import { verifyPaymentAndSendEmail } from '../../../services/api';
+import { getStoredToken } from '../../../services/api';
 
 const cx = classNames.bind(styles);
  
@@ -18,6 +20,7 @@ export default function OrderSuccessPage() {
 
     const [orderInfo, setOrderInfo] = useState(null);
     const [isError, setIsError] = useState(false);
+    const [emailSent, setEmailSent] = useState(false);
 
     const searchParams = useMemo(
         () => new URLSearchParams(location.search || ''),
@@ -27,8 +30,12 @@ export default function OrderSuccessPage() {
     useEffect(() => {
         const resultCode = searchParams.get('resultCode');
         const orderIdFromQuery = searchParams.get('orderId');
+        
+        // Lấy thông tin từ location.state (cho COD) hoặc query params (cho MoMo)
+        const stateOrderId = location.state?.orderId;
+        const stateOrderCode = location.state?.orderCode;
 
-        // Đọc thông tin đơn hàng được lưu trước khi redirect sang MoMo
+        // Đọc thông tin đơn hàng được lưu trước khi redirect sang MoMo hoặc từ COD
         const savedRaw = window.localStorage.getItem('lumina_latest_order');
         let saved = null;
         if (savedRaw) {
@@ -44,17 +51,43 @@ export default function OrderSuccessPage() {
             setIsError(true);
         }
 
-        // Ưu tiên orderId từ query nếu có
-        if (saved && orderIdFromQuery && saved.orderId !== orderIdFromQuery) {
-            saved = { ...saved, orderId: orderIdFromQuery };
+        // Ưu tiên: location.state > query params > localStorage
+        const finalOrderId = stateOrderId || orderIdFromQuery || saved?.orderId || saved?.id;
+        const finalOrderCode = stateOrderCode || saved?.code || saved?.orderCode;
+
+        // Cập nhật saved với thông tin từ state nếu có
+        if (saved) {
+            if (finalOrderId && saved.orderId !== finalOrderId) {
+                saved = { ...saved, orderId: finalOrderId };
+            }
+            if (finalOrderCode && saved.code !== finalOrderCode) {
+                saved = { ...saved, code: finalOrderCode };
+            }
         }
 
         setOrderInfo(
             saved || {
-                orderId: orderIdFromQuery || '',
+                orderId: finalOrderId || '',
+                code: finalOrderCode || '',
             },
         );
-    }, [searchParams]);
+
+        // Nếu thanh toán thành công (resultCode = '0'), verify payment và gửi email
+        // Chỉ gửi 1 lần bằng cách check emailSent flag
+        if (resultCode === '0' && !emailSent) {
+            const orderId = saved?.orderId || saved?.id || orderIdFromQuery;
+            if (orderId) {
+                const token = getStoredToken();
+                if (token) {
+                    setEmailSent(true); // Đánh dấu đã gửi
+                    verifyPaymentAndSendEmail(orderId, token).catch((error) => {
+                        console.error('Error verifying payment:', error);
+                        setEmailSent(false); // Reset nếu lỗi
+                    });
+                }
+            }
+        }
+    }, [searchParams, location.state]);
 
     if (isError) {
         return (

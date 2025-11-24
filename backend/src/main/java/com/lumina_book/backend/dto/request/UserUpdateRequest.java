@@ -23,6 +23,7 @@ public class UserUpdateRequest {
     String address;
     String avatarUrl;
     Boolean active;
+    Boolean isActive; // alias for clients sending `isActive`
 
     String role;
 }

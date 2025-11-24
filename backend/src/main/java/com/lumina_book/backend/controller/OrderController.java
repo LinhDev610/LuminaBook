@@ -136,9 +136,9 @@ public class OrderController {
                 .build();
     }
 
-    /**
-     * Tạo đơn hàng trực tiếp sau khi thanh toán MoMo thành công.
-     */
+
+     // Tạo đơn hàng trực tiếp sau khi thanh toán MoMo thành công.
+
     @PostMapping("/create-direct-after-payment")
     @PreAuthorize("hasRole('CUSTOMER')")
     public ApiResponse<OrderDetailResponse> createOrderDirectlyAfterPayment(
@@ -162,10 +162,10 @@ public class OrderController {
                 .build();
     }
 
-    /**
-     * Lấy danh sách các yêu cầu trả hàng/hoàn tiền.
-     * Dành cho Customer Support để quản lý và xử lý các yêu cầu trả hàng từ khách hàng.
-     */
+
+     // Lấy danh sách các yêu cầu trả hàng/hoàn tiền.
+     // Dành cho Customer Support để quản lý và xử lý các yêu cầu trả hàng từ khách hàng.
+
     @GetMapping("/return-requests")
     @PreAuthorize("hasAnyRole('CUSTOMER_SUPPORT','STAFF','ADMIN')")
     public ApiResponse<List<OrderResponse>> getReturnRequests() {

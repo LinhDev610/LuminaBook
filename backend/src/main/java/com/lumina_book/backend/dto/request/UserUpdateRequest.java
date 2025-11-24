@@ -1,5 +1,6 @@
 package com.lumina_book.backend.dto.request;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.lumina_book.backend.validator.EmailConstraint;
 import com.lumina_book.backend.validator.PasswordConstraint;
 
@@ -22,8 +23,9 @@ public class UserUpdateRequest {
     String fullName;
     String address;
     String avatarUrl;
+
+    @JsonAlias("isActive")
     Boolean active;
-    Boolean isActive; // alias for clients sending `isActive`
 
     String role;
 }

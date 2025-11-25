@@ -64,6 +64,14 @@ export default function AddProductPage() {
         setter(Number.isNaN(n) ? 0 : n);
     }, []);
 
+    const handleProductIdInput = useCallback((value) => {
+        const cleaned = (value || '')
+            .toString()
+            .replace(/[^0-9a-zA-Z]/g, '')
+            .toUpperCase();
+        setProductId(cleaned);
+    }, []);
+
     // Hàm xử lý nhập thuế (chỉ cho phép số nguyên từ 1-99)
     const handleTaxInput = useCallback((value) => {
         // Chỉ lấy số nguyên, loại bỏ tất cả ký tự không phải số
@@ -136,7 +144,11 @@ export default function AddProductPage() {
     // ========== Validation ==========
     const validate = () => {
         const newErrors = {};
-        if (!productId.trim()) newErrors.id = 'Vui lòng nhập mã sản phẩm.';
+        if (!productId.trim()) {
+            newErrors.id = 'Vui lòng nhập mã sản phẩm.';
+        } else if (!/^[A-Z0-9]+$/.test(productId.trim())) {
+            newErrors.id = 'Mã sản phẩm chỉ chứa chữ và số (A-Z, 0-9).';
+        }
         if (!name.trim()) newErrors.name = 'Vui lòng nhập tên sản phẩm.';
         if (!author.trim()) newErrors.author = 'Vui lòng nhập tên tác giả.';
         if (!publisher.trim()) newErrors.publisher = 'Vui lòng nhập nhà xuất bản.';
@@ -418,7 +430,7 @@ export default function AddProductPage() {
                         <input
                             placeholder="VD: BK001"
                             value={productId}
-                            onChange={(e) => setProductId(e.target.value)}
+                            onChange={(e) => handleProductIdInput(e.target.value)}
                         />
                         {errors.id && <div className={cx('errorText')}>{errors.id}</div>}
                     </div>

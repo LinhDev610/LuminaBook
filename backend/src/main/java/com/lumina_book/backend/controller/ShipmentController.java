@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.*;
 import com.lumina_book.backend.dto.request.ApiResponse;
 import com.lumina_book.backend.dto.request.CreateShipmentRequest;
 import com.lumina_book.backend.dto.request.GhnCalculateFeeRequest;
+import com.lumina_book.backend.dto.request.GhnLeadtimeRequest;
 import com.lumina_book.backend.dto.response.GhnDistrictResponse;
 import com.lumina_book.backend.dto.response.GhnFeeResponse;
 import com.lumina_book.backend.dto.response.GhnLeadtimeResponse;
@@ -57,6 +58,13 @@ public class ShipmentController {
     public ApiResponse<GhnFeeResponse> calculateGenericFee(@RequestBody GhnCalculateFeeRequest request) {
         return ApiResponse.<GhnFeeResponse>builder()
                 .result(shipmentService.calculateShippingFee(request))
+                .build();
+    }
+
+    @PostMapping("/ghn/leadtime")
+    public ApiResponse<GhnLeadtimeResponse> calculateLeadtime(@RequestBody GhnLeadtimeRequest request) {
+        return ApiResponse.<GhnLeadtimeResponse>builder()
+                .result(shipmentService.getLeadtime(request))
                 .build();
     }
 

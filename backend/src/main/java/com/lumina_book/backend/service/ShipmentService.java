@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.lumina_book.backend.constant.GhnConstants;
 import com.lumina_book.backend.dto.request.GhnCalculateFeeRequest;
 import com.lumina_book.backend.dto.request.GhnCreateOrderRequest;
+import com.lumina_book.backend.dto.request.GhnLeadtimeRequest;
 import com.lumina_book.backend.dto.request.GhnOrderItemCategoryRequest;
 import com.lumina_book.backend.dto.request.GhnOrderItemRequest;
 import com.lumina_book.backend.dto.response.GhnDistrictResponse;
@@ -91,16 +92,29 @@ public class ShipmentService {
         return ghnService.calculateShippingFee(feeRequest);
     }
 
+    public GhnLeadtimeResponse getLeadtime(GhnLeadtimeRequest request) {
+        return ghnService.getLeadtime(
+                request.getFromDistrictId(),
+                request.getFromWardCode(),
+                request.getToDistrictId(),
+                request.getToWardCode(),
+                request.getServiceTypeId());
+    }
+
     public GhnLeadtimeResponse getLeadtime(String orderId) {
         Order order = validateOrderWithAddress(orderId);
         GhnCreateOrderRequest ghnRequest = buildGhnCreateOrderRequest(order, null);
         
-        return ghnService.getLeadtime(
-                ghnRequest.getFromDistrictId(),
-                ghnRequest.getFromWardCode(),
-                ghnRequest.getToDistrictId(),
-                ghnRequest.getToWardCode(),
-                ghnRequest.getServiceTypeId());
+        // Build request từ order và gọi hàm chung
+        GhnLeadtimeRequest leadtimeRequest = GhnLeadtimeRequest.builder()
+                .fromDistrictId(ghnRequest.getFromDistrictId())
+                .fromWardCode(ghnRequest.getFromWardCode())
+                .toDistrictId(ghnRequest.getToDistrictId())
+                .toWardCode(ghnRequest.getToWardCode())
+                .serviceTypeId(ghnRequest.getServiceTypeId())
+                .build();
+        
+        return getLeadtime(leadtimeRequest);
     }
 
     public GhnShipmentDataResponse previewOrder(String orderId, List<Integer> pickShiftIds) {
@@ -195,7 +209,7 @@ public class ShipmentService {
         return builder.build();
     }
 
-    // GHN sẽ tự động chọn ca lấy hàng dựa trên thời gian hiện tại
+    // GHN tự động chọn ca lấy hàng dựa trên thời gian hiện tại
     private List<Integer> resolvePickShiftIds(List<Integer> pickShiftIds) {
         if (pickShiftIds != null && !pickShiftIds.isEmpty()) {
             return pickShiftIds;

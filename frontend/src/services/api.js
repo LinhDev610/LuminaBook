@@ -661,6 +661,11 @@ export async function calculateGhnShippingFee(feeData, token = null) {
     return { ok, data: extractResult(data) };
 }
 
+export async function calculateGhnLeadtime(leadtimeData, token = null) {
+    const { data, ok } = await apiRequest(ghn.leadtime, { method: 'POST', body: leadtimeData, token });
+    return { ok, data: extractResult(data) };
+}
+
 // ========== NOTIFICATION API ==========
 /**
  * Gửi thông báo cho tất cả nhân viên

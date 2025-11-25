@@ -77,6 +77,7 @@ export const API_ROUTES = {
         districts: (provinceId) => `/shipments/ghn/districts?province_id=${provinceId}`,
         wards: (districtId) => `/shipments/ghn/wards?district_id=${districtId}`,
         shippingFees: '/shipments/ghn/fees',
+        leadtime: '/shipments/ghn/leadtime',
     },
     shipments: {
         root: '/shipments',

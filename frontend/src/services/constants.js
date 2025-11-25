@@ -99,6 +99,33 @@ export const API_ROUTES = {
     },
 };
 
+// =========== GHN Constants ===========
+
+// Default shop info (from api_ghn.txt)
+export const GHN_DEFAULT_FROM_NAME = 'LuminaShop';
+export const GHN_DEFAULT_FROM_PHONE = '0846120004';
+export const GHN_DEFAULT_FROM_ADDRESS = '136 Xuân Thủy, Dịch Vọng Hậu, Cầu Giấy, Hà Nội, Vietnam';
+export const GHN_DEFAULT_FROM_WARD_CODE = '1A0602';
+export const GHN_DEFAULT_FROM_DISTRICT_ID = 1485;
+export const GHN_DEFAULT_FROM_PROVINCE_ID = 201;
+
+// Service type
+export const GHN_SERVICE_TYPE_LIGHT = 2; // < 20kg
+export const GHN_SERVICE_TYPE_HEAVY = 5; // >= 20kg
+
+// Weight threshold
+export const GHN_HEAVY_SERVICE_WEIGHT_THRESHOLD = 20000; // 20kg in grams
+
+// Default dimensions and weight
+export const GHN_DEFAULT_DIMENSION = 12; // cm
+export const GHN_DEFAULT_WEIGHT = 1200; // grams
+
+// Other constants
+export const GHN_PAYMENT_TYPE_RECEIVER = 2;
+export const GHN_REQUIRED_NOTE = 'CHOTHUHANG';
+export const GHN_COD_FAILED_AMOUNT = 2000;
+export const GHN_CONTENT = 'Sách từ LuminaBook';
+
 // =========== Product Constants ===========
 
 export const PRODUCT_CATEGORIES = {

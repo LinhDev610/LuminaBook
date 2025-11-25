@@ -2,15 +2,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import classNames from 'classnames/bind';
 import styles from './CheckoutDetailPage.module.scss';
-import { getApiBaseUrl, getStoredToken } from '../../../services/utils';
-import {
-    getMyInfo,
-    getCart,
-    applyVoucherToCart,
-    clearVoucherFromCart,
-    getMyAddresses,
-} from '../../../services';
-import { normalizeMediaUrl } from '../../../services/productUtils';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useNotification } from '../../../components/Common/Notification';
 import defaultProductImage from '../../../assets/images/img_sach.png';
@@ -18,6 +9,25 @@ import AddressListModal from '../../../components/Common/AddressModal/AddressLis
 import NewAddressModal from '../../../components/Common/AddressModal/NewAddressModal';
 import AddressDetailModal from '../../../components/Common/AddressModal/AddressDetailModal';
 import { formatFullAddress } from '../../../components/Common/AddressModal/useGhnLocations';
+import { normalizeMediaUrl } from '../../../services/productUtils';
+import { getApiBaseUrl, getStoredToken } from '../../../services/utils';
+import {
+    getMyInfo,
+    getCart,
+    applyVoucherToCart,
+    clearVoucherFromCart,
+    getMyAddresses,
+    calculateGhnShippingFee,
+} from '../../../services';
+import {
+    GHN_DEFAULT_FROM_WARD_CODE,
+    GHN_DEFAULT_FROM_DISTRICT_ID,
+    GHN_SERVICE_TYPE_LIGHT,
+    GHN_SERVICE_TYPE_HEAVY,
+    GHN_HEAVY_SERVICE_WEIGHT_THRESHOLD,
+    GHN_DEFAULT_DIMENSION,
+    GHN_DEFAULT_WEIGHT,
+} from '../../../services/constants';
 
 const cx = classNames.bind(styles);
 
@@ -32,7 +42,7 @@ export default function CheckoutDetailPage() {
     const directCheckout = location.state?.directCheckout || false;
     const directProductId = location.state?.productId || null;
     const directQuantity = location.state?.quantity || 1;
-    
+
     // Debug log
     if (directCheckout) {
         console.log('CheckoutDetailPage: Direct checkout detected', {
@@ -60,6 +70,8 @@ export default function CheckoutDetailPage() {
     const [showAddressDetailModal, setShowAddressDetailModal] = useState(false);
     const [selectedAddress, setSelectedAddress] = useState(null);
     const [addressRefreshKey, setAddressRefreshKey] = useState(0);
+    const [shippingFee, setShippingFee] = useState(0);
+    const [shippingFeeLoading, setShippingFeeLoading] = useState(false);
 
     const isLoggedIn = !!getStoredToken('token');
 
@@ -85,7 +97,7 @@ export default function CheckoutDetailPage() {
                 }
 
                 let addresses = [];
-                
+
                 if (directCheckout && directProductId) {
                     // Direct checkout: load product trực tiếp, không cần cart
                     console.log('CheckoutDetailPage: Direct checkout, loading product:', directProductId);
@@ -204,7 +216,7 @@ export default function CheckoutDetailPage() {
 
             const originalUnitPrice =
                 typeof directProduct?.originalPrice === 'number' &&
-                directProduct.originalPrice > 0
+                    directProduct.originalPrice > 0
                     ? directProduct.originalPrice
                     : currentPrice;
 
@@ -247,20 +259,20 @@ export default function CheckoutDetailPage() {
                         (typeof product?.price === 'number' && product.price > 0
                             ? product.price
                             : typeof product?.unitPrice === 'number' &&
-                              product.unitPrice > 0
-                            ? product.unitPrice
-                            : undefined) ??
+                                product.unitPrice > 0
+                                ? product.unitPrice
+                                : undefined) ??
                         item.unitPrice ??
                         0;
 
                     const originalUnitPrice =
                         (typeof product?.originalPrice === 'number' &&
-                        product.originalPrice > 0
+                            product.originalPrice > 0
                             ? product.originalPrice
                             : typeof product?.unitPrice === 'number' &&
-                              product.unitPrice > 0
-                            ? product.unitPrice
-                            : undefined) ?? currentPrice;
+                                product.unitPrice > 0
+                                ? product.unitPrice
+                                : undefined) ?? currentPrice;
 
                     metaMap[item.productId] = {
                         imageUrl: normalizedImage,
@@ -290,7 +302,7 @@ export default function CheckoutDetailPage() {
             cartItems: cart?.items?.length || 0,
             selectedItemIds: selectedItemIds?.length || 0,
         });
-        
+
         if (directCheckout && directProductId) {
             // Direct checkout: tạo item từ product
             if (directProduct) {
@@ -325,11 +337,192 @@ export default function CheckoutDetailPage() {
         return filtered.length > 0 ? filtered : items;
     }, [directCheckout, directProductId, directProduct, directQuantity, cart, selectedItemIds, loading]);
 
-    const SHIPPING_FEE_STANDARD = 25000;
-    const SHIPPING_FEE_COD = 30000;
+    // Tính phí vận chuyển từ GHN API
+    useEffect(() => {
+        const calculateShippingFee = async () => {
+            if (!selectedAddress || !checkoutItems || checkoutItems.length === 0) {
+                setShippingFee(0);
+                return;
+            }
 
-    const shippingFee =
-        shippingMethod === 'standard' ? SHIPPING_FEE_STANDARD : SHIPPING_FEE_COD;
+            if (!selectedAddress.wardCode || !selectedAddress.districtID) {
+                console.warn('Address missing wardCode or districtID');
+                setShippingFee(0);
+                return;
+            }
+
+            try {
+                setShippingFeeLoading(true);
+
+                // Lấy chi tiết sản phẩm từ API
+                const productsWithDetails = await Promise.all(
+                    checkoutItems.map(async (item) => {
+                        // Nếu product object đã có chi tiết -> sử dụng 
+                        if (item.product && item.product.weight !== undefined) {
+                            return item.product;
+                        }
+                        // Nếu không -> lấy từ API
+                        try {
+                            const resp = await fetch(`${API_BASE_URL}/products/${item.productId}`, {
+                                headers: { 'Content-Type': 'application/json' },
+                            });
+                            if (resp.ok) {
+                                const data = await resp.json();
+                                return data?.result || data;
+                            }
+                        } catch (err) {
+                            console.error('Error fetching product details:', err);
+                        }
+                        return null;
+                    })
+                );
+
+                // Tính tổng trọng lượng sản phẩm (grams)
+                let totalWeightGrams = 0;
+                const validProducts = [];
+                for (let i = 0; i < checkoutItems.length; i++) {
+                    const item = checkoutItems[i];
+                    const product = productsWithDetails[i];
+                    if (!product) continue;
+
+                    const weightKg = product.weight || 0;
+                    const weightGrams = Math.round(weightKg * 1000);
+                    const quantity = item.quantity || 1;
+                    totalWeightGrams += weightGrams * quantity;
+                    validProducts.push({ item, product });
+                }
+
+                // Nếu không có sản phẩm hợp lệ -> dùng default weight
+                if (validProducts.length === 0) {
+                    totalWeightGrams = GHN_DEFAULT_WEIGHT * checkoutItems.length;
+                }
+
+                // Xác định loại dịch vụ
+                const serviceTypeId =
+                    totalWeightGrams >= GHN_HEAVY_SERVICE_WEIGHT_THRESHOLD
+                        ? GHN_SERVICE_TYPE_HEAVY
+                        : GHN_SERVICE_TYPE_LIGHT;
+
+                // Build request
+                const toDistrictId = parseInt(selectedAddress.districtID, 10);
+                if (isNaN(toDistrictId)) {
+                    console.warn('Invalid districtID:', selectedAddress.districtID);
+                    setShippingFee(0);
+                    return;
+                }
+
+                // Tính tổng giá trị sản phẩm (VND) cho insuranceValue
+                const calculatedItemsSubtotal = checkoutItems.reduce((sum, item) => {
+                    const quantity = item.quantity || 1;
+                    const lineTotal =
+                        typeof item.finalPrice === 'number'
+                            ? item.finalPrice
+                            : (item.unitPrice || 0) * quantity;
+                    return sum + lineTotal;
+                }, 0);
+                const insuranceValue = Math.round(calculatedItemsSubtotal);
+
+                let requestBody = {
+                    service_type_id: serviceTypeId,
+                    insurance_value: insuranceValue,
+                    coupon: null,
+                    from_district_id: GHN_DEFAULT_FROM_DISTRICT_ID,
+                    from_ward_code: GHN_DEFAULT_FROM_WARD_CODE,
+                    to_district_id: toDistrictId,
+                    to_ward_code: selectedAddress.wardCode,
+                };
+
+                if (serviceTypeId === GHN_SERVICE_TYPE_LIGHT) {
+                    // Light service
+                    let maxLength = GHN_DEFAULT_DIMENSION;
+                    let maxWidth = GHN_DEFAULT_DIMENSION;
+                    let sumHeight = 0;
+                    let calculatedWeight = 0;
+
+                    for (const { item, product } of validProducts) {
+                        const quantity = item.quantity || 1;
+                        const length = product.length || GHN_DEFAULT_DIMENSION;
+                        const width = product.width || GHN_DEFAULT_DIMENSION;
+                        const height = product.height || GHN_DEFAULT_DIMENSION;
+                        const weightGrams = Math.round((product.weight || 0) * 1000);
+
+                        maxLength = Math.max(maxLength, length);
+                        maxWidth = Math.max(maxWidth, width);
+                        sumHeight += height * quantity;
+                        calculatedWeight += weightGrams * quantity;
+                    }
+
+                    if (validProducts.length === 0) {
+                        calculatedWeight = totalWeightGrams;
+                    }
+
+                    requestBody.length = Math.max(maxLength, GHN_DEFAULT_DIMENSION);
+                    requestBody.width = Math.max(maxWidth, GHN_DEFAULT_DIMENSION);
+                    requestBody.height = Math.max(sumHeight, GHN_DEFAULT_DIMENSION);
+                    requestBody.weight = Math.max(calculatedWeight, GHN_DEFAULT_WEIGHT);
+                } else {
+                    // Heavy service
+                    const items = validProducts.map(({ item, product }) => {
+                        const quantity = item.quantity || 1;
+                        const length = product.length || GHN_DEFAULT_DIMENSION;
+                        const width = product.width || GHN_DEFAULT_DIMENSION;
+                        const height = product.height || GHN_DEFAULT_DIMENSION;
+                        const weightGrams = Math.round((product.weight || 0) * 1000);
+                        const price = Math.round(item.finalPrice || item.unitPrice * quantity || 0);
+
+                        return {
+                            name: product.name || 'Sản phẩm',
+                            code: String(product.id || item.productId),
+                            quantity: quantity,
+                            price: price,
+                            length: Math.max(length, GHN_DEFAULT_DIMENSION),
+                            width: Math.max(width, GHN_DEFAULT_DIMENSION),
+                            height: Math.max(height, GHN_DEFAULT_DIMENSION),
+                            weight: Math.max(weightGrams, GHN_DEFAULT_WEIGHT),
+                            category: {
+                                level1: product.category?.name || 'Sách',
+                            },
+                        };
+                    });
+
+                    if (items.length === 0) {
+                        // Fallback nếu không có valid products
+                        items.push({
+                            name: 'Sản phẩm',
+                            code: 'default',
+                            quantity: 1,
+                            price: Math.round(itemsSubtotal),
+                            length: GHN_DEFAULT_DIMENSION,
+                            width: GHN_DEFAULT_DIMENSION,
+                            height: GHN_DEFAULT_DIMENSION,
+                            weight: GHN_DEFAULT_WEIGHT,
+                            category: { level1: 'Sách' },
+                        });
+                    }
+
+                    requestBody.items = items;
+                }
+
+                // Call GHN API
+                const token = getStoredToken('token');
+                const { ok, data: feeResponse } = await calculateGhnShippingFee(requestBody, token);
+
+                if (ok && feeResponse && feeResponse.total !== undefined) {
+                    setShippingFee(feeResponse.total || 0);
+                } else {
+                    console.error('Lỗi tính phí vận chuyển:', feeResponse);
+                    setShippingFee(0);
+                }
+            } catch (err) {
+                console.error('Lỗi tính phí vận chuyển:', err);
+                setShippingFee(0);
+            } finally {
+                setShippingFeeLoading(false);
+            }
+        };
+
+        calculateShippingFee();
+    }, [selectedAddress, checkoutItems, API_BASE_URL]);
 
     // Tạm tính: CHỈ tính trên các item được chọn (checkoutItems),
     // dùng finalPrice backend để khớp công thức trong OrderService.createOrderFromCurrentCart.
@@ -428,7 +621,7 @@ export default function CheckoutDetailPage() {
             showError('Đang tải thông tin sản phẩm, vui lòng đợi...');
             return;
         }
-        
+
         if (!checkoutItems.length) {
             showError('Không có sản phẩm nào để thanh toán');
             if (directCheckout) {
@@ -450,7 +643,7 @@ export default function CheckoutDetailPage() {
             const imageUrl = meta.imageUrl || defaultProductImage;
 
             // Lấy tên sản phẩm: từ product object hoặc productName
-            const productName = 
+            const productName =
                 (directCheckout && item.product?.name) ||
                 item.productName ||
                 item.product?.name ||
@@ -716,7 +909,7 @@ export default function CheckoutDetailPage() {
                                         originalLineTotal > currentLineTotal &&
                                         originalLineTotal > 0;
 
-                                    const displayName = 
+                                    const displayName =
                                         (directCheckout && item.product?.name) ||
                                         item.productName ||
                                         item.product?.name ||
@@ -769,7 +962,15 @@ export default function CheckoutDetailPage() {
                             </div>
                             <div className={cx('summary-row')}>
                                 <span>Phí vận chuyển (GHN):</span>
-                                <span>{formatPrice(shippingFee)}</span>
+                                <span>
+                                    {shippingFeeLoading ? (
+                                        <span style={{ color: '#666', fontSize: '0.9em' }}>
+                                            Đang tính...
+                                        </span>
+                                    ) : (
+                                        formatPrice(shippingFee)
+                                    )}
+                                </span>
                             </div>
                             <div className={cx('summary-row')}>
                                 <span>Giảm giá:</span>

@@ -64,6 +64,34 @@ export default function AddProductPage() {
         setter(Number.isNaN(n) ? 0 : n);
     }, []);
 
+    // Hàm xử lý nhập thuế (chỉ cho phép số nguyên từ 1-99)
+    const handleTaxInput = useCallback((value) => {
+        // Chỉ lấy số nguyên, loại bỏ tất cả ký tự không phải số
+        const cleaned = (value || '').replace(/[^0-9]/g, '');
+
+        if (cleaned === '') {
+            setTaxPercent('');
+            return;
+        }
+
+        // Chuyển thành số nguyên
+        const num = parseInt(cleaned, 10);
+
+        // Nếu không phải số hợp lệ, không cập nhật
+        if (isNaN(num)) {
+            return;
+        }
+
+        // Giới hạn trong khoảng 1-99
+        if (num < 1) {
+            setTaxPercent('1');
+        } else if (num > 99) {
+            setTaxPercent('99');
+        } else {
+            setTaxPercent(num.toString());
+        }
+    }, []);
+
     // Reset form về trạng thái ban đầu
     const resetForm = useCallback(() => {
         try {
@@ -159,6 +187,16 @@ export default function AddProductPage() {
             }
         }
 
+        // Validate phần trăm thuế
+        if (taxPercent === undefined || taxPercent === null || taxPercent === '') {
+            newErrors.taxPercent = 'Vui lòng nhập thuế (từ 1 đến 99%).';
+        } else {
+            const taxNum = parseInt(taxPercent, 10);
+            if (isNaN(taxNum) || taxNum < 1 || taxNum > 99) {
+                newErrors.taxPercent = 'Thuế phải là số nguyên từ 1 đến 99.';
+            }
+        }
+
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
@@ -172,7 +210,8 @@ export default function AddProductPage() {
             10,
         );
         if (Number.isNaN(n)) return 0;
-        const clamped = Math.max(0, Math.min(100, n));
+        // Giới hạn trong khoảng 1-99
+        const clamped = Math.max(1, Math.min(99, n));
         return clamped / 100;
     }, [taxPercent]);
 
@@ -471,10 +510,13 @@ export default function AddProductPage() {
                                     placeholder="Ví dụ: 5 hoặc 10"
                                     inputMode="numeric"
                                     value={taxPercent}
-                                    onChange={(e) => setTaxPercent(e.target.value)}
+                                    onChange={(e) => handleTaxInput(e.target.value)}
                                 />
                                 <span className={cx('suffix')}>%</span>
                             </div>
+                            {errors.taxPercent && (
+                                <div className={cx('errorText')}>{errors.taxPercent}</div>
+                            )}
                         </div>
                         <div className={cx('row')}>
                             <label>Ngày xuất bản</label>

@@ -6,6 +6,8 @@ import { resetPassword as resetPasswordAPI, sendOTP } from '../../../services';
 import styles from './ForgotPasswordModal.module.scss';
 import Button from '../../Common/Button';
 import classNames from 'classnames/bind';
+import visibleIcon from '../../../assets/icons/icon-visible.png';
+import invisibleIcon from '../../../assets/icons/icon-invisible.png';
 
 const cx = classNames.bind(styles);
 
@@ -24,6 +26,8 @@ export default function ForgotPasswordModal({ open = false, onClose }) {
     // reset password state
     const [password, setPassword] = useState('');
     const [confirm, setConfirm] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
     useEffect(() => {
         if (!open) return;
@@ -46,6 +50,8 @@ export default function ForgotPasswordModal({ open = false, onClose }) {
         setIsLoading(false);
         setPassword('');
         setConfirm('');
+        setShowPassword(false);
+        setShowConfirmPassword(false);
     }, [open]);
 
     // Handle Enter key press
@@ -136,6 +142,8 @@ export default function ForgotPasswordModal({ open = false, onClose }) {
                 setEmail('');
                 setPassword('');
                 setConfirm('');
+                setShowPassword(false);
+                setShowConfirmPassword(false);
                 switchToLogin();
             } else {
                 // Handle backend validation errors
@@ -218,29 +226,57 @@ export default function ForgotPasswordModal({ open = false, onClose }) {
                 <form onSubmit={handleResetPassword} className={cx('auth-form')}>
                     <div className={cx('form-group')}>
                         <label className={cx('form-label')}>Mật khẩu mới</label>
-                        <input
-                            type="password"
-                            value={password}
-                            onChange={(e) => {
-                                setPassword(e.target.value);
-                                setError('');
-                            }}
-                            placeholder="********"
-                            className={cx('form-input')}
-                        />
+                        <div className={cx('pw-wrap')}>
+                            <input
+                                type={showPassword ? 'text' : 'password'}
+                                value={password}
+                                onChange={(e) => {
+                                    setPassword(e.target.value);
+                                    setError('');
+                                }}
+                                placeholder="********"
+                                className={cx('form-input', 'pw-input')}
+                            />
+                            <Button
+                                type="button"
+                                onClick={() => setShowPassword(!showPassword)}
+                                aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                                className={cx('pw-toggle')}
+                            >
+                                <img
+                                    src={showPassword ? invisibleIcon : visibleIcon}
+                                    alt={showPassword ? 'Ẩn' : 'Hiện'}
+                                    className={cx('pw-icon')}
+                                />
+                            </Button>
+                        </div>
                     </div>
                     <div className={cx('form-group')}>
                         <label className={cx('form-label')}>Xác nhận mật khẩu</label>
-                        <input
-                            type="password"
-                            value={confirm}
-                            onChange={(e) => {
-                                setConfirm(e.target.value);
-                                setError('');
-                            }}
-                            placeholder="********"
-                            className={cx('form-input')}
-                        />
+                        <div className={cx('pw-wrap')}>
+                            <input
+                                type={showConfirmPassword ? 'text' : 'password'}
+                                value={confirm}
+                                onChange={(e) => {
+                                    setConfirm(e.target.value);
+                                    setError('');
+                                }}
+                                placeholder="********"
+                                className={cx('form-input', 'pw-input')}
+                            />
+                            <Button
+                                type="button"
+                                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                aria-label={showConfirmPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                                className={cx('pw-toggle')}
+                            >
+                                <img
+                                    src={showConfirmPassword ? invisibleIcon : visibleIcon}
+                                    alt={showConfirmPassword ? 'Ẩn' : 'Hiện'}
+                                    className={cx('pw-icon')}
+                                />
+                            </Button>
+                        </div>
                     </div>
                     {error && <div className={cx('error-text')}>{error}</div>}
                     <Button

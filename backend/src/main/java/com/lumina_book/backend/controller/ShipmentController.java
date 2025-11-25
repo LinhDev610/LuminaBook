@@ -2,19 +2,21 @@ package com.lumina_book.backend.controller;
 
 import java.util.List;
 
-import com.lumina_book.backend.entity.Shipment;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import com.lumina_book.backend.dto.request.ApiResponse;
 import com.lumina_book.backend.dto.request.CreateShipmentRequest;
+import com.lumina_book.backend.dto.request.GhnCalculateFeeRequest;
+import com.lumina_book.backend.dto.response.GhnDistrictResponse;
 import com.lumina_book.backend.dto.response.GhnFeeResponse;
 import com.lumina_book.backend.dto.response.GhnLeadtimeResponse;
 import com.lumina_book.backend.dto.response.GhnPickShiftResponse;
+import com.lumina_book.backend.dto.response.GhnProvinceResponse;
 import com.lumina_book.backend.dto.response.GhnShipmentDataResponse;
+import com.lumina_book.backend.dto.response.GhnWardResponse;
 import com.lumina_book.backend.dto.response.ShipmentResponse;
-import com.lumina_book.backend.mapper.ShipmentMapper;
 import com.lumina_book.backend.service.ShipmentService;
+import com.lumina_book.backend.util.ParseUtil;
 
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -26,7 +28,37 @@ import lombok.experimental.FieldDefaults;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class ShipmentController {
     ShipmentService shipmentService;
-    ShipmentMapper shipmentMapper;
+
+    // GHN master data
+    @GetMapping("/ghn/provinces")
+    public ApiResponse<List<GhnProvinceResponse>> getProvinces() {
+        return ApiResponse.<List<GhnProvinceResponse>>builder()
+                .result(shipmentService.getProvinces())
+                .build();
+    }
+
+    @GetMapping("/ghn/districts")
+    public ApiResponse<List<GhnDistrictResponse>> getDistricts(@RequestParam("province_id") String provinceId) {
+        Integer parsed = ParseUtil.parseInteger(provinceId, "province_id");
+        return ApiResponse.<List<GhnDistrictResponse>>builder()
+                .result(shipmentService.getDistricts(parsed))
+                .build();
+    }
+
+    @GetMapping("/ghn/wards")
+    public ApiResponse<List<GhnWardResponse>> getWards(@RequestParam("district_id") String districtId) {
+        Integer parsed = ParseUtil.parseInteger(districtId, "district_id");
+        return ApiResponse.<List<GhnWardResponse>>builder()
+                .result(shipmentService.getWards(parsed))
+                .build();
+    }
+
+    @PostMapping("/ghn/fees")
+    public ApiResponse<GhnFeeResponse> calculateGenericFee(@RequestBody GhnCalculateFeeRequest request) {
+        return ApiResponse.<GhnFeeResponse>builder()
+                .result(shipmentService.calculateShippingFee(request))
+                .build();
+    }
 
     // Lấy danh sách ca lấy hàng (pick shifts).
     @GetMapping("/pick-shifts")
@@ -69,27 +101,24 @@ public class ShipmentController {
             @PathVariable String orderId,
             @RequestBody(required = false) CreateShipmentRequest request) {
         List<Integer> pickShiftIds = request != null ? request.getPickShiftIds() : null;
-        Shipment shipment = shipmentService.createGhnOrder(orderId, pickShiftIds);
         return ApiResponse.<ShipmentResponse>builder()
-                .result(shipmentMapper.toResponse(shipment))
+                .result(shipmentService.createGhnOrder(orderId, pickShiftIds))
                 .build();
     }
 
     // Lấy thông tin shipment theo order ID.
     @GetMapping("/order/{orderId}")
     public ApiResponse<ShipmentResponse> getShipmentByOrderId(@PathVariable String orderId) {
-        Shipment shipment = shipmentService.getShipmentByOrderId(orderId);
         return ApiResponse.<ShipmentResponse>builder()
-                .result(shipmentMapper.toResponse(shipment))
+                .result(shipmentService.getShipmentByOrderId(orderId))
                 .build();
     }
 
     // Lấy thông tin shipment theo GHN order code.
     @GetMapping("/ghn-code/{orderCode}")
     public ApiResponse<ShipmentResponse> getShipmentByOrderCode(@PathVariable String orderCode) {
-        Shipment shipment = shipmentService.getShipmentByOrderCode(orderCode);
         return ApiResponse.<ShipmentResponse>builder()
-                .result(shipmentMapper.toResponse(shipment))
+                .result(shipmentService.getShipmentByOrderCode(orderCode))
                 .build();
     }
 }

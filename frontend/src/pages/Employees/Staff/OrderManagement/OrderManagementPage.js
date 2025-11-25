@@ -3,7 +3,13 @@ import classNames from 'classnames/bind';
 import styles from './OrderManagementPage.scss';
 import { useNavigate } from 'react-router-dom';
 import SearchAndSort from '../../../../components/Common/SearchAndSort';
-import { formatDateTime, getApiBaseUrl, getStoredToken } from '../../../../services';
+import {
+    formatDateTime,
+    getApiBaseUrl,
+    getStoredToken,
+    confirmOrder as confirmOrderApi,
+    createShipment as createShipmentApi,
+} from '../../../../services';
 
 const cx = classNames.bind(styles);
 
@@ -157,11 +163,13 @@ export default function OrderManagementPage() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [actionError, setActionError] = useState('');
+    const [actionMessage, setActionMessage] = useState('');
     const [processingOrderId, setProcessingOrderId] = useState(null);
 
     const [keyword, setKeyword] = useState('');
     const [dateFilter, setDateFilter] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
+    const apiBaseUrl = useMemo(() => getApiBaseUrl(), []);
 
     // Fetch danh sách đơn hàng (ưu tiên gọi API thật, nếu lỗi dùng mock)
     useEffect(() => {
@@ -169,10 +177,10 @@ export default function OrderManagementPage() {
             try {
                 setLoading(true);
                 setError('');
+                setActionError('');
+                setActionMessage('');
 
                 const token = getStoredToken('token');
-                const apiBaseUrl = getApiBaseUrl();
-
                 // Staff xem tất cả đơn hàng
                 const resp = await fetch(`${apiBaseUrl}/orders`, {
                     headers: {
@@ -218,7 +226,7 @@ export default function OrderManagementPage() {
         };
 
         fetchOrders();
-    }, []);
+    }, [apiBaseUrl]);
 
     // Lọc đơn hàng theo ô tìm kiếm, ngày và trạng thái
     const filteredOrders = useMemo(() => {
@@ -268,36 +276,55 @@ export default function OrderManagementPage() {
 
     const handleConfirmOrder = async (orderId) => {
         if (!orderId) return;
+
         try {
             setActionError('');
+            setActionMessage('');
             setProcessingOrderId(orderId);
 
             const token = getStoredToken('token');
-            const apiBaseUrl = getApiBaseUrl();
-            const resp = await fetch(`${apiBaseUrl}/orders/${orderId}/confirm`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-                },
-            });
+            const { ok: confirmOk, data: confirmedOrder, status } = await confirmOrderApi(orderId, token);
 
-            if (!resp.ok) {
-                throw new Error(`Confirm API error ${resp.status}`);
+            if (!confirmOk) {
+                throw new Error(`Confirm API error ${status || ''}`.trim());
             }
 
-            const data = await resp.json().catch(() => ({}));
-            const raw = data?.result || data || null;
-            const mapped = mapOrderFromApi(raw);
+            const mapped = mapOrderFromApi(confirmedOrder);
 
             if (!mapped) {
                 throw new Error('Không nhận được dữ liệu đơn hàng sau khi xác nhận');
             }
 
             setOrders((prev) => prev.map((o) => (o.id === orderId ? mapped : o)));
+            setActionMessage(`Đã xác nhận đơn #${mapped.code}.`);
+
+            try {
+                const {
+                    ok: shipmentOk,
+                    status: shipmentStatus,
+                    data: shipmentData,
+                } = await createShipmentApi(orderId, {}, token);
+
+                if (!shipmentOk || !shipmentData) {
+                    throw new Error(
+                        shipmentStatus
+                            ? `Không thể tạo vận đơn GHN (HTTP ${shipmentStatus})`
+                            : 'Không thể tạo vận đơn GHN.',
+                    );
+                }
+
+                setActionMessage(`Đã xác nhận đơn #${mapped.code} và tạo vận đơn GHN.`);
+            } catch (shipmentErr) {
+                console.error('OrderManagement: tạo vận đơn GHN thất bại', shipmentErr);
+                setActionError(
+                    shipmentErr?.message
+                        ? `Không thể tạo vận đơn GHN: ${shipmentErr.message}`
+                        : 'Không thể tạo vận đơn GHN. Vui lòng thử lại trong trang chi tiết đơn.',
+                );
+            }
         } catch (err) {
             console.error('OrderManagement: xác nhận đơn hàng thất bại', err);
-            setActionError('Không thể xác nhận đơn hàng. Vui lòng thử lại.');
+            setActionError(err?.message || 'Không thể xác nhận đơn hàng. Vui lòng thử lại.');
         } finally {
             setProcessingOrderId(null);
         }
@@ -309,10 +336,10 @@ export default function OrderManagementPage() {
             prev.map((o) =>
                 o.id === orderId
                     ? {
-                          ...o,
-                          rawStatus: 'CANCELLED',
-                          ...mapOrderStatus('CANCELLED'),
-                      }
+                        ...o,
+                        rawStatus: 'CANCELLED',
+                        ...mapOrderStatus('CANCELLED'),
+                    }
                     : o,
             ),
         );
@@ -348,7 +375,7 @@ export default function OrderManagementPage() {
                     searchPlaceholder="Tìm kiếm theo mã đơn, tên sản phẩm,...."
                     searchValue={keyword}
                     onSearchChange={(e) => setKeyword(e.target.value)}
-                    onSearchClick={() => {}}
+                    onSearchClick={() => { }}
                     dateFilter={dateFilter}
                     onDateChange={(value) => setDateFilter(value)}
                     dateLabel="dd/mm/yyyy"
@@ -370,6 +397,9 @@ export default function OrderManagementPage() {
                 )}
                 {error && !loading && (
                     <div className={cx('info-row', 'error')}>{error}</div>
+                )}
+                {actionMessage && (
+                    <div className={cx('info-row', 'success')}>{actionMessage}</div>
                 )}
                 {actionError && (
                     <div className={cx('info-row', 'error')}>{actionError}</div>

@@ -3,6 +3,7 @@ package com.lumina_book.backend.service;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
@@ -13,10 +14,14 @@ import com.lumina_book.backend.dto.request.GhnCalculateFeeRequest;
 import com.lumina_book.backend.dto.request.GhnCreateOrderRequest;
 import com.lumina_book.backend.dto.request.GhnOrderItemCategoryRequest;
 import com.lumina_book.backend.dto.request.GhnOrderItemRequest;
+import com.lumina_book.backend.dto.response.GhnDistrictResponse;
 import com.lumina_book.backend.dto.response.GhnFeeResponse;
 import com.lumina_book.backend.dto.response.GhnLeadtimeResponse;
 import com.lumina_book.backend.dto.response.GhnPickShiftResponse;
+import com.lumina_book.backend.dto.response.GhnProvinceResponse;
 import com.lumina_book.backend.dto.response.GhnShipmentDataResponse;
+import com.lumina_book.backend.dto.response.GhnWardResponse;
+import com.lumina_book.backend.dto.response.ShipmentResponse;
 import com.lumina_book.backend.entity.Address;
 import com.lumina_book.backend.entity.Order;
 import com.lumina_book.backend.entity.OrderItem;
@@ -26,9 +31,9 @@ import com.lumina_book.backend.enums.ShipmentProvider;
 import com.lumina_book.backend.enums.ShipmentStatus;
 import com.lumina_book.backend.exception.AppException;
 import com.lumina_book.backend.exception.ErrorCode;
-import com.lumina_book.backend.mapper.ShipmentMapper;
 import com.lumina_book.backend.repository.OrderRepository;
 import com.lumina_book.backend.repository.ShipmentRepository;
+import com.lumina_book.backend.mapper.ShipmentMapper;
 
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -45,8 +50,24 @@ public class ShipmentService {
     GhnService ghnService;
     ShipmentMapper shipmentMapper;
 
+    public List<GhnProvinceResponse> getProvinces() {
+        return ghnService.getProvinces();
+    }
+
+    public List<GhnDistrictResponse> getDistricts(Integer provinceId) {
+        return ghnService.getDistricts(provinceId);
+    }
+
+    public List<GhnWardResponse> getWards(Integer districtId) {
+        return ghnService.getWards(districtId);
+    }
+
     public List<GhnPickShiftResponse> getPickShifts() {
         return ghnService.getPickShifts();
+    }
+
+    public GhnFeeResponse calculateShippingFee(GhnCalculateFeeRequest request) {
+        return ghnService.calculateShippingFee(request);
     }
 
     public GhnFeeResponse calculateShippingFee(String orderId) {
@@ -89,32 +110,35 @@ public class ShipmentService {
     }
 
     @Transactional
-    public Shipment createGhnOrder(String orderId, List<Integer> pickShiftIds) {
+    public ShipmentResponse createGhnOrder(String orderId, List<Integer> pickShiftIds) {
         Order order = validateOrderWithAddress(orderId);
-        
         shipmentRepository.findByOrderId(orderId)
                 .ifPresent(existing -> {
                     throw new AppException(ErrorCode.BAD_REQUEST, "Đơn hàng đã có vận đơn GHN");
                 });
 
-        GhnCreateOrderRequest ghnRequest = buildGhnCreateOrderRequest(order, pickShiftIds);
+        List<Integer> effectivePickShifts = resolvePickShiftIds(pickShiftIds);
+        GhnCreateOrderRequest ghnRequest = buildGhnCreateOrderRequest(order, effectivePickShifts);
         GhnShipmentDataResponse ghnData = ghnService.createOrder(ghnRequest);
         
         if (ghnData == null) {
             throw new AppException(ErrorCode.EXTERNAL_SERVICE_ERROR);
         }
 
-        return shipmentRepository.save(buildShipmentFromGhnData(order, ghnData));
+        Shipment saved = shipmentRepository.save(buildShipmentFromGhnData(order, ghnData));
+        return shipmentMapper.toResponse(saved);
     }
 
-    public Shipment getShipmentByOrderId(String orderId) {
-        return shipmentRepository.findByOrderId(orderId)
+    public ShipmentResponse getShipmentByOrderId(String orderId) {
+        Shipment shipment = shipmentRepository.findByOrderId(orderId)
                 .orElseThrow(() -> new AppException(ErrorCode.SHIPMENT_NOT_EXISTED));
+        return shipmentMapper.toResponse(shipment);
     }
 
-    public Shipment getShipmentByOrderCode(String orderCode) {
-        return shipmentRepository.findByOrderCode(orderCode)
+    public ShipmentResponse getShipmentByOrderCode(String orderCode) {
+        Shipment shipment = shipmentRepository.findByOrderCode(orderCode)
                 .orElseThrow(() -> new AppException(ErrorCode.SHIPMENT_NOT_EXISTED));
+        return shipmentMapper.toResponse(shipment);
     }
 
     // Build GHN CreateOrderRequest từ Order.
@@ -169,6 +193,33 @@ public class ShipmentService {
         }
 
         return builder.build();
+    }
+
+    // GHN sẽ tự động chọn ca lấy hàng dựa trên thời gian hiện tại
+    private List<Integer> resolvePickShiftIds(List<Integer> pickShiftIds) {
+        if (pickShiftIds != null && !pickShiftIds.isEmpty()) {
+            return pickShiftIds;
+        }
+
+        try {
+            List<GhnPickShiftResponse> shifts = ghnService.getPickShifts();
+            if (shifts == null || shifts.isEmpty()) {
+                return new ArrayList<>();
+            }
+
+            long now = Instant.now().getEpochSecond();
+            Integer shiftId = shifts.stream()
+                    .filter(shift -> shift.getFrom_time() != null && shift.getFrom_time() >= now)
+                    .map(GhnPickShiftResponse::getId)
+                    .filter(Objects::nonNull)
+                    .findFirst()
+                    .orElseGet(() -> shifts.get(0).getId());
+
+            return shiftId != null ? new ArrayList<>(List.of(shiftId)) : new ArrayList<>();
+        } catch (Exception e) {
+            log.warn("Không thể lấy danh sách ca lấy hàng từ GHN, fallback tới danh sách ca lấy hàng mặc định");
+            return new ArrayList<>();
+        }
     }
 
     private int calculateTotalWeight(Order order) {
@@ -341,7 +392,9 @@ public class ShipmentService {
                 .build();
     }
 
+
     // Helper classes
+    // Entity kích thước bưu kiện
     private static class ParcelDimensions {
         final int length, width, height, weight;
         ParcelDimensions(int length, int width, int height, int weight) {
@@ -352,6 +405,7 @@ public class ShipmentService {
         }
     }
 
+    // Entity kích thước sản phẩm
     private static class ProductDimensions {
         final int length, width, height, weight;
         ProductDimensions(int length, int width, int height, int weight) {

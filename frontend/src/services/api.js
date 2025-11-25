@@ -13,6 +13,7 @@ const {
     ghn,
     notifications,
     orders,
+    shipments,
 } = API_ROUTES;
 
 // Get API base URL
@@ -65,20 +66,20 @@ function clearTokensAndLogout() {
     if (isLoggingOut) {
         return;
     }
-    
+
     isLoggingOut = true;
-    
+
     try {
         localStorage.removeItem('token');
         localStorage.removeItem('refreshToken');
         localStorage.removeItem('displayName');
         sessionStorage.removeItem('token');
         sessionStorage.removeItem('_checking_role');
-        
+
         // Dispatch events to notify other components
         window.dispatchEvent(new Event('tokenUpdated'));
         window.dispatchEvent(new CustomEvent('displayNameUpdated'));
-        
+
         // Only redirect if we're in browser environment
         if (typeof window !== 'undefined' && window.location) {
             // Don't redirect if already on login page or home page
@@ -121,29 +122,29 @@ async function apiRequest(endpoint, options = {}) {
             headers,
             ...(body && { body: isFormData ? body : JSON.stringify(body) }),
         });
-        
+
         // Auto-handle 401 Unauthorized (token expired/invalid)
         if (resp.status === 401 && !skipAuthCheck && tokenToUse) {
             const errorData = await resp.json().catch(() => ({}));
             const errorMessage = errorData?.message || errorData?.error || 'Token invalid';
-            
+
             // Check if it's a token validation error
             if (errorMessage.includes('Token invalid') || errorMessage.includes('expired') || errorMessage.includes('Unauthorized')) {
                 console.warn('Token expired or invalid. Auto-logging out...');
                 clearTokensAndLogout();
-                
+
                 // Return error response
-                return { 
-                    ok: false, 
-                    status: 401, 
-                    data: { 
+                return {
+                    ok: false,
+                    status: 401,
+                    data: {
                         message: 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.',
-                        autoLoggedOut: true 
-                    } 
+                        autoLoggedOut: true
+                    }
                 };
             }
         }
-        
+
         const data = await resp.json().catch(() => ({}));
         return { ok: resp.ok, status: resp.status, data };
     } catch (error) {
@@ -244,6 +245,21 @@ export async function sendOTP(email, mode) {
 export async function verifyOTP(email, otp, mode) {
     const { data, ok } = await apiRequest(auth.verifyOtp, { method: 'POST', body: { email, otp, mode } });
     return { ok, data };
+}
+
+// ========== ORDER ACTIONS ==========
+export async function confirmOrder(orderId, token = null) {
+    const { data, ok, status } = await apiRequest(orders.confirm(orderId), { method: 'POST', token });
+    return { ok, status, data: extractResult(data) };
+}
+
+export async function createShipment(orderId, payload = null, token = null) {
+    const { data, ok, status } = await apiRequest(shipments.create(orderId), {
+        method: 'POST',
+        body: payload,
+        token,
+    });
+    return { ok, status, data: extractResult(data) };
 }
 
 // ========== CATEGORIES API ==========

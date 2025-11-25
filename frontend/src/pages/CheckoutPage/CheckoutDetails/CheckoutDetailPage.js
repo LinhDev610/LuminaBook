@@ -691,6 +691,7 @@ export default function CheckoutDetailPage() {
                 // Giữ lại danh sách cartItemId đã chọn để backend biết item nào cần thanh toán (nếu không phải direct checkout)
                 cartItemIds: directCheckout ? [] : selectedItemIds,
                 address: {
+                    ...(selectedAddress || {}),
                     recipientName,
                     recipientPhone,
                     addressText,

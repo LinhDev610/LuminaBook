@@ -345,3 +345,235 @@ response:
         "operation_partner": ""
     }
 }
+7. Xem thông tin và trạng thái đơn
+request:
+POST: https://dev-online-gateway.ghn.vn/shiip/public-api/v2/shipping-order/detail
+Headers: {token: <token GHN>}
+{
+    "order_code": "LK967T"
+}
+response:
+{
+    "code": 200,
+    "message": "Success",
+    "data": {
+        "shop_id": 198175,
+        "client_id": 2510352,
+        "return_name": "LuminaShop",
+        "return_phone": "0332190158",
+        "return_address": "136 Xuân Thủy, Dịch Vọng Hậu, Cầu Giấy, Hà Nội, Vietnam",
+        "return_ward_code": "1A0602",
+        "return_district_id": 1485,
+        "return_location": {
+            "lat": 21.0366738,
+            "long": 105.7851264,
+            "cell_code": "00000000",
+            "place_id": "EkNYdcOibiBUaOG7p3ksIEThu4tjaCBW4buNbmcgSOG6rXUsIEPhuqd1IEdp4bqleSwgSMOgIE7hu5lpLCBWaWV0bmFtIi4qLAoUChIJp8eWgzWrNTEREOULQ5oCwAgSFAoSCe1NJ15KqzUxEan5zqAxTfon",
+            "trust_level": 5,
+            "wardcode": "1A0602",
+            "map_source": "source_ass_service"
+        },
+        "from_name": "LuminaShop",
+        "from_phone": "0846120004",
+        "from_hotline": "",
+        "from_address": "136 Xuân Thủy, Dịch Vọng Hậu, Cầu Giấy, Hà Nội, Vietnam",
+        "from_ward_code": "1A0602",
+        "from_district_id": 1485,
+        "from_location": {
+            "lat": 21.0366738,
+            "long": 105.7851264,
+            "cell_code": "00000000",
+            "place_id": "EkNYdcOibiBUaOG7p3ksIEThu4tjaCBW4buNbmcgSOG6rXUsIEPhuqd1IEdp4bqleSwgSMOgIE7hu5lpLCBWaWV0bmFtIi4qLAoUChIJp8eWgzWrNTEREOULQ5oCwAgSFAoSCe1NJ15KqzUxEan5zqAxTfon",
+            "trust_level": 5,
+            "wardcode": "1A0602",
+            "map_source": "source_ass_service"
+        },
+        "deliver_station_id": 0,
+        "to_name": "TinTest124",
+        "to_phone": "0987654321",
+        "to_address": "72 Thành Thái, Phường 14, Quận 10, Hồ Chí Minh, Vietnam",
+        "to_ward_code": "21014",
+        "to_district_id": 1452,
+        "to_location": {
+            "lat": 10.7721295569,
+            "long": 106.665286378,
+            "cell_code": "00000000",
+            "place_id": "ChIJh7-Q2NwudTERsbAIj9DVevg",
+            "trust_level": 5,
+            "wardcode": "21014",
+            "map_source": "source_ass_service"
+        },
+        "weight": 1200,
+        "length": 12,
+        "width": 12,
+        "height": 12,
+        "converted_weight": 345,
+        "calculate_weight": 1200,
+        "image_ids": null,
+        "service_type_id": 2,
+        "service_id": 53321,
+        "payment_type_id": 2,
+        "payment_type_ids": [
+            2
+        ],
+        "custom_service_fee": 0,
+        "sort_code": "0-000-0-00",
+        "cod_amount": 200000,
+        "cod_collect_date": null,
+        "cod_transfer_date": null,
+        "is_cod_transferred": false,
+        "is_cod_collected": false,
+        "insurance_value": 200000,
+        "order_value": 0,
+        "pick_station_id": 0,
+        "client_order_code": "",
+        "cod_failed_amount": 2000,
+        "cod_failed_collect_date": null,
+        "required_note": "CHOTHUHANG",
+        "content": "Áo Polo [Polo123] [1 cái]",
+        "note": "Tintest 123",
+        "employee_note": "",
+        "seal_code": "",
+        "pickup_time": "2025-11-23T08:35:43.613Z",
+        "request_delivery_time": null,
+        "deadline_pickup_time": null,
+        "items": [
+            {
+                "name": "Áo Polo",
+                "code": "Polo123",
+                "quantity": 1,
+                "length": 12,
+                "width": 12,
+                "height": 12,
+                "category": {
+                    "level1": "Áo"
+                },
+                "weight": 1200,
+                "status": "ready_to_pick",
+                "item_order_code": "LK967T_1",
+                "current_warehouse_id": 2331
+            }
+        ],
+        "coupon": "",
+        "coupon_campaign_id": 0,
+        "_id": "6922c760ac2bfb619f106cec",
+        "order_code": "LK967T",
+        "version_no": "b42be19d-21ea-4f4c-ae45-b691db3ddb8a",
+        "updated_ip": "",
+        "updated_employee": 242614,
+        "updated_client": 0,
+        "updated_source": "fe-toolsupport",
+        "updated_date": "2025-11-25T01:33:11.269Z",
+        "updated_warehouse": 0,
+        "created_ip": "192.168.255.96",
+        "created_employee": 0,
+        "created_client": 2510352,
+        "created_source": "shiip",
+        "created_date": "2025-11-23T08:35:43.613Z",
+        "status": "money_collect_delivering",
+        "internal_process": {
+            "status": "",
+            "type": ""
+        },
+        "pick_warehouse_id": 2331,
+        "deliver_warehouse_id": 21694000,
+        "current_warehouse_id": 2331,
+        "return_warehouse_id": 2330,
+        "next_warehouse_id": 0,
+        "current_transport_warehouse_id": 0,
+        "leadtime": "2025-11-25T16:59:59Z",
+        "leadtime_order": {
+            "from_estimate_date": "2025-11-25T16:59:59Z",
+            "to_estimate_date": "2025-11-26T16:59:59Z",
+            "picked_date": "2025-11-23T08:36:12.96Z"
+        },
+        "order_date": "2025-11-23T08:35:43.613Z",
+        "data": {
+            "last_sort_code_print": "0-000-0-00",
+            "print": {
+                "department_id": 0,
+                "is_employee": false,
+                "time": "2025-11-25T01:33:11.269Z",
+                "user_id": 2510352,
+                "user_name": "LinhDev61Prod"
+            },
+            "print_by_user_id": 2510352,
+            "print_by_user_name": "LinhDev61Prod",
+            "print_time": "2025-11-25T01:33:11.269Z"
+        },
+        "soc_id": "6922c75fac2bfb619f106ceb",
+        "finish_date": null,
+        "tag": [
+            "truck"
+        ],
+        "log": [
+            {
+                "status": "storing",
+                "payment_type_id": 2,
+                "trip_code": "",
+                "updated_date": "2025-11-23T08:36:12.967Z"
+            },
+            {
+                "status": "delivering",
+                "payment_type_id": 2,
+                "trip_code": "",
+                "updated_date": "2025-11-23T08:36:13.46Z"
+            },
+            {
+                "status": "money_collect_delivering",
+                "payment_type_id": 2,
+                "trip_code": "",
+                "updated_date": "2025-11-23T08:37:11.193Z"
+            }
+        ],
+        "is_partial_return": false,
+        "is_document_return": false,
+        "pick_shift": [
+            2
+        ],
+        "pickup_shift": {
+            "from_time": "2025-11-23T05:00:00Z",
+            "to_time": "2025-11-23T11:00:00Z"
+        },
+        "updated_date_pick_shift": "2025-11-23T08:35:43.589Z",
+        "transaction_ids": [
+            "b9ea898f-79da-4b24-8e8a-acb4563b2597"
+        ],
+        "transportation_status": "",
+        "transportation_phase": "",
+        "extra_service": {
+            "document_return": {
+                "flag": false
+            },
+            "double_check": false,
+            "lastmile_ahamove_bulky": false,
+            "lastmile_trip_code": "",
+            "original_deliver_warehouse_id": 0
+        },
+        "config_fee_id": "",
+        "extra_cost_id": "",
+        "standard_config_fee_id": "",
+        "standard_extra_cost_id": "",
+        "ecom_config_fee_id": 475,
+        "ecom_extra_cost_id": 2,
+        "ecom_standard_config_fee_id": 0,
+        "ecom_standard_extra_cost_id": 0,
+        "is_b2b": false,
+        "operation_partner": "",
+        "process_partner_name": "",
+        "delivery_days_of_week": 127,
+        "is_new_multiple": false,
+        "from_address_v2": "",
+        "from_ward_id_v2": 0,
+        "from_province_id_v2": 0,
+        "is_new_from_address": false,
+        "to_address_v2": "",
+        "to_ward_id_v2": 0,
+        "to_province_id_v2": 0,
+        "is_new_to_address": false,
+        "return_address_v2": "",
+        "return_ward_id_v2": 0,
+        "return_province_id_v2": 0,
+        "is_new_return_address": false
+    }
+}

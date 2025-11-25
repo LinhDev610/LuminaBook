@@ -12,5 +12,6 @@ public final class ApiConstants {
     public static final String GHN_SHIPPING_ORDER_LEADTIME = "/shiip/public-api/v2/shipping-order/leadtime";
     public static final String GHN_SHIPPING_ORDER_PREVIEW = "/shiip/public-api/v2/shipping-order/preview";
     public static final String GHN_SHIPPING_ORDER_CREATE = "/shiip/public-api/v2/shipping-order/create";
+    public static final String GHN_SHIPPING_ORDER_DETAIL = "/shiip/public-api/v2/shipping-order/detail";
 }
 

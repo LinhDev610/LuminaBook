@@ -2,6 +2,7 @@ package com.lumina_book.backend.util;
 
 import java.util.function.Consumer;
 
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -9,11 +10,12 @@ import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
-import org.springframework.beans.factory.annotation.Qualifier;
 
 import com.lumina_book.backend.dto.response.GhnApiResponse;
 import com.lumina_book.backend.exception.AppException;
 import com.lumina_book.backend.exception.ErrorCode;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import lombok.AccessLevel;
 import lombok.experimental.FieldDefaults;
@@ -25,6 +27,7 @@ import reactor.core.publisher.Mono;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class ApiUtil {
     WebClient ghnWebClient;
+    static ObjectMapper objectMapper = new ObjectMapper();
 
     public ApiUtil(@Qualifier("ghnWebClient") WebClient ghnWebClient) {
         this.ghnWebClient = ghnWebClient;
@@ -74,15 +77,16 @@ public class ApiUtil {
                 ? requestSpec.bodyValue(payload)
                 : requestSpec;
 
-        return headersSpec
+        GhnApiResponse<T> response = headersSpec
                 .retrieve()
                 .onStatus(HttpStatusCode::isError, clientResponse -> clientResponse.bodyToMono(String.class)
                         .flatMap(body -> {
-                            log.error("GHN API HTTP error {} - {}", clientResponse.statusCode(), body);
                             return Mono.error(new AppException(ErrorCode.EXTERNAL_SERVICE_ERROR));
                         }))
                 .bodyToMono(responseType)
                 .block();
+
+        return response;
     }
 
     private void configureGhnHeaders(HttpHeaders headers, String token, Integer shopId) {
@@ -124,6 +128,18 @@ public class ApiUtil {
         } catch (Exception e) {
             log.error("Error calling API [{} {}]", method, path, e);
             throw new AppException(ErrorCode.EXTERNAL_SERVICE_ERROR);
+        }
+    }
+
+    // Serialize payload thành chuỗi JSON
+    private String serialize(Object payload) {
+        if (payload == null) {
+            return "null";
+        }
+        try {
+            return objectMapper.writeValueAsString(payload);
+        } catch (JsonProcessingException e) {
+            return payload.toString();
         }
     }
 }

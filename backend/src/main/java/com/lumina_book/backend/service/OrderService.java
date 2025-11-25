@@ -156,7 +156,6 @@ public class OrderService {
      * Số lượng mặc định là 1.
      */
     @Transactional
-    @PreAuthorize("hasRole('CUSTOMER')")
     public CheckoutResult createOrderDirectly(DirectCheckoutRequest request) {
         // Lấy user hiện tại
         String email = SecurityUtil.getAuthentication().getName();
@@ -297,9 +296,19 @@ public class OrderService {
                 cart.getUser());
 
         // Tạo đơn hàng với paymentStatus = PAID (vì đã thanh toán thành công)
+        String reusableOrderCode = normalizeOrderCode(request.getOrderCode());
+        if (reusableOrderCode != null) {
+            Order existing = orderRepository.findByCode(reusableOrderCode).orElse(null);
+            if (existing != null) {
+                return existing;
+            }
+        }
+
+        String finalOrderCode = reusableOrderCode != null ? reusableOrderCode : generateOrderCode();
+
         Order order = Order.builder()
                 .user(cart.getUser())
-                .code(generateOrderCode())
+                .code(finalOrderCode)
                 .note(request.getNote())
                 .shippingAddress(shippingAddressSnapshot)
                 .address(shippingAddressEntity)
@@ -356,9 +365,19 @@ public class OrderService {
                 user);
 
         // Tạo đơn hàng với paymentStatus = PAID (vì đã thanh toán thành công)
+        String reusableOrderCode = normalizeOrderCode(request.getOrderCode());
+        if (reusableOrderCode != null) {
+            Order existing = orderRepository.findByCode(reusableOrderCode).orElse(null);
+            if (existing != null) {
+                return existing;
+            }
+        }
+
+        String finalOrderCode = reusableOrderCode != null ? reusableOrderCode : generateOrderCode();
+
         Order order = Order.builder()
                 .user(user)
-                .code(generateOrderCode())
+                .code(finalOrderCode)
                 .note(request.getNote())
                 .shippingAddress(shippingAddressSnapshot)
                 .address(shippingAddressEntity)
@@ -736,6 +755,14 @@ public class OrderService {
             sb.append(", ");
         }
         sb.append(value);
+    }
+
+    private String normalizeOrderCode(String code) {
+        if (code == null) {
+            return null;
+        }
+        String trimmed = code.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 
     private static class ShippingSnapshot {

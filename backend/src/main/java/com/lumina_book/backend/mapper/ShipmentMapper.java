@@ -8,7 +8,8 @@ import com.lumina_book.backend.entity.Shipment;
 
 @Mapper(componentModel = "spring")
 public interface ShipmentMapper {
-    
+
     @Mapping(target = "orderId", source = "order.id")
     ShipmentResponse toResponse(Shipment shipment);
 }
+

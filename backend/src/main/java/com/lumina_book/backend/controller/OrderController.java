@@ -36,7 +36,6 @@ public class OrderController {
     ObjectMapper objectMapper = new ObjectMapper();
 
     @PostMapping("/checkout")
-    @PreAuthorize("hasRole('CUSTOMER')")
     public ApiResponse<CheckoutInitResponse> createOrder(@RequestBody CreateOrderRequest request) {
         OrderService.CheckoutResult result = orderService.createOrderFromCurrentCart(request);
         CheckoutInitResponse response = CheckoutInitResponse.builder()
@@ -50,7 +49,6 @@ public class OrderController {
     }
 
     @PostMapping("/checkout-direct")
-    @PreAuthorize("hasRole('CUSTOMER')")
     public ApiResponse<CheckoutInitResponse> createOrderDirectly(@RequestBody DirectCheckoutRequest request) {
         OrderService.CheckoutResult result = orderService.createOrderDirectly(request);
         CheckoutInitResponse response = CheckoutInitResponse.builder()
@@ -82,7 +80,6 @@ public class OrderController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('CUSTOMER','CUSTOMER_SUPPORT','STAFF','ADMIN')")
     public ApiResponse<OrderDetailResponse> getOrderById(@PathVariable String id) {
         Order order = orderService.getOrderByIdForCurrentUser(id);
         return ApiResponse.<OrderDetailResponse>builder()

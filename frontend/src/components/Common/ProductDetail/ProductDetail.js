@@ -118,7 +118,6 @@ const ProductDetail = ({ productId }) => {
         longDescription:
             'Nếu phát huy được những khả năng còn tiềm ẩn ở bán cầu não phải bấy lâu, thì con sẽ trở thành những đứa trẻ sở hữu tư duy sáng tạo và nguồn cảm hứng dồi dào. Và chính cha mẹ sẽ là người khai phá tài năng của trẻ.',
         images: [
-            '/assets/images/img_kinangsong.png',
             '/assets/images/img_sach.png',
             '/assets/images/img_taichinh.png',
             '/assets/images/img_sachgiadinh.png',

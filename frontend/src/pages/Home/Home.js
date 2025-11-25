@@ -12,7 +12,6 @@ import { normalizeMediaUrl } from '../../services/productUtils';
 // Import images
 import heroImage from '../../assets/images/img_qc.png';
 import Banner1 from '../../components/Common/Banner/Banner1';
-import promoImage1 from '../../assets/images/img_kinangsong.png';
 import promoImage2 from '../../assets/images/img_taichinh.png';
 import promoImage3 from '../../assets/images/img_sachgiadinh.png';
 import bannerImage1 from '../../assets/images/img_qc.png';
@@ -273,7 +272,7 @@ function Home() {
                 <Banner1
                     heroImages={activeBannerImages.length ? activeBannerImages : [heroImage]}
                     promos={[
-                        { image: promoImage1, alt: 'Sách kĩ năng sống' },
+                        { image: imgsach_test, alt: 'Sách kĩ năng sống' },
                         { image: promoImage2, alt: 'Sách tài chính' },
                         { image: promoImage3, alt: 'Sách gia đình' },
                     ]}

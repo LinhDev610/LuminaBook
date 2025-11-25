@@ -473,7 +473,7 @@ export default function OrderManagementPage() {
                                                     className={cx('btn', 'cancel')}
                                                     onClick={() => handleCancelOrder(order.id)}
                                                 >
-                                                    Hủy
+                                                    Hủy đơn
                                                 </button>
                                             </div>
                                         </td>

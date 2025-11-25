@@ -342,6 +342,22 @@ const ProductDetail = ({ productId }) => {
             // Hiển thị thông báo thành công
             const productName = product?.name || displayProduct?.name || 'sản phẩm';
             success(`Đã thêm ${quantity} "${productName}" vào giỏ hàng thành công!`);
+
+            // Đồng bộ lại số lượng hiển thị trên icon giỏ hàng
+            try {
+                const { ok: cartOk, data: cartData } = await getCart(token);
+                if (cartOk) {
+                    const items = cartData?.items || cartData?.cartItems;
+                    const count = Array.isArray(items)
+                        ? items.length
+                        : typeof cartData?.itemCount === 'number'
+                            ? cartData.itemCount
+                            : 0;
+                    window.dispatchEvent(new CustomEvent('cartUpdated', { detail: { count } }));
+                }
+            } catch (syncErr) {
+                console.warn('Không thể đồng bộ số lượng giỏ hàng sau khi thêm sản phẩm:', syncErr);
+            }
         } catch (err) {
             console.error('Error adding to cart:', err);
             showError('Có lỗi xảy ra khi thêm sản phẩm vào giỏ hàng');

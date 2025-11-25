@@ -1,6 +1,6 @@
 import config from '../../../../config/';
 import routes from '../../../../config/routes';
-import { clearVoucherFromCart } from '../../../../services';
+import { clearVoucherFromCart, getCart } from '../../../../services';
 
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -56,6 +56,7 @@ function DefaultHeader() {
     const [menuOpen, setMenuOpen] = useState(false);
     const [authVersion, setAuthVersion] = useState(0);
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+    const [cartCount, setCartCount] = useState(0);
     // Keep a local mirror of displayName to avoid force-update loops
     const initialDisplayName = (() => {
         try {
@@ -120,6 +121,70 @@ function DefaultHeader() {
             console.error('Unexpected error clearing voucher when going home:', err);
         }
     };
+
+    useEffect(() => {
+        let isMounted = true;
+
+        const extractCount = (cartData) => {
+            if (!cartData) return 0;
+            if (typeof cartData.itemCount === 'number') {
+                return cartData.itemCount;
+            }
+            const items = cartData.items || cartData.cartItems;
+            if (Array.isArray(items) && items.length > 0) {
+                return items.reduce((sum, item) => {
+                    const qty = Number(item?.quantity);
+                    if (!Number.isNaN(qty) && qty > 0) {
+                        return sum + qty;
+                    }
+                    return sum + 1;
+                }, 0);
+            }
+            return 0;
+        };
+
+        const fetchCartCount = async () => {
+            if (!isLoggedIn || !currentToken) {
+                if (isMounted) setCartCount(0);
+                return;
+            }
+            try {
+                const { ok, data } = await getCart(currentToken);
+                if (!isMounted) return;
+                if (ok) {
+                    setCartCount(extractCount(data));
+                } else {
+                    setCartCount(0);
+                }
+            } catch (err) {
+                if (isMounted) {
+                    // eslint-disable-next-line no-console
+                    console.error('Failed to fetch cart count:', err);
+                    setCartCount(0);
+                }
+            }
+        };
+
+        fetchCartCount();
+
+        const handleCartUpdated = (event) => {
+            if (!isMounted) return;
+            const incomingCount = event?.detail?.count;
+            if (typeof incomingCount === 'number') {
+                setCartCount(incomingCount);
+            } else {
+                fetchCartCount();
+            }
+        };
+
+        window.addEventListener('cartUpdated', handleCartUpdated);
+
+        return () => {
+            isMounted = false;
+            window.removeEventListener('cartUpdated', handleCartUpdated);
+        };
+    }, [isLoggedIn, currentToken]);
+
     const handleLogout = () => {
         // Close confirm modal immediately so it disappears before navigation
         setShowLogoutConfirm(false);
@@ -135,6 +200,7 @@ function DefaultHeader() {
         // Notify others and go back to home after logout
         window.dispatchEvent(new Event('tokenUpdated'));
         window.dispatchEvent(new CustomEvent('displayNameUpdated'));
+        window.dispatchEvent(new CustomEvent('cartUpdated', { detail: { count: 0 } }));
         // Always go back to home after logout
         navigate('/');
     };
@@ -216,6 +282,11 @@ function DefaultHeader() {
                             src="https://cdn0.iconfinder.com/data/icons/mobile-basic-vol-1/32/Tote_Bag-1024.png"
                             alt="Cart"
                         />
+                        {cartCount > 0 && (
+                            <span className={cx('cart-count')}>
+                                {cartCount > 99 ? '99+' : cartCount}
+                            </span>
+                        )}
                     </span>
                 </div>
             </header>

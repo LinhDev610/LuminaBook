@@ -16,7 +16,7 @@ const cx = classNames.bind(styles);
 
 export default function LoginModal({ open = false, onClose }) {
     const navigate = useNavigate();
-    const { switchToRegister, switchToForgotPassword } = useAuth();
+    const { switchToRegister, switchToForgotPassword, authRedirectPath, setAuthRedirectPath } = useAuth();
     const [token, setToken] = useLocalStorage('token', null);
     const [refreshToken, setRefreshToken, removeRefreshToken] = useLocalStorage(
         'refreshToken',
@@ -110,6 +110,7 @@ export default function LoginModal({ open = false, onClose }) {
         setError('');
         setIsLoading(true);
 
+        let roleRedirectPath = null;
         try {
             const payload = { email: email.trim(), password };
             // console.log('Login attempt with:', { email: email.trim(), password: password ? '***' : 'empty' });
@@ -189,24 +190,11 @@ export default function LoginModal({ open = false, onClose }) {
                     // console.log('Full meData structure:', JSON.stringify(meData, null, 2));
 
                     if (userRole === 'ADMIN') {
-                        // console.log('Admin detected, redirecting to /admin');
-                        onClose?.();
-                        navigate('/admin', { replace: true });
-                        return;
-                    }
-
-                    if (userRole === 'CUSTOMER_SUPPORT') {
-                        // console.log('Customer Support detected, redirecting to /customer-support');
-                        onClose?.();
-                        navigate('/customer-support', { replace: true });
-                        return;
-                    }
-
-                    if (userRole === 'STAFF') {
-                        console.log('Staff detected, redirecting to /staff');
-                        onClose?.();
-                        navigate('/staff', { replace: true });
-                        return;
+                        roleRedirectPath = '/admin';
+                    } else if (userRole === 'CUSTOMER_SUPPORT') {
+                        roleRedirectPath = '/customer-support';
+                    } else if (userRole === 'STAFF') {
+                        roleRedirectPath = '/staff';
                     }
 
                     // console.log('Role not matched for admin/staff, redirecting to home page');
@@ -219,9 +207,11 @@ export default function LoginModal({ open = false, onClose }) {
                     window.dispatchEvent(new CustomEvent('displayNameUpdated'));
                 }
 
+                const fallbackRedirect = authRedirectPath || '/';
+                const finalRedirect = roleRedirectPath || fallbackRedirect;
                 onClose?.();
-                // console.log('LoginModal: Redirecting to home page');
-                navigate('/', { replace: true });
+                navigate(finalRedirect, { replace: true });
+                setAuthRedirectPath(null);
             } else {
                 setError('Tài khoản hoặc mật khẩu không đúng');
             }

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import styles from './ProductDetail.module.scss';
 import { getApiBaseUrl, formatDateTime } from '../../../services/utils';
 import { normalizeMediaUrl } from '../../../services/productUtils';
@@ -13,6 +13,7 @@ import { useNotification } from '../Notification';
 
 const ProductDetail = ({ productId }) => {
     const navigate = useNavigate();
+    const location = useLocation();
     const API_BASE_URL = useMemo(() => getApiBaseUrl(), []);
     const [product, setProduct] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -35,6 +36,8 @@ const ProductDetail = ({ productId }) => {
     const { openLoginModal, openRegisterModal } = useAuth();
     const { success, error: showError } = useNotification();
     const isLoggedIn = !!getStoredToken('token');
+    const redirectPath = `${location.pathname}${location.search || ''}`;
+    const openLoginWithRedirect = () => openLoginModal(redirectPath);
 
     // Khi vào trang chi tiết sản phẩm, luôn đưa viewport về đầu trang
     useEffect(() => {
@@ -251,12 +254,12 @@ const ProductDetail = ({ productId }) => {
                 (a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0),
             );
         }
-        // "Yêu thích nhất" – tạm ưu tiên rating cao, rồi đến mới nhất
-        return copy.sort((a, b) => {
-            const ratingDiff = (b.rating || 0) - (a.rating || 0);
-            if (ratingDiff !== 0) return ratingDiff;
-            return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
-        });
+        // "Đánh giá cao nhất" – chỉ hiển thị các đánh giá 5 sao, ưu tiên mới nhất
+        return copy
+            .filter((review) => Number(review?.rating) === 5)
+            .sort(
+                (a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0),
+            );
     }, [reviews, activeReviewTab]);
 
     // Đồng bộ số lượng với tồn kho
@@ -292,7 +295,7 @@ const ProductDetail = ({ productId }) => {
         // Kiểm tra đăng nhập
         if (!isLoggedIn) {
             showError('Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng');
-            openLoginModal();
+            openLoginWithRedirect();
             return;
         }
 
@@ -313,7 +316,7 @@ const ProductDetail = ({ productId }) => {
             
             if (!token) {
                 showError('Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng');
-                openLoginModal();
+                openLoginWithRedirect();
                 return;
             }
 
@@ -324,10 +327,10 @@ const ProductDetail = ({ productId }) => {
             if (!ok) {
                 if (status === 401) {
                     showError('Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại');
-                    openLoginModal();
+                    openLoginWithRedirect();
                 } else if (status === 403) {
                     showError('Bạn không có quyền thêm sản phẩm vào giỏ hàng. Vui lòng đăng nhập với tài khoản khách hàng.');
-                    openLoginModal();
+                    openLoginWithRedirect();
                 } else if (status === 400 || status === 404) {
                     const errorMessage = data?.message || data?.error || 'Không thể thêm sản phẩm vào giỏ hàng';
                     showError(errorMessage);
@@ -368,7 +371,7 @@ const ProductDetail = ({ productId }) => {
         // Kiểm tra đăng nhập
         if (!isLoggedIn) {
             showError('Vui lòng đăng nhập để mua sản phẩm');
-            openLoginModal();
+            openLoginWithRedirect();
             return;
         }
 
@@ -386,7 +389,7 @@ const ProductDetail = ({ productId }) => {
             
             if (!token) {
                 showError('Vui lòng đăng nhập để mua sản phẩm');
-                openLoginModal();
+                openLoginWithRedirect();
                 return;
             }
 
@@ -426,7 +429,7 @@ const ProductDetail = ({ productId }) => {
             if (status === 401) {
                 alert('Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại để viết đánh giá.');
                 setIsReviewModalOpen(false);
-                openLoginModal();
+                openLoginWithRedirect();
                 return;
             }
 
@@ -892,7 +895,7 @@ const ProductDetail = ({ productId }) => {
                                     <button
                                         type="button"
                                         className={styles.inlineLink}
-                                        onClick={openLoginModal}
+                                        onClick={openLoginWithRedirect}
                                     >
                                         đăng nhập
                                     </button>
@@ -978,28 +981,28 @@ const ProductDetail = ({ productId }) => {
                     {/* Danh sách đánh giá chi tiết */}
                     <div className={styles.reviewListWrapper}>
                         <div className={styles.reviewTabs}>
-                            <button
-                                type="button"
-                                className={
-                                    activeReviewTab === 'latest'
-                                        ? `${styles.reviewTab} ${styles.reviewTabActive}`
-                                        : styles.reviewTab
-                                }
-                                onClick={() => setActiveReviewTab('latest')}
-                            >
-                                Mới nhất
-                            </button>
-                            <button
-                                type="button"
-                                className={
-                                    activeReviewTab === 'top'
-                                        ? `${styles.reviewTab} ${styles.reviewTabActive}`
-                                        : styles.reviewTab
-                                }
-                                onClick={() => setActiveReviewTab('top')}
-                            >
-                                Yêu thích nhất
-                            </button>
+                        <button
+                            type="button"
+                            className={
+                                activeReviewTab === 'latest'
+                                    ? `${styles.reviewTab} ${styles.reviewTabActive}`
+                                    : styles.reviewTab
+                            }
+                            onClick={() => setActiveReviewTab('latest')}
+                        >
+                            Mới nhất
+                        </button>
+                        <button
+                            type="button"
+                            className={
+                                activeReviewTab === 'top'
+                                    ? `${styles.reviewTab} ${styles.reviewTabActive}`
+                                    : styles.reviewTab
+                            }
+                            onClick={() => setActiveReviewTab('top')}
+                        >
+                            Đánh giá cao nhất
+                        </button>
                         </div>
 
                         {loadingReviews ? (

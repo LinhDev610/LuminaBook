@@ -98,16 +98,22 @@ export default function ProductList({
             <div className={cx('hot-products-container')}>
                 {showNavigation && !isGrid && (
                     <>
-                        {canScrollLeft && (
-                            <button className={cx('nav-button', 'nav-left')} onClick={scrollLeft}>
-                                <img src={iconLeftArrow} alt="Previous" className={cx('nav-icon')} />
-                            </button>
-                        )}
-                        {canScrollRight && (
-                            <button className={cx('nav-button', 'nav-right')} onClick={scrollRight}>
-                                <img src={iconRightArrow} alt="Next" className={cx('nav-icon')} />
-                            </button>
-                        )}
+                        <button
+                            className={cx('nav-button', 'nav-left', { disabled: !canScrollLeft })}
+                            onClick={scrollLeft}
+                            disabled={!canScrollLeft}
+                            aria-hidden={!canScrollLeft}
+                        >
+                            <img src={iconLeftArrow} alt="Previous" className={cx('nav-icon')} />
+                        </button>
+                        <button
+                            className={cx('nav-button', 'nav-right', { disabled: !canScrollRight })}
+                            onClick={scrollRight}
+                            disabled={!canScrollRight}
+                            aria-hidden={!canScrollRight}
+                        >
+                            <img src={iconRightArrow} alt="Next" className={cx('nav-icon')} />
+                        </button>
                     </>
                 )}
                 <div

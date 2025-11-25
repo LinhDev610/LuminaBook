@@ -40,11 +40,16 @@
     overflow-x: auto;
     scroll-behavior: smooth;
     flex: 1;
+    flex-wrap: nowrap;
     scrollbar-width: none;
     -ms-overflow-style: none;
 
     &::-webkit-scrollbar {
         display: none;
+    }
+
+    > * {
+        flex: 0 0 auto;
     }
 }
 
@@ -73,6 +78,14 @@
 
     &:active {
         transform: translateY(-50%) scale(0.95);
+    }
+
+    &.disabled,
+    &:disabled {
+        opacity: 0.3;
+        cursor: default;
+        pointer-events: none;
+        transform: translateY(-50%);
     }
 }
 

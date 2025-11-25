@@ -316,11 +316,9 @@ function Home() {
                         <ProductList 
                             products={allProducts}
                             title="Tết ông trăng"
-                            showNavigation={false}
+                            showNavigation={true}
                             showHeader={false}
                             minimal={true}
-                            isGrid={true}
-                            gridColumns={5}
                         />
                     </div>
                 </section>

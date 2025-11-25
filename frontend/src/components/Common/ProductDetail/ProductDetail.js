@@ -384,31 +384,15 @@ const ProductDetail = ({ productId }) => {
             return;
         }
 
-        // Mua ngay: mặc định số lượng là 1, không liên quan đến giỏ hàng
-        const buyNowQuantity = 1;
-
-        try {
-            let token = getStoredToken('token');
-            
-            if (!token) {
-                showError('Vui lòng đăng nhập để mua sản phẩm');
-                openLoginWithRedirect();
-                return;
-            }
-
-            // Chuyển đến trang checkout với thông tin sản phẩm để checkout trực tiếp
-            // Không thêm vào giỏ hàng
-            navigate('/checkout', {
-                state: {
-                    directCheckout: true,
-                    productId: productId,
-                    quantity: buyNowQuantity,
-                },
-            });
-        } catch (err) {
-            console.error('Error in buy now:', err);
-            showError('Có lỗi xảy ra khi xử lý mua ngay');
-        }
+        // Chuyển đến trang checkout với thông tin sản phẩm để checkout trực tiếp
+        // Không thêm vào giỏ hàng
+        navigate('/checkout', {
+            state: {
+                directCheckout: true,
+                productId: productId,
+                quantity: quantity,
+            },
+        });
     };
 
     const handleSubmitReview = async (e) => {

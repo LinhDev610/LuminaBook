@@ -83,11 +83,13 @@ import ShoppingGuidePage from '../pages/SupportUser/ShoppingGuide';
 import PaymentPolicyPage from '../pages/SupportUser/PaymentPolicy';
 import ShippingPolicyPage from '../pages/SupportUser/ShippingPolicy';
 import ReturnPolicyPage from '../pages/SupportUser/ReturnPolicy';
+import CategoryPage from '../pages/Category';
 
 // Public routes
 const publicRoutes = [
     { path: '/', component: Home },
     { path: '/search', component: SearchResultsPage },
+    { path: '/category/:id', component: CategoryPage },
     { path: '/promotion', component: PromotionPage },
     { path: '/newbook', component: NewBookPage },
     { path: '/contact', component: Contact },

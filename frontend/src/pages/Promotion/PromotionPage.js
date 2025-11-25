@@ -2,14 +2,9 @@ import classNames from 'classnames/bind';
 import homeStyles from '../Home/Home.module.scss';
 import promoStyles from './Promotion.module.scss';
 import ProductList from '../../components/Common/ProductList/ProductList';
-import Banner1 from '../../components/Common/Banner/Banner1';
 
 // Tái sử dụng mock dữ liệu nhanh từ Home nếu cần, nhưng ở trang thật sẽ lấy API
 import imgsach_test from '../../assets/images/img_sach.png';
-import heroImage from '../../assets/images/img_qc.png';
-import promoImage1 from '../../assets/images/img_kinangsong.png';
-import promoImage2 from '../../assets/images/img_taichinh.png';
-import promoImage3 from '../../assets/images/img_sachgiadinh.png';
 import iconFire from '../../assets/icons/icon_fire.png';
 import iconGift from '../../assets/icons/icon_gift.png';
 import iconBook from '../../assets/icons/icon_book.png';
@@ -30,16 +25,6 @@ export default function PromotionPage() {
     return (
         <div className={cxHome('home-wrapper')}> {/* dùng chung wrapper của Home */}
             <main className={cxHome('home-content')}>
-                <Banner1
-                    heroImage={heroImage}
-                    promos={[
-                        { image: promoImage1, alt: 'Sách kĩ năng sống' },
-                        { image: promoImage2, alt: 'Sách tài chính' },
-                        { image: promoImage3, alt: 'Sách gia đình' },
-                    ]}
-                />
-
-                
                 <section className={cxHome('trending-section', cxPromo('promo-container'))}>
                     <div className={cxPromo('promo-header')}>
                         <img src={iconFire} alt="Khuyến mãi" className={cxPromo('promo-icon')} />

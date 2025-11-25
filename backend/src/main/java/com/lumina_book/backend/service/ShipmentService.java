@@ -247,7 +247,7 @@ public class ShipmentService {
                     if (product == null || product.getWeight() == null) {
                         return 0;
                     }
-                    int weightInGrams = (int) (product.getWeight() * 1000);
+                    int weightInGrams = (int) Math.round(product.getWeight());
                     return weightInGrams * (item.getQuantity() != null ? item.getQuantity() : 1);
                 })
                 .sum();
@@ -347,7 +347,7 @@ public class ShipmentService {
         int length = product.getLength() != null ? product.getLength().intValue() : GhnConstants.DEFAULT_DIMENSION;
         int width = product.getWidth() != null ? product.getWidth().intValue() : GhnConstants.DEFAULT_DIMENSION;
         int height = product.getHeight() != null ? product.getHeight().intValue() : GhnConstants.DEFAULT_DIMENSION;
-        int weight = product.getWeight() != null ? (int) (product.getWeight() * 1000) : GhnConstants.DEFAULT_WEIGHT;
+        int weight = product.getWeight() != null ? (int) Math.round(product.getWeight()) : GhnConstants.DEFAULT_WEIGHT;
 
         return new ProductDimensions(
             Math.max(length, GhnConstants.DEFAULT_DIMENSION),

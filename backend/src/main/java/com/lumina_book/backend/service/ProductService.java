@@ -33,6 +33,7 @@ import com.lumina_book.backend.repository.ProductRepository;
 import com.lumina_book.backend.repository.PromotionRepository;
 import com.lumina_book.backend.repository.VoucherRepository;
 import com.lumina_book.backend.repository.UserRepository;
+import com.lumina_book.backend.repository.BannerRepository;
 import com.lumina_book.backend.util.SecurityUtil;
 
 import lombok.AccessLevel;
@@ -52,6 +53,7 @@ public class ProductService {
     ProductMediaRepository productMediaRepository;
     PromotionRepository promotionRepository;
     VoucherRepository voucherRepository;
+    BannerRepository bannerRepository;
     ProductMapper productMapper;
 
     // ========== CREATE OPERATIONS ==========
@@ -251,16 +253,29 @@ public class ProductService {
             voucherRepository.save(voucher);
         }
 
-        // 3. Set product.promotion = null (nếu có promotion trực tiếp)
+        // 3. Xóa product khỏi tất cả Banner.products (bảng banner_products)
+        // Force load banners collection nếu chưa được load
+        if (product.getBanners() != null) {
+            product.getBanners().size(); // Trigger lazy loading
+            List<Banner> bannersWithProduct = new ArrayList<>(product.getBanners());
+            for (Banner banner : bannersWithProduct) {
+                if (banner.getProducts() != null) {
+                    banner.getProducts().remove(product);
+                    bannerRepository.save(banner);
+                }
+            }
+        }
+
+        // 4. Set product.promotion = null (nếu có promotion trực tiếp)
         if (product.getPromotion() != null) {
             product.setPromotion(null);
             productRepository.save(product);
         }
 
-        // 4. Xóa file media vật lý trong thư mục product_media (nếu có)
+        // 5. Xóa file media vật lý trong thư mục product_media (nếu có)
         deleteMediaFilesIfExists(product);
 
-        // 5. Xóa product
+        // 6. Xóa product
         productRepository.delete(product);
         log.info("Product deleted: {} by user: {}", productId, user.getEmail());
     }

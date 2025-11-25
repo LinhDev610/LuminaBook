@@ -80,14 +80,46 @@ public class OrderService {
         List<CartItem> selectedItems = resolveSelectedItems(cart.getCartItems(), request.getCartItemIds());
         PricingSummary pricing = calculatePricing(cart, selectedItems, request.getShippingFee());
 
+        PaymentMethod paymentMethod = resolvePaymentMethod(request.getPaymentMethod());
+        
+        // Với MoMo: KHÔNG tạo đơn hàng ngay, chỉ tạo payment link
+        if (paymentMethod == PaymentMethod.MOMO) {
+            // Generate order code trước để dùng cho MoMo payment
+            String orderCode = generateOrderCode();
+            
+            // Tạo payment link với order code
+            CreateMomoResponse momoResponse = momoService.createMomoPayment(
+                    Math.round(pricing.orderTotal), orderCode);
+            
+            if (momoResponse == null) {
+                log.error("MoMo API returned null response");
+                throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION, "Không thể tạo đường dẫn thanh toán MoMo. Vui lòng thử lại.");
+            }
+            
+            if (momoResponse.getResultCode() != 0) {
+                log.error("MoMo API returned error. resultCode: {}, message: {}", 
+                        momoResponse.getResultCode(), momoResponse.getMessage());
+                throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION, 
+                        "Không thể tạo đường dẫn thanh toán MoMo: " + (momoResponse.getMessage() != null ? momoResponse.getMessage() : "Lỗi không xác định"));
+            }
+            
+            if (momoResponse.getPayUrl() == null || momoResponse.getPayUrl().isBlank()) {
+                log.error("MoMo API returned null or blank payUrl. resultCode: {}", 
+                        momoResponse.getResultCode());
+                throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION, "Không nhận được đường dẫn thanh toán MoMo từ server.");
+            }
+            
+            // Trả về payment URL và order code, KHÔNG tạo đơn hàng
+            // Frontend sẽ lưu checkout info và tạo đơn hàng sau khi thanh toán thành công
+            return new CheckoutResult(null, momoResponse.getPayUrl(), orderCode);
+        }
+
+        // COD: Tạo đơn hàng ngay
         Address shippingAddressEntity = resolveShippingAddress(request, cart.getUser());
         String shippingAddressSnapshot = buildShippingAddressSnapshot(
                 shippingAddressEntity,
                 request.getShippingAddress(),
                 cart.getUser());
-
-        PaymentMethod paymentMethod = resolvePaymentMethod(request.getPaymentMethod());
-        PaymentStatus paymentStatus = paymentMethod == PaymentMethod.MOMO ? PaymentStatus.PENDING : PaymentStatus.PAID;
 
         Order order = Order.builder()
                 .user(cart.getUser())
@@ -101,8 +133,8 @@ public class OrderService {
                 .totalAmount(pricing.orderTotal)
                 .status(OrderStatus.CREATED)
                 .paymentMethod(paymentMethod)
-                .paymentStatus(paymentStatus)
-                .paid(paymentMethod != PaymentMethod.MOMO)
+                .paymentStatus(PaymentStatus.PAID)
+                .paid(true)
                 .cartItemIdsSnapshot(pricing.cartItemIdsSnapshot)
                 .build();
 
@@ -110,22 +142,13 @@ public class OrderService {
         persistOrderItems(savedOrder, selectedItems);
         orderRepository.flush();
 
-        // Xóa cart items sau khi tạo đơn hàng (cho cả COD và MoMo)
+        // Xóa cart items sau khi tạo đơn hàng
         if (savedOrder.getUser() != null && pricing.selectedCartItemIds != null && !pricing.selectedCartItemIds.isEmpty()) {
             cartService.removeCartItemsForOrder(savedOrder.getUser(), pricing.selectedCartItemIds);
         }
 
-        if (paymentMethod == PaymentMethod.COD) {
-            // COD: Giữ status CREATED, chờ admin/staff xác nhận (giống MoMo)
-            return new CheckoutResult(savedOrder, null);
-        }
-
-        CreateMomoResponse momoResponse = momoService.createMomoPayment(
-                Math.round(pricing.orderTotal), savedOrder.getCode());
-        savedOrder.setPaymentReference(momoResponse.getRequestId());
-        orderRepository.save(savedOrder);
-
-        return new CheckoutResult(savedOrder, momoResponse.getPayUrl());
+        // COD: Trả về đơn hàng đã tạo
+        return new CheckoutResult(savedOrder, null);
     }
 
     /**
@@ -139,6 +162,52 @@ public class OrderService {
         String email = SecurityUtil.getAuthentication().getName();
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+
+        // Payment method
+        PaymentMethod paymentMethod = resolvePaymentMethod(request.getPaymentMethod());
+        
+        // Với MoMo: KHÔNG tạo đơn hàng ngay, chỉ tạo payment link
+        if (paymentMethod == PaymentMethod.MOMO) {
+            // Lấy product để tính giá
+            Product product = productRepository.findById(request.getProductId())
+                    .orElseThrow(() -> new AppException(ErrorCode.PRODUCT_NOT_EXISTED));
+            
+            int quantity = request.getQuantity() != null && request.getQuantity() > 0 
+                    ? request.getQuantity() 
+                    : 1;
+            double unitPrice = product.getPrice() != null ? product.getPrice() : 0.0;
+            double finalPrice = Math.round(unitPrice * quantity);
+            double shippingFee = request.getShippingFee() != null ? Math.round(request.getShippingFee()) : 0.0;
+            double orderTotal = Math.round(finalPrice + shippingFee);
+            
+            // Generate order code trước để dùng cho MoMo payment
+            String orderCode = generateOrderCode();
+            
+            // Tạo payment link với order code
+            CreateMomoResponse momoResponse = momoService.createMomoPayment(
+                    Math.round(orderTotal), orderCode);
+            
+            if (momoResponse == null) {
+                log.error("MoMo API returned null response");
+                throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION, "Không thể tạo đường dẫn thanh toán MoMo. Vui lòng thử lại.");
+            }
+            
+            if (momoResponse.getResultCode() != 0) {
+                log.error("MoMo API returned error. resultCode: {}, message: {}", 
+                        momoResponse.getResultCode(), momoResponse.getMessage());
+                throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION, 
+                        "Không thể tạo đường dẫn thanh toán MoMo: " + (momoResponse.getMessage() != null ? momoResponse.getMessage() : "Lỗi không xác định"));
+            }
+            
+            if (momoResponse.getPayUrl() == null || momoResponse.getPayUrl().isBlank()) {
+                log.error("MoMo API returned null or blank payUrl. resultCode: {}", 
+                        momoResponse.getResultCode());
+                throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION, "Không nhận được đường dẫn thanh toán MoMo từ server.");
+            }
+            
+            // Trả về payment URL và order code, KHÔNG tạo đơn hàng
+            return new CheckoutResult(null, momoResponse.getPayUrl(), orderCode);
+        }
 
         // Lấy product
         Product product = productRepository.findById(request.getProductId())
@@ -155,16 +224,13 @@ public class OrderService {
         double shippingFee = request.getShippingFee() != null ? Math.round(request.getShippingFee()) : 0.0;
         double orderTotal = Math.round(finalPrice + shippingFee);
 
+        // COD: Tạo đơn hàng ngay
         // Resolve shipping address
         Address shippingAddressEntity = resolveShippingAddressForDirectCheckout(request, user);
         String shippingAddressSnapshot = buildShippingAddressSnapshot(
                 shippingAddressEntity,
                 request.getShippingAddress(),
                 user);
-
-        // Payment method
-        PaymentMethod paymentMethod = resolvePaymentMethod(request.getPaymentMethod());
-        PaymentStatus paymentStatus = paymentMethod == PaymentMethod.MOMO ? PaymentStatus.PENDING : PaymentStatus.PAID;
 
         // Tạo Order
         Order order = Order.builder()
@@ -179,8 +245,8 @@ public class OrderService {
                 .totalAmount(orderTotal)
                 .status(OrderStatus.CREATED)
                 .paymentMethod(paymentMethod)
-                .paymentStatus(paymentStatus)
-                .paid(paymentMethod != PaymentMethod.MOMO)
+                .paymentStatus(PaymentStatus.PAID)
+                .paid(true)
                 .cartItemIdsSnapshot("[]") // Không có cart items
                 .build();
 
@@ -199,18 +265,128 @@ public class OrderService {
         // Sử dụng ArrayList thay vì List.of() để tránh UnsupportedOperationException
         savedOrder.setItems(new ArrayList<>(List.of(orderItem)));
 
-        // COD: Giữ status CREATED, chờ admin/staff xác nhận (giống MoMo)
+        // COD: Tạo đơn hàng ngay và giữ status CREATED, chờ admin/staff xác nhận
         if (paymentMethod == PaymentMethod.COD) {
             return new CheckoutResult(savedOrder, null);
         }
 
-        // Nếu là MoMo, tạo payment link
-        CreateMomoResponse momoResponse = momoService.createMomoPayment(
-                Math.round(orderTotal), savedOrder.getCode());
-        savedOrder.setPaymentReference(momoResponse.getRequestId());
-        orderRepository.save(savedOrder);
+        // MoMo: Không tạo đơn hàng ở đây, đã xử lý ở trên
+        // Code này không nên chạy đến vì đã return ở trên
+        throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION, "Logic error: MoMo payment should have been handled earlier");
+    }
 
-        return new CheckoutResult(savedOrder, momoResponse.getPayUrl());
+    /**
+     * Tạo đơn hàng sau khi thanh toán MoMo thành công (từ giỏ hàng).
+     * Được gọi từ OrderSuccessPage khi resultCode = '0'.
+     */
+    @Transactional
+    @PreAuthorize("hasRole('CUSTOMER')")
+    public Order createOrderFromCurrentCartAfterPayment(CreateOrderRequest request) {
+        Cart cart = cartService.getCart();
+        if (cart.getCartItems() == null || cart.getCartItems().isEmpty()) {
+            throw new AppException(ErrorCode.CART_ITEM_NOT_EXISTED);
+        }
+
+        List<CartItem> selectedItems = resolveSelectedItems(cart.getCartItems(), request.getCartItemIds());
+        PricingSummary pricing = calculatePricing(cart, selectedItems, request.getShippingFee());
+
+        Address shippingAddressEntity = resolveShippingAddress(request, cart.getUser());
+        String shippingAddressSnapshot = buildShippingAddressSnapshot(
+                shippingAddressEntity,
+                request.getShippingAddress(),
+                cart.getUser());
+
+        // Tạo đơn hàng với paymentStatus = PAID (vì đã thanh toán thành công)
+        Order order = Order.builder()
+                .user(cart.getUser())
+                .code(generateOrderCode())
+                .note(request.getNote())
+                .shippingAddress(shippingAddressSnapshot)
+                .address(shippingAddressEntity)
+                .orderDate(LocalDate.now())
+                .orderDateTime(LocalDateTime.now())
+                .shippingFee(pricing.shippingFee)
+                .totalAmount(pricing.orderTotal)
+                .status(OrderStatus.CREATED)
+                .paymentMethod(PaymentMethod.MOMO)
+                .paymentStatus(PaymentStatus.PAID)
+                .paid(true)
+                .cartItemIdsSnapshot(pricing.cartItemIdsSnapshot)
+                .build();
+
+        Order savedOrder = orderRepository.save(order);
+        persistOrderItems(savedOrder, selectedItems);
+        orderRepository.flush();
+
+        // Xóa cart items sau khi tạo đơn hàng
+        if (savedOrder.getUser() != null && pricing.selectedCartItemIds != null && !pricing.selectedCartItemIds.isEmpty()) {
+            cartService.removeCartItemsForOrder(savedOrder.getUser(), pricing.selectedCartItemIds);
+        }
+
+        return savedOrder;
+    }
+
+    /**
+     * Tạo đơn hàng trực tiếp sau khi thanh toán MoMo thành công.
+     * Được gọi từ OrderSuccessPage khi resultCode = '0'.
+     */
+    @Transactional
+    @PreAuthorize("hasRole('CUSTOMER')")
+    public Order createOrderDirectlyAfterPayment(DirectCheckoutRequest request) {
+        String email = SecurityUtil.getAuthentication().getName();
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+
+        Product product = productRepository.findById(request.getProductId())
+                .orElseThrow(() -> new AppException(ErrorCode.PRODUCT_NOT_EXISTED));
+
+        int quantity = request.getQuantity() != null && request.getQuantity() > 0 
+                ? request.getQuantity() 
+                : 1;
+
+        double unitPrice = product.getPrice() != null ? product.getPrice() : 0.0;
+        double finalPrice = Math.round(unitPrice * quantity);
+        double shippingFee = request.getShippingFee() != null ? Math.round(request.getShippingFee()) : 0.0;
+        double orderTotal = Math.round(finalPrice + shippingFee);
+
+        Address shippingAddressEntity = resolveShippingAddressForDirectCheckout(request, user);
+        String shippingAddressSnapshot = buildShippingAddressSnapshot(
+                shippingAddressEntity,
+                request.getShippingAddress(),
+                user);
+
+        // Tạo đơn hàng với paymentStatus = PAID (vì đã thanh toán thành công)
+        Order order = Order.builder()
+                .user(user)
+                .code(generateOrderCode())
+                .note(request.getNote())
+                .shippingAddress(shippingAddressSnapshot)
+                .address(shippingAddressEntity)
+                .orderDate(LocalDate.now())
+                .orderDateTime(LocalDateTime.now())
+                .shippingFee(shippingFee)
+                .totalAmount(orderTotal)
+                .status(OrderStatus.CREATED)
+                .paymentMethod(PaymentMethod.MOMO)
+                .paymentStatus(PaymentStatus.PAID)
+                .paid(true)
+                .cartItemIdsSnapshot("[]")
+                .build();
+
+        Order savedOrder = orderRepository.save(order);
+
+        OrderItem orderItem = OrderItem.builder()
+                .order(savedOrder)
+                .product(product)
+                .quantity(quantity)
+                .unitPrice(unitPrice)
+                .finalPrice(finalPrice)
+                .build();
+        orderItemRepository.save(orderItem);
+        orderItemRepository.flush();
+        savedOrder.setItems(new ArrayList<>(List.of(orderItem)));
+
+        return savedOrder;
     }
 
     private Address resolveShippingAddressForDirectCheckout(DirectCheckoutRequest request, User user) {
@@ -569,10 +745,22 @@ public class OrderService {
     }
 
     @Getter
-    @AllArgsConstructor
     public static class CheckoutResult {
         private final Order order;
         private final String payUrl;
+        private final String orderCode; // For MoMo: order code to be created after payment
+        
+        public CheckoutResult(Order order, String payUrl) {
+            this.order = order;
+            this.payUrl = payUrl;
+            this.orderCode = order != null ? order.getCode() : null;
+        }
+        
+        public CheckoutResult(Order order, String payUrl, String orderCode) {
+            this.order = order;
+            this.payUrl = payUrl;
+            this.orderCode = orderCode;
+        }
     }
 
     static class PricingSummary {
@@ -623,12 +811,27 @@ public class OrderService {
     }
 
     /**
+     * Danh sách các yêu cầu trả hàng/hoàn tiền.
+     * Dành cho Customer Support để quản lý và xử lý các yêu cầu trả hàng.
+     */
+    @Transactional(readOnly = true)
+    @PreAuthorize("hasAnyRole('CUSTOMER_SUPPORT','STAFF','ADMIN')")
+    public List<Order> getReturnRequests() {
+        List<OrderStatus> returnStatuses = List.of(
+                OrderStatus.RETURN_REQUESTED,
+                OrderStatus.REFUNDED,
+                OrderStatus.RETURN_REJECTED
+        );
+        return orderRepository.findByStatusIn(returnStatuses);
+    }
+
+    /**
      * Lấy chi tiết một đơn hàng theo id, đảm bảo:
-     * - STAFF / ADMIN có thể xem mọi đơn
+     * - STAFF / ADMIN / CUSTOMER_SUPPORT có thể xem mọi đơn
      * - CUSTOMER chỉ được xem đơn của chính mình
      */
     @Transactional(readOnly = true)
-    @PreAuthorize("hasAnyRole('CUSTOMER','STAFF','ADMIN')")
+    @PreAuthorize("hasAnyRole('CUSTOMER','CUSTOMER_SUPPORT','STAFF','ADMIN')")
     public Order getOrderByIdForCurrentUser(String orderId) {
         // Try to find by ID (UUID) first, then by code (order code like LMN20251121-ABC123)
         Order order = orderRepository.findById(orderId)
@@ -639,13 +842,13 @@ public class OrderService {
                 });
 
         var auth = SecurityUtil.getAuthentication();
-        boolean isStaffOrAdmin = auth.getAuthorities().stream()
+        boolean isStaffOrAdminOrSupport = auth.getAuthorities().stream()
                 .anyMatch(a -> {
                     String role = a.getAuthority();
-                    return "ROLE_STAFF".equals(role) || "ROLE_ADMIN".equals(role);
+                    return "ROLE_STAFF".equals(role) || "ROLE_ADMIN".equals(role) || "ROLE_CUSTOMER_SUPPORT".equals(role);
                 });
 
-        if (!isStaffOrAdmin) {
+        if (!isStaffOrAdminOrSupport) {
             String email = auth.getName();
             if (order.getUser() == null || order.getUser().getEmail() == null
                     || !order.getUser().getEmail().equalsIgnoreCase(email)) {
@@ -694,7 +897,7 @@ public class OrderService {
     }
 
     @Transactional
-    public Order requestReturn(String orderId, String returnRequestNote) {
+    public Order requestReturn(String orderId, com.lumina_book.backend.dto.request.ReturnRequestRequest request) {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_EXISTED));
 
@@ -703,9 +906,91 @@ public class OrderService {
         }
 
         order.setStatus(OrderStatus.RETURN_REQUESTED);
-        if (returnRequestNote != null && !returnRequestNote.isBlank()) {
-            order.setNote(returnRequestNote);
+        
+        // Save refund request information to dedicated fields
+        if (request != null) {
+            order.setRefundReasonType(request.getReasonType());
+            order.setRefundDescription(request.getDescription());
+            order.setRefundEmail(request.getEmail());
+            order.setRefundReturnAddress(request.getReturnAddress());
+            order.setRefundMethod(request.getRefundMethod());
+            order.setRefundBank(request.getBank());
+            order.setRefundAccountNumber(request.getAccountNumber());
+            order.setRefundAccountHolder(request.getAccountHolder());
+            
+            // Save selected product IDs as JSON array
+            if (request.getSelectedProductIds() != null && !request.getSelectedProductIds().isEmpty()) {
+                try {
+                    String productIdsJson = objectMapper.writeValueAsString(request.getSelectedProductIds());
+                    order.setRefundSelectedProductIds(productIdsJson);
+                } catch (Exception e) {
+                    log.warn("Failed to serialize selected product IDs to JSON", e);
+                    order.setRefundSelectedProductIds(null);
+                }
+            }
+            
+            // Save media URLs as JSON array
+            if (request.getMediaUrls() != null && !request.getMediaUrls().isEmpty()) {
+                try {
+                    String mediaUrlsJson = objectMapper.writeValueAsString(request.getMediaUrls());
+                    order.setRefundMediaUrls(mediaUrlsJson);
+                } catch (Exception e) {
+                    log.warn("Failed to serialize media URLs to JSON", e);
+                    order.setRefundMediaUrls(null);
+                }
+            }
+            
+            // Calculate and save refund amount and return fee
+            if (order.getItems() != null && request.getSelectedProductIds() != null) {
+                double productValue = order.getItems().stream()
+                        .filter(item -> request.getSelectedProductIds().contains(item.getId()))
+                        .mapToDouble(item -> item.getFinalPrice() != null ? item.getFinalPrice() : 0.0)
+                        .sum();
+                
+                double shippingFee = order.getShippingFee() != null ? order.getShippingFee() : 0.0;
+                double returnFee = "store".equals(request.getReasonType()) 
+                        ? 0.0 
+                        : Math.round(productValue * 0.1);
+                
+                double refundAmount = productValue + shippingFee - returnFee;
+                order.setRefundAmount(refundAmount);
+                order.setRefundReturnFee(returnFee);
+            }
+            
+            // Also save to note field for backward compatibility
+            if (request.getNote() != null && !request.getNote().isBlank()) {
+                order.setNote(request.getNote());
+            } else {
+                // Generate note from request data for backward compatibility
+                StringBuilder noteBuilder = new StringBuilder();
+                if (request.getReasonType() != null) {
+                    String reasonText = "store".equals(request.getReasonType())
+                            ? "Sản phẩm gặp sự cố từ cửa hàng"
+                            : "Thay đổi nhu cầu / Mua nhầm";
+                    noteBuilder.append("Yêu cầu hoàn tiền/trả hàng - ").append(reasonText);
+                }
+                if (request.getDescription() != null && !request.getDescription().isBlank()) {
+                    noteBuilder.append("\nMô tả: ").append(request.getDescription());
+                }
+                if (request.getReturnAddress() != null && !request.getReturnAddress().isBlank()) {
+                    noteBuilder.append("\nĐịa chỉ gửi hàng: ").append(request.getReturnAddress());
+                }
+                if (request.getRefundMethod() != null && !request.getRefundMethod().isBlank()) {
+                    noteBuilder.append("\nPhương thức hoàn tiền: ").append(request.getRefundMethod());
+                }
+                if (request.getBank() != null && !request.getBank().isBlank()) {
+                    noteBuilder.append("\nNgân hàng: ").append(request.getBank());
+                }
+                if (request.getAccountNumber() != null && !request.getAccountNumber().isBlank()) {
+                    noteBuilder.append("\nSố tài khoản: ").append(request.getAccountNumber());
+                }
+                if (request.getAccountHolder() != null && !request.getAccountHolder().isBlank()) {
+                    noteBuilder.append("\nChủ tài khoản: ").append(request.getAccountHolder());
+                }
+                order.setNote(noteBuilder.toString());
+            }
         }
+        
         return orderRepository.save(order);
     }
 }

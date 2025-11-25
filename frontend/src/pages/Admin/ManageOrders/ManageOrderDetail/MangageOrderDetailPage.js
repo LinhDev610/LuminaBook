@@ -100,6 +100,16 @@ export default function MangageOrderDetailPage() {
     const [order, setOrder] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const [formData, setFormData] = useState({
+        returnStatus: 'Khách đã gửi trả',
+        returnDate: new Date().toISOString().split('T')[0],
+        verificationResult: 'Hợp lệ - Hoàn tiền toàn bộ',
+        refundAmount: '',
+        bankAccount: '',
+        bankName: 'Ngân hàng ABC',
+        accountHolder: '',
+        processingNote: 'Sản phẩm gửi nhầm tựa do kho. Đã xác nhận hoàn tiền và yêu cầu gửi trả hàng.',
+    });
 
     useEffect(() => {
         let isMounted = true;
@@ -131,6 +141,12 @@ export default function MangageOrderDetailPage() {
                 const mapped = mapOrderDetail(raw);
                 if (isMounted) {
                     setOrder(mapped);
+                    setFormData((prev) => ({
+                        ...prev,
+                        refundAmount: mapped?.totalAmount ? String(mapped.totalAmount) : '',
+                        bankAccount: mapped?.phone ? `0123${mapped.phone.slice(-6)}` : '0123456789',
+                        accountHolder: mapped?.customerName || 'Khách hàng',
+                    }));
                 }
             } catch (err) {
                 console.error('Admin order detail: fetch failed', err);
@@ -155,6 +171,23 @@ export default function MangageOrderDetailPage() {
         navigate(-1);
     };
 
+    const handleInputChange = (field, value) => {
+        setFormData((prev) => ({
+            ...prev,
+            [field]: value,
+        }));
+    };
+
+    const handleSaveDraft = () => {
+        console.log('Draft return/refund payload', { orderId: id, formData });
+        alert('Đã lưu ghi nhận xử lý tạm thời');
+    };
+
+    const handleConfirmRefund = () => {
+        console.log('Confirm refund payload', { orderId: id, formData });
+        alert('Đã xác nhận hoàn tiền cho đơn hàng');
+    };
+
     if (loading) {
         return (
             <div className={cx('page')}>
@@ -162,7 +195,10 @@ export default function MangageOrderDetailPage() {
                     <button type="button" className={cx('backBtn')} onClick={handleBack}>
                         ←
                     </button>
-                    <h1>Chi tiết đơn hàng</h1>
+                    <div>
+                        <p className={cx('eyebrow')}>Đơn hàng</p>
+                        <h1>Xử lý hoàn tiền/ trả hàng</h1>
+                    </div>
                 </div>
                 <div className={cx('stateCard')}>Đang tải dữ liệu...</div>
             </div>
@@ -176,7 +212,10 @@ export default function MangageOrderDetailPage() {
                     <button type="button" className={cx('backBtn')} onClick={handleBack}>
                         ←
                     </button>
-                    <h1>Chi tiết đơn hàng</h1>
+                    <div>
+                        <p className={cx('eyebrow')}>Đơn hàng</p>
+                        <h1>Xử lý hoàn tiền/ trả hàng</h1>
+                    </div>
                 </div>
                 <div className={cx('stateCard', 'error')}>
                     <p>{error || 'Không tìm thấy đơn hàng.'}</p>
@@ -188,104 +227,167 @@ export default function MangageOrderDetailPage() {
         );
     }
 
+    const primaryItem = order.items[0] || null;
+
     return (
         <div className={cx('page')}>
             <div className={cx('pageHeader')}>
                 <button type="button" className={cx('backBtn')} onClick={handleBack}>
                     ←
                 </button>
-                <h1>Chi tiết đơn hàng</h1>
+                <div className={cx('titleGroup')}>
+                    <p className={cx('eyebrow')}>Đơn hàng #{order.code}</p>
+                    <h1>Xử lý hoàn tiền/ trả hàng</h1>
+                </div>
+                <span className={cx('statusBadge', order.statusClass)}>{order.statusLabel}</span>
             </div>
 
-            <div className={cx('card')}>
-                <div className={cx('cardHeader')}>
-                    <div>
-                        <p className={cx('orderCode')}>Chi tiết đơn hàng #{order.code}</p>
+            <div className={cx('layout')}>
+                <section className={cx('summaryCard')}>
+                    <div className={cx('summaryHeader')}>
+                        <div>
+                            <p className={cx('summaryEyebrow')}>Đối chiếu với đơn khách hàng</p>
+                            <h2>Thông tin</h2>
+                        </div>
+                        <div className={cx('summaryMeta')}>
+                            <span>Nhân viên xử lý</span>
+                            <p>ADMIN</p>
+                        </div>
                     </div>
-                    <span className={cx('statusBadge', order.statusClass)}>{order.statusLabel}</span>
-                </div>
 
-                <div className={cx('infoSection')}>
-                    <div className={cx('infoBlock')}>
-                        <div className={cx('infoRow')}>
-                            <span className={cx('infoLabel')}>Họ và tên:</span>
-                            <span className={cx('infoValue')}>{order.customerName || '---'}</span>
+                    <div className={cx('comparisonGrid')}>
+                        <div>
+                            <p className={cx('metaLabel')}>Sản phẩm</p>
+                            <p className={cx('metaValue')}>
+                                {primaryItem?.name || primaryItem?.productName || '---'}
+                            </p>
+                            <p className={cx('metaLabel')}>Số lượng</p>
+                            <p className={cx('metaValue')}>{primaryItem?.quantity || 1}</p>
+                            <p className={cx('metaLabel')}>Thành tiền</p>
+                            <p className={cx('metaValue')}>{formatCurrency(order.totalAmount)}</p>
+                            <p className={cx('metaLabel')}>Địa chỉ</p>
+                            <p className={cx('metaValue')}>{order.address || '---'}</p>
                         </div>
-                        <div className={cx('infoRow')}>
-                            <span className={cx('infoLabel')}>SĐT:</span>
-                            <span className={cx('infoValue')}>{order.phone || '---'}</span>
-                        </div>
-                        <div className={cx('infoRow')}>
-                            <span className={cx('infoLabel')}>Ngày đặt:</span>
-                            <span className={cx('infoValue')}>
+                        <div>
+                            <p className={cx('metaLabel')}>Khách hàng</p>
+                            <p className={cx('metaValue')}>{order.customerName}</p>
+                            <p className={cx('metaLabel')}>SĐT</p>
+                            <p className={cx('metaValue')}>{order.phone || '---'}</p>
+                            <p className={cx('metaLabel')}>Ngày đặt</p>
+                            <p className={cx('metaValue')}>
                                 {order.orderDate ? formatDateTime(order.orderDate) : '---'}
-                            </span>
-                        </div>
-                        <div className={cx('infoRow')}>
-                            <span className={cx('infoLabel')}>Tổng tiền:</span>
-                            <span className={cx('infoValue')}>{formatCurrency(order.totalAmount)}</span>
+                            </p>
+                            <p className={cx('metaLabel')}>Phương thức thanh toán</p>
+                            <p className={cx('metaValue')}>{order.paymentMethod || '---'}</p>
                         </div>
                     </div>
-                    <div className={cx('infoBlock')}>
-                        <div className={cx('infoRow')}>
-                            <span className={cx('infoLabel')}>Email:</span>
-                            <span className={cx('infoValue')}>{order.email || '---'}</span>
-                        </div>
-                        <div className={cx('infoRow')}>
-                            <span className={cx('infoLabel')}>Địa chỉ:</span>
-                            <span className={cx('infoValue')}>{order.address || '---'}</span>
-                        </div>
-                        <div className={cx('infoRow')}>
-                            <span className={cx('infoLabel')}>Phương thức thanh toán:</span>
-                            <span className={cx('infoValue')}>{order.paymentMethod || '---'}</span>
-                        </div>
+                </section>
+
+                <section className={cx('sectionCard')}>
+                    <div className={cx('sectionHeader')}>
+                        <h3>Xử lý trả hàng</h3>
+                        <span className={cx('pill')}>{formData.returnStatus}</span>
                     </div>
-                </div>
+                    <div className={cx('formGrid')}>
+                        <label className={cx('formField')}>
+                            <span>Trạng thái hàng hóa</span>
+                            <select
+                                value={formData.returnStatus}
+                                onChange={(e) => handleInputChange('returnStatus', e.target.value)}
+                            >
+                                <option value="Chưa nhận">Chưa nhận</option>
+                                <option value="Khách đã gửi trả">Khách đã gửi trả</option>
+                                <option value="Đã nhận hàng hoàn">Đã nhận hàng hoàn</option>
+                                <option value="Đã kiểm tra">Đã kiểm tra</option>
+                            </select>
+                        </label>
+                        <label className={cx('formField')}>
+                            <span>Ngày nhận hàng hoàn</span>
+                            <input
+                                type="date"
+                                value={formData.returnDate}
+                                onChange={(e) => handleInputChange('returnDate', e.target.value)}
+                            />
+                        </label>
+                        <label className={cx('formField', 'full')}>
+                            <span>Địa chỉ nhận hàng trả</span>
+                            <input type="text" value="Kho trung tâm - 12 Nguyễn Văn Linh, Hà Nội" readOnly />
+                        </label>
+                    </div>
+                </section>
 
-                <div className={cx('tableWrapper')}>
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Tên sách</th>
-                                <th>Số lượng</th>
-                                <th>Giá</th>
-                                <th>Thành tiền</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {order.items.length === 0 ? (
-                                <tr>
-                                    <td colSpan={4} className={cx('empty')}>
-                                        Không có sản phẩm trong đơn hàng
-                                    </td>
-                                </tr>
-                            ) : (
-                                order.items.map((item) => (
-                                    <tr key={item.id}>
-                                        <td>{item.name}</td>
-                                        <td>{item.quantity}</td>
-                                        <td>{formatCurrency(item.price)}</td>
-                                        <td>{formatCurrency(item.total)}</td>
-                                    </tr>
-                                ))
-                            )}
-                            <tr className={cx('summaryRow')}>
-                                <td colSpan={3}>Tổng cộng</td>
-                                <td>{formatCurrency(order.totalAmount)}</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
+                <section className={cx('sectionCard')}>
+                    <div className={cx('sectionHeader')}>
+                        <h3>Xử lý hoàn tiền</h3>
+                        <p>Kết quả xác minh & thông tin thanh toán</p>
+                    </div>
+                    <div className={cx('formGrid')}>
+                        <label className={cx('formField')}>
+                            <span>Kết quả xác minh</span>
+                            <select
+                                value={formData.verificationResult}
+                                onChange={(e) => handleInputChange('verificationResult', e.target.value)}
+                            >
+                                <option value="Chưa xác minh">Chưa xác minh</option>
+                                <option value="Hợp lệ - Hoàn tiền toàn bộ">Hợp lệ - Hoàn tiền toàn bộ</option>
+                                <option value="Hợp lệ - Hoàn tiền một phần">Hợp lệ - Hoàn tiền một phần</option>
+                                <option value="Không hợp lệ">Không hợp lệ</option>
+                            </select>
+                        </label>
+                        <label className={cx('formField')}>
+                            <span>Số tiền hoàn (VNĐ)</span>
+                            <input
+                                type="number"
+                                value={formData.refundAmount}
+                                onChange={(e) => handleInputChange('refundAmount', e.target.value)}
+                            />
+                        </label>
+                        <label className={cx('formField')}>
+                            <span>Số tài khoản</span>
+                            <input
+                                type="text"
+                                value={formData.bankAccount}
+                                onChange={(e) => handleInputChange('bankAccount', e.target.value)}
+                            />
+                        </label>
+                        <label className={cx('formField')}>
+                            <span>Ngân hàng</span>
+                            <input
+                                type="text"
+                                value={formData.bankName}
+                                onChange={(e) => handleInputChange('bankName', e.target.value)}
+                            />
+                        </label>
+                        <label className={cx('formField')}>
+                            <span>Chủ tài khoản</span>
+                            <input
+                                type="text"
+                                value={formData.accountHolder}
+                                onChange={(e) => handleInputChange('accountHolder', e.target.value)}
+                            />
+                        </label>
+                    </div>
+                    <label className={cx('formField', 'full')}>
+                        <span>Ghi chú xử lý</span>
+                        <textarea
+                            rows={4}
+                            value={formData.processingNote}
+                            onChange={(e) => handleInputChange('processingNote', e.target.value)}
+                        />
+                    </label>
+                </section>
+            </div>
 
-                <div className={cx('actions')}>
-                    <button 
-                        type="button" 
-                        className={cx('refundButton')}
-                        onClick={() => navigate(`/admin/orders/${id}/return`, { state: { order } })}
-                    >
-                        Xử lý hoàn tiền / trả hàng
-                    </button>
-                </div>
+            <div className={cx('actions')}>
+                <button type="button" className={cx('btn', 'ghost')} onClick={handleBack}>
+                    Hủy
+                </button>
+                <button type="button" className={cx('btn', 'secondary')} onClick={handleSaveDraft}>
+                    Lưu
+                </button>
+                <button type="button" className={cx('btn', 'primary')} onClick={handleConfirmRefund}>
+                    Xác nhận hoàn tiền
+                </button>
             </div>
         </div>
     );

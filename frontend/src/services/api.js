@@ -231,8 +231,9 @@ export async function changePassword(passwordData, token = null) {
 
 export async function resetPassword(passwordData) {
     // passwordData có thể là { email } hoặc { email, otp, newPassword }
-    const { data, ok } = await apiRequest(auth.resetPassword, { method: 'POST', body: passwordData });
-    return { ok, data };
+    const { data, ok, status } = await apiRequest(auth.resetPassword, { method: 'POST', body: passwordData });
+    console.log('🔍 resetPassword API response:', { ok, status, data });
+    return { ok, data, status };
 }
 
 export async function sendOTP(email, mode) {

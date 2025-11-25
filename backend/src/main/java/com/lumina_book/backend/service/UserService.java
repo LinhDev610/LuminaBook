@@ -231,10 +231,12 @@ public class UserService {
         }
 
         // active - chỉ cập nhật nếu active có trong request và user là ADMIN
-        if (request.getActive() != null) {
+        Boolean requestedActiveValue = request.getActive();
+
+        if (requestedActiveValue != null) {
             if (isAdmin) {
                 boolean oldIsActiveValue = user.isActive();
-                boolean newIsActiveValue = request.getActive();
+                boolean newIsActiveValue = requestedActiveValue;
                 
                 // Check if account is being locked (transition from active to inactive)
                 if (oldIsActiveValue && !newIsActiveValue) {

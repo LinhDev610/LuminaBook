@@ -164,6 +164,9 @@ const STATUS_MAP = {
     DELIVERED: { label: 'Đã giao', key: 'delivered' },
     RETURNING: { label: 'Trả hàng', key: 'returning' },
     CANCELLED: { label: 'Đã hủy', key: 'cancelled' },
+    RETURN_REQUESTED: { label: 'Hoàn tiền/ trả hàng', key: 'return-requested' },
+    REFUNDED: { label: 'Đã hoàn tiền/ trả hàng', key: 'refunded' },
+    RETURN_REJECTED: { label: 'Từ chối hoàn tiền/ trả hàng', key: 'return-rejected' },
 };
 
 const TABS = [
@@ -171,7 +174,7 @@ const TABS = [
     { key: 'confirmed', label: 'Chờ lấy hàng', status: 'CONFIRMED' },
     { key: 'shipping', label: 'Chờ giao hàng', status: 'SHIPPING' },
     { key: 'delivered', label: 'Đã giao', status: 'DELIVERED' },
-    { key: 'returning', label: 'Trả hàng', status: 'RETURNING' },
+    { key: 'return-requested', label: 'Hoàn tiền/ trả hàng', status: 'RETURN_REQUESTED' },
     { key: 'cancelled', label: 'Đã hủy', status: 'CANCELLED' },
 ];
 
@@ -199,6 +202,12 @@ const mapOrderStatus = (statusRaw) => {
             return { mappedStatus: 'DELIVERED', ...STATUS_MAP.DELIVERED };
         case 'CANCELLED':
             return { mappedStatus: 'CANCELLED', ...STATUS_MAP.CANCELLED };
+        case 'RETURN_REQUESTED':
+            return { mappedStatus: 'RETURN_REQUESTED', ...STATUS_MAP.RETURN_REQUESTED };
+        case 'REFUNDED':
+            return { mappedStatus: 'REFUNDED', ...STATUS_MAP.REFUNDED };
+        case 'RETURN_REJECTED':
+            return { mappedStatus: 'RETURN_REJECTED', ...STATUS_MAP.RETURN_REJECTED };
         default:
             return { mappedStatus: 'PENDING', ...STATUS_MAP.PENDING };
     }
@@ -476,7 +485,16 @@ function CustomerOrderHistoryPage() {
                         ) : (
                             <div className={cx('orders-list')}>
                                 {filteredOrders.map((order) => {
-                                    const statusInfo = STATUS_MAP[order.status] || STATUS_MAP.PENDING;
+                                    // Nếu order có rawStatus là RETURN_REQUESTED, REFUNDED, hoặc RETURN_REJECTED,
+                                    // thì hiển thị status đó thay vì status mapped
+                                    let displayStatus = order.status;
+                                    if (order.rawStatus === 'RETURN_REQUESTED' || 
+                                        order.rawStatus === 'REFUNDED' || 
+                                        order.rawStatus === 'RETURN_REJECTED') {
+                                        displayStatus = order.rawStatus;
+                                    }
+                                    const statusInfo = STATUS_MAP[displayStatus] || STATUS_MAP.PENDING;
+                                    
                                     return (
                                         <div key={order.id} className={cx('order-card')}>
                                             <div className={cx('order-header')}>

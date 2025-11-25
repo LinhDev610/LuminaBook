@@ -40,8 +40,9 @@ public class OrderController {
     public ApiResponse<CheckoutInitResponse> createOrder(@RequestBody CreateOrderRequest request) {
         OrderService.CheckoutResult result = orderService.createOrderFromCurrentCart(request);
         CheckoutInitResponse response = CheckoutInitResponse.builder()
-                .order(toResponse(result.getOrder()))
+                .order(result.getOrder() != null ? toResponse(result.getOrder()) : null)
                 .payUrl(result.getPayUrl())
+                .orderCode(result.getOrderCode()) // For MoMo: order code to be created after payment
                 .build();
         return ApiResponse.<CheckoutInitResponse>builder()
                 .result(response)
@@ -53,8 +54,9 @@ public class OrderController {
     public ApiResponse<CheckoutInitResponse> createOrderDirectly(@RequestBody DirectCheckoutRequest request) {
         OrderService.CheckoutResult result = orderService.createOrderDirectly(request);
         CheckoutInitResponse response = CheckoutInitResponse.builder()
-                .order(toResponse(result.getOrder()))
+                .order(result.getOrder() != null ? toResponse(result.getOrder()) : null)
                 .payUrl(result.getPayUrl())
+                .orderCode(result.getOrderCode()) // For MoMo: order code to be created after payment
                 .build();
         return ApiResponse.<CheckoutInitResponse>builder()
                 .result(response)
@@ -80,7 +82,7 @@ public class OrderController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('CUSTOMER','STAFF','ADMIN')")
+    @PreAuthorize("hasAnyRole('CUSTOMER','CUSTOMER_SUPPORT','STAFF','ADMIN')")
     public ApiResponse<OrderDetailResponse> getOrderById(@PathVariable String id) {
         Order order = orderService.getOrderByIdForCurrentUser(id);
         return ApiResponse.<OrderDetailResponse>builder()
@@ -119,16 +121,57 @@ public class OrderController {
                 .build();
     }
 
+    /**
+     * Tạo đơn hàng sau khi thanh toán MoMo thành công (từ giỏ hàng).
+     * Endpoint này được gọi từ OrderSuccessPage khi resultCode = '0'.
+     */
+    @PostMapping("/create-after-payment")
+    @PreAuthorize("hasRole('CUSTOMER')")
+    public ApiResponse<OrderDetailResponse> createOrderAfterPayment(
+            @RequestBody CreateOrderRequest request) {
+        Order order = orderService.createOrderFromCurrentCartAfterPayment(request);
+        return ApiResponse.<OrderDetailResponse>builder()
+                .result(toDetailResponse(order))
+                .message("Đơn hàng đã được tạo thành công sau khi thanh toán.")
+                .build();
+    }
+
+
+     // Tạo đơn hàng trực tiếp sau khi thanh toán MoMo thành công.
+
+    @PostMapping("/create-direct-after-payment")
+    @PreAuthorize("hasRole('CUSTOMER')")
+    public ApiResponse<OrderDetailResponse> createOrderDirectlyAfterPayment(
+            @RequestBody DirectCheckoutRequest request) {
+        Order order = orderService.createOrderDirectlyAfterPayment(request);
+        return ApiResponse.<OrderDetailResponse>builder()
+                .result(toDetailResponse(order))
+                .message("Đơn hàng đã được tạo thành công sau khi thanh toán.")
+                .build();
+    }
+
     @PostMapping("/{id}/request-return")
     @PreAuthorize("hasRole('CUSTOMER')")
     public ApiResponse<OrderDetailResponse> requestReturn(
             @PathVariable String id,
-            @RequestBody(required = false) java.util.Map<String, String> request) {
-        String returnRequestNote = request != null ? request.get("note") : null;
-        Order order = orderService.requestReturn(id, returnRequestNote);
+            @RequestBody(required = false) com.lumina_book.backend.dto.request.ReturnRequestRequest request) {
+        Order order = orderService.requestReturn(id, request);
         return ApiResponse.<OrderDetailResponse>builder()
                 .result(toDetailResponse(order))
                 .message("Đã gửi yêu cầu trả hàng/hoàn tiền thành công.")
+                .build();
+    }
+
+
+     // Lấy danh sách các yêu cầu trả hàng/hoàn tiền.
+     // Dành cho Customer Support để quản lý và xử lý các yêu cầu trả hàng từ khách hàng.
+
+    @GetMapping("/return-requests")
+    @PreAuthorize("hasAnyRole('CUSTOMER_SUPPORT','STAFF','ADMIN')")
+    public ApiResponse<List<OrderResponse>> getReturnRequests() {
+        List<Order> orders = orderService.getReturnRequests();
+        return ApiResponse.<List<OrderResponse>>builder()
+                .result(orders.stream().map(this::toResponse).toList())
                 .build();
     }
 
@@ -165,6 +208,16 @@ public class OrderController {
                 .paymentStatus(order.getPaymentStatus() != null ? order.getPaymentStatus().name() : null)
                 .paid(order.getPaid())
                 .paymentReference(order.getPaymentReference())
+                .refundReasonType(order.getRefundReasonType())
+                .refundDescription(order.getRefundDescription())
+                .refundEmail(order.getRefundEmail())
+                .refundReturnAddress(order.getRefundReturnAddress())
+                .refundMethod(order.getRefundMethod())
+                .refundBank(order.getRefundBank())
+                .refundAccountNumber(order.getRefundAccountNumber())
+                .refundAccountHolder(order.getRefundAccountHolder())
+                .refundAmount(order.getRefundAmount())
+                .refundReturnFee(order.getRefundReturnFee())
                 .build();
     }
 
@@ -228,6 +281,18 @@ public class OrderController {
                 .paid(order.getPaid())
                 .paymentReference(order.getPaymentReference())
                 .items(items)
+                .refundReasonType(order.getRefundReasonType())
+                .refundDescription(order.getRefundDescription())
+                .refundEmail(order.getRefundEmail())
+                .refundReturnAddress(order.getRefundReturnAddress())
+                .refundMethod(order.getRefundMethod())
+                .refundBank(order.getRefundBank())
+                .refundAccountNumber(order.getRefundAccountNumber())
+                .refundAccountHolder(order.getRefundAccountHolder())
+                .refundAmount(order.getRefundAmount())
+                .refundReturnFee(order.getRefundReturnFee())
+                .refundSelectedProductIds(order.getRefundSelectedProductIds())
+                .refundMediaUrls(order.getRefundMediaUrls())
                 .build();
     }
 

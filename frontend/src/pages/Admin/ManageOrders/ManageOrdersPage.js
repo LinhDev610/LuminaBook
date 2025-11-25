@@ -21,6 +21,12 @@ const mapOrderStatus = (statusRaw) => {
             return { label: 'Đã giao', css: 'delivered' };
         case 'CANCELLED':
             return { label: 'Đã hủy', css: 'cancelled' };
+        case 'RETURN_REQUESTED':
+            return { label: 'Yêu cầu hoàn tiền/ trả hàng', css: 'return-pending' };
+        case 'REFUNDED':
+            return { label: 'Đã hoàn tiền/ trả hàng', css: 'refunded' };
+        case 'RETURN_REJECTED':
+            return { label: 'Từ chối hoàn tiền/ trả hàng', css: 'return-rejected' };
         default:
             return { label: statusRaw || 'Chờ xác nhận', css: 'pending' };
     }
@@ -58,19 +64,46 @@ const formatPrice = (value) =>
         currency: 'VND',
     }).format(typeof value === 'number' ? value : Number(value) || 0);
 
+// Format currency with dot separator (180.000 instead of 180,000₫)
+const formatCurrencyWithDot = (amount) => {
+    if (!amount && amount !== 0) return '0';
+    return new Intl.NumberFormat('vi-VN', {
+        style: 'decimal',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+    }).format(amount).replace(/,/g, '.');
+};
+
+// Format date as YYYY-MM-DD
+const formatDateOnly = (dateString) => {
+    if (!dateString) return '';
+    try {
+        const date = new Date(dateString);
+        return date.toISOString().split('T')[0];
+    } catch {
+        return dateString;
+    }
+};
+
 const getOrderDateValue = (order) => {
     if (!order) return null;
     return order.orderDateTime || order.orderDate || order.createdAt || null;
 };
 
 const mapOrderFromApi = (order) => {
-    if (!order) return null;
-    const rawStatus = order.status || order.rawStatus;
+    if (!order) {
+        console.warn('⚠️ mapOrderFromApi: order is null/undefined');
+        return null;
+    }
+    
+    const rawStatus = order.status || order.rawStatus || 'CREATED';
+    console.log('🔍 Mapping order:', order.code || order.id, 'rawStatus from API:', order.status, 'mapped to:', rawStatus);
+    
     const { label, css } = mapOrderStatus(rawStatus);
     const shippingInfo = parseShippingInfo(order.shippingAddress);
     const orderDate = getOrderDateValue(order);
 
-    return {
+    const mapped = {
         id: order.id || '',
         code: order.code || order.orderCode || order.id || '',
         customerName:
@@ -85,8 +118,11 @@ const mapOrderFromApi = (order) => {
         totalAmount: typeof order.totalAmount === 'number' ? order.totalAmount : Number(order.totalAmount) || 0,
         statusLabel: label,
         statusClass: css,
-        rawStatus,
+        rawStatus: rawStatus || 'CREATED', // Ensure rawStatus is always set
     };
+    
+    console.log('🔍 Mapped order result:', mapped.code, 'rawStatus:', mapped.rawStatus, 'statusClass:', mapped.statusClass);
+    return mapped;
 };
 
 function ManageOrdersPage() {
@@ -120,7 +156,17 @@ function ManageOrdersPage() {
                 const data = await resp.json().catch(() => ({}));
                 const raw = data?.result || data || [];
                 const list = Array.isArray(raw) ? raw : [];
+                console.log('🔍 ManageOrders: Raw orders from API:', list.length, list);
+                if (list.length > 0) {
+                    console.log('🔍 ManageOrders: First order sample:', JSON.stringify(list[0], null, 2));
+                    console.log('🔍 ManageOrders: First order status:', list[0].status, list[0].rawStatus);
+                }
                 const mapped = list.map(mapOrderFromApi).filter(Boolean);
+                console.log('🔍 ManageOrders: Mapped orders:', mapped.length, mapped);
+                if (mapped.length > 0) {
+                    console.log('🔍 ManageOrders: First mapped order:', JSON.stringify(mapped[0], null, 2));
+                    console.log('🔍 ManageOrders: First mapped order rawStatus:', mapped[0].rawStatus);
+                }
                 setOrders(mapped);
             } catch (err) {
                 console.error('ManageOrders: load orders failed', err);
@@ -137,10 +183,44 @@ function ManageOrdersPage() {
         fetchOrders();
     }, [fetchOrders]);
 
+    // Filter orders - exclude return/refund orders from main table
     const filteredOrders = useMemo(() => {
-        let list = orders;
+        console.log('🔍 Filtering orders. Total orders:', orders.length);
+        if (orders.length > 0) {
+            console.log('🔍 All order statuses:', orders.map(o => ({ 
+                code: o.code, 
+                rawStatus: o.rawStatus, 
+                statusClass: o.statusClass,
+                statusLabel: o.statusLabel 
+            })));
+        }
+        
+        // TẠM THỜI: Hiển thị TẤT CẢ đơn hàng để debug
+        let list = [...orders];
+        console.log('🔍 DEBUG: Showing ALL orders (filter disabled):', list.length);
+        
+        // TODO: Uncomment sau khi debug xong
+        /*
+        let list = orders.filter((order) => {
+            // Exclude return/refund statuses from main orders table
+            const returnStatuses = [
+                'RETURN_REQUESTED',
+                'REFUNDED',
+                'RETURN_REJECTED'
+            ];
+            const orderStatus = (order.rawStatus || '').toUpperCase();
+            const shouldInclude = !returnStatuses.includes(orderStatus);
+            if (!shouldInclude) {
+                console.log('🔍 Excluding order from main table:', order.code, 'status:', orderStatus, '(will show in refund table)');
+            }
+            return shouldInclude;
+        });
+        console.log('🔍 After return/refund filter:', list.length, 'orders remaining');
+        */
+
         if (searchTerm.trim()) {
             const query = searchTerm.trim().toLowerCase();
+            const beforeSearch = list.length;
             list = list.filter((order) => {
                 return (
                     order.code?.toLowerCase().includes(query) ||
@@ -148,9 +228,11 @@ function ManageOrdersPage() {
                     order.email?.toLowerCase().includes(query)
                 );
             });
+            console.log('🔍 After search filter:', list.length, '(was:', beforeSearch, ')');
         }
 
         if (selectedDate) {
+            const beforeDate = list.length;
             list = list.filter((order) => {
                 const base = order.orderDateOnly || order.orderDate;
                 if (!base) return false;
@@ -160,10 +242,51 @@ function ManageOrdersPage() {
                     return false;
                 }
             });
+            console.log('🔍 After date filter:', list.length, '(was:', beforeDate, ')');
         }
 
         if (statusFilter !== 'all') {
+            const beforeStatus = list.length;
             list = list.filter((order) => order.statusClass === statusFilter);
+            console.log('🔍 After status filter:', list.length, '(was:', beforeStatus, ')', 'filter:', statusFilter);
+        }
+
+        console.log('🔍 Final filtered orders:', list.length);
+        return [...list].sort((a, b) => {
+            const da = a.orderDate ? new Date(a.orderDate) : 0;
+            const db = b.orderDate ? new Date(b.orderDate) : 0;
+            return db - da;
+        });
+    }, [orders, searchTerm, selectedDate, statusFilter]);
+
+    // Filter return/refund orders for the second table
+    const refundEligibleOrders = useMemo(() => {
+        const returnStatuses = [
+            'RETURN_REQUESTED',
+            'REFUNDED',
+            'RETURN_REJECTED'
+        ];
+        
+        console.log('🔍 Filtering refund orders. Total orders:', orders.length);
+        let list = orders.filter((order) => {
+            const orderStatus = (order.rawStatus || '').toUpperCase();
+            const isRefundOrder = returnStatuses.includes(orderStatus);
+            if (isRefundOrder) {
+                console.log('🔍 Including refund order:', order.code, 'status:', orderStatus);
+            }
+            return isRefundOrder;
+        });
+        console.log('🔍 Refund eligible orders:', list.length);
+
+        // Apply search filter if needed
+        if (searchTerm.trim()) {
+            const query = searchTerm.trim().toLowerCase();
+            list = list.filter((order) => {
+                return (
+                    order.code?.toLowerCase().includes(query) ||
+                    order.customerName?.toLowerCase().includes(query)
+                );
+            });
         }
 
         return [...list].sort((a, b) => {
@@ -171,7 +294,7 @@ function ManageOrdersPage() {
             const db = b.orderDate ? new Date(b.orderDate) : 0;
             return db - da;
         });
-    }, [orders, searchTerm, selectedDate, statusFilter]);
+    }, [orders, searchTerm]);
 
     const handleViewDetail = (orderId) => {
         if (!orderId) return;
@@ -233,49 +356,124 @@ function ManageOrdersPage() {
                         Thử lại
                     </button>
                 </div>
-            ) : filteredOrders.length === 0 ? (
-                <div className={cx('stateCard')}>Không có đơn hàng phù hợp.</div>
-            ) : (
-                <div className={cx('tableWrapper')}>
-                    <table className={cx('table')}>
-                        <thead>
-                            <tr>
-                                <th>Mã đơn</th>
-                                <th>Họ và tên</th>
-                                <th>Email</th>
-                                <th>Ngày đặt</th>
-                                <th>Tổng tiền</th>
-                                <th>Trạng thái</th>
-                                <th>Thao tác</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {filteredOrders.map((order) => (
-                                <tr key={order.id}>
-                                    <td>#{order.code}</td>
-                                    <td>{order.customerName}</td>
-                                    <td>{order.email || '---'}</td>
-                                    <td>{order.orderDate ? formatDateTime(order.orderDate) : '--'}</td>
-                                    <td>{formatPrice(order.totalAmount)}</td>
-                                    <td>
-                                        <span className={cx('statusBadge', order.statusClass)}>
-                                            {order.statusLabel}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <button
-                                            type="button"
-                                            className={cx('detailButton')}
-                                            onClick={() => handleViewDetail(order.id)}
-                                        >
-                                            Xem chi tiết
-                                        </button>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
+            ) : filteredOrders.length === 0 && orders.length > 0 ? (
+                <div className={cx('stateCard')}>
+                    <p>Không có đơn hàng phù hợp với bộ lọc hiện tại.</p>
+                    <p style={{ fontSize: '0.9em', color: '#666', marginTop: '8px' }}>
+                        Tổng số đơn hàng: {orders.length} | Đã lọc: {filteredOrders.length}
+                    </p>
+                    <button 
+                        type="button" 
+                        onClick={() => {
+                            setSearchTerm('');
+                            setSelectedDate('');
+                            setStatusFilter('all');
+                        }}
+                        style={{ marginTop: '12px', padding: '8px 16px', cursor: 'pointer' }}
+                    >
+                        Xóa bộ lọc
+                    </button>
                 </div>
+            ) : filteredOrders.length === 0 ? (
+                <div className={cx('stateCard')}>
+                    <p>Không có đơn hàng nào trong hệ thống.</p>
+                    <p style={{ fontSize: '0.9em', color: '#666', marginTop: '8px' }}>
+                        Tổng số đơn hàng: {orders.length}
+                    </p>
+                </div>
+            ) : (
+                <>
+                    {/* Main Orders Table */}
+                    <div className={cx('tableWrapper')}>
+                        <table className={cx('table')}>
+                            <thead>
+                                <tr>
+                                    <th>Mã đơn</th>
+                                    <th>Họ và tên</th>
+                                    <th>Email</th>
+                                    <th>Ngày đặt</th>
+                                    <th>Tổng tiền</th>
+                                    <th>Trạng thái</th>
+                                    <th>Thao tác</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {filteredOrders.map((order) => (
+                                    <tr key={order.id}>
+                                        <td>#{order.code}</td>
+                                        <td>{order.customerName}</td>
+                                        <td>{order.email || '---'}</td>
+                                        <td>{order.orderDate ? formatDateTime(order.orderDate) : '--'}</td>
+                                        <td>{formatPrice(order.totalAmount)}</td>
+                                        <td>
+                                            <span className={cx('statusBadge', order.statusClass)}>
+                                                {order.statusLabel}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <button
+                                                type="button"
+                                                className={cx('detailButton')}
+                                                onClick={() => handleViewDetail(order.id)}
+                                            >
+                                                Xem chi tiết
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {/* Refund Eligible Orders Table */}
+                    <div className={cx('refundSection')}>
+                        <h2 className={cx('refundSectionTitle')}>Danh sách đơn hoàn tiền</h2>
+                        {refundEligibleOrders.length === 0 ? (
+                            <div className={cx('stateCard')}>Không có đơn hàng hoàn tiền.</div>
+                        ) : (
+                            <div className={cx('tableWrapper')}>
+                                <table className={cx('table')}>
+                                    <thead>
+                                        <tr>
+                                            <th>Mã đơn</th>
+                                            <th>Khách hàng</th>
+                                            <th>Tổng tiền</th>
+                                            <th>Tiền hoàn</th>
+                                            <th>Ngày duyệt</th>
+                                            <th>Trạng thái</th>
+                                            <th>Thao tác</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {refundEligibleOrders.map((order) => (
+                                            <tr key={order.id}>
+                                                <td>{order.code}</td>
+                                                <td>{order.customerName}</td>
+                                                <td>{formatCurrencyWithDot(order.totalAmount)}</td>
+                                                <td>{formatCurrencyWithDot(order.totalAmount)}</td>
+                                                <td>{formatDateOnly(order.orderDate)}</td>
+                                                <td>
+                                                    <span className={cx('statusBadge', order.statusClass)}>
+                                                        {order.statusLabel}
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <button
+                                                        type="button"
+                                                        className={cx('detailButton')}
+                                                        onClick={() => handleViewDetail(order.id)}
+                                                    >
+                                                        Xem chi tiết
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </div>
+                </>
             )}
         </div>
     );

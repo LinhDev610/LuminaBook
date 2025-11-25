@@ -2,10 +2,12 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../contexts/AuthContext';
 import { isValidEmail, validatePassword } from '../../../services/utils';
-import { resetPassword, sendOTP } from '../../../services';
+import { resetPassword as resetPasswordAPI, sendOTP } from '../../../services';
 import styles from './ForgotPasswordModal.module.scss';
 import Button from '../../Common/Button';
 import classNames from 'classnames/bind';
+import visibleIcon from '../../../assets/icons/icon-visible.png';
+import invisibleIcon from '../../../assets/icons/icon-invisible.png';
 
 const cx = classNames.bind(styles);
 
@@ -24,6 +26,8 @@ export default function ForgotPasswordModal({ open = false, onClose }) {
     // reset password state
     const [password, setPassword] = useState('');
     const [confirm, setConfirm] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
     useEffect(() => {
         if (!open) return;
@@ -46,6 +50,8 @@ export default function ForgotPasswordModal({ open = false, onClose }) {
         setIsLoading(false);
         setPassword('');
         setConfirm('');
+        setShowPassword(false);
+        setShowConfirmPassword(false);
     }, [open]);
 
     // Handle Enter key press
@@ -55,7 +61,7 @@ export default function ForgotPasswordModal({ open = false, onClose }) {
                 if (forgotPasswordStep === 1) {
                     sendOtp(event);
                 } else if (forgotPasswordStep === 3) {
-                    resetPassword(event);
+                    handleResetPassword(event);
                 }
             }
         };
@@ -99,7 +105,7 @@ export default function ForgotPasswordModal({ open = false, onClose }) {
         }
     };
 
-    const resetPassword = async (e) => {
+    const handleResetPassword = async (e) => {
         e.preventDefault();
 
         // Validate password using utility function
@@ -112,19 +118,41 @@ export default function ForgotPasswordModal({ open = false, onClose }) {
         setError('');
         try {
             const verifiedOtp = localStorage.getItem('verifiedOtp');
-            const { ok, data } = await resetPassword({ email, otp: verifiedOtp, newPassword: password });
-            if (ok && data?.code === 1000) {
+            if (!verifiedOtp) {
+                setError('Mã OTP không hợp lệ. Vui lòng xác thực lại email.');
+                setForgotPasswordStep(1);
+                setIsLoading(false);
+                return;
+            }
+            
+            console.log('🔍 Resetting password for email:', email, 'with OTP:', verifiedOtp ? '***' : 'missing');
+            const { ok, data, status } = await resetPasswordAPI({ email, otp: verifiedOtp, newPassword: password });
+            console.log('🔍 Reset password response:', { ok, status, data, dataCode: data?.code, dataMessage: data?.message });
+            
+            // Backend returns code 200 for success (not 1000)
+            // Check both HTTP status and response code
+            if (ok && (data?.code === 200 || data?.code === 1000 || status === 200)) {
                 // Đổi mật khẩu thành công, chuyển về form đăng nhập
+                // Clear verification data
+                localStorage.removeItem('verifiedEmail');
+                localStorage.removeItem('emailVerified');
+                localStorage.removeItem('verifiedOtp');
+                
                 setForgotPasswordStep(1);
                 setEmail('');
                 setPassword('');
                 setConfirm('');
+                setShowPassword(false);
+                setShowConfirmPassword(false);
                 switchToLogin();
             } else {
                 // Handle backend validation errors
-                const code = data?.code;
+                const code = data?.code || status;
                 let errorMessage =
                     data?.message || 'Không thể đặt lại mật khẩu. Vui lòng thử lại.';
+                    
+                console.error('🔍 Reset password failed:', { code, errorMessage, data, status });
+                
                 if (code === 1004 || (errorMessage || '').includes('INVALID_PASSWORD')) {
                     errorMessage =
                         'Mật khẩu ít nhất phải chứa một chữ cái thường, 1 chữ cái in hoa, 1 số và 1 kí tự đặc biệt';
@@ -143,7 +171,7 @@ export default function ForgotPasswordModal({ open = false, onClose }) {
                     setForgotPasswordStep(1);
                     setEmail('');
                 } else {
-                    setError(errorMessage);
+                    setError(errorMessage || 'Có lỗi xảy ra. Vui lòng thử lại.');
                 }
             }
         } catch (err) {
@@ -195,32 +223,60 @@ export default function ForgotPasswordModal({ open = false, onClose }) {
                 </form>
             )}
             {forgotPasswordStep === 3 && (
-                <form onSubmit={resetPassword} className={cx('auth-form')}>
+                <form onSubmit={handleResetPassword} className={cx('auth-form')}>
                     <div className={cx('form-group')}>
                         <label className={cx('form-label')}>Mật khẩu mới</label>
-                        <input
-                            type="password"
-                            value={password}
-                            onChange={(e) => {
-                                setPassword(e.target.value);
-                                setError('');
-                            }}
-                            placeholder="********"
-                            className={cx('form-input')}
-                        />
+                        <div className={cx('pw-wrap')}>
+                            <input
+                                type={showPassword ? 'text' : 'password'}
+                                value={password}
+                                onChange={(e) => {
+                                    setPassword(e.target.value);
+                                    setError('');
+                                }}
+                                placeholder="********"
+                                className={cx('form-input', 'pw-input')}
+                            />
+                            <Button
+                                type="button"
+                                onClick={() => setShowPassword(!showPassword)}
+                                aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                                className={cx('pw-toggle')}
+                            >
+                                <img
+                                    src={showPassword ? invisibleIcon : visibleIcon}
+                                    alt={showPassword ? 'Ẩn' : 'Hiện'}
+                                    className={cx('pw-icon')}
+                                />
+                            </Button>
+                        </div>
                     </div>
                     <div className={cx('form-group')}>
                         <label className={cx('form-label')}>Xác nhận mật khẩu</label>
-                        <input
-                            type="password"
-                            value={confirm}
-                            onChange={(e) => {
-                                setConfirm(e.target.value);
-                                setError('');
-                            }}
-                            placeholder="********"
-                            className={cx('form-input')}
-                        />
+                        <div className={cx('pw-wrap')}>
+                            <input
+                                type={showConfirmPassword ? 'text' : 'password'}
+                                value={confirm}
+                                onChange={(e) => {
+                                    setConfirm(e.target.value);
+                                    setError('');
+                                }}
+                                placeholder="********"
+                                className={cx('form-input', 'pw-input')}
+                            />
+                            <Button
+                                type="button"
+                                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                aria-label={showConfirmPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                                className={cx('pw-toggle')}
+                            >
+                                <img
+                                    src={showConfirmPassword ? invisibleIcon : visibleIcon}
+                                    alt={showConfirmPassword ? 'Ẩn' : 'Hiện'}
+                                    className={cx('pw-icon')}
+                                />
+                            </Button>
+                        </div>
                     </div>
                     {error && <div className={cx('error-text')}>{error}</div>}
                     <Button

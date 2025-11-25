@@ -38,7 +38,6 @@ import com.lumina_book.backend.entity.Product;
 import com.lumina_book.backend.dto.request.DirectCheckoutRequest;
 import com.lumina_book.backend.util.SecurityUtil;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -265,6 +264,8 @@ public class OrderService {
         // Sử dụng ArrayList thay vì List.of() để tránh UnsupportedOperationException
         savedOrder.setItems(new ArrayList<>(List.of(orderItem)));
 
+        updateInventoryAndSales(product, quantity);
+
         // COD: Tạo đơn hàng ngay và giữ status CREATED, chờ admin/staff xác nhận
         if (paymentMethod == PaymentMethod.COD) {
             return new CheckoutResult(savedOrder, null);
@@ -386,6 +387,8 @@ public class OrderService {
         orderItemRepository.flush();
         savedOrder.setItems(new ArrayList<>(List.of(orderItem)));
 
+        updateInventoryAndSales(product, quantity);
+
         return savedOrder;
     }
 
@@ -476,6 +479,8 @@ public class OrderService {
         orderItemRepository.saveAll(orderItems);
         orderItemRepository.flush(); // Ensure items are persisted immediately
         order.setItems(orderItems);
+
+        selectedItems.forEach(ci -> updateInventoryAndSales(ci.getProduct(), ci.getQuantity()));
     }
 
     private void finalizePaidOrder(Order order, List<String> cartItemIds) {
@@ -516,6 +521,27 @@ public class OrderService {
         orderRepository.flush();
 
         finalizePaidOrder(order, parseCartItemIds(order.getCartItemIdsSnapshot()));
+    }
+
+    private void updateInventoryAndSales(Product product, int quantity) {
+        if (product == null || quantity <= 0) {
+            return;
+        }
+
+        int sold = product.getQuantitySold() != null ? product.getQuantitySold() : 0;
+        product.setQuantitySold(sold + quantity);
+
+        if (product.getInventory() != null) {
+            Integer stock = product.getInventory().getStockQuantity();
+            if (stock == null) {
+                stock = 0;
+            }
+            int updatedStock = stock - quantity;
+            product.getInventory().setStockQuantity(Math.max(0, updatedStock));
+            product.getInventory().setLastUpdated(LocalDate.now());
+        }
+
+        productRepository.save(product);
     }
 
     private PaymentMethod resolvePaymentMethod(String value) {

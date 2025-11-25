@@ -227,14 +227,14 @@ export default function ForgotPasswordModal({ open = false, onClose }) {
                     <div className={cx('form-group')}>
                         <label className={cx('form-label')}>Mật khẩu mới</label>
                         <div className={cx('pw-wrap')}>
-                            <input
+                        <input
                                 type={showPassword ? 'text' : 'password'}
-                                value={password}
-                                onChange={(e) => {
-                                    setPassword(e.target.value);
-                                    setError('');
-                                }}
-                                placeholder="********"
+                            value={password}
+                            onChange={(e) => {
+                                setPassword(e.target.value);
+                                setError('');
+                            }}
+                            placeholder="********"
                                 className={cx('form-input', 'pw-input')}
                             />
                             <Button
@@ -247,21 +247,21 @@ export default function ForgotPasswordModal({ open = false, onClose }) {
                                     src={showPassword ? invisibleIcon : visibleIcon}
                                     alt={showPassword ? 'Ẩn' : 'Hiện'}
                                     className={cx('pw-icon')}
-                                />
+                        />
                             </Button>
                         </div>
                     </div>
                     <div className={cx('form-group')}>
                         <label className={cx('form-label')}>Xác nhận mật khẩu</label>
                         <div className={cx('pw-wrap')}>
-                            <input
+                        <input
                                 type={showConfirmPassword ? 'text' : 'password'}
-                                value={confirm}
-                                onChange={(e) => {
-                                    setConfirm(e.target.value);
-                                    setError('');
-                                }}
-                                placeholder="********"
+                            value={confirm}
+                            onChange={(e) => {
+                                setConfirm(e.target.value);
+                                setError('');
+                            }}
+                            placeholder="********"
                                 className={cx('form-input', 'pw-input')}
                             />
                             <Button
@@ -274,7 +274,7 @@ export default function ForgotPasswordModal({ open = false, onClose }) {
                                     src={showConfirmPassword ? invisibleIcon : visibleIcon}
                                     alt={showConfirmPassword ? 'Ẩn' : 'Hiện'}
                                     className={cx('pw-icon')}
-                                />
+                        />
                             </Button>
                         </div>
                     </div>

@@ -167,6 +167,9 @@ const ProductDetail = ({ productId }) => {
     const availableStock =
         product?.availableQuantity ??
         product?.stock ??
+        product?.stockQuantity ??
+        product?.inventory?.quantity ??
+        displayProduct.stockQuantity ??
         displayProduct.availableQuantity ??
         displayProduct.stock ??
         0;
@@ -665,6 +668,14 @@ const ProductDetail = ({ productId }) => {
                                 <div>
                                     <strong>Nhà xuất bản:</strong>{' '}
                                     {displayProduct.publisher || '-'}
+                                </div>
+                                <div>
+                                    <strong>Tồn kho:</strong>{' '}
+                                    {availableStock > 0
+                                        ? `${availableStock} quyển`
+                                        : availableStock === 0
+                                            ? 'Hết hàng'
+                                            : '-'}
                                 </div>
                             </div>
 

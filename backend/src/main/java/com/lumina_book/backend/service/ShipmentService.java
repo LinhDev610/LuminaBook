@@ -209,7 +209,7 @@ public class ShipmentService {
 
             long now = Instant.now().getEpochSecond();
             Integer shiftId = shifts.stream()
-                    .filter(shift -> shift.getFrom_time() != null && shift.getFrom_time() >= now)
+                    .filter(shift -> shift.getFromTime() != null && shift.getFromTime() >= now)
                     .map(GhnPickShiftResponse::getId)
                     .filter(Objects::nonNull)
                     .findFirst()

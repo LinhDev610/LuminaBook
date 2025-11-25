@@ -72,6 +72,7 @@ export default function CheckoutDetailPage() {
     const [addressRefreshKey, setAddressRefreshKey] = useState(0);
     const [shippingFee, setShippingFee] = useState(0);
     const [shippingFeeLoading, setShippingFeeLoading] = useState(false);
+    const [shouldRefreshShippingFee, setShouldRefreshShippingFee] = useState(false);
 
     const isLoggedIn = !!getStoredToken('token');
 
@@ -182,6 +183,7 @@ export default function CheckoutDetailPage() {
                         addresses.find((addr) => addr?.defaultAddress) || addresses[0];
                     if (defaultAddress) {
                         setSelectedAddress(defaultAddress);
+                        setShouldRefreshShippingFee(true);
                     }
                 }
             } catch (err) {
@@ -340,14 +342,24 @@ export default function CheckoutDetailPage() {
     // Tính phí vận chuyển từ GHN API
     useEffect(() => {
         const calculateShippingFee = async () => {
+            if (!shouldRefreshShippingFee) {
+                return;
+            }
+
             if (!selectedAddress || !checkoutItems || checkoutItems.length === 0) {
                 setShippingFee(0);
+                if (selectedAddress && checkoutItems && checkoutItems.length === 0) {
+                    // wait for items to load
+                    return;
+                }
+                setShouldRefreshShippingFee(false);
                 return;
             }
 
             if (!selectedAddress.wardCode || !selectedAddress.districtID) {
                 console.warn('Address missing wardCode or districtID');
                 setShippingFee(0);
+                setShouldRefreshShippingFee(false);
                 return;
             }
 
@@ -518,11 +530,12 @@ export default function CheckoutDetailPage() {
                 setShippingFee(0);
             } finally {
                 setShippingFeeLoading(false);
+                setShouldRefreshShippingFee(false);
             }
         };
 
         calculateShippingFee();
-    }, [selectedAddress, checkoutItems, API_BASE_URL]);
+    }, [shouldRefreshShippingFee, selectedAddress, checkoutItems, API_BASE_URL]);
 
     // Tạm tính: CHỈ tính trên các item được chọn (checkoutItems),
     // dùng finalPrice backend để khớp công thức trong OrderService.createOrderFromCurrentCart.
@@ -615,6 +628,18 @@ export default function CheckoutDetailPage() {
         }
     };
 
+    const hasShippingInfo = useMemo(() => {
+        if (!selectedAddress) return false;
+        const requiredFields = [
+            selectedAddress.recipientName,
+            selectedAddress.recipientPhoneNumber || selectedAddress.recipientPhone,
+            selectedAddress.address,
+            selectedAddress.wardCode,
+            selectedAddress.districtID,
+        ];
+        return requiredFields.every((value) => value && String(value).trim().length > 0);
+    }, [selectedAddress]);
+
     const handlePlaceOrder = () => {
         // Kiểm tra nếu đang directCheckout nhưng product chưa load xong
         if (directCheckout && !directProduct) {
@@ -629,6 +654,12 @@ export default function CheckoutDetailPage() {
             } else {
                 navigate('/cart');
             }
+            return;
+        }
+
+        if (!hasShippingInfo) {
+            showError('Vui lòng cập nhật thông tin vận chuyển trước khi thanh toán.');
+            setShowAddressList(true);
             return;
         }
 
@@ -1025,10 +1056,17 @@ export default function CheckoutDetailPage() {
                                 </div>
                             </div>
 
+                            {!hasShippingInfo && (
+                                <p className={cx('payment-note')} style={{ color: '#d32f2f' }}>
+                                    Vui lòng cập nhật địa chỉ giao hàng trước khi thanh toán.
+                                </p>
+                            )}
+
                             <button
                                 type="button"
                                 className={cx('pay-btn')}
                                 onClick={handlePlaceOrder}
+                                disabled={!hasShippingInfo}
                             >
                                 Thanh toán
                             </button>
@@ -1050,6 +1088,7 @@ export default function CheckoutDetailPage() {
                     if (!address) return;
                     setSelectedAddress(address);
                     setShowAddressList(false);
+                    setShouldRefreshShippingFee(true);
                 }}
                 onViewDetail={(address) => {
                     setSelectedAddress(address);
@@ -1067,6 +1106,7 @@ export default function CheckoutDetailPage() {
                 onCreated={(newAddress) => {
                     if (newAddress) {
                         setSelectedAddress(newAddress);
+                        setShouldRefreshShippingFee(true);
                     }
                     setAddressRefreshKey((prev) => prev + 1);
                     setShowNewAddressModal(false);
@@ -1080,6 +1120,7 @@ export default function CheckoutDetailPage() {
                 onUpdated={(updated) => {
                     if (!updated) return;
                     setSelectedAddress(updated);
+                    setShouldRefreshShippingFee(true);
                     setAddressRefreshKey((prev) => prev + 1);
                 }}
             />

@@ -39,6 +39,7 @@ function UpdateProductPage() {
     const [width, setWidth] = useState(1);
     const [height, setHeight] = useState(1);
     const [price, setPrice] = useState(0.0);
+    const [purchasePrice, setPurchasePrice] = useState('');
     const [taxPercent, setTaxPercent] = useState('0');
     const [discountValue, setDiscountValue] = useState(0.0);
     const [categoryId, setCategoryId] = useState('');
@@ -95,6 +96,11 @@ function UpdateProductPage() {
                         ? product.unitPrice
                         : product.price || 0.0;
                 setPrice(basePrice);
+                setPurchasePrice(
+                    product.purchasePrice !== undefined && product.purchasePrice !== null
+                        ? product.purchasePrice
+                        : '',
+                );
                 setTaxPercent(product.tax ? String(Math.round(product.tax * 100)) : '0');
                 setDiscountValue(product.discountValue || 0.0);
                 setCategoryId(product.categoryId || '');
@@ -168,6 +174,17 @@ function UpdateProductPage() {
         const priceNum = Number(price);
         if (isNaN(priceNum) || priceNum < 0) {
             newErrors.price = 'Giá không hợp lệ. Vui lòng nhập số lớn hơn hoặc bằng 0.';
+        }
+
+        if (
+            purchasePrice !== undefined &&
+            purchasePrice !== null &&
+            purchasePrice !== ''
+        ) {
+            const purchaseNum = Number(purchasePrice);
+            if (Number.isNaN(purchaseNum) || purchaseNum < 0) {
+                newErrors.purchasePrice = 'Giá nhập phải lớn hơn hoặc bằng 0.';
+            }
         }
 
         // Validate dimensions - only if provided, must be >= 1
@@ -290,6 +307,12 @@ function UpdateProductPage() {
                 height: height && Number(height) >= 1 ? Number(height) : null,
                 price: Number.isFinite(finalPrice) ? finalPrice : 0,
                 unitPrice: Number(price) || 0,
+                purchasePrice:
+                    purchasePrice !== undefined &&
+                        purchasePrice !== null &&
+                        purchasePrice !== ''
+                        ? Number(purchasePrice)
+                        : null,
                 tax: taxDecimal || 0,
                 discountValue:
                     discountValue && Number(discountValue) > 0
@@ -486,6 +509,21 @@ function UpdateProductPage() {
                         />
                         {errors.price && (
                             <div className={cx('errorText')}>{errors.price}</div>
+                        )}
+                    </div>
+                    <div className={cx('row')}>
+                        <label>Giá nhập (VND)</label>
+                        <input
+                            placeholder="VD: 90000"
+                            inputMode="numeric"
+                            value={purchasePrice}
+                            onChange={(e) => {
+                                const raw = e.target.value.replace(/[^0-9]/g, '');
+                                setPurchasePrice(raw === '' ? '' : Number(raw));
+                            }}
+                        />
+                        {errors.purchasePrice && (
+                            <div className={cx('errorText')}>{errors.purchasePrice}</div>
                         )}
                     </div>
                     <div className={cx('grid3')}>

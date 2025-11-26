@@ -48,6 +48,9 @@ public class ProductUpdateRequest {
     @DecimalMin(value = "0.0", message = "Giá bán phải lớn hơn hoặc bằng 0")
     Double price;
 
+    @DecimalMin(value = "0.0", message = "Giá nhập phải lớn hơn hoặc bằng 0")
+    Double purchasePrice;
+
     @DecimalMin(value = "0.0", message = "Thuế phải lớn hơn hoặc bằng 0")
     Double tax;
 

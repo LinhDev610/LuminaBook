@@ -264,6 +264,7 @@ export const INITIAL_FORM_STATE_PRODUCT = {
     price: 0.0,
     taxPercent: '0',
     discountValue: 0.0,
+    purchasePrice: 0.0,
     categoryId: '',
     publicationDate: '',
     stockQuantity: '',

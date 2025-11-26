@@ -39,6 +39,9 @@ export default function AddProductPage() {
     const [discountValue, setDiscountValue] = useState(
         INITIAL_FORM_STATE_PRODUCT.discountValue,
     );
+    const [purchasePrice, setPurchasePrice] = useState(
+        INITIAL_FORM_STATE_PRODUCT.purchasePrice,
+    );
     const [categoryId, setCategoryId] = useState(INITIAL_FORM_STATE_PRODUCT.categoryId);
     const [publicationDate, setPublicationDate] = useState(
         INITIAL_FORM_STATE_PRODUCT.publicationDate,
@@ -119,6 +122,7 @@ export default function AddProductPage() {
         setPrice(INITIAL_FORM_STATE_PRODUCT.price);
         setTaxPercent(INITIAL_FORM_STATE_PRODUCT.taxPercent);
         setDiscountValue(INITIAL_FORM_STATE_PRODUCT.discountValue);
+        setPurchasePrice(INITIAL_FORM_STATE_PRODUCT.purchasePrice);
         setCategoryId(INITIAL_FORM_STATE_PRODUCT.categoryId);
         setPublicationDate(INITIAL_FORM_STATE_PRODUCT.publicationDate);
         setStockQuantity(INITIAL_FORM_STATE_PRODUCT.stockQuantity);
@@ -160,6 +164,17 @@ export default function AddProductPage() {
         const priceNum = Number(price);
         if (isNaN(priceNum) || priceNum < 0) {
             newErrors.price = 'Giá không hợp lệ. Vui lòng nhập số lớn hơn hoặc bằng 0.';
+        }
+
+        if (
+            purchasePrice !== undefined &&
+            purchasePrice !== null &&
+            purchasePrice !== ''
+        ) {
+            const purchaseNum = Number(purchasePrice);
+            if (Number.isNaN(purchaseNum) || purchaseNum < 0) {
+                newErrors.purchasePrice = 'Giá nhập phải lớn hơn hoặc bằng 0.';
+            }
         }
 
         // Validate dimensions - only if provided, must be >= 1
@@ -314,6 +329,12 @@ export default function AddProductPage() {
             tax: taxDecimal || 0,
             discountValue:
                 discountValue && Number(discountValue) > 0 ? Number(discountValue) : null,
+            purchasePrice:
+                purchasePrice !== undefined &&
+                    purchasePrice !== null &&
+                    purchasePrice !== ''
+                    ? Number(purchasePrice)
+                    : null,
             categoryId: (categoryId || '').trim(),
             publicationDate: publicationDate || new Date().toISOString().slice(0, 10),
             imageUrls: imageUrls.length ? imageUrls : undefined,
@@ -334,6 +355,7 @@ export default function AddProductPage() {
             price,
             taxDecimal,
             discountValue,
+            purchasePrice,
             categoryId,
             publicationDate,
             stockQuantity,
@@ -527,6 +549,21 @@ export default function AddProductPage() {
                         />
                         {errors.price && (
                             <div className={cx('errorText')}>{errors.price}</div>
+                        )}
+                    </div>
+                    <div className={cx('row')}>
+                        <label>Giá nhập (VND)</label>
+                        <input
+                            placeholder="VD: 90000"
+                            inputMode="numeric"
+                            value={purchasePrice}
+                            onChange={(e) => {
+                                const raw = e.target.value.replace(/[^0-9]/g, '');
+                                setPurchasePrice(raw === '' ? '' : Number(raw));
+                            }}
+                        />
+                        {errors.purchasePrice && (
+                            <div className={cx('errorText')}>{errors.purchasePrice}</div>
                         )}
                     </div>
                     <div className={cx('grid3')}>

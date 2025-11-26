@@ -58,6 +58,9 @@ public class Product {
     @Column(name = "unit_price", nullable = false)
     Double unitPrice;
 
+    @Column(name = "purchase_price")
+    Double purchasePrice;
+
     @Column(name = "discount_value")
     Double discountValue;
 

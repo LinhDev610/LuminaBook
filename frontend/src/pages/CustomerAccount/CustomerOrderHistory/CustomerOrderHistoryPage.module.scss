@@ -371,6 +371,26 @@
     color: #6b7280;
 }
 
+.order-thumb {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 4px;
+}
+
+.order-thumb-image {
+    width: 56px;
+    height: 70px;
+    object-fit: cover;
+    border-radius: 4px;
+    border: 1px solid #e5e7eb;
+}
+
+.order-thumb-count {
+    font-size: 13px;
+    color: #6b7280;
+}
+
 .order-actions {
     display: flex;
     justify-content: flex-end;

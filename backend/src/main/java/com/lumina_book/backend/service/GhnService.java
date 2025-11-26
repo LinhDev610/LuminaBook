@@ -13,6 +13,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Service;
 
 import com.lumina_book.backend.configuration.GhnProperties;
+import com.lumina_book.backend.dto.response.GhnOrderDetailResponse;
 import com.lumina_book.backend.dto.request.GhnCalculateFeeRequest;
 import com.lumina_book.backend.dto.request.GhnCreateOrderRequest;
 import com.lumina_book.backend.util.ApiUtil;
@@ -132,6 +133,17 @@ public class GhnService {
                 HttpMethod.POST,
                 request,
                 new ParameterizedTypeReference<GhnApiResponse<GhnShipmentDataResponse>>() {},
+                ghnProperties.getToken(),
+                ghnProperties.getShopId());
+    }
+
+    public GhnOrderDetailResponse getOrderDetail(String orderCode) {
+        Map<String, Object> payload = Map.of("order_code", orderCode);
+        return apiUtil.callGhnApi(
+                ApiConstants.GHN_SHIPPING_ORDER_DETAIL,
+                HttpMethod.POST,
+                payload,
+                new ParameterizedTypeReference<GhnApiResponse<com.lumina_book.backend.dto.response.GhnOrderDetailResponse>>() {},
                 ghnProperties.getToken(),
                 ghnProperties.getShopId());
     }

@@ -20,6 +20,7 @@ import com.lumina_book.backend.dto.response.GhnLeadtimeResponse;
 import com.lumina_book.backend.dto.response.GhnPickShiftResponse;
 import com.lumina_book.backend.dto.response.GhnProvinceResponse;
 import com.lumina_book.backend.dto.response.GhnShipmentDataResponse;
+import com.lumina_book.backend.dto.response.GhnOrderDetailResponse;
 import com.lumina_book.backend.dto.response.GhnWardResponse;
 import com.lumina_book.backend.dto.response.ShipmentResponse;
 import com.lumina_book.backend.entity.Address;
@@ -29,6 +30,7 @@ import com.lumina_book.backend.entity.Product;
 import com.lumina_book.backend.entity.Shipment;
 import com.lumina_book.backend.enums.PaymentMethod;
 import com.lumina_book.backend.enums.PaymentStatus;
+import com.lumina_book.backend.enums.OrderStatus;
 import com.lumina_book.backend.enums.ShipmentProvider;
 import com.lumina_book.backend.enums.ShipmentStatus;
 import com.lumina_book.backend.exception.AppException;
@@ -160,6 +162,77 @@ public class ShipmentService {
                 .orElseThrow(() -> new AppException(ErrorCode.SHIPMENT_NOT_EXISTED, 
                         "Không tìm thấy vận đơn với mã GHN: " + orderCode));
         return shipmentMapper.toResponse(shipment);
+    }
+
+    // Đồng bộ trạng thái đơn hàng từ GHN API.
+    @Transactional
+    public void syncOrderStatusFromGhn(String orderId) {
+        try {
+            Shipment shipment = shipmentRepository.findByOrderId(orderId).orElse(null);
+            if (shipment == null || shipment.getOrderCode() == null || shipment.getOrderCode().isBlank()) {
+                return;
+            }
+
+            // Chỉ đồng bộ nếu order chưa ở trạng thái cuối cùng (DELIVERED, CANCELLED, etc.)
+            Order order = shipment.getOrder();
+            if (order == null) {
+                return;
+            }
+
+            OrderStatus currentStatus = order.getStatus();
+            if (currentStatus == OrderStatus.DELIVERED || 
+                currentStatus == OrderStatus.CANCELLED ||
+                currentStatus == OrderStatus.RETURN_REQUESTED ||
+                currentStatus == OrderStatus.REFUNDED) {
+                return;
+            }
+
+            // Gọi GHN API để lấy trạng thái mới nhất
+            GhnOrderDetailResponse ghnDetail = ghnService.getOrderDetail(shipment.getOrderCode());
+            if (ghnDetail == null || ghnDetail.getStatus() == null) {
+                log.warn("Không thể lấy trạng thái từ GHN cho order: {}", orderId);
+                return;
+            }
+
+            String ghnStatus = ghnDetail.getStatus().toLowerCase();
+            OrderStatus newStatus = mapGhnStatusToOrderStatus(ghnStatus);
+            
+            if (newStatus != null && newStatus != currentStatus) {
+                order.setStatus(newStatus);
+                orderRepository.save(order);
+                log.info("Đã đồng bộ trạng thái đơn hàng {} từ GHN: {} → {}", 
+                        orderId, currentStatus, newStatus);
+            }
+        } catch (Exception e) {
+            log.error("Lỗi khi đồng bộ trạng thái từ GHN cho order: {}", orderId, e);
+        }
+    }
+
+    // Map trạng thái GHN sang OrderStatus.
+    private OrderStatus mapGhnStatusToOrderStatus(String ghnStatus) {
+        if (ghnStatus == null || ghnStatus.isBlank()) {
+            return null;
+        }
+
+        String status = ghnStatus.toLowerCase().trim();
+        
+        // storing, ready_to_pick → CONFIRMED (Chờ lấy hàng)
+        if (status.equals("storing") || status.equals("ready_to_pick")) {
+            return OrderStatus.CONFIRMED;
+        }
+        
+        // delivering, money_collect_delivering → SHIPPED (Chờ giao hàng)
+        if (status.equals("delivering") || status.equals("money_collect_delivering")) {
+            return OrderStatus.SHIPPED;
+        }
+        
+        // delivered, money_collected → DELIVERED (Đã giao)
+        if (status.equals("delivered") || status.equals("money_collected")) {
+            return OrderStatus.DELIVERED;
+        }
+        
+        // return, returned, cancel, cancelled → không xử lý (tự quản lý)
+        return null;
     }
 
     // ==================== GHN Request Building ====================

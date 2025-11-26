@@ -15,6 +15,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.lumina_book.backend.dto.request.ReturnRequestRequest;
 import com.lumina_book.backend.dto.request.CreateOrderRequest;
 import com.lumina_book.backend.dto.request.MomoIpnRequest;
 import com.lumina_book.backend.dto.response.CreateMomoResponse;
@@ -37,6 +38,7 @@ import com.lumina_book.backend.repository.UserRepository;
 import com.lumina_book.backend.entity.Product;
 import com.lumina_book.backend.dto.request.DirectCheckoutRequest;
 import com.lumina_book.backend.util.SecurityUtil;
+import com.lumina_book.backend.service.ShipmentService;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -64,6 +66,7 @@ public class OrderService {
     BrevoEmailService brevoEmailService;
     ProductRepository productRepository;
     UserRepository userRepository;
+    ShipmentService shipmentService;
 
     ObjectMapper objectMapper = new ObjectMapper();
 
@@ -887,35 +890,51 @@ public class OrderService {
         return "LMN" + datePart + "-" + randomPart;
     }
 
-    /**
-     * Danh sách tất cả đơn hàng cho nhân viên / admin.
-     */
+    // Danh sách tất cả đơn hàng cho nhân viên / admin.
     @Transactional(readOnly = true)
     @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
     public List<Order> getAllOrders() {
+        List<Order> orders = orderRepository.findAll();
+        // Đồng bộ trạng thái từ GHN cho các đơn có shipment
+        for (Order order : orders) {
+            if (order.getShipment() != null && order.getShipment().getOrderCode() != null) {
+                try {
+                    shipmentService.syncOrderStatusFromGhn(order.getId());
+                } catch (Exception e) {
+                    log.warn("Không thể đồng bộ trạng thái từ GHN cho order: {}", order.getId(), e);
+                }
+            }
+        }
+        // Reload để lấy status mới nhất
         return orderRepository.findAll();
     }
 
-    /**
-     * Danh sách đơn hàng của chính khách hàng hiện đang đăng nhập.
-     */
+    // Danh sách đơn hàng của chính khách hàng hiện đang đăng nhập.
     @Transactional(readOnly = true)
     @PreAuthorize("hasRole('CUSTOMER')")
     public List<Order> getMyOrders() {
         try {
             String email = SecurityUtil.getAuthentication().getName();
+            List<Order> orders = orderRepository.findByUserEmail(email);
+            // Đồng bộ trạng thái từ GHN cho các đơn có shipment
+            for (Order order : orders) {
+                if (order.getShipment() != null && order.getShipment().getOrderCode() != null) {
+                    try {
+                        shipmentService.syncOrderStatusFromGhn(order.getId());
+                    } catch (Exception e) {
+                        log.warn("Không thể đồng bộ trạng thái từ GHN cho order: {}", order.getId(), e);
+                    }
+                }
+            }
+            // Reload để lấy status mới nhất
             return orderRepository.findByUserEmail(email);
         } catch (Exception e) {
             log.error("Error fetching orders for user: {}", e.getMessage(), e);
-            // Return empty list instead of throwing to prevent frontend crash
             return new ArrayList<>();
         }
     }
 
-    /**
-     * Danh sách các yêu cầu trả hàng/hoàn tiền.
-     * Dành cho Customer Support để quản lý và xử lý các yêu cầu trả hàng.
-     */
+    // Danh sách các yêu cầu trả hàng/hoàn tiền.
     @Transactional(readOnly = true)
     @PreAuthorize("hasAnyRole('CUSTOMER_SUPPORT','STAFF','ADMIN')")
     public List<Order> getReturnRequests() {
@@ -927,18 +946,21 @@ public class OrderService {
         return orderRepository.findByStatusIn(returnStatuses);
     }
 
-    /**
-     * Lấy chi tiết một đơn hàng theo id, đảm bảo:
-     * - STAFF / ADMIN / CUSTOMER_SUPPORT có thể xem mọi đơn
-     * - CUSTOMER chỉ được xem đơn của chính mình
-     */
+    // Lấy chi tiết đơn hàng theo id
     @Transactional(readOnly = true)
     @PreAuthorize("hasAnyRole('CUSTOMER','CUSTOMER_SUPPORT','STAFF','ADMIN')")
     public Order getOrderByIdForCurrentUser(String orderId) {
-        // Try to find by ID (UUID) first, then by code (order code like LMN20251121-ABC123)
+        // Đồng bộ trạng thái từ GHN 
+        try {
+            shipmentService.syncOrderStatusFromGhn(orderId);
+        } catch (Exception e) {
+            log.warn("Không thể đồng bộ trạng thái từ GHN cho order: {}", orderId, e);
+        }
+        
+        // Tìm đơn hàng theo id
         Order order = orderRepository.findById(orderId)
                 .orElseGet(() -> {
-                    // If not found by ID, try to find by code
+                    // Nếu không tìm thấy theo id, tìm theo code
                     return orderRepository.findByCode(orderId)
                             .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_EXISTED));
                 });
@@ -958,7 +980,7 @@ public class OrderService {
             }
         }
 
-        // Force load items to avoid lazy loading issues
+        // Load items để tránh vấn đề lazy loading
         if (order.getItems() != null) {
             order.getItems().size();
             order.getItems().forEach(item -> {
@@ -977,9 +999,7 @@ public class OrderService {
         return order;
     }
 
-    /**
-     * Nhân viên xác nhận đơn hàng (chuyển trạng thái sang CONFIRMED).
-     */
+    // Nhân viên xác nhận đơn hàng
     @Transactional
     @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
     public Order confirmOrder(String orderId) {
@@ -999,7 +1019,7 @@ public class OrderService {
     }
 
     @Transactional
-    public Order requestReturn(String orderId, com.lumina_book.backend.dto.request.ReturnRequestRequest request) {
+    public Order requestReturn(String orderId, ReturnRequestRequest request) {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_EXISTED));
 

@@ -14,6 +14,7 @@ import {
 } from '../../../../../services';
 
 const cx = classNames.bind(styles);
+const MAX_TOTAL_MEDIA_SIZE = 50 * 1024 * 1024; // 50MB tổng dung lượng ảnh/video
 
 export default function AddProductPage() {
     const navigate = useNavigate();
@@ -21,7 +22,7 @@ export default function AddProductPage() {
     const { success, error: notifyError } = useNotification();
     const [isLoading, setIsLoading] = useState(false);
 
-    // State form - sử dụng INITIAL_FORM_STATE từ constants
+    // State form
     const [productId, setProductId] = useState(INITIAL_FORM_STATE_PRODUCT.productId);
     const [name, setName] = useState(INITIAL_FORM_STATE_PRODUCT.name);
     const [description, setDescription] = useState(
@@ -343,12 +344,46 @@ export default function AddProductPage() {
     // ========== Event Handlers ==========
     const handleReset = resetForm;
 
-    /**
-     * Xử lý submit form
-     * 1. Validate form
-     * 2. Upload media files (nếu có)
-     * 3. Tạo sản phẩm mới
-     */
+    const handleMediaSelection = useCallback(
+        (event) => {
+            const selectedFiles = Array.from(event.target.files || []);
+            if (selectedFiles.length === 0) {
+                return;
+            }
+
+            const currentTotalSize = mediaFiles.reduce(
+                (sum, item) => sum + (item?.file?.size || 0),
+                0,
+            );
+            const selectedSize = selectedFiles.reduce(
+                (sum, file) => sum + (file?.size || 0),
+                0,
+            );
+
+            if (currentTotalSize + selectedSize > MAX_TOTAL_MEDIA_SIZE) {
+                notifyError('Tổng dung lượng ảnh/video không được vượt quá 50MB.');
+                event.target.value = '';
+                return;
+            }
+
+            const mapped = selectedFiles.map((f) => ({
+                file: f,
+                type: f.type.startsWith('image') ? 'IMAGE' : 'VIDEO',
+                preview: URL.createObjectURL(f),
+                isDefault: false,
+            }));
+
+            setMediaFiles((prev) => {
+                const next = [...prev, ...mapped];
+                if (next.length > 0 && !next.some((m) => m.isDefault)) {
+                    next[0].isDefault = true;
+                }
+                return next;
+            });
+        },
+        [mediaFiles, notifyError],
+    );
+
     const handleSubmit = async (e) => {
         e.preventDefault();
 
@@ -367,7 +402,7 @@ export default function AddProductPage() {
                 return;
             }
 
-            // Upload media files first (if any)
+            // Upload ảnh/video mặc định
             const { imageUrls, videoUrls, defaultUrl } = await uploadMediaFiles(
                 mediaFiles,
                 token,
@@ -612,30 +647,12 @@ export default function AddProductPage() {
                         </div>
                     </div>
                     <div className={cx('row')}>
-                        <label>Chọn ảnh/video</label>
+                        <label>Chọn ảnh/video (tổng tối đa 50MB)</label>
                         <input
                             type="file"
                             accept="image/*,video/*"
                             multiple
-                            onChange={(e) => {
-                                const files = Array.from(e.target.files || []);
-                                const mapped = files.map((f) => ({
-                                    file: f,
-                                    type: f.type.startsWith('image') ? 'IMAGE' : 'VIDEO',
-                                    preview: URL.createObjectURL(f),
-                                    isDefault: false,
-                                }));
-                                setMediaFiles((prev) => {
-                                    const next = [...prev, ...mapped];
-                                    if (
-                                        next.length > 0 &&
-                                        !next.some((m) => m.isDefault)
-                                    ) {
-                                        next[0].isDefault = true;
-                                    }
-                                    return next;
-                                });
-                            }}
+                            onChange={handleMediaSelection}
                         />
                         {mediaFiles.length > 0 && (
                             <div className={cx('mediaList')}>

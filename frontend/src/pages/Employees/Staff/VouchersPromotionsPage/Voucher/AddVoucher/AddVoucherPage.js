@@ -14,6 +14,7 @@ import {
     APPLY_SCOPE_OPTIONS,
     INITIAL_FORM_STATE_VOUCHER,
 } from '../../../../../../services';
+import useDebounce from '../../../../../../hooks/useDebounce';
 
 const cx = classNames.bind(styles);
 
@@ -30,7 +31,8 @@ export default function AddVoucherPage() {
     const [imageFile, setImageFile] = useState(null);
     const [imagePreview, setImagePreview] = useState(null);
     const [isDragging, setIsDragging] = useState(false);
-    const [specificProductName, setSpecificProductName] = useState('');
+    const [productSearchQuery, setProductSearchQuery] = useState('');
+    const debouncedProductSearchQuery = useDebounce(productSearchQuery, 300);
     const [isOrderByMinValue, setIsOrderByMinValue] = useState(false);
 
     const resetForm = useCallback(() => {
@@ -38,7 +40,7 @@ export default function AddVoucherPage() {
         setErrors({});
         setImageFile(null);
         setImagePreview(null);
-        setSpecificProductName('');
+        setProductSearchQuery('');
         setIsOrderByMinValue(false);
     }, []);
 
@@ -82,24 +84,46 @@ export default function AddVoucherPage() {
         [categories],
     );
 
-    // Helper function để tìm sản phẩm theo tên
-    const findProductByName = useCallback((productName) => {
-        if (!productName || !productName.trim()) {
-            return null;
-        }
-        const searchQuery = productName.trim().toLowerCase();
-        const matchedProducts = products.filter(
-            (product) => product.name?.toLowerCase().includes(searchQuery)
-        );
-        if (matchedProducts.length === 0) {
-            return { error: 'Không tìm thấy sản phẩm với tên này' };
-        }
-        if (matchedProducts.length > 1) {
-            return { error: `Tìm thấy ${matchedProducts.length} sản phẩm. Vui lòng nhập tên chính xác hơn.` };
-        }
-        return { product: matchedProducts[0] };
-    }, [products]);
+    const productOptions = useMemo(
+        () =>
+            products.map((product) => ({
+                value: product.id,
+                label: product.name,
+                code: product.code || '',
+            })),
+        [products],
+    );
 
+    const filteredProductOptions = useMemo(() => {
+        if (!debouncedProductSearchQuery?.trim()) {
+            return productOptions;
+        }
+        const query = debouncedProductSearchQuery.toLowerCase().trim();
+        return productOptions.filter((option) => {
+            const nameMatch = option.label?.toLowerCase().includes(query);
+            const codeMatch = option.code?.toLowerCase().includes(query);
+            return Boolean(nameMatch || codeMatch);
+        });
+    }, [productOptions, debouncedProductSearchQuery]);
+
+    const productMap = useMemo(() => {
+        const entries = new Map();
+        productOptions.forEach((option) => entries.set(option.value, option));
+        return entries;
+    }, [productOptions]);
+
+    const selectedProducts = useMemo(
+        () =>
+            formState.productIds
+                .map((id) => productMap.get(id))
+                .filter(Boolean),
+        [formState.productIds, productMap],
+    );
+
+    const availableProductOptions = useMemo(
+        () => filteredProductOptions.filter((option) => !formState.productIds.includes(option.value)),
+        [filteredProductOptions, formState.productIds],
+    );
 
     const handleChange = (field, value) => {
         setFormState((prev) => {
@@ -138,6 +162,26 @@ export default function AddVoucherPage() {
             }));
         }
     };
+
+    const handleSelectProduct = useCallback((productId) => {
+        setFormState((prev) => {
+            if (prev.productIds.includes(productId)) {
+                return prev;
+            }
+            return {
+                ...prev,
+                productIds: [...prev.productIds, productId],
+            };
+        });
+        setProductSearchQuery('');
+    }, []);
+
+    const handleRemoveProduct = useCallback((productId) => {
+        setFormState((prev) => ({
+            ...prev,
+            productIds: prev.productIds.filter((id) => id !== productId),
+        }));
+    }, []);
 
 
     const handleImageFile = (file) => {
@@ -220,20 +264,15 @@ export default function AddVoucherPage() {
         if (formState.applyScope === 'CATEGORY' && (!formState.categoryIds || formState.categoryIds.length === 0)) {
             validationErrors.categoryIds = 'Vui lòng chọn loại sách';
         }
-        if (formState.applyScope === 'PRODUCT') {
-            const productMatch = findProductByName(specificProductName);
-            if (!productMatch) {
-                validationErrors.productIds = 'Vui lòng nhập tên sách cụ thể';
-            } else if (productMatch.error) {
-                validationErrors.productIds = productMatch.error;
-            }
+        if (formState.applyScope === 'PRODUCT' && (!formState.productIds || formState.productIds.length === 0)) {
+            validationErrors.productIds = 'Vui lòng chọn ít nhất một sản phẩm.';
         }
         if (isOrderByMinValue && (!formState.minOrderValue || Number(formState.minOrderValue) <= 0)) {
             validationErrors.minOrderValue = 'Vui lòng nhập giá trị tối thiểu đơn hàng lớn hơn 0';
         }
         setErrors(validationErrors);
         return Object.keys(validationErrors).length === 0;
-    }, [formState, specificProductName, isOrderByMinValue, findProductByName]);
+    }, [formState, isOrderByMinValue]);
 
     const preparePayload = async () => {
         let imageUrl = null;
@@ -276,10 +315,9 @@ export default function AddVoucherPage() {
             categoryIds: formState.applyScope === 'CATEGORY'
                 ? (Array.isArray(formState.categoryIds) ? formState.categoryIds : [formState.categoryIds].filter(Boolean))
                 : null,
-            productIds: formState.applyScope === 'PRODUCT' ? (() => {
-                const productMatch = findProductByName(specificProductName);
-                return productMatch?.product ? [productMatch.product.id] : null;
-            })() : null,
+            productIds: formState.applyScope === 'PRODUCT'
+                ? formState.productIds
+                : null,
         };
         return payload;
     };
@@ -345,13 +383,75 @@ export default function AddVoucherPage() {
         }
         if (formState.applyScope === 'PRODUCT') {
             return (
-                <input
-                    type="text"
-                    className={cx('form-input')}
-                    placeholder="Nhập tên sách cụ thể"
-                    value={specificProductName}
-                    onChange={(e) => setSpecificProductName(e.target.value)}
-                />
+                <div className={cx('product-selector')}>
+                    <div className={cx('search-box')}>
+                        <input
+                            type="text"
+                            value={productSearchQuery}
+                            onChange={(e) => setProductSearchQuery(e.target.value)}
+                            className={cx('search-input')}
+                            placeholder="Nhập tên hoặc mã sách để tìm kiếm..."
+                        />
+                        {productSearchQuery && (
+                            <button
+                                type="button"
+                                className={cx('clear-search-btn')}
+                                onClick={() => setProductSearchQuery('')}
+                            >
+                                ✕
+                            </button>
+                        )}
+                        {productSearchQuery.trim() && (
+                            <div className={cx('suggestion-dropdown')}>
+                                {availableProductOptions.length === 0 ? (
+                                    <div className={cx('empty-text')}>
+                                        Không tìm thấy sản phẩm phù hợp.
+                                    </div>
+                                ) : (
+                                    availableProductOptions.slice(0, 20).map((option) => (
+                                        <button
+                                            type="button"
+                                            key={option.value}
+                                            className={cx('suggestion-item')}
+                                            onMouseDown={(event) => {
+                                                event.preventDefault();
+                                                handleSelectProduct(option.value);
+                                            }}
+                                        >
+                                            <span className={cx('suggestion-name')}>{option.label}</span>
+                                            {option.code && (
+                                                <span className={cx('suggestion-code')}>{option.code}</span>
+                                            )}
+                                        </button>
+                                    ))
+                                )}
+                            </div>
+                        )}
+                    </div>
+                    {selectedProducts.length > 0 ? (
+                        <div className={cx('selected-products-list')}>
+                            {selectedProducts.map((product) => (
+                                <span key={product.value} className={cx('product-chip')}>
+                                    <span className={cx('product-chip-label')}>{product.label}</span>
+                                    <button
+                                        type="button"
+                                        className={cx('chip-remove-btn')}
+                                        onClick={() => handleRemoveProduct(product.value)}
+                                    >
+                                        ✕
+                                    </button>
+                                </span>
+                            ))}
+                        </div>
+                    ) : (
+                        <p className={cx('helper-text')}>Chưa có sản phẩm nào được chọn.</p>
+                    )}
+                    {formState.productIds.length > 0 && (
+                        <span className={cx('selected-count')}>
+                            Đã chọn: {formState.productIds.length} sản phẩm
+                        </span>
+                    )}
+                </div>
             );
         }
         return null;

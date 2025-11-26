@@ -41,6 +41,7 @@ public class SecurityConfig {
         "/promotion_media/**",
         "/profile_media/**",
         "/reviews/**",
+        "/categories/**",
         "/vouchers/**",
         "/promotions/**",
         "/products/**",

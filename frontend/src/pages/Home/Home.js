@@ -260,8 +260,18 @@ function Home() {
             .slice(0, Math.min(limit, products.length));
     };
 
-    const trendingProducts = sortAndSlice(allProducts, (p) => p.averageRating || 0);
+    // Sách yêu thích: chỉ lấy những sách có đánh giá trung bình ~ 5*
+    const favoriteProducts = sortAndSlice(
+        allProducts.filter((p) => (p.averageRating ?? 0) >= 4.9),
+        (p) => p.quantitySold || 0,
+    );
     const bestSellerProducts = sortAndSlice(allProducts, (p) => p.quantitySold || 0);
+    // Sách mới: 10 cuốn mới nhất dựa trên updatedAt / createdAt
+    const newestProducts = sortAndSlice(
+        allProducts,
+        (p) => (p.updatedAt ? new Date(p.updatedAt).getTime() : 0),
+        10,
+    );
 
     return (
         <div className={cx('home-wrapper')}>
@@ -328,7 +338,7 @@ function Home() {
                         <h3 className={cx('trending-title')}>SÁCH YÊU THÍCH</h3>
                     </div>
                     <ProductList
-                        products={trendingProducts}
+                        products={favoriteProducts}
                         title="SÁCH YÊU THÍCH"
                         showNavigation={true}
                         showHeader={false}
@@ -355,11 +365,11 @@ function Home() {
 
                 <section className={cx('trending-section')}>
                     <div className={cx('trending-header')}>
-                        <h3 className={cx('trending-title')}>COMBO SÁCH HOT</h3>
+                        <h3 className={cx('trending-title')}>SÁCH MỚI</h3>
                     </div>
                     <ProductList
-                        products={allProducts}
-                        title="SÁCH BÁN CHẠY"
+                        products={newestProducts}
+                        title="SÁCH MỚI"
                         showNavigation={true}
                         showHeader={false}
                         minimal={true}

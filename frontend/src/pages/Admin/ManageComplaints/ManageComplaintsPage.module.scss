@@ -231,6 +231,23 @@
     overflow-y: auto;
 }
 
+.cskh-note-banner {
+    margin-top: 4px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    background: #fee2e2;
+    border: 1px solid #dc2626;
+    color: #b91c1c;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.cskh-note-title {
+    font-weight: 700;
+    margin-bottom: 4px;
+    display: block;
+}
+
 .notes-section {
     margin-top: 24px;
     padding-top: 24px;

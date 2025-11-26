@@ -54,9 +54,11 @@
 }
 
 .grid-products {
-    padding: 16px 16px 0;
-    gap: 20px;
+    padding: 24px 40px;
+    gap: 36px;
     justify-items: center;
+    box-sizing: border-box;
+    width: 100%;
 }
 
 .nav-button {

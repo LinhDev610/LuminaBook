@@ -16,6 +16,7 @@ function NavBar() {
     const [categories, setCategories] = useState([]);
     const [categoriesLoading, setCategoriesLoading] = useState(false);
     const [categoriesError, setCategoriesError] = useState('');
+    const [activeParentId, setActiveParentId] = useState(null);
 
     // Kiểm tra xem có phải trang CustomerAccount không
     const { pathname } = location;
@@ -77,6 +78,10 @@ function NavBar() {
         } else if (categoryName) {
             navigate(`/search?q=${encodeURIComponent(categoryName)}`);
         }
+        // Sau khi chuyển trang, đưa người dùng lên đầu trang
+        if (typeof window !== 'undefined') {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
         setIsDropdownOpen(false);
         setIsMobileMenuOpen(false);
     };
@@ -84,7 +89,6 @@ function NavBar() {
     const renderCategoryItems = (variant = 'desktop') => {
         const itemClass = variant === 'mobile' ? 'mobile-dropdown-item' : 'dropdown-item';
         const statusClass = variant === 'mobile' ? 'mobile-dropdown-status' : 'dropdown-status';
-        const dataSource = categories.slice(0, 12);
 
         if (categoriesLoading) {
             return (
@@ -102,7 +106,7 @@ function NavBar() {
             );
         }
 
-        if (!dataSource.length) {
+        if (!categories.length) {
             return (
                 <div className={cx(statusClass)}>
                     Chưa có danh mục nào
@@ -110,16 +114,62 @@ function NavBar() {
             );
         }
 
-        return dataSource.map((category) => (
-            <button
-                key={category.id || category.name}
-                type="button"
-                className={cx(itemClass)}
-                onClick={() => handleCategorySelect(category)}
-            >
-                {category.name}
-            </button>
-        ));
+        // Mobile: giữ cách hiển thị danh sách thẳng như cũ
+        if (variant === 'mobile') {
+            const dataSource = categories.slice(0, 12);
+            return dataSource.map((category) => (
+                <button
+                    key={category.id || category.name}
+                    type="button"
+                    className={cx(itemClass)}
+                    onClick={() => handleCategorySelect(category)}
+                >
+                    {category.name}
+                </button>
+            ));
+        }
+
+        // Desktop: tách danh mục gốc và danh mục con, hiển thị 2 khung bên cạnh nhau
+        const parentCategories = categories.filter((c) => !c.parentId);
+        const childCategories = activeParentId
+            ? categories.filter((c) => c.parentId === activeParentId)
+            : [];
+
+        return (
+            <div className={cx('dropdown-main')}>
+                <div className={cx('dropdown-parent-column')}>
+                    {parentCategories.map((category) => (
+                        <button
+                            key={category.id || category.name}
+                            type="button"
+                            className={cx(itemClass, {
+                                active: activeParentId === category.id,
+                            })}
+                            onMouseEnter={() => setActiveParentId(category.id)}
+                            onClick={() => handleCategorySelect(category)}
+                        >
+                            {category.name}
+                        </button>
+                    ))}
+                </div>
+                <div className={cx('submenu-panel')}>
+                    {childCategories.length > 0 ? (
+                        childCategories.map((child) => (
+                            <button
+                                key={child.id || child.name}
+                                type="button"
+                                className={cx('submenu-item')}
+                                onClick={() => handleCategorySelect(child)}
+                            >
+                                {child.name}
+                            </button>
+                        ))
+                    ) : (
+                        <div className={cx('submenu-empty')}>Không có danh mục con</div>
+                    )}
+                </div>
+            </div>
+        );
     };
 
     return (

@@ -65,6 +65,7 @@ import UpdateContentPage from '../pages/Employees/Staff/ContentManagement/Update
 import VouchersPromotionsPage from '../pages/Employees/Staff/VouchersPromotionsPage';
 import OrderManagementPage from '../pages/Employees/Staff/OrderManagement';
 import OrderDetailPage from '../pages/Employees/Staff/OrderManagement/OrderDetail';
+import RefundOrderDetailPage from '../pages/Employees/Staff/OrderManagement/RefundOrderDetail';
 import AddVoucherPage from '../pages/Employees/Staff/VouchersPromotionsPage/Voucher/AddVoucher/AddVoucherPage';
 import AddPromotionPage from '../pages/Employees/Staff/VouchersPromotionsPage/Promotion/AddPromotion';
 import VoucherDetailPage from '../pages/Employees/Staff/VouchersPromotionsPage/Voucher/VoucherDetail';
@@ -207,6 +208,7 @@ const privateRoutes = [
 
     { path: '/staff/orders', component: OrderManagementPage, layout: StaffLayout },
     { path: '/staff/orders/:id', component: OrderDetailPage, layout: StaffLayout },
+    { path: '/staff/refund-orders/:id', component: RefundOrderDetailPage, layout: StaffLayout },
 
     { path: '/staff/notifications', component: StaffNotificationPage, layout: StaffLayout },
 

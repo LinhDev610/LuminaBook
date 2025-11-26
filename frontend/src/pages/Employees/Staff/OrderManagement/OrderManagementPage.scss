@@ -40,8 +40,56 @@
     display: inline-flex;
 }
 
+.tabs-container {
+    display: inline-flex;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.tab {
+    border: 1px solid #d7d3c9;
+    background: #f7f2e7;
+    color: #1b2b34;
+    border-radius: 999px;
+    padding: 10px 20px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    &.active {
+        background: #0f2c44;
+        color: #fff;
+        border-color: #0f2c44;
+    }
+}
+
+.section {
+    margin-top: 0;
+    margin-bottom: 0;
+}
+
+.section + .section {
+    margin-top: 24px;
+}
+
+.section-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: #1b2b34;
+    margin-bottom: 12px;
+    margin-top: 0;
+}
+
 .wrap {
-    margin-top: 4px;
+    margin-top: 12px;
+}
+
+.section:first-child .wrap :global(.search-sort-container) {
+    margin-bottom: 16px;
+}
+
+.section:nth-of-type(2) :global(.search-sort-container) {
+    margin-bottom: 0;
 }
 
 .info-row {
@@ -151,6 +199,18 @@
     background: #ef4444;
 }
 
+.status-pill.return-requested {
+    background: #fbbf24;
+}
+
+.status-pill.refunded {
+    background: #10b981;
+}
+
+.status-pill.return-rejected {
+    background: #ef4444;
+}
+
 /* Tăng khoảng cách giữa cột trạng thái và cột thao tác */
 .status-cell {
     text-align: left;
@@ -160,9 +220,34 @@
 .actions-cell {
     display: flex;
     justify-content: flex-start;
-    gap: 8px;
+    gap: 12px;
     padding-left: 20px; /* dịch cụm nút sang phải 10px */
     text-align: left;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 12px;
+}
+
+.refund-section {
+    .table thead th {
+        padding: 12px 24px;
+    }
+
+    .table tbody td {
+        padding: 12px 16px;
+    }
+
+    .status-cell {
+        padding-right: 12px;
+        text-align: center;
+    }
+
+    .actions-cell {
+        justify-content: center;
+        padding-left: 0;
+    }
 }
 
 .btn {
@@ -206,6 +291,62 @@
     text-align: center;
     padding: 24px 0;
     color: #6b7280;
+}
+
+// Pagination
+.pagination {
+    margin-top: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+.pagination-btn {
+    min-width: 96px;
+    height: 40px;
+    border-radius: 999px;
+    border: 1px solid #ccd5e3;
+    background: #fff;
+    font-weight: 600;
+    color: #1a3c5a;
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    &:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+    }
+
+    &:not(:disabled):hover {
+        background: #1a3c5a;
+        color: #fff;
+        border-color: #1a3c5a;
+    }
+}
+
+.pagination-info {
+    font-weight: 600;
+    color: #1a3c5a;
+}
+
+// Override SearchAndSort margin trong section thứ 2
+.second-section {
+    margin-top: -24px !important;
+    padding-top: 0 !important;
+    
+    .search-wrapper {
+        margin-bottom: 0 !important;
+        
+        :global(.search-sort-container) {
+            margin-bottom: 0 !important;
+        }
+    }
+    
+    // Override trực tiếp SearchAndSort container
+    :global(.search-sort-container) {
+        margin-bottom: 0 !important;
+    }
 }
 
 @media (max-width: 768px) {

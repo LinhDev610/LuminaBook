@@ -6,6 +6,9 @@
     background: #fff;
     padding: 10px 40px;
     border-bottom: 1px solid #ddd;
+    position: sticky;
+    top: 0;
+    z-index: 1200;
 }
 
 .logo {

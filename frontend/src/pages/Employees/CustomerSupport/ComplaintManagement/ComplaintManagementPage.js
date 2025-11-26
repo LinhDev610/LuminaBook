@@ -3,6 +3,8 @@ import classNames from 'classnames/bind';
 import styles from './ComplaintManagementPage.module.scss';
 import { useNavigate } from 'react-router-dom';
 import { getApiBaseUrl, getStoredToken, formatDateTime } from '../../../../services/utils';
+import ConfirmDialog from '../../../../components/Common/ConfirmDialog/DeleteAccountDialog';
+import Notification from '../../../../components/Common/Notification/Notification';
 
 const cx = classNames.bind(styles);
 
@@ -32,6 +34,19 @@ export default function ComplaintManagementPage() {
     const [actionError, setActionError] = useState('');
     const [actionSuccess, setActionSuccess] = useState('');
     const [currentUserId, setCurrentUserId] = useState(null);
+    const [confirmDialog, setConfirmDialog] = useState({
+        open: false,
+        title: '',
+        message: '',
+        onConfirm: null,
+    });
+    const [notif, setNotif] = useState({
+        open: false,
+        type: 'success',
+        title: '',
+        message: '',
+        duration: 2500,
+    });
 
     // Fetch current user ID
     useEffect(() => {
@@ -207,14 +222,30 @@ export default function ComplaintManagementPage() {
                 throw new Error(data?.message || 'Không thể đánh dấu đã giải quyết');
             }
 
-            setActionSuccess('Đã đánh dấu giải quyết thành công!');
+            const msg = 'Đã đánh dấu giải quyết thành công!';
+            setActionSuccess(msg);
+            setNotif({
+                open: true,
+                type: 'success',
+                title: 'Thành công',
+                message: msg,
+                duration: 2500,
+            });
             await refreshComplaints();
             setTimeout(() => {
                 setActionSuccess('');
             }, 3000);
         } catch (err) {
             console.error('Error resolving complaint:', err);
-            setActionError(err.message || 'Đã xảy ra lỗi khi đánh dấu giải quyết');
+            const msg = err.message || 'Đã xảy ra lỗi khi đánh dấu giải quyết';
+            setActionError(msg);
+            setNotif({
+                open: true,
+                type: 'error',
+                title: 'Lỗi',
+                message: msg,
+                duration: 3000,
+            });
         } finally {
             setActionLoading(false);
         }
@@ -262,63 +293,154 @@ export default function ComplaintManagementPage() {
                 throw new Error(data?.message || 'Không thể tiếp nhận khiếu nại');
             }
 
-            setActionSuccess('Đã tiếp nhận khiếu nại thành công! Bạn đã trở thành người xử lý.');
+            const msg = 'Đã tiếp nhận khiếu nại thành công! Bạn đã trở thành người xử lý.';
+            setActionSuccess(msg);
+            setNotif({
+                open: true,
+                type: 'success',
+                title: 'Thành công',
+                message: msg,
+                duration: 2500,
+            });
             await refreshComplaints();
             setTimeout(() => {
                 setActionSuccess('');
             }, 3000);
         } catch (err) {
             console.error('Error accepting complaint:', err);
-            setActionError(err.message || 'Đã xảy ra lỗi khi tiếp nhận khiếu nại');
+            const msg = err.message || 'Đã xảy ra lỗi khi tiếp nhận khiếu nại';
+            setActionError(msg);
+            setNotif({
+                open: true,
+                type: 'error',
+                title: 'Lỗi',
+                message: msg,
+                duration: 3000,
+            });
         } finally {
             setActionLoading(false);
         }
     };
 
-    const handleTransferAdmin = async () => {
+    const handleTransferAdmin = () => {
         if (!selectedComplaint) return;
 
-        if (!window.confirm('Bạn có chắc chắn muốn chuyển khiếu nại này cho Admin không?')) {
-            return;
-        }
-
-        setActionLoading(true);
         setActionError('');
         setActionSuccess('');
 
-        try {
-            const token = getStoredToken();
-            if (!token) {
-                setActionError('Vui lòng đăng nhập');
-                setActionLoading(false);
-                return;
-            }
+        setConfirmDialog({
+            open: true,
+            title: 'Chuyển khiếu nại cho Admin',
+            message:
+                'Bạn có chắc chắn muốn chuyển khiếu nại này cho Admin không? Hệ thống sẽ lưu lại ghi chú của CSKH trước khi chuyển.',
+            onConfirm: async () => {
+                setConfirmDialog({ open: false, title: '', message: '', onConfirm: null });
+                setActionLoading(true);
 
-            const response = await fetch(`${API_BASE_URL}/api/tickets/${selectedComplaint.id}/escalate`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token}`,
-                },
-            });
+                try {
+                    const token = getStoredToken();
+                    if (!token) {
+                        setActionError('Vui lòng đăng nhập');
+                        setActionLoading(false);
+                        return;
+                    }
 
-            const data = await response.json();
+                    // YÊU CẦU: CSKH phải là người đã tiếp nhận (handler) trước khi chuyển Admin
+                    if (!selectedComplaint.handlerId || selectedComplaint.handlerId !== currentUserId) {
+                    const msg =
+                        'Bạn phải TIẾP NHẬN khiếu nại này (trở thành người phụ trách) trước khi chuyển cho Admin.';
+                    setActionError(msg);
+                    setNotif({
+                        open: true,
+                        type: 'error',
+                        title: 'Lỗi',
+                        message: msg,
+                        duration: 3500,
+                    });
+                        setActionLoading(false);
+                        return;
+                    }
 
-            if (!response.ok) {
-                throw new Error(data?.message || 'Không thể chuyển cho Admin');
-            }
+                    // YÊU CẦU: bắt buộc nhập ghi chú trước khi chuyển Admin
+                    if (!note || !note.trim()) {
+                        const msg = 'Vui lòng nhập ghi chú của CSKH trước khi chuyển cho Admin.';
+                        setActionError(msg);
+                        setNotif({
+                            open: true,
+                            type: 'error',
+                            title: 'Thiếu ghi chú',
+                            message: msg,
+                            duration: 3000,
+                        });
+                        setActionLoading(false);
+                        return;
+                    }
 
-            setActionSuccess('Đã chuyển cho Admin thành công!');
-            await refreshComplaints();
-            setTimeout(() => {
-                setActionSuccess('');
-            }, 3000);
-        } catch (err) {
-            console.error('Error escalating complaint:', err);
-            setActionError(err.message || 'Đã xảy ra lỗi khi chuyển cho Admin');
-        } finally {
-            setActionLoading(false);
-        }
+                    // Lưu ghi chú CSKH trước khi chuyển Admin
+                    const saveNoteResp = await fetch(
+                        `${API_BASE_URL}/api/tickets/${selectedComplaint.id}`,
+                        {
+                            method: 'PATCH',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                Authorization: `Bearer ${token}`,
+                            },
+                            body: JSON.stringify({
+                                handlerNote: note.trim(),
+                            }),
+                        },
+                    );
+                    const saveNoteData = await saveNoteResp.json().catch(() => ({}));
+                    if (!saveNoteResp.ok) {
+                        throw new Error(saveNoteData?.message || 'Không thể lưu ghi chú trước khi chuyển Admin');
+                    }
+
+                    const response = await fetch(
+                        `${API_BASE_URL}/api/tickets/${selectedComplaint.id}/escalate`,
+                        {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                Authorization: `Bearer ${token}`,
+                            },
+                        },
+                    );
+
+                    const data = await response.json();
+
+                    if (!response.ok) {
+                        throw new Error(data?.message || 'Không thể chuyển cho Admin');
+                    }
+
+                    const msg = 'Đã chuyển cho Admin thành công!';
+                    setActionSuccess(msg);
+                    setNotif({
+                        open: true,
+                        type: 'success',
+                        title: 'Thành công',
+                        message: msg,
+                        duration: 2500,
+                    });
+                    await refreshComplaints();
+                    setTimeout(() => {
+                        setActionSuccess('');
+                    }, 3000);
+                } catch (err) {
+                    console.error('Error escalating complaint:', err);
+                    const msg = err.message || 'Đã xảy ra lỗi khi chuyển cho Admin';
+                    setActionError(msg);
+                    setNotif({
+                        open: true,
+                        type: 'error',
+                        title: 'Lỗi',
+                        message: msg,
+                        duration: 3000,
+                    });
+                } finally {
+                    setActionLoading(false);
+                }
+            },
+        });
     };
 
     return (
@@ -523,6 +645,25 @@ export default function ComplaintManagementPage() {
                     </div>
                 )}
             </div>
+            <ConfirmDialog
+                open={confirmDialog.open}
+                title={confirmDialog.title}
+                message={confirmDialog.message}
+                onConfirm={confirmDialog.onConfirm || (() => {})}
+                onCancel={() =>
+                    setConfirmDialog({ open: false, title: '', message: '', onConfirm: null })
+                }
+                confirmText="Chuyển Admin"
+                cancelText="Hủy"
+            />
+            <Notification
+                open={notif.open}
+                type={notif.type}
+                title={notif.title}
+                message={notif.message}
+                duration={notif.duration}
+                onClose={() => setNotif((prev) => ({ ...prev, open: false }))}
+            />
         </div>
     );
 }

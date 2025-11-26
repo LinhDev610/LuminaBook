@@ -15,9 +15,11 @@ export const AuthProvider = ({ children }) => {
     const [authStep, setAuthStep] = useState('login'); // 'login', 'register', 'forgot-password', 'verify-code'
     const [registerStep, setRegisterStep] = useState(1); // 1: email, 2: verify, 3: password
     const [forgotPasswordStep, setForgotPasswordStep] = useState(1); // 1: email, 2: verify, 3: reset
+    const [authRedirectPath, setAuthRedirectPath] = useState(null);
 
-    const openLoginModal = () => {
+    const openLoginModal = (redirectPath = null) => {
         setAuthStep('login');
+        setAuthRedirectPath(redirectPath || null);
         setAuthModalOpen(true);
     };
 
@@ -68,6 +70,7 @@ export const AuthProvider = ({ children }) => {
 
     const closeAuthModal = () => {
         setAuthModalOpen(false);
+        setAuthRedirectPath(null);
         // Clear stored data when closing modal
         localStorage.removeItem('verifyEmail');
         localStorage.removeItem('verifyMode');
@@ -90,6 +93,8 @@ export const AuthProvider = ({ children }) => {
         switchToForgotPassword,
         switchToVerifyCode,
         closeAuthModal,
+        authRedirectPath,
+        setAuthRedirectPath,
         setAuthStep,
         setRegisterStep,
         setForgotPasswordStep,

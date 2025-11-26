@@ -25,6 +25,7 @@ import CustomerAccountLayout from '../layouts/CustomerAccountLayout';
 import AdminLayout from '../layouts/AdminLayout';
 import StaffLayout from '../layouts/StaffLayout';
 import CustomerSupportLayout from '../layouts/CustomerSupportLayout';
+import SearchResultsPage from '../pages/SearchResults';
 import ManageStaffAccountsPage from '../pages/Admin/ManageStaffAccounts';
 import ManageOrdersPage from '../pages/Admin/ManageOrders';
 import ManageOrderDetailPage from '../pages/Admin/ManageOrders/ManageOrderDetail';
@@ -82,10 +83,13 @@ import ShoppingGuidePage from '../pages/SupportUser/ShoppingGuide';
 import PaymentPolicyPage from '../pages/SupportUser/PaymentPolicy';
 import ShippingPolicyPage from '../pages/SupportUser/ShippingPolicy';
 import ReturnPolicyPage from '../pages/SupportUser/ReturnPolicy';
+import CategoryPage from '../pages/Category';
 
 // Public routes
 const publicRoutes = [
     { path: '/', component: Home },
+    { path: '/search', component: SearchResultsPage },
+    { path: '/category/:id', component: CategoryPage },
     { path: '/promotion', component: PromotionPage },
     { path: '/newbook', component: NewBookPage },
     { path: '/contact', component: Contact },

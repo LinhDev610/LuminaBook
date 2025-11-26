@@ -1,6 +1,7 @@
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import routes from '../../../config/routes';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { getActiveCategories } from '../../../services';
 import classNames from 'classnames/bind';
 
 import styles from './NavBar.module.scss';
@@ -9,8 +10,12 @@ const cx = classNames.bind(styles);
 
 function NavBar() {
     const location = useLocation();
+    const navigate = useNavigate();
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const [categories, setCategories] = useState([]);
+    const [categoriesLoading, setCategoriesLoading] = useState(false);
+    const [categoriesError, setCategoriesError] = useState('');
 
     // Kiểm tra xem có phải trang CustomerAccount không
     const { pathname } = location;
@@ -28,15 +33,94 @@ function NavBar() {
     const handleMobileMenuClick = () => {
         // console.log('Mobile menu clicked, current state:', isMobileMenuOpen);
         setIsMobileMenuOpen(!isMobileMenuOpen);
+        setIsDropdownOpen(false);
     };
 
-    const categories = [
-        'SÁCH GIÁO DỤC',
-        'SÁCH VĂN HỌC',
-        'SÁCH THIẾU NHI',
-        'SÁCH KỸ NĂNG SỐNG',
-        'SÁCH QUẢN LÝ KINH DOANH',
-    ];
+    useEffect(() => {
+        let ignore = false;
+        const fetchCategories = async () => {
+            try {
+                setCategoriesLoading(true);
+                setCategoriesError('');
+                const data = await getActiveCategories().catch(() => []);
+                if (ignore) return;
+                const normalized = Array.isArray(data)
+                    ? data.filter((item) => item && item.name)
+                    : [];
+                setCategories(normalized);
+            } catch (error) {
+                if (!ignore) {
+                    setCategories([]);
+                    setCategoriesError('Không thể tải danh mục');
+                }
+            } finally {
+                if (!ignore) {
+                    setCategoriesLoading(false);
+                }
+            }
+        };
+
+        fetchCategories();
+        return () => {
+            ignore = true;
+        };
+    }, []);
+
+    const handleCategorySelect = (category) => {
+        const categoryId = typeof category === 'string' ? null : category?.id;
+        const categoryName = typeof category === 'string'
+            ? category
+            : category?.name;
+
+        if (categoryId) {
+            navigate(`/category/${categoryId}`);
+        } else if (categoryName) {
+            navigate(`/search?q=${encodeURIComponent(categoryName)}`);
+        }
+        setIsDropdownOpen(false);
+        setIsMobileMenuOpen(false);
+    };
+
+    const renderCategoryItems = (variant = 'desktop') => {
+        const itemClass = variant === 'mobile' ? 'mobile-dropdown-item' : 'dropdown-item';
+        const statusClass = variant === 'mobile' ? 'mobile-dropdown-status' : 'dropdown-status';
+        const dataSource = categories.slice(0, 12);
+
+        if (categoriesLoading) {
+            return (
+                <div className={cx(statusClass)}>
+                    Đang tải danh mục...
+                </div>
+            );
+        }
+
+        if (categoriesError) {
+            return (
+                <div className={cx(statusClass, 'error')}>
+                    {categoriesError}
+                </div>
+            );
+        }
+
+        if (!dataSource.length) {
+            return (
+                <div className={cx(statusClass)}>
+                    Chưa có danh mục nào
+                </div>
+            );
+        }
+
+        return dataSource.map((category) => (
+            <button
+                key={category.id || category.name}
+                type="button"
+                className={cx(itemClass)}
+                onClick={() => handleCategorySelect(category)}
+            >
+                {category.name}
+            </button>
+        ));
+    };
 
     return (
         <nav className={cx('account-nav')}>
@@ -51,11 +135,7 @@ function NavBar() {
 
                 {isDropdownOpen && (
                     <div className={cx('dropdown-menu')}>
-                        {categories.map((category, index) => (
-                            <div key={index} className={cx('dropdown-item')}>
-                                {category}
-                            </div>
-                        ))}
+                        {renderCategoryItems()}
                     </div>
                 )}
             </div>
@@ -100,11 +180,7 @@ function NavBar() {
             {/* Mobile dropdown menu - outside mobile-nav */}
             {isMobileMenuOpen && (
                 <div className={cx('mobile-dropdown-menu')}>
-                    {categories.map((category, index) => (
-                        <div key={index} className={cx('mobile-dropdown-item')}>
-                            {category}
-                        </div>
-                    ))}
+                    {renderCategoryItems('mobile')}
                 </div>
             )}
         </nav>

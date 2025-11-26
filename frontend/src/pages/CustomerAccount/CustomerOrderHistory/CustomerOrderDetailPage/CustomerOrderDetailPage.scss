@@ -13,6 +13,45 @@
     gap: 24px;
 }
 
+// Rejection Alert - Hiển thị ở trên cùng, màu đỏ
+.rejection-alert {
+    border: 2px solid #dc2626;
+    border-radius: 8px;
+    padding: 20px 24px;
+    margin: 20px 0 24px 0;
+    background: #fee2e2;
+
+    &.top-alert {
+        margin-top: 0;
+    }
+}
+
+.alert-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.alert-icon {
+    font-size: 24px;
+}
+
+.alert-title {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 700;
+    color: #991b1b;
+}
+
+.alert-message {
+    margin: 0;
+    font-size: 16px;
+    color: #7f1d1d;
+    font-weight: 500;
+    line-height: 1.6;
+}
+
 // Header
 .header {
     display: flex;
@@ -392,6 +431,28 @@
     &:hover {
         background: #2563eb;
         color: #fff;
+    }
+
+    &.refund-detail-btn {
+        background: #f3f4f6;
+        color: #374151;
+        border-color: #d1d5db;
+
+        &:hover {
+            background: #e5e7eb;
+            color: #111;
+        }
+    }
+
+    &.resubmit-btn {
+        background: #dc2626;
+        color: #fff;
+        border-color: #dc2626;
+
+        &:hover {
+            background: #b91c1c;
+            border-color: #b91c1c;
+        }
     }
 }
 

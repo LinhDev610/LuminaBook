@@ -33,9 +33,13 @@
     opacity: 0.8;
 }
 
-.search {
+.search-wrapper {
     flex: 1;
     margin: 0 40px;
+    position: relative;
+}
+
+.search {
     display: flex;
 }
 
@@ -59,6 +63,65 @@
     font-weight: 500;
     border-radius: 0 8px 8px 0;
     cursor: pointer;
+}
+
+.search-suggestions {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    width: 700px;
+    max-width: 80%;
+    background: #fff;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    border-radius: 12px;
+    box-shadow: 0 16px 30px rgba(15, 23, 42, 0.15);
+    z-index: 30;
+    overflow: hidden;
+
+    ul {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        max-height: 360px;
+        overflow-y: auto;
+    }
+
+    li {
+        display: flex;
+        justify-content: space-between;
+        padding: 12px 16px;
+        cursor: pointer;
+        font-size: 14px;
+        color: #1a1f2c;
+
+        &:hover,
+        &.highlighted {
+            background: rgba(26, 60, 90, 0.08);
+        }
+    }
+}
+
+.suggestion-name {
+    font-weight: 600;
+    font-size: 20px;
+}
+
+.suggestion-price {
+    color: #d6002f;
+    font-weight: 600;
+    font-size: 15px;
+}
+
+.suggestion-loading,
+.suggestion-error,
+.suggestion-empty {
+    padding: 12px 16px;
+    font-size: 16px;
+    color: #4b5675;
+}
+
+.suggestion-error {
+    color: #b91c1c;
 }
 
 .actions {
@@ -134,6 +197,7 @@
     transition: background-color 0.2s ease;
     width: 48px;
     height: 48px;
+    position: relative;
     
     &:hover {
         background-color: rgba(0, 0, 0, 0.05);
@@ -145,6 +209,26 @@
     height: 32px;
     vertical-align: middle;
     cursor: pointer;
+}
+
+.cart-count {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+    border-radius: 999px;
+    background-color: #f26b38;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    border: 2px solid #fff;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
 }
 
 .user-menu {

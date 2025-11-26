@@ -373,6 +373,31 @@ export default function RefundDetailPage() {
         normalizeMediaUrl(url, baseUrlForStatic)
     );
 
+    // Parse rejection reason nếu đơn đã bị từ chối
+    const orderStatus = order?.status || '';
+    const isRejected = orderStatus && (
+        orderStatus.toUpperCase() === 'RETURN_REJECTED' || 
+        orderStatus === 'RETURN_REJECTED' ||
+        orderStatus === 'return_rejected' ||
+        orderStatus.includes('REJECTED')
+    );
+    let rejectionReason = order?.refundRejectionReason || '';
+    if (!rejectionReason && order?.note) {
+        const noteText = order.note;
+        const rejectionMatch = noteText.match(/Lý do:\s*(.+?)(?:\n|$)/i);
+        if (rejectionMatch && rejectionMatch[1]) {
+            rejectionReason = rejectionMatch[1].trim();
+        } else if (noteText.includes('Yêu cầu hoàn tiền đã bị từ chối')) {
+            const parts = noteText.split('đã bị từ chối');
+            if (parts.length > 1) {
+                const reasonPart = parts[1].replace(/^[.:\s]+/, '').trim();
+                if (reasonPart) {
+                    rejectionReason = reasonPart;
+                }
+            }
+        }
+    }
+
     return (
         <div className={cx('page')}>
             <div className={cx('container')}>
@@ -388,6 +413,17 @@ export default function RefundDetailPage() {
                 <div className={cx('order-code')}>
                     Đơn hàng #{order.code || order.id}
                 </div>
+
+                {/* Rejection Reason Alert (only show if order was rejected) - Hiển thị ở trên cùng */}
+                {isRejected && rejectionReason && (
+                    <div className={cx('rejection-alert')}>
+                        <div className={cx('alert-header')}>
+                            <span className={cx('alert-icon')}>⚠️</span>
+                            <h3 className={cx('alert-title')}>Lý do từ chối</h3>
+                        </div>
+                        <p className={cx('alert-message')}>{rejectionReason}</p>
+                    </div>
+                )}
 
                 {/* Customer Information */}
                 <div className={cx('section')}>

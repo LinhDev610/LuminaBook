@@ -40,7 +40,6 @@ import com.lumina_book.backend.dto.request.DirectCheckoutRequest;
 import com.lumina_book.backend.util.SecurityUtil;
 import com.lumina_book.backend.service.ShipmentService;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -261,17 +260,20 @@ public class OrderService {
 
                 Order savedOrder = orderRepository.save(order);
 
-                // Tạo OrderItem trực tiếp từ product
-                OrderItem orderItem = OrderItem.builder()
-                        .order(savedOrder)
-                        .product(product)
-                        .quantity(quantity)
-                        .unitPrice(unitPrice)
-                        .finalPrice(finalPrice)
-                        .build();
-                orderItemRepository.save(orderItem);
-                orderItemRepository.flush();
-                savedOrder.setItems(new ArrayList<>(List.of(orderItem)));
+        // Tạo OrderItem trực tiếp từ product
+        OrderItem orderItem = OrderItem.builder()
+                .order(savedOrder)
+                .product(product)
+                .quantity(quantity)
+                .unitPrice(unitPrice)
+                .finalPrice(finalPrice)
+                .build();
+        orderItemRepository.save(orderItem);
+        orderItemRepository.flush();
+        // Sử dụng ArrayList thay vì List.of() để tránh UnsupportedOperationException
+        savedOrder.setItems(new ArrayList<>(List.of(orderItem)));
+
+        updateInventoryAndSales(product, quantity);
 
                 // COD: Tạo đơn hàng ngay và giữ status CREATED, chờ admin/staff xác nhận
                 return new CheckoutResult(savedOrder, null);
@@ -453,16 +455,18 @@ public class OrderService {
 
                 Order savedOrder = orderRepository.save(order);
 
-                OrderItem orderItem = OrderItem.builder()
-                        .order(savedOrder)
-                        .product(product)
-                        .quantity(quantity)
-                        .unitPrice(unitPrice)
-                        .finalPrice(finalPrice)
-                        .build();
-                orderItemRepository.save(orderItem);
-                orderItemRepository.flush();
-                savedOrder.setItems(new ArrayList<>(List.of(orderItem)));
+        OrderItem orderItem = OrderItem.builder()
+                .order(savedOrder)
+                .product(product)
+                .quantity(quantity)
+                .unitPrice(unitPrice)
+                .finalPrice(finalPrice)
+                .build();
+        orderItemRepository.save(orderItem);
+        orderItemRepository.flush();
+        savedOrder.setItems(new ArrayList<>(List.of(orderItem)));
+
+        updateInventoryAndSales(product, quantity);
 
                 return savedOrder;
             } catch (org.springframework.dao.DataIntegrityViolationException e) {
@@ -573,6 +577,8 @@ public class OrderService {
         orderItemRepository.saveAll(orderItems);
         orderItemRepository.flush(); // Ensure items are persisted immediately
         order.setItems(orderItems);
+
+        selectedItems.forEach(ci -> updateInventoryAndSales(ci.getProduct(), ci.getQuantity()));
     }
 
     private void finalizePaidOrder(Order order, List<String> cartItemIds) {
@@ -613,6 +619,27 @@ public class OrderService {
         orderRepository.flush();
 
         finalizePaidOrder(order, parseCartItemIds(order.getCartItemIdsSnapshot()));
+    }
+
+    private void updateInventoryAndSales(Product product, int quantity) {
+        if (product == null || quantity <= 0) {
+            return;
+        }
+
+        int sold = product.getQuantitySold() != null ? product.getQuantitySold() : 0;
+        product.setQuantitySold(sold + quantity);
+
+        if (product.getInventory() != null) {
+            Integer stock = product.getInventory().getStockQuantity();
+            if (stock == null) {
+                stock = 0;
+            }
+            int updatedStock = stock - quantity;
+            product.getInventory().setStockQuantity(Math.max(0, updatedStock));
+            product.getInventory().setLastUpdated(LocalDate.now());
+        }
+
+        productRepository.save(product);
     }
 
     private PaymentMethod resolvePaymentMethod(String value) {
@@ -1023,8 +1050,10 @@ public class OrderService {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_EXISTED));
 
-        if (order.getStatus() != OrderStatus.DELIVERED) {
-            throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION, "Chỉ có thể yêu cầu trả hàng cho đơn hàng đã giao");
+        // Cho phép yêu cầu trả hàng từ DELIVERED hoặc gửi lại từ RETURN_REJECTED
+        if (order.getStatus() != OrderStatus.DELIVERED && order.getStatus() != OrderStatus.RETURN_REJECTED) {
+            throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION, 
+                    "Chỉ có thể yêu cầu trả hàng cho đơn hàng đã giao hoặc đơn hàng đã bị từ chối hoàn tiền");
         }
 
         order.setStatus(OrderStatus.RETURN_REQUESTED);
@@ -1113,6 +1142,45 @@ public class OrderService {
             }
         }
         
+        return orderRepository.save(order);
+    }
+
+    @Transactional
+    public Order rejectRefund(String orderId, com.lumina_book.backend.dto.request.RejectRefundRequest request) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_EXISTED));
+
+        // Chỉ có thể từ chối đơn hàng có status RETURN_REQUESTED
+        if (order.getStatus() != OrderStatus.RETURN_REQUESTED) {
+            throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION, 
+                    "Chỉ có thể từ chối yêu cầu hoàn tiền cho đơn hàng đang ở trạng thái 'Hoàn tiền/ trả hàng'");
+        }
+
+        // Cập nhật status và lưu lý do từ chối
+        order.setStatus(OrderStatus.RETURN_REJECTED);
+        String rejectionReason = request.getReason() != null ? request.getReason() : "Không có lý do";
+        order.setRefundRejectionReason(rejectionReason);
+        // Cũng lưu vào note để tương thích với code cũ
+        String rejectionNote = "Yêu cầu hoàn tiền đã bị từ chối. Lý do: " + rejectionReason;
+        order.setNote(rejectionNote);
+
+        return orderRepository.save(order);
+    }
+
+    @Transactional
+    public Order confirmRefund(String orderId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_EXISTED));
+
+        // Chỉ có thể xác nhận hoàn tiền cho đơn hàng có status RETURN_REQUESTED
+        if (order.getStatus() != OrderStatus.RETURN_REQUESTED) {
+            throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION, 
+                    "Chỉ có thể xác nhận hoàn tiền cho đơn hàng đang ở trạng thái 'Hoàn tiền/ trả hàng'");
+        }
+
+        // Cập nhật status
+        order.setStatus(OrderStatus.REFUNDED);
+
         return orderRepository.save(order);
     }
 }

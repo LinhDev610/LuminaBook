@@ -196,6 +196,7 @@ export default function CustomerRefundDetailPage() {
     const [order, setOrder] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const [selectedImagePreview, setSelectedImagePreview] = useState(null); // Ảnh/video đang được xem chi tiết
 
     useEffect(() => {
         const fetchOrderDetail = async () => {
@@ -236,6 +237,15 @@ export default function CustomerRefundDetailPage() {
                 if (!orderData || !orderData.id) {
                     throw new Error('Dữ liệu đơn hàng không hợp lệ');
                 }
+                
+                // Debug log để kiểm tra dữ liệu từ API
+                console.log('CustomerRefundDetailPage - Order Data from API:', {
+                    id: orderData.id,
+                    status: orderData.status,
+                    refundRejectionReason: orderData.refundRejectionReason,
+                    note: orderData.note,
+                    rawData: orderData
+                });
                 
                 setOrder(orderData);
             } catch (err) {
@@ -283,6 +293,50 @@ export default function CustomerRefundDetailPage() {
         normalizeMediaUrl(url, baseUrlForStatic)
     );
 
+    // Check if order is rejected (case-insensitive) - kiểm tra cả status và rawStatus
+    const orderStatus = order?.status || order?.rawStatus || '';
+    const statusStr = String(orderStatus).toUpperCase();
+    const isRejected = statusStr === 'RETURN_REJECTED' || statusStr.includes('REJECTED');
+
+    // Parse rejection reason từ nhiều nguồn
+    let rejectionReason = order?.refundRejectionReason || 
+                         order?.refund_rejection_reason || 
+                         '';
+    
+    // Nếu không có refundRejectionReason, parse từ note
+    if (!rejectionReason && order?.note) {
+        const noteText = String(order.note);
+        // Tìm pattern "Lý do: ..."
+        const rejectionMatch = noteText.match(/Lý do:\s*(.+?)(?:\n|$)/i);
+        if (rejectionMatch && rejectionMatch[1]) {
+            rejectionReason = rejectionMatch[1].trim();
+        } else if (noteText.includes('Yêu cầu hoàn tiền đã bị từ chối')) {
+            // Nếu không có "Lý do:", lấy phần sau "đã bị từ chối"
+            const parts = noteText.split('đã bị từ chối');
+            if (parts.length > 1) {
+                const reasonPart = parts[1].replace(/^[.:\s]+/, '').trim();
+                if (reasonPart) {
+                    rejectionReason = reasonPart;
+                }
+            }
+        }
+    }
+    
+    // Debug log để kiểm tra - luôn log để debug
+    console.log('CustomerRefundDetailPage - Order Details:', {
+        id: order?.id,
+        status: order?.status,
+        rawStatus: order?.rawStatus,
+        orderStatus: orderStatus,
+        statusStr: statusStr,
+        isRejected: isRejected,
+        refundRejectionReason: order?.refundRejectionReason,
+        refund_rejection_reason: order?.refund_rejection_reason,
+        note: order?.note,
+        parsedRejectionReason: rejectionReason,
+        fullOrder: order
+    });
+
     return (
         <div className={cx('page')}>
             <div className={cx('container')}>
@@ -292,6 +346,19 @@ export default function CustomerRefundDetailPage() {
                     </button>
                     <h1 className={cx('page-title')}>Chi tiết yêu cầu hoàn tiền/ trả hàng</h1>
                 </div>
+
+                {/* Rejection Reason Alert (only show if order was rejected) - Hiển thị ở trên cùng */}
+                {isRejected ? (
+                    <div className={cx('rejection-alert', 'top-alert')}>
+                        <div className={cx('alert-header')}>
+                            <span className={cx('alert-icon')}>⚠️</span>
+                            <h3 className={cx('alert-title')}>Lý do từ chối từ CSKH</h3>
+                        </div>
+                        <p className={cx('alert-message')}>
+                            {rejectionReason || 'Không có lý do từ chối được ghi lại.'}
+                        </p>
+                    </div>
+                ) : null}
 
                 {/* Order Info Summary */}
                 <div className={cx('order-summary')}>
@@ -308,6 +375,12 @@ export default function CustomerRefundDetailPage() {
                         <span className={cx('status-badge', order.status?.toLowerCase())}>
                             {getStatusLabel(order.status)}
                         </span>
+                        {/* Debug: Show status value */}
+                        {process.env.NODE_ENV === 'development' && (
+                            <span style={{ fontSize: '12px', color: '#999', marginLeft: '10px' }}>
+                                (Status: {order.status})
+                            </span>
+                        )}
                     </div>
                 </div>
 
@@ -388,6 +461,11 @@ export default function CustomerRefundDetailPage() {
                             <div className={cx('media-previews')}>
                                 {normalizedMediaUrls.map((url, index) => {
                                     const isVideo = /\.(mp4|webm|ogg|mov|avi|mkv|flv|wmv)$/i.test(url);
+                                    const mediaItem = {
+                                        url: url,
+                                        name: isVideo ? `Video ${index + 1}` : `Ảnh ${index + 1}`,
+                                        isVideo: isVideo
+                                    };
                                     return (
                                         <div key={index} className={cx('media-preview-item')}>
                                             {isVideo ? (
@@ -396,6 +474,11 @@ export default function CustomerRefundDetailPage() {
                                                     controls
                                                     className={cx('preview-media')}
                                                     preload="metadata"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setSelectedImagePreview(mediaItem);
+                                                    }}
+                                                    style={{ cursor: 'pointer' }}
                                                     onError={(e) => {
                                                         console.error('Error loading video:', url, e);
                                                         e.target.style.display = 'none';
@@ -413,6 +496,8 @@ export default function CustomerRefundDetailPage() {
                                                     alt={`Bằng chứng ${index + 1}`}
                                                     className={cx('preview-media')}
                                                     loading="lazy"
+                                                    onClick={() => setSelectedImagePreview(mediaItem)}
+                                                    style={{ cursor: 'pointer' }}
                                                     onError={(e) => {
                                                         console.error('Error loading image:', url, e);
                                                         e.target.style.display = 'none';
@@ -490,8 +575,55 @@ export default function CustomerRefundDetailPage() {
                             </div>
                         </div>
                     </div>
+
+                    {/* Action Button for Rejected Status */}
+                    {isRejected && (
+                        <div className={cx('form-section', 'action-section')}>
+                            <button 
+                                className={cx('resubmit-btn')}
+                                onClick={() => {
+                                    // Navigate to refund request page with order ID
+                                    // The RefundRequestPage will load existing data if available
+                                    navigate(`/customer-account/orders/${order.id}/refund-request`);
+                                }}
+                            >
+                                Sửa lại và gửi lại yêu cầu
+                            </button>
+                        </div>
+                    )}
                 </div>
             </div>
+
+            {/* Image Preview Modal */}
+            {selectedImagePreview && (
+                <div className={cx('image-modal')} onClick={() => setSelectedImagePreview(null)}>
+                    <div className={cx('image-modal-content')} onClick={(e) => e.stopPropagation()}>
+                        <button
+                            className={cx('image-modal-close')}
+                            onClick={() => setSelectedImagePreview(null)}
+                        >
+                            ×
+                        </button>
+                        {selectedImagePreview.isVideo ? (
+                            <video 
+                                src={selectedImagePreview.url} 
+                                controls
+                                autoPlay
+                                className={cx('image-modal-media')}
+                            >
+                                Trình duyệt của bạn không hỗ trợ video.
+                            </video>
+                        ) : (
+                            <img 
+                                src={selectedImagePreview.url} 
+                                alt={selectedImagePreview.name}
+                                className={cx('image-modal-image')}
+                            />
+                        )}
+                        <p className={cx('image-modal-name')}>{selectedImagePreview.name}</p>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

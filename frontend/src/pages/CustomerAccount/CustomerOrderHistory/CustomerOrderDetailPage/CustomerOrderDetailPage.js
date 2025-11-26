@@ -228,6 +228,9 @@ const mapOrderFromApi = (apiOrder) => {
         refundStatus: null,
         refundProgress: null,
         refundMessage: '',
+        // Thêm thông tin lý do từ chối
+        refundRejectionReason: apiOrder.refundRejectionReason || apiOrder.refund_rejection_reason || '',
+        note: apiOrder.note || '',
     };
 };
 
@@ -370,6 +373,33 @@ function OrderDetailPage() {
     const statusKey = order.statusKey || mapOrderStatus(order.status || order.rawStatus).key;
     const statusInfo = STATUS_MAP[order.status] || STATUS_MAP.PENDING;
     const isReturning = order.status === 'RETURNING' || order.status === 'RETURN_REQUESTED' || order.rawStatus === 'RETURN_REQUESTED';
+    
+    // Check if order is rejected
+    const orderStatus = order?.status || order?.rawStatus || '';
+    const statusStr = String(orderStatus).toUpperCase();
+    const isRejected = statusStr === 'RETURN_REJECTED' || statusStr.includes('REJECTED');
+    
+    // Parse rejection reason từ nhiều nguồn
+    let rejectionReason = order?.refundRejectionReason || order?.refund_rejection_reason || '';
+    
+    // Nếu không có refundRejectionReason, parse từ note
+    if (!rejectionReason && order?.note) {
+        const noteText = String(order.note);
+        // Tìm pattern "Lý do: ..."
+        const rejectionMatch = noteText.match(/Lý do:\s*(.+?)(?:\n|$)/i);
+        if (rejectionMatch && rejectionMatch[1]) {
+            rejectionReason = rejectionMatch[1].trim();
+        } else if (noteText.includes('Yêu cầu hoàn tiền đã bị từ chối')) {
+            // Nếu không có "Lý do:", lấy phần sau "đã bị từ chối"
+            const parts = noteText.split('đã bị từ chối');
+            if (parts.length > 1) {
+                const reasonPart = parts[1].replace(/^[.:\s]+/, '').trim();
+                if (reasonPart) {
+                    rejectionReason = reasonPart;
+                }
+            }
+        }
+    }
 
     return (
         <div className={cx('order-detail-wrapper')}>
@@ -392,6 +422,19 @@ function OrderDetailPage() {
                         {statusInfo.label}
                     </button>
                 </div>
+
+                {/* Rejection Reason Alert (only show if order was rejected) - Hiển thị ở trên cùng */}
+                {isRejected && (
+                    <div className={cx('rejection-alert', 'top-alert')}>
+                        <div className={cx('alert-header')}>
+                            <span className={cx('alert-icon')}>⚠️</span>
+                            <h3 className={cx('alert-title')}>Lý do từ chối từ CSKH</h3>
+                        </div>
+                        <p className={cx('alert-message')}>
+                            {rejectionReason || 'Không có lý do từ chối được ghi lại.'}
+                        </p>
+                    </div>
+                )}
 
                 {/* Tabs */}
                 <div className={cx('tabs-section')}>
@@ -536,6 +579,20 @@ function OrderDetailPage() {
                             onClick={() => navigate(`/customer-account/orders/${order.id || order.code}/refund-detail`)}
                         >
                             Xem yêu cầu hoàn tiền
+                        </button>
+                    )}
+                    {(order.status === 'RETURN_REJECTED' || order.rawStatus === 'RETURN_REJECTED') && (
+                        <button 
+                            className={cx('contact-btn', 'resubmit-btn')}
+                            onClick={() => navigate(`/customer-account/orders/${order.id || order.code}/refund`, { 
+                                state: { 
+                                    orderCode: order.code, 
+                                    orderId: order.id,
+                                    isResubmit: true 
+                                } 
+                            })}
+                        >
+                            Sửa lại và gửi lại yêu cầu
                         </button>
                     )}
                 </div>

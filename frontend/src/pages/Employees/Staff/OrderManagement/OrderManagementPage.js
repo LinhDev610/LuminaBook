@@ -34,50 +34,6 @@ const mapOrderStatus = (statusRaw) => {
     }
 };
 
-// Dữ liệu mẫu dùng tạm nếu API chưa có / lỗi
-const MOCK_ORDERS = [
-    {
-        id: 'DH001',
-        username: '@nguyenvana',
-        email: 'nguyenvana@gmail.com',
-        orderDate: '2025-10-10',
-        totalAmount: 1250000,
-        status: 'CREATED',
-    },
-    {
-        id: 'DH002',
-        username: '@tranthib',
-        email: 'tranthib@gmail.com',
-        orderDate: '2025-10-11',
-        totalAmount: 890000,
-        status: 'PAID',
-    },
-    {
-        id: 'DH003',
-        username: '@levanc',
-        email: 'levanc@gmail.com',
-        orderDate: '2025-10-12',
-        totalAmount: 2100000,
-        status: 'SHIPPED',
-    },
-    {
-        id: 'DH004',
-        username: '@phamdd',
-        email: 'phamdd@gmail.com',
-        orderDate: '2025-10-09',
-        totalAmount: 460000,
-        status: 'DELIVERED',
-    },
-    {
-        id: 'DH005',
-        username: '@dothie',
-        email: 'dothie@gmail.com',
-        orderDate: '2025-10-08',
-        totalAmount: 1780000,
-        status: 'CREATED',
-    },
-];
-
 const parseShippingInfo = (raw) => {
     if (!raw || typeof raw !== 'string') return null;
     try {
@@ -190,15 +146,9 @@ export default function OrderManagementPage() {
                 });
 
                 if (!resp.ok) {
-                    console.warn('OrderManagement: API /orders/my-orders trả lỗi, dùng MOCK_ORDERS');
-                    setOrders(
-                        MOCK_ORDERS.map((o) => ({
-                            ...o,
-                            code: o.id,
-                            statusLabel: mapOrderStatus(o.status).label,
-                            statusClass: mapOrderStatus(o.status).css,
-                        })),
-                    );
+                    console.error('OrderManagement: API /orders trả lỗi:', resp.status, resp.statusText);
+                    setError('Không thể tải danh sách đơn hàng từ server. Vui lòng thử lại sau.');
+                    setOrders([]);
                     return;
                 }
 
@@ -210,16 +160,9 @@ export default function OrderManagementPage() {
                     .filter(Boolean);
                 setOrders(mapped.length > 0 ? mapped : []);
             } catch (err) {
-                console.error('OrderManagement: Lỗi khi tải đơn hàng, dùng MOCK_ORDERS:', err);
-                setError('Không thể tải danh sách đơn hàng từ server. Đang hiển thị dữ liệu mẫu.');
-                setOrders(
-                    MOCK_ORDERS.map((o) => ({
-                        ...o,
-                        code: o.id,
-                        statusLabel: mapOrderStatus(o.status).label,
-                        statusClass: mapOrderStatus(o.status).css,
-                    })),
-                );
+                console.error('OrderManagement: Lỗi khi tải đơn hàng:', err);
+                setError('Không thể tải danh sách đơn hàng từ server. Vui lòng thử lại sau.');
+                setOrders([]);
             } finally {
                 setLoading(false);
             }

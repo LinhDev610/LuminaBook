@@ -37,9 +37,7 @@ public class Order {
     @OneToOne(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     Shipment shipment;
 
-    /**
-     * Mã đơn hàng hiển thị cho khách (ví dụ: LMN20241120ABC123).
-     */
+    // Mã đơn hàng hiển thị cho khách (ví dụ: LMN20241120ABC123).
     @Column(name = "order_code", unique = true)
     String code;
 
@@ -48,9 +46,7 @@ public class Order {
     String shippingAddress;
     LocalDate orderDate;
 
-    /**
-     * Thời điểm tạo đơn hàng đầy đủ (bao gồm giờ/phút/giây).
-     */
+    // Thời điểm tạo đơn hàng đầy đủ (bao gồm giờ/phút/giây).
     @Column(name = "order_date_time")
     LocalDateTime orderDateTime;
     LocalDate expectedDeliveryDate;

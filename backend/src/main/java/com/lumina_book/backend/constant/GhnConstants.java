@@ -23,9 +23,7 @@ public final class GhnConstants {
     public static final int DEFAULT_WEIGHT = 1200; // grams
 
     // Other constants
-    public static final int PAYMENT_TYPE_RECEIVER = 2;
     public static final String REQUIRED_NOTE = "CHOTHUHANG";
-    public static final Long COD_FAILED_AMOUNT = 2000L;
     public static final String CONTENT = "Sách từ LuminaBook";
 }
 

@@ -47,6 +47,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.hibernate.exception.ConstraintViolationException;
 
 @Slf4j
 @Service
@@ -231,47 +233,64 @@ public class OrderService {
                 request.getShippingAddress(),
                 user);
 
-        // Tạo Order
-        Order order = Order.builder()
-                .user(user)
-                .code(generateOrderCode())
-                .note(request.getNote())
-                .shippingAddress(shippingAddressSnapshot)
-                .address(shippingAddressEntity)
-                .orderDate(LocalDate.now())
-                .orderDateTime(LocalDateTime.now())
-                .shippingFee(shippingFee)
-                .totalAmount(orderTotal)
-                .status(OrderStatus.CREATED)
-                .paymentMethod(paymentMethod)
-                .paymentStatus(PaymentStatus.PAID)
-                .paid(true)
-                .cartItemIdsSnapshot("[]") // Không có cart items
-                .build();
+        // Retry logic để xử lý race condition (nếu có duplicate order code)
+        String finalOrderCode = generateOrderCode();
+        int maxRetries = 3;
+        for (int attempt = 0; attempt < maxRetries; attempt++) {
+            try {
+                // Tạo Order
+                Order order = Order.builder()
+                        .user(user)
+                        .code(finalOrderCode)
+                        .note(request.getNote())
+                        .shippingAddress(shippingAddressSnapshot)
+                        .address(shippingAddressEntity)
+                        .orderDate(LocalDate.now())
+                        .orderDateTime(LocalDateTime.now())
+                        .shippingFee(shippingFee)
+                        .totalAmount(orderTotal)
+                        .status(OrderStatus.CREATED)
+                        .paymentMethod(paymentMethod)
+                        .paymentStatus(PaymentStatus.PAID)
+                        .paid(true)
+                        .cartItemIdsSnapshot("[]") // Không có cart items
+                        .build();
 
-        Order savedOrder = orderRepository.save(order);
+                Order savedOrder = orderRepository.save(order);
 
-        // Tạo OrderItem trực tiếp từ product
-        OrderItem orderItem = OrderItem.builder()
-                .order(savedOrder)
-                .product(product)
-                .quantity(quantity)
-                .unitPrice(unitPrice)
-                .finalPrice(finalPrice)
-                .build();
-        orderItemRepository.save(orderItem);
-        orderItemRepository.flush();
-        // Sử dụng ArrayList thay vì List.of() để tránh UnsupportedOperationException
-        savedOrder.setItems(new ArrayList<>(List.of(orderItem)));
+                // Tạo OrderItem trực tiếp từ product
+                OrderItem orderItem = OrderItem.builder()
+                        .order(savedOrder)
+                        .product(product)
+                        .quantity(quantity)
+                        .unitPrice(unitPrice)
+                        .finalPrice(finalPrice)
+                        .build();
+                orderItemRepository.save(orderItem);
+                orderItemRepository.flush();
+                savedOrder.setItems(new ArrayList<>(List.of(orderItem)));
 
-        // COD: Tạo đơn hàng ngay và giữ status CREATED, chờ admin/staff xác nhận
-        if (paymentMethod == PaymentMethod.COD) {
-            return new CheckoutResult(savedOrder, null);
+                // COD: Tạo đơn hàng ngay và giữ status CREATED, chờ admin/staff xác nhận
+                return new CheckoutResult(savedOrder, null);
+            } catch (DataIntegrityViolationException e) {
+                // Nếu duplicate order code, generate lại và retry
+                if (e.getCause() instanceof ConstraintViolationException) {
+                    ConstraintViolationException cve = 
+                            (ConstraintViolationException) e.getCause();
+                    if (cve.getConstraintName() != null && cve.getConstraintName().contains("order_code")) {
+                        log.warn("Duplicate order code detected: {}, generating new code (attempt {}/{})", 
+                                finalOrderCode, attempt + 1, maxRetries);
+                        finalOrderCode = generateOrderCode();
+                        continue; // Retry với order code mới
+                    }
+                }
+                throw e; // Nếu không phải duplicate order code, throw exception
+            }
         }
-
-        // MoMo: Không tạo đơn hàng ở đây, đã xử lý ở trên
-        // Code này không nên chạy đến vì đã return ở trên
-        throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION, "Logic error: MoMo payment should have been handled earlier");
+        
+        // Nếu vẫn fail sau maxRetries, throw exception
+        throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION, 
+                "Không thể tạo đơn hàng sau nhiều lần thử. Vui lòng thử lại.");
     }
 
     /**
@@ -297,42 +316,70 @@ public class OrderService {
 
         // Tạo đơn hàng với paymentStatus = PAID (vì đã thanh toán thành công)
         String reusableOrderCode = normalizeOrderCode(request.getOrderCode());
+        String finalOrderCode;
+        
         if (reusableOrderCode != null) {
+            // Kiểm tra xem order code đã tồn tại chưa
             Order existing = orderRepository.findByCode(reusableOrderCode).orElse(null);
             if (existing != null) {
+                log.info("Order with code {} already exists, returning existing order", reusableOrderCode);
                 return existing;
             }
+            finalOrderCode = reusableOrderCode;
+        } else {
+            finalOrderCode = generateOrderCode();
         }
 
-        String finalOrderCode = reusableOrderCode != null ? reusableOrderCode : generateOrderCode();
+        // Retry logic để xử lý race condition (nếu có duplicate order code)
+        int maxRetries = 3;
+        for (int attempt = 0; attempt < maxRetries; attempt++) {
+            try {
+                Order order = Order.builder()
+                        .user(cart.getUser())
+                        .code(finalOrderCode)
+                        .note(request.getNote())
+                        .shippingAddress(shippingAddressSnapshot)
+                        .address(shippingAddressEntity)
+                        .orderDate(LocalDate.now())
+                        .orderDateTime(LocalDateTime.now())
+                        .shippingFee(pricing.shippingFee)
+                        .totalAmount(pricing.orderTotal)
+                        .status(OrderStatus.CREATED)
+                        .paymentMethod(PaymentMethod.MOMO)
+                        .paymentStatus(PaymentStatus.PAID)
+                        .paid(true)
+                        .cartItemIdsSnapshot(pricing.cartItemIdsSnapshot)
+                        .build();
 
-        Order order = Order.builder()
-                .user(cart.getUser())
-                .code(finalOrderCode)
-                .note(request.getNote())
-                .shippingAddress(shippingAddressSnapshot)
-                .address(shippingAddressEntity)
-                .orderDate(LocalDate.now())
-                .orderDateTime(LocalDateTime.now())
-                .shippingFee(pricing.shippingFee)
-                .totalAmount(pricing.orderTotal)
-                .status(OrderStatus.CREATED)
-                .paymentMethod(PaymentMethod.MOMO)
-                .paymentStatus(PaymentStatus.PAID)
-                .paid(true)
-                .cartItemIdsSnapshot(pricing.cartItemIdsSnapshot)
-                .build();
-
-        Order savedOrder = orderRepository.save(order);
-        persistOrderItems(savedOrder, selectedItems);
-        orderRepository.flush();
-
-        // Xóa cart items sau khi tạo đơn hàng
-        if (savedOrder.getUser() != null && pricing.selectedCartItemIds != null && !pricing.selectedCartItemIds.isEmpty()) {
-            cartService.removeCartItemsForOrder(savedOrder.getUser(), pricing.selectedCartItemIds);
+                Order savedOrder = orderRepository.save(order);
+                persistOrderItems(savedOrder, selectedItems);
+                orderRepository.flush();
+                
+                // Xóa cart items sau khi tạo đơn hàng
+                if (savedOrder.getUser() != null && pricing.selectedCartItemIds != null && !pricing.selectedCartItemIds.isEmpty()) {
+                    cartService.removeCartItemsForOrder(savedOrder.getUser(), pricing.selectedCartItemIds);
+                }
+                
+                return savedOrder;
+            } catch (DataIntegrityViolationException e) {
+                // Nếu duplicate order code, generate lại và retry
+                if (e.getCause() instanceof ConstraintViolationException) {
+                    ConstraintViolationException cve = 
+                            (ConstraintViolationException) e.getCause();
+                    if (cve.getConstraintName() != null && cve.getConstraintName().contains("order_code")) {
+                        log.warn("Duplicate order code detected: {}, generating new code (attempt {}/{})", 
+                                finalOrderCode, attempt + 1, maxRetries);
+                        finalOrderCode = generateOrderCode();
+                        continue; // Retry với order code mới
+                    }
+                }
+                throw e; // Nếu không phải duplicate order code, throw exception
+            }
         }
-
-        return savedOrder;
+        
+        // Nếu vẫn fail sau maxRetries, throw exception
+        throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION, 
+                "Không thể tạo đơn hàng sau nhiều lần thử. Vui lòng thử lại.");
     }
 
     /**
@@ -366,46 +413,74 @@ public class OrderService {
 
         // Tạo đơn hàng với paymentStatus = PAID (vì đã thanh toán thành công)
         String reusableOrderCode = normalizeOrderCode(request.getOrderCode());
+        String finalOrderCode;
+        
         if (reusableOrderCode != null) {
+            // Kiểm tra xem order code đã tồn tại chưa
             Order existing = orderRepository.findByCode(reusableOrderCode).orElse(null);
             if (existing != null) {
+                log.info("Order with code {} already exists, returning existing order", reusableOrderCode);
                 return existing;
             }
+            finalOrderCode = reusableOrderCode;
+        } else {
+            finalOrderCode = generateOrderCode();
         }
 
-        String finalOrderCode = reusableOrderCode != null ? reusableOrderCode : generateOrderCode();
+        // Retry logic để xử lý race condition (nếu có duplicate order code)
+        int maxRetries = 3;
+        for (int attempt = 0; attempt < maxRetries; attempt++) {
+            try {
+                Order order = Order.builder()
+                        .user(user)
+                        .code(finalOrderCode)
+                        .note(request.getNote())
+                        .shippingAddress(shippingAddressSnapshot)
+                        .address(shippingAddressEntity)
+                        .orderDate(LocalDate.now())
+                        .orderDateTime(LocalDateTime.now())
+                        .shippingFee(shippingFee)
+                        .totalAmount(orderTotal)
+                        .status(OrderStatus.CREATED)
+                        .paymentMethod(PaymentMethod.MOMO)
+                        .paymentStatus(PaymentStatus.PAID)
+                        .paid(true)
+                        .cartItemIdsSnapshot("[]")
+                        .build();
 
-        Order order = Order.builder()
-                .user(user)
-                .code(finalOrderCode)
-                .note(request.getNote())
-                .shippingAddress(shippingAddressSnapshot)
-                .address(shippingAddressEntity)
-                .orderDate(LocalDate.now())
-                .orderDateTime(LocalDateTime.now())
-                .shippingFee(shippingFee)
-                .totalAmount(orderTotal)
-                .status(OrderStatus.CREATED)
-                .paymentMethod(PaymentMethod.MOMO)
-                .paymentStatus(PaymentStatus.PAID)
-                .paid(true)
-                .cartItemIdsSnapshot("[]")
-                .build();
+                Order savedOrder = orderRepository.save(order);
 
-        Order savedOrder = orderRepository.save(order);
+                OrderItem orderItem = OrderItem.builder()
+                        .order(savedOrder)
+                        .product(product)
+                        .quantity(quantity)
+                        .unitPrice(unitPrice)
+                        .finalPrice(finalPrice)
+                        .build();
+                orderItemRepository.save(orderItem);
+                orderItemRepository.flush();
+                savedOrder.setItems(new ArrayList<>(List.of(orderItem)));
 
-        OrderItem orderItem = OrderItem.builder()
-                .order(savedOrder)
-                .product(product)
-                .quantity(quantity)
-                .unitPrice(unitPrice)
-                .finalPrice(finalPrice)
-                .build();
-        orderItemRepository.save(orderItem);
-        orderItemRepository.flush();
-        savedOrder.setItems(new ArrayList<>(List.of(orderItem)));
-
-        return savedOrder;
+                return savedOrder;
+            } catch (org.springframework.dao.DataIntegrityViolationException e) {
+                // Nếu duplicate order code, generate lại và retry
+                if (e.getCause() instanceof org.hibernate.exception.ConstraintViolationException) {
+                    org.hibernate.exception.ConstraintViolationException cve = 
+                            (org.hibernate.exception.ConstraintViolationException) e.getCause();
+                    if (cve.getConstraintName() != null && cve.getConstraintName().contains("order_code")) {
+                        log.warn("Duplicate order code detected: {}, generating new code (attempt {}/{})", 
+                                finalOrderCode, attempt + 1, maxRetries);
+                        finalOrderCode = generateOrderCode();
+                        continue; // Retry với order code mới
+                    }
+                }
+                throw e; // Nếu không phải duplicate order code, throw exception
+            }
+        }
+        
+        // Nếu vẫn fail sau maxRetries, throw exception
+        throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION, 
+                "Không thể tạo đơn hàng sau nhiều lần thử. Vui lòng thử lại.");
     }
 
     private Address resolveShippingAddressForDirectCheckout(DirectCheckoutRequest request, User user) {

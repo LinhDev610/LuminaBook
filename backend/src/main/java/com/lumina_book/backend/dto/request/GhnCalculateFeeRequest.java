@@ -26,7 +26,7 @@ public class GhnCalculateFeeRequest {
     Integer fromDistrictId;
 
     @JsonProperty("from_ward_code")
-    String fromWardCode; // Required for heavy service
+    String fromWardCode;
 
     @JsonProperty("to_district_id")
     Integer toDistrictId;

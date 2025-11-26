@@ -133,9 +133,7 @@ export const GHN_DEFAULT_DIMENSION = 12; // cm
 export const GHN_DEFAULT_WEIGHT = 1200; // grams
 
 // Other constants
-export const GHN_PAYMENT_TYPE_RECEIVER = 2;
 export const GHN_REQUIRED_NOTE = 'CHOTHUHANG';
-export const GHN_COD_FAILED_AMOUNT = 2000;
 export const GHN_CONTENT = 'Sách từ LuminaBook';
 
 // =========== Product Constants ===========

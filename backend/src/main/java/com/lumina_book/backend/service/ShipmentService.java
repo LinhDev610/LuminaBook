@@ -13,7 +13,6 @@ import com.lumina_book.backend.constant.GhnConstants;
 import com.lumina_book.backend.dto.request.GhnCalculateFeeRequest;
 import com.lumina_book.backend.dto.request.GhnCreateOrderRequest;
 import com.lumina_book.backend.dto.request.GhnLeadtimeRequest;
-import com.lumina_book.backend.dto.request.GhnOrderItemCategoryRequest;
 import com.lumina_book.backend.dto.request.GhnOrderItemRequest;
 import com.lumina_book.backend.dto.response.GhnDistrictResponse;
 import com.lumina_book.backend.dto.response.GhnFeeResponse;
@@ -28,6 +27,8 @@ import com.lumina_book.backend.entity.Order;
 import com.lumina_book.backend.entity.OrderItem;
 import com.lumina_book.backend.entity.Product;
 import com.lumina_book.backend.entity.Shipment;
+import com.lumina_book.backend.enums.PaymentMethod;
+import com.lumina_book.backend.enums.PaymentStatus;
 import com.lumina_book.backend.enums.ShipmentProvider;
 import com.lumina_book.backend.enums.ShipmentStatus;
 import com.lumina_book.backend.exception.AppException;
@@ -35,6 +36,7 @@ import com.lumina_book.backend.exception.ErrorCode;
 import com.lumina_book.backend.repository.OrderRepository;
 import com.lumina_book.backend.repository.ShipmentRepository;
 import com.lumina_book.backend.mapper.ShipmentMapper;
+import com.lumina_book.backend.mapper.GhnMapper;
 
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -50,48 +52,48 @@ public class ShipmentService {
     OrderRepository orderRepository;
     GhnService ghnService;
     ShipmentMapper shipmentMapper;
+    GhnMapper ghnMapper;
 
+    // ==================== GHN Master Data APIs ====================
+
+    // Lấy danh sách tỉnh/thành phố từ GHN.
     public List<GhnProvinceResponse> getProvinces() {
         return ghnService.getProvinces();
     }
 
+    // Lấy danh sách quận/huyện theo tỉnh/thành phố.
     public List<GhnDistrictResponse> getDistricts(Integer provinceId) {
         return ghnService.getDistricts(provinceId);
     }
 
+    // Lấy danh sách phường/xã theo quận/huyện.
     public List<GhnWardResponse> getWards(Integer districtId) {
         return ghnService.getWards(districtId);
     }
 
+    // Lấy danh sách ca lấy hàng từ GHN.
     public List<GhnPickShiftResponse> getPickShifts() {
         return ghnService.getPickShifts();
     }
 
+    // ==================== Shipping Fee Calculation ====================
+
+    // Tính phí vận chuyển từ request trực tiếp.
     public GhnFeeResponse calculateShippingFee(GhnCalculateFeeRequest request) {
         return ghnService.calculateShippingFee(request);
     }
 
+    // Tính phí vận chuyển cho một đơn hàng.
     public GhnFeeResponse calculateShippingFee(String orderId) {
         Order order = validateOrderWithAddress(orderId);
         GhnCreateOrderRequest ghnRequest = buildGhnCreateOrderRequest(order, null);
-        
-        GhnCalculateFeeRequest feeRequest = GhnCalculateFeeRequest.builder()
-                .serviceTypeId(ghnRequest.getServiceTypeId())
-                .insuranceValue(ghnRequest.getInsuranceValue())
-                .fromDistrictId(ghnRequest.getFromDistrictId())
-                .fromWardCode(ghnRequest.getFromWardCode())
-                .toDistrictId(ghnRequest.getToDistrictId())
-                .toWardCode(ghnRequest.getToWardCode())
-                .length(ghnRequest.getLength())
-                .width(ghnRequest.getWidth())
-                .height(ghnRequest.getHeight())
-                .weight(ghnRequest.getWeight())
-                .items(ghnRequest.getItems())
-                .build();
-
+        GhnCalculateFeeRequest feeRequest = ghnMapper.toCalculateFeeRequest(ghnRequest);
         return ghnService.calculateShippingFee(feeRequest);
     }
 
+    // ==================== Leadtime Calculation ====================
+
+    // Tính thời gian giao hàng dự kiến từ request trực tiếp.
     public GhnLeadtimeResponse getLeadtime(GhnLeadtimeRequest request) {
         return ghnService.getLeadtime(
                 request.getFromDistrictId(),
@@ -101,69 +103,97 @@ public class ShipmentService {
                 request.getServiceTypeId());
     }
 
+    // Tính thời gian giao hàng dự kiến cho một đơn hàng.
     public GhnLeadtimeResponse getLeadtime(String orderId) {
         Order order = validateOrderWithAddress(orderId);
         GhnCreateOrderRequest ghnRequest = buildGhnCreateOrderRequest(order, null);
-        
-        // Build request từ order và gọi hàm chung
-        GhnLeadtimeRequest leadtimeRequest = GhnLeadtimeRequest.builder()
-                .fromDistrictId(ghnRequest.getFromDistrictId())
-                .fromWardCode(ghnRequest.getFromWardCode())
-                .toDistrictId(ghnRequest.getToDistrictId())
-                .toWardCode(ghnRequest.getToWardCode())
-                .serviceTypeId(ghnRequest.getServiceTypeId())
-                .build();
-        
+        GhnLeadtimeRequest leadtimeRequest = ghnMapper.toLeadtimeRequest(ghnRequest);
         return getLeadtime(leadtimeRequest);
     }
 
+    // ==================== Order Preview & Creation ====================
+
+    // Xem trước thông tin đơn hàng trước khi tạo (preview).
     public GhnShipmentDataResponse previewOrder(String orderId, List<Integer> pickShiftIds) {
         Order order = validateOrderWithAddress(orderId);
-        GhnCreateOrderRequest ghnRequest = buildGhnCreateOrderRequest(order, pickShiftIds);
+        List<Integer> effectivePickShifts = resolvePickShiftIds(pickShiftIds);
+        GhnCreateOrderRequest ghnRequest = buildGhnCreateOrderRequest(order, effectivePickShifts);
         return ghnService.previewOrder(ghnRequest);
     }
 
+    // Tạo đơn hàng GHN từ Order.
     @Transactional
     public ShipmentResponse createGhnOrder(String orderId, List<Integer> pickShiftIds) {
         Order order = validateOrderWithAddress(orderId);
-        shipmentRepository.findByOrderId(orderId)
-                .ifPresent(existing -> {
-                    throw new AppException(ErrorCode.BAD_REQUEST, "Đơn hàng đã có vận đơn GHN");
-                });
+        ensureNoExistingShipment(orderId);
 
         List<Integer> effectivePickShifts = resolvePickShiftIds(pickShiftIds);
         GhnCreateOrderRequest ghnRequest = buildGhnCreateOrderRequest(order, effectivePickShifts);
+        
         GhnShipmentDataResponse ghnData = ghnService.createOrder(ghnRequest);
         
         if (ghnData == null) {
-            throw new AppException(ErrorCode.EXTERNAL_SERVICE_ERROR);
+            log.error("GHN API returned null response for orderId: {}", orderId);
+            throw new AppException(ErrorCode.EXTERNAL_SERVICE_ERROR, 
+                    "Không thể tạo đơn hàng GHN. Vui lòng thử lại sau.");
         }
 
-        Shipment saved = shipmentRepository.save(buildShipmentFromGhnData(order, ghnData));
+        Shipment shipment = buildShipmentFromGhnData(order, ghnData);
+        Shipment saved = shipmentRepository.save(shipment);
+        
         return shipmentMapper.toResponse(saved);
     }
 
+    // ==================== Shipment Retrieval ====================
+
+    // Lấy thông tin vận đơn theo order ID.
     public ShipmentResponse getShipmentByOrderId(String orderId) {
         Shipment shipment = shipmentRepository.findByOrderId(orderId)
-                .orElseThrow(() -> new AppException(ErrorCode.SHIPMENT_NOT_EXISTED));
+                .orElseThrow(() -> new AppException(ErrorCode.SHIPMENT_NOT_EXISTED, 
+                        "Không tìm thấy vận đơn cho đơn hàng: " + orderId));
         return shipmentMapper.toResponse(shipment);
     }
 
+    // Lấy thông tin vận đơn theo GHN order code.
     public ShipmentResponse getShipmentByOrderCode(String orderCode) {
         Shipment shipment = shipmentRepository.findByOrderCode(orderCode)
-                .orElseThrow(() -> new AppException(ErrorCode.SHIPMENT_NOT_EXISTED));
+                .orElseThrow(() -> new AppException(ErrorCode.SHIPMENT_NOT_EXISTED, 
+                        "Không tìm thấy vận đơn với mã GHN: " + orderCode));
         return shipmentMapper.toResponse(shipment);
     }
 
-    // Build GHN CreateOrderRequest từ Order.
+    // ==================== GHN Request Building ====================
+
     private GhnCreateOrderRequest buildGhnCreateOrderRequest(Order order, List<Integer> pickShiftIds) {
         Address address = order.getAddress();
+        validateAddress(address);
+
+        // Tính toán các thông số cơ bản
         int totalWeight = calculateTotalWeight(order);
         int serviceTypeId = determineServiceType(totalWeight);
         Long codAmount = calculateCodAmount(order);
+        Integer paymentTypeId = determinePaymentTypeId(order);
 
-        var builder = GhnCreateOrderRequest.builder()
-                .paymentTypeId(GhnConstants.PAYMENT_TYPE_RECEIVER)
+        // Build request với thông tin cơ bản
+        var builder = buildBaseGhnRequest(order, address, codAmount, paymentTypeId, serviceTypeId, pickShiftIds);
+
+        // Xử lý theo loại dịch vụ (light hoặc heavy)
+        if (serviceTypeId == GhnConstants.SERVICE_TYPE_LIGHT) {
+            applyLightServiceDimensions(builder, order);
+        } else {
+            applyHeavyServiceItems(builder, order);
+        }
+
+        return builder.build();
+    }
+
+    // Build phần cơ bản của GHN request (không bao gồm dimensions/items).
+    private GhnCreateOrderRequest.GhnCreateOrderRequestBuilder buildBaseGhnRequest(
+            Order order, Address address, Long codAmount, Integer paymentTypeId, 
+            int serviceTypeId, List<Integer> pickShiftIds) {
+        
+        return GhnCreateOrderRequest.builder()
+                .paymentTypeId(paymentTypeId)
                 .requiredNote(GhnConstants.REQUIRED_NOTE)
                 .returnPhone(GhnConstants.DEFAULT_FROM_PHONE)
                 .clientOrderCode(order.getCode())
@@ -181,7 +211,7 @@ public class ShipmentService {
                 .toProvinceId(parseInteger(address.getProvinceID()))
                 .codAmount(codAmount)
                 .content(GhnConstants.CONTENT)
-                .codFailedAmount(GhnConstants.COD_FAILED_AMOUNT)
+                .codFailedAmount(0L)
                 .pickStationId(null)
                 .deliverStationId(null)
                 .insuranceValue(codAmount)
@@ -190,34 +220,46 @@ public class ShipmentService {
                 .pickupTime(Instant.now().getEpochSecond())
                 .pickShift(pickShiftIds != null ? pickShiftIds : new ArrayList<>())
                 .note(order.getNote());
-
-        if (serviceTypeId == GhnConstants.SERVICE_TYPE_LIGHT) {
-            var lightDims = calculateLightServiceDimensions(order);
-            builder.length(lightDims.length)
-                    .width(lightDims.width)
-                    .height(lightDims.height)
-                    .weight(lightDims.weight);
-        } else {
-            var heavyItems = buildHeavyServiceItems(order);
-            builder.length(null)
-                    .width(null)
-                    .height(null)
-                    .weight(null)
-                    .items(heavyItems);
-        }
-
-        return builder.build();
     }
 
-    // GHN tự động chọn ca lấy hàng dựa trên thời gian hiện tại
+    // Áp dụng dimensions cho light service.
+    private void applyLightServiceDimensions(
+            GhnCreateOrderRequest.GhnCreateOrderRequestBuilder builder, Order order) {
+        ParcelDimensions dims = calculateLightServiceDimensions(order);
+        builder.length(dims.length)
+                .width(dims.width)
+                .height(dims.height)
+                .weight(dims.weight);
+    }
+
+    // Áp dụng items cho heavy service.
+    private void applyHeavyServiceItems(
+            GhnCreateOrderRequest.GhnCreateOrderRequestBuilder builder, Order order) {
+        List<GhnOrderItemRequest> items = buildHeavyServiceItems(order);
+        builder.length(null)
+                .width(null)
+                .height(null)
+                .weight(null)
+                .items(items);
+    }
+
+    // ==================== Pick Shift Resolution ====================
+
+    // Xử lý pick shift IDs. Nếu null hoặc empty, tự động chọn ca lấy hàng phù hợp.
     private List<Integer> resolvePickShiftIds(List<Integer> pickShiftIds) {
         if (pickShiftIds != null && !pickShiftIds.isEmpty()) {
             return pickShiftIds;
         }
 
+        return selectBestPickShift();
+    }
+
+    // Tự động chọn ca lấy hàng tốt nhất dựa trên thời gian hiện tại.
+    private List<Integer> selectBestPickShift() {
         try {
             List<GhnPickShiftResponse> shifts = ghnService.getPickShifts();
             if (shifts == null || shifts.isEmpty()) {
+                log.warn("No pick shifts available from GHN");
                 return new ArrayList<>();
             }
 
@@ -229,51 +271,79 @@ public class ShipmentService {
                     .findFirst()
                     .orElseGet(() -> shifts.get(0).getId());
 
-            return shiftId != null ? new ArrayList<>(List.of(shiftId)) : new ArrayList<>();
+            return shiftId != null ? List.of(shiftId) : new ArrayList<>();
         } catch (Exception e) {
-            log.warn("Không thể lấy danh sách ca lấy hàng từ GHN, fallback tới danh sách ca lấy hàng mặc định");
+            log.warn("Failed to fetch pick shifts from GHN, proceeding without pick shift: {}", 
+                    e.getMessage());
             return new ArrayList<>();
         }
     }
 
+    // ==================== Calculation Helpers ====================
+
+    // Tính tổng khối lượng đơn hàng (gram).
     private int calculateTotalWeight(Order order) {
         if (order.getItems() == null || order.getItems().isEmpty()) {
             return 0;
         }
 
         return order.getItems().stream()
-                .mapToInt(item -> {
-                    Product product = item.getProduct();
-                    if (product == null || product.getWeight() == null) {
-                        return 0;
-                    }
-                    int weightInGrams = (int) Math.round(product.getWeight());
-                    return weightInGrams * (item.getQuantity() != null ? item.getQuantity() : 1);
-                })
+                .mapToInt(this::calculateItemWeight)
                 .sum();
     }
 
+    // Tính khối lượng của một order item (gram).
+    private int calculateItemWeight(OrderItem item) {
+        Product product = item.getProduct();
+        if (product == null) {
+            return 0;
+        }
+        
+        GhnMapper.ProductDimensions dims = ghnMapper.getProductDimensions(product);
+        int quantity = item.getQuantity() != null ? item.getQuantity() : 1;
+        return dims.weight * quantity;
+    }
+
+    // Xác định loại dịch vụ (light hoặc heavy) dựa trên tổng khối lượng.
     private int determineServiceType(int totalWeightGrams) {
         return totalWeightGrams >= GhnConstants.HEAVY_SERVICE_WEIGHT_THRESHOLD 
                 ? GhnConstants.SERVICE_TYPE_HEAVY 
                 : GhnConstants.SERVICE_TYPE_LIGHT;
     }
 
+    // Tính số tiền COD cần thu.
+    // - Momo (đã thanh toán): 0
+    // - COD (chưa thanh toán): totalAmount
     private Long calculateCodAmount(Order order) {
-        if (order.getTotalAmount() == null || order.getShippingFee() == null) {
+        if (isPaidViaMomo(order)) {
             return 0L;
         }
-        return Math.round(order.getTotalAmount() - order.getShippingFee());
+        
+        if (order.getTotalAmount() == null) {
+            return 0L;
+        }
+        return Math.round(order.getTotalAmount());
     }
 
+    // Kiểm tra đơn hàng đã thanh toán qua Momo chưa.
+    private boolean isPaidViaMomo(Order order) {
+        return order.getPaymentMethod() == PaymentMethod.MOMO 
+                && order.getPaymentStatus() == PaymentStatus.PAID;
+    }
+
+    // Xác định paymentTypeId cho GHN.
+    // 1 = sender (Momo - đã thanh toán trước)
+    // 2 = receiver (COD - trả khi nhận hàng)
+    private Integer determinePaymentTypeId(Order order) {
+        return order.getPaymentMethod() == PaymentMethod.MOMO ? 1 : 2;
+    }
+
+    // ==================== Dimension Calculation ====================
+
+    // Tính kích thước cho light service (tổng hợp từ tất cả items).
     private ParcelDimensions calculateLightServiceDimensions(Order order) {
         if (order.getItems() == null || order.getItems().isEmpty()) {
-            return new ParcelDimensions(
-                GhnConstants.DEFAULT_DIMENSION,
-                GhnConstants.DEFAULT_DIMENSION,
-                GhnConstants.DEFAULT_DIMENSION,
-                GhnConstants.DEFAULT_WEIGHT
-            );
+            return createDefaultDimensions();
         }
 
         int maxLength = GhnConstants.DEFAULT_DIMENSION;
@@ -286,7 +356,7 @@ public class ShipmentService {
             if (product == null) continue;
 
             int quantity = item.getQuantity() != null ? item.getQuantity() : 1;
-            var dims = getProductDimensions(product);
+            GhnMapper.ProductDimensions dims = ghnMapper.getProductDimensions(product);
             
             maxLength = Math.max(maxLength, dims.length);
             maxWidth = Math.max(maxWidth, dims.width);
@@ -295,68 +365,38 @@ public class ShipmentService {
         }
 
         return new ParcelDimensions(
-            maxLength,
-            maxWidth,
-            Math.max(sumHeight, GhnConstants.DEFAULT_DIMENSION),
-            Math.max(totalWeight, GhnConstants.DEFAULT_WEIGHT)
+                maxLength,
+                maxWidth,
+                Math.max(sumHeight, GhnConstants.DEFAULT_DIMENSION),
+                Math.max(totalWeight, GhnConstants.DEFAULT_WEIGHT)
         );
     }
 
+    // Build danh sách items cho heavy service.
     private List<GhnOrderItemRequest> buildHeavyServiceItems(Order order) {
         if (order.getItems() == null || order.getItems().isEmpty()) {
             return new ArrayList<>();
         }
 
         return order.getItems().stream()
-                .map(item -> {
-                    var product = item.getProduct();
-                    if (product == null) {
-                        throw new IllegalArgumentException("OrderItem must have a product");
-                    }
-
-                    var dims = getProductDimensions(product);
-                    var category = GhnOrderItemCategoryRequest.builder()
-                            .level1(product.getCategory() != null ? product.getCategory().getName() : "Sách")
-                            .build();
-
-                    return GhnOrderItemRequest.builder()
-                            .name(product.getName())
-                            .code(product.getId())
-                            .quantity(item.getQuantity() != null ? item.getQuantity() : 1)
-                            .price(item.getFinalPrice() != null ? item.getFinalPrice().intValue() : 0)
-                            .length(dims.length)
-                            .width(dims.width)
-                            .height(dims.height)
-                            .weight(dims.weight)
-                            .category(category)
-                            .build();
-                })
+                .map(ghnMapper::toGhnOrderItem)
                 .collect(Collectors.toList());
     }
 
-    private ProductDimensions getProductDimensions(Product product) {
-        if (product == null) {
-            return new ProductDimensions(
+
+    // Tạo dimensions mặc định cho parcel.
+    private ParcelDimensions createDefaultDimensions() {
+        return new ParcelDimensions(
                 GhnConstants.DEFAULT_DIMENSION,
                 GhnConstants.DEFAULT_DIMENSION,
                 GhnConstants.DEFAULT_DIMENSION,
                 GhnConstants.DEFAULT_WEIGHT
-            );
-        }
-
-        int length = product.getLength() != null ? product.getLength().intValue() : GhnConstants.DEFAULT_DIMENSION;
-        int width = product.getWidth() != null ? product.getWidth().intValue() : GhnConstants.DEFAULT_DIMENSION;
-        int height = product.getHeight() != null ? product.getHeight().intValue() : GhnConstants.DEFAULT_DIMENSION;
-        int weight = product.getWeight() != null ? (int) Math.round(product.getWeight()) : GhnConstants.DEFAULT_WEIGHT;
-
-        return new ProductDimensions(
-            Math.max(length, GhnConstants.DEFAULT_DIMENSION),
-            Math.max(width, GhnConstants.DEFAULT_DIMENSION),
-            Math.max(height, GhnConstants.DEFAULT_DIMENSION),
-            Math.max(weight, GhnConstants.DEFAULT_WEIGHT)
         );
     }
 
+    // ==================== Address & Validation ====================
+
+    // Build địa chỉ đầy đủ từ Address entity.
     private String buildFullAddress(Address address) {
         StringBuilder sb = new StringBuilder();
         appendIfNotBlank(sb, address.getAddress());
@@ -367,6 +407,7 @@ public class ShipmentService {
         return sb.toString();
     }
 
+    // Append string vào StringBuilder nếu không blank.
     private void appendIfNotBlank(StringBuilder sb, String value) {
         if (value != null && !value.isBlank()) {
             if (sb.length() > 0) sb.append(", ");
@@ -374,6 +415,7 @@ public class ShipmentService {
         }
     }
 
+    // Parse string thành Integer, trả về null nếu không hợp lệ.
     private Integer parseInteger(String value) {
         if (value == null || value.isBlank()) {
             return null;
@@ -381,21 +423,44 @@ public class ShipmentService {
         try {
             return Integer.parseInt(value.trim());
         } catch (NumberFormatException e) {
+            log.warn("Failed to parse integer: {}", value);
             return null;
         }
     }
 
+    // Validate order có address và trả về order nếu hợp lệ.
     private Order validateOrderWithAddress(String orderId) {
         Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_EXISTED));
+                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_EXISTED, 
+                        "Không tìm thấy đơn hàng: " + orderId));
         
         if (order.getAddress() == null) {
-            throw new AppException(ErrorCode.ADDRESS_NOT_EXISTED);
+            throw new AppException(ErrorCode.ADDRESS_NOT_EXISTED, 
+                    "Đơn hàng không có địa chỉ giao hàng");
         }
         
         return order;
     }
 
+    // Validate address có đủ thông tin cần thiết.
+    private void validateAddress(Address address) {
+        if (address == null) {
+            throw new AppException(ErrorCode.ADDRESS_NOT_EXISTED, "Address không được null");
+        }
+    }
+
+    // Đảm bảo đơn hàng chưa có shipment.
+    private void ensureNoExistingShipment(String orderId) {
+        shipmentRepository.findByOrderId(orderId)
+                .ifPresent(existing -> {
+                    throw new AppException(ErrorCode.BAD_REQUEST, 
+                            "Đơn hàng đã có vận đơn GHN");
+                });
+    }
+
+    // ==================== Shipment Building ====================
+
+    // Build Shipment entity từ GHN response data.
     private Shipment buildShipmentFromGhnData(Order order, GhnShipmentDataResponse ghnData) {
         return Shipment.builder()
                 .order(order)
@@ -406,23 +471,13 @@ public class ShipmentService {
                 .build();
     }
 
+    // ==================== Helper Classes ====================
 
-    // Helper classes
-    // Entity kích thước bưu kiện
+    // Kích thước bưu kiện (light service).
     private static class ParcelDimensions {
         final int length, width, height, weight;
+        
         ParcelDimensions(int length, int width, int height, int weight) {
-            this.length = length;
-            this.width = width;
-            this.height = height;
-            this.weight = weight;
-        }
-    }
-
-    // Entity kích thước sản phẩm
-    private static class ProductDimensions {
-        final int length, width, height, weight;
-        ProductDimensions(int length, int width, int height, int weight) {
             this.length = length;
             this.width = width;
             this.height = height;

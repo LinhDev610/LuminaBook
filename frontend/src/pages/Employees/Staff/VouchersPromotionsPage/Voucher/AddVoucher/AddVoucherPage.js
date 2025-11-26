@@ -131,6 +131,7 @@ export default function AddVoucherPage() {
                 return {
                     ...prev,
                     discountValueType: value,
+                    maxDiscountValue: value === 'PERCENTAGE' ? prev.maxDiscountValue : '',
                 };
             }
             if (field === 'applyScope') {
@@ -307,7 +308,10 @@ export default function AddVoucherPage() {
             discountValue: discountValueNum,
             discountValueType: formState.discountValueType,
             minOrderValue: formState.minOrderValue ? Number(formState.minOrderValue) : null,
-            maxDiscountValue: formState.maxDiscountValue ? Number(formState.maxDiscountValue) : null,
+            maxDiscountValue:
+                formState.discountValueType === 'PERCENTAGE' && formState.maxDiscountValue
+                    ? Number(formState.maxDiscountValue)
+                    : null,
             startDate: formState.startDate,
             expiryDate: formState.expiryDate,
             usageLimit: Number(formState.usageLimit),
@@ -684,17 +688,26 @@ export default function AddVoucherPage() {
                         )}
 
                         {/* 6. Hạn mức, Số lượng voucher, Ngày bắt đầu, Ngày kết thúc */}
-                        <div className={cx('form-row', 'form-row-four')}>
-                            <div className={cx('form-group', 'form-group-fourth')}>
-                                <label className={cx('form-label')}>Hạn mức</label>
-                                <input
-                                    type="text"
-                                    className={cx('form-input')}
-                                    placeholder="VD: 70.000₫ (giới hạn tổng giảm giá đơn hàng)"
-                                    value={formState.maxDiscountValue}
-                                    onChange={(e) => handleChange('maxDiscountValue', e.target.value)}
-                                />
-                            </div>
+                        <div
+                            className={cx(
+                                'form-row',
+                                formState.discountValueType === 'PERCENTAGE'
+                                    ? 'form-row-four'
+                                    : 'form-row-three',
+                            )}
+                        >
+                            {formState.discountValueType === 'PERCENTAGE' && (
+                                <div className={cx('form-group', 'form-group-fourth')}>
+                                    <label className={cx('form-label')}>Hạn mức</label>
+                                    <input
+                                        type="text"
+                                        className={cx('form-input')}
+                                        placeholder="VD: 70.000₫ (giới hạn tổng giảm giá đơn hàng)"
+                                        value={formState.maxDiscountValue}
+                                        onChange={(e) => handleChange('maxDiscountValue', e.target.value)}
+                                    />
+                                </div>
+                            )}
                             <div className={cx('form-group', 'form-group-fourth')}>
                                 <label className={cx('form-label')}>Số lượng voucher *</label>
                                 <input

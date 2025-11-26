@@ -74,7 +74,10 @@ export default function UpdateVoucherPage() {
                         discountValue: voucher.discountValue ? String(voucher.discountValue) : '',
                         discountValueType: voucher.discountValueType || 'PERCENTAGE',
                         minOrderValue: voucher.minOrderValue ? String(voucher.minOrderValue) : '',
-                        maxDiscountValue: voucher.maxDiscountValue ? String(voucher.maxDiscountValue) : '',
+                        maxDiscountValue:
+                            voucher.discountValueType === 'PERCENTAGE' && voucher.maxDiscountValue
+                                ? String(voucher.maxDiscountValue)
+                                : '',
                         startDate: voucher.startDate ? voucher.startDate.split('T')[0] : '',
                         expiryDate: voucher.expiryDate ? voucher.expiryDate.split('T')[0] : '',
                         usageLimit: voucher.usageLimit ? String(voucher.usageLimit) : '',
@@ -183,6 +186,7 @@ export default function UpdateVoucherPage() {
                 return {
                     ...prev,
                     discountValueType: value,
+                    maxDiscountValue: value === 'PERCENTAGE' ? prev.maxDiscountValue : '',
                 };
             }
             if (field === 'applyScope') {
@@ -339,7 +343,10 @@ export default function UpdateVoucherPage() {
             discountValue: discountValueNum,
             discountValueType: formState.discountValueType,
             minOrderValue: formState.minOrderValue ? Number(formState.minOrderValue) : null,
-            maxDiscountValue: formState.maxDiscountValue ? Number(formState.maxDiscountValue) : null,
+            maxDiscountValue:
+                formState.discountValueType === 'PERCENTAGE' && formState.maxDiscountValue
+                    ? Number(formState.maxDiscountValue)
+                    : null,
             startDate: formState.startDate,
             expiryDate: formState.expiryDate,
             usageLimit: Number(formState.usageLimit),
@@ -664,17 +671,26 @@ export default function UpdateVoucherPage() {
                         )}
 
                         {/* 6. Hạn mức, Số lượng voucher, Ngày bắt đầu, Ngày kết thúc */}
-                        <div className={cx('form-row', 'form-row-four')}>
-                            <div className={cx('form-group', 'form-group-fourth')}>
-                                <label className={cx('form-label')}>Hạn mức</label>
-                                <input
-                                    type="text"
-                                    className={cx('form-input')}
-                                    placeholder="VD: 70.000₫ (giới hạn tổng giảm giá đơn hàng)"
-                                    value={formState.maxDiscountValue}
-                                    onChange={(e) => handleChange('maxDiscountValue', e.target.value)}
-                                />
-                            </div>
+                        <div
+                            className={cx(
+                                'form-row',
+                                formState.discountValueType === 'PERCENTAGE'
+                                    ? 'form-row-four'
+                                    : 'form-row-three',
+                            )}
+                        >
+                            {formState.discountValueType === 'PERCENTAGE' && (
+                                <div className={cx('form-group', 'form-group-fourth')}>
+                                    <label className={cx('form-label')}>Hạn mức</label>
+                                    <input
+                                        type="text"
+                                        className={cx('form-input')}
+                                        placeholder="VD: 70.000₫ (giới hạn tổng giảm giá đơn hàng)"
+                                        value={formState.maxDiscountValue}
+                                        onChange={(e) => handleChange('maxDiscountValue', e.target.value)}
+                                    />
+                                </div>
+                            )}
                             <div className={cx('form-group', 'form-group-fourth')}>
                                 <label className={cx('form-label')}>Số lượng voucher *</label>
                                 <input

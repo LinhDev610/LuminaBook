@@ -175,6 +175,28 @@ public class OrderController {
                 .build();
     }
 
+    @PostMapping("/{id}/reject-refund")
+    @PreAuthorize("hasAnyRole('CUSTOMER_SUPPORT','STAFF','ADMIN')")
+    public ApiResponse<OrderDetailResponse> rejectRefund(
+            @PathVariable String id,
+            @RequestBody com.lumina_book.backend.dto.request.RejectRefundRequest request) {
+        Order order = orderService.rejectRefund(id, request);
+        return ApiResponse.<OrderDetailResponse>builder()
+                .result(toDetailResponse(order))
+                .message("Đã từ chối yêu cầu hoàn tiền thành công.")
+                .build();
+    }
+
+    @PostMapping("/{id}/confirm-refund")
+    @PreAuthorize("hasAnyRole('CUSTOMER_SUPPORT','STAFF','ADMIN')")
+    public ApiResponse<OrderDetailResponse> confirmRefund(@PathVariable String id) {
+        Order order = orderService.confirmRefund(id);
+        return ApiResponse.<OrderDetailResponse>builder()
+                .result(toDetailResponse(order))
+                .message("Đã xác nhận yêu cầu hoàn tiền thành công.")
+                .build();
+    }
+
     private OrderResponse toResponse(Order order) {
         if (order == null) {
             return null;
@@ -293,6 +315,7 @@ public class OrderController {
                 .refundReturnFee(order.getRefundReturnFee())
                 .refundSelectedProductIds(order.getRefundSelectedProductIds())
                 .refundMediaUrls(order.getRefundMediaUrls())
+                .refundRejectionReason(order.getRefundRejectionReason())
                 .build();
     }
 

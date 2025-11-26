@@ -927,8 +927,10 @@ public class OrderService {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_EXISTED));
 
-        if (order.getStatus() != OrderStatus.DELIVERED) {
-            throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION, "Chỉ có thể yêu cầu trả hàng cho đơn hàng đã giao");
+        // Cho phép yêu cầu trả hàng từ DELIVERED hoặc gửi lại từ RETURN_REJECTED
+        if (order.getStatus() != OrderStatus.DELIVERED && order.getStatus() != OrderStatus.RETURN_REJECTED) {
+            throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION, 
+                    "Chỉ có thể yêu cầu trả hàng cho đơn hàng đã giao hoặc đơn hàng đã bị từ chối hoàn tiền");
         }
 
         order.setStatus(OrderStatus.RETURN_REQUESTED);
@@ -1017,6 +1019,45 @@ public class OrderService {
             }
         }
         
+        return orderRepository.save(order);
+    }
+
+    @Transactional
+    public Order rejectRefund(String orderId, com.lumina_book.backend.dto.request.RejectRefundRequest request) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_EXISTED));
+
+        // Chỉ có thể từ chối đơn hàng có status RETURN_REQUESTED
+        if (order.getStatus() != OrderStatus.RETURN_REQUESTED) {
+            throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION, 
+                    "Chỉ có thể từ chối yêu cầu hoàn tiền cho đơn hàng đang ở trạng thái 'Hoàn tiền/ trả hàng'");
+        }
+
+        // Cập nhật status và lưu lý do từ chối
+        order.setStatus(OrderStatus.RETURN_REJECTED);
+        String rejectionReason = request.getReason() != null ? request.getReason() : "Không có lý do";
+        order.setRefundRejectionReason(rejectionReason);
+        // Cũng lưu vào note để tương thích với code cũ
+        String rejectionNote = "Yêu cầu hoàn tiền đã bị từ chối. Lý do: " + rejectionReason;
+        order.setNote(rejectionNote);
+
+        return orderRepository.save(order);
+    }
+
+    @Transactional
+    public Order confirmRefund(String orderId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_EXISTED));
+
+        // Chỉ có thể xác nhận hoàn tiền cho đơn hàng có status RETURN_REQUESTED
+        if (order.getStatus() != OrderStatus.RETURN_REQUESTED) {
+            throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION, 
+                    "Chỉ có thể xác nhận hoàn tiền cho đơn hàng đang ở trạng thái 'Hoàn tiền/ trả hàng'");
+        }
+
+        // Cập nhật status
+        order.setStatus(OrderStatus.REFUNDED);
+
         return orderRepository.save(order);
     }
 }

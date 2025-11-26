@@ -118,4 +118,7 @@ public class Order {
 
     @Column(name = "refund_media_urls", columnDefinition = "TEXT")
     String refundMediaUrls; // JSON array of media URLs (images/videos)
+
+    @Column(name = "refund_rejection_reason", columnDefinition = "TEXT")
+    String refundRejectionReason; // Lý do từ chối hoàn tiền từ CSKH
 }

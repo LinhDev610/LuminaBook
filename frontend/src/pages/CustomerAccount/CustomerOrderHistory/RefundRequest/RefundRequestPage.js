@@ -4,6 +4,8 @@ import classNames from 'classnames/bind';
 import styles from './RefundRequestPage.module.scss';
 import { getApiBaseUrl, getStoredToken, formatCurrency } from '../../../../services';
 import { getMyInfo, getMyAddresses, uploadProductMedia } from '../../../../services';
+import { normalizeMediaUrl } from '../../../../services/productUtils';
+import { useNotification } from '../../../../components/Common/Notification';
 import AddressListModal from '../../../../components/Common/AddressModal/AddressListModal';
 import NewAddressModal from '../../../../components/Common/AddressModal/NewAddressModal';
 import AddressDetailModal from '../../../../components/Common/AddressModal/AddressDetailModal';
@@ -46,6 +48,7 @@ export default function RefundRequestPage() {
     const location = useLocation();
     const { id } = useParams();
     const orderCode = location.state?.orderCode || '';
+    const { success: showSuccess, error: showError } = useNotification();
     
     const [step, setStep] = useState(1); // 1: Select reason, 2: Fill form
     const [selectedReasonType, setSelectedReasonType] = useState(null); // 'store' or 'customer'
@@ -69,6 +72,8 @@ export default function RefundRequestPage() {
     const [loading, setLoading] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState('');
+    const [rejectionReason, setRejectionReason] = useState(''); // Lý do từ chối từ staff
+    const [selectedImagePreview, setSelectedImagePreview] = useState(null); // Ảnh đang được xem chi tiết
 
     // Address modal states
     const [showAddressList, setShowAddressList] = useState(false);
@@ -154,8 +159,101 @@ export default function RefundRequestPage() {
                                 shippingFee: rawOrder.shippingFee || 0,
                             });
 
-                            // Auto-select all products
-                            setSelectedProducts(items.map(item => item.id));
+                            // Nếu đơn đã bị từ chối (RETURN_REJECTED), load dữ liệu cũ
+                            if (rawOrder.status === 'RETURN_REJECTED') {
+                                // Parse lý do từ chối từ nhiều nguồn
+                                let parsedRejectionReason = rawOrder.refundRejectionReason || 
+                                                           rawOrder.refund_rejection_reason || 
+                                                           '';
+                                
+                                // Nếu không có refundRejectionReason, parse từ note field
+                                // Format: "Yêu cầu hoàn tiền đã bị từ chối. Lý do: ..."
+                                if (!parsedRejectionReason && rawOrder.note) {
+                                    const noteText = String(rawOrder.note);
+                                    const rejectionMatch = noteText.match(/Lý do:\s*(.+?)(?:\n|$)/i);
+                                    if (rejectionMatch && rejectionMatch[1]) {
+                                        parsedRejectionReason = rejectionMatch[1].trim();
+                                    } else if (noteText.includes('Yêu cầu hoàn tiền đã bị từ chối')) {
+                                        // Nếu không có "Lý do:", lấy phần sau "đã bị từ chối"
+                                        const parts = noteText.split('đã bị từ chối');
+                                        if (parts.length > 1) {
+                                            const reasonPart = parts[1].replace(/^[.:\s]+/, '').trim();
+                                            if (reasonPart) {
+                                                parsedRejectionReason = reasonPart;
+                                            }
+                                        }
+                                    }
+                                }
+                                
+                                // Set rejection reason nếu có
+                                if (parsedRejectionReason) {
+                                    setRejectionReason(parsedRejectionReason);
+                                }
+
+                                // Load dữ liệu refund cũ
+                                if (rawOrder.refundReasonType) {
+                                    setSelectedReasonType(rawOrder.refundReasonType);
+                                    setStep(2); // Chuyển thẳng sang step 2
+                                }
+                                
+                                // Load selected products
+                                if (rawOrder.refundSelectedProductIds) {
+                                    try {
+                                        const productIds = JSON.parse(rawOrder.refundSelectedProductIds);
+                                        if (Array.isArray(productIds) && productIds.length > 0) {
+                                            setSelectedProducts(productIds);
+                                        } else {
+                                            setSelectedProducts(items.map(item => item.id));
+                                        }
+                                    } catch {
+                                        setSelectedProducts(items.map(item => item.id));
+                                    }
+                                } else {
+                                    setSelectedProducts(items.map(item => item.id));
+                                }
+
+                                // Load form data
+                                setFormData(prev => ({
+                                    ...prev,
+                                    description: rawOrder.refundDescription || prev.description,
+                                    email: rawOrder.refundEmail || rawOrder.customerEmail || prev.email,
+                                    returnAddress: rawOrder.refundReturnAddress || prev.returnAddress,
+                                    refundMethod: rawOrder.refundMethod || prev.refundMethod,
+                                    bank: rawOrder.refundBank || prev.bank,
+                                    accountNumber: rawOrder.refundAccountNumber || prev.accountNumber,
+                                    accountHolder: rawOrder.refundAccountHolder || prev.accountHolder,
+                                }));
+
+                                // Load media URLs nếu có
+                                if (rawOrder.refundMediaUrls) {
+                                    try {
+                                        const mediaUrls = JSON.parse(rawOrder.refundMediaUrls);
+                                        if (Array.isArray(mediaUrls) && mediaUrls.length > 0) {
+                                            // Normalize URLs để hiển thị đúng
+                                            const apiBaseUrl = getApiBaseUrl();
+                                            const baseUrlForStatic = apiBaseUrl.replace('/api', '');
+                                            
+                                            // Set previews từ URLs (không upload lại)
+                                            setImagePreviews(mediaUrls.map((url, idx) => {
+                                                const normalizedUrl = normalizeMediaUrl(url, baseUrlForStatic);
+                                                const isVideo = /\.(mp4|webm|ogg|mov|avi|mkv|flv|wmv)$/i.test(normalizedUrl);
+                                                return {
+                                                    id: `existing-${idx}`,
+                                                    url: normalizedUrl,
+                                                    name: isVideo ? `Video ${idx + 1}` : `Ảnh ${idx + 1}`,
+                                                    isVideo: isVideo,
+                                                    isExisting: true, // Đánh dấu là ảnh cũ
+                                                };
+                                            }));
+                                        }
+                                    } catch (e) {
+                                        console.warn('Failed to parse refund media URLs', e);
+                                    }
+                                }
+                            } else {
+                                // Auto-select all products cho đơn mới
+                                setSelectedProducts(items.map(item => item.id));
+                            }
                         }
                     }
                 }
@@ -203,7 +301,7 @@ export default function RefundRequestPage() {
         const updatedFiles = [...attachedFiles, ...filesToAdd];
         setAttachedFiles(updatedFiles);
 
-        // Create previews for new images
+        // Create previews for new images and videos
         filesToAdd.forEach((file, index) => {
             if (file.type.startsWith('image/')) {
                 const reader = new FileReader();
@@ -216,8 +314,18 @@ export default function RefundRequestPage() {
                     }]);
                 };
                 reader.readAsDataURL(file);
+            } else if (file.type.startsWith('video/')) {
+                // For video files, create a preview URL from the file
+                const videoUrl = URL.createObjectURL(file);
+                setImagePreviews(prev => [...prev, {
+                    id: Date.now() + Math.random() + index,
+                    url: videoUrl,
+                    file: file,
+                    name: file.name,
+                    isVideo: true
+                }]);
             } else {
-                // For non-image files (videos), create a placeholder preview
+                // For other files, create a placeholder preview
                 setImagePreviews(prev => [...prev, {
                     id: Date.now() + Math.random() + index,
                     url: null,
@@ -236,6 +344,10 @@ export default function RefundRequestPage() {
         setImagePreviews(prev => {
             const imageToRemove = prev.find(img => img.id === imageId);
             if (imageToRemove) {
+                // Revoke object URL if it's a video preview
+                if (imageToRemove.url && imageToRemove.url.startsWith('blob:')) {
+                    URL.revokeObjectURL(imageToRemove.url);
+                }
                 setAttachedFiles(prevFiles => 
                     prevFiles.filter(file => file !== imageToRemove.file)
                 );
@@ -302,17 +414,27 @@ export default function RefundRequestPage() {
 
             // Step 1: Upload media files if any
             let mediaUrls = [];
+            
+            // Lấy existing media URLs từ imagePreviews (nếu có URL từ lần trước)
+            const existingMediaUrls = imagePreviews
+                .filter(preview => preview.url && !preview.file) // Chỉ lấy URLs, không phải files mới
+                .map(preview => preview.url);
+            
+            // Upload files mới nếu có
             if (attachedFiles.length > 0) {
                 try {
                     const { ok, urls, message } = await uploadProductMedia(attachedFiles, token);
                     if (!ok || !urls || urls.length === 0) {
                         throw new Error(message || 'Upload ảnh/video thất bại');
                     }
-                    mediaUrls = urls;
+                    mediaUrls = [...existingMediaUrls, ...urls]; // Merge existing và new URLs
                 } catch (uploadError) {
                     console.error('Error uploading media:', uploadError);
                     throw new Error('Không thể upload ảnh/video. Vui lòng thử lại.');
                 }
+            } else {
+                // Nếu không có files mới, chỉ dùng existing URLs
+                mediaUrls = existingMediaUrls;
             }
 
             // Step 2: Prepare refund request payload with structured data
@@ -368,7 +490,13 @@ export default function RefundRequestPage() {
                 throw new Error(data.message || 'Không thể gửi yêu cầu. Vui lòng thử lại.');
             }
 
-            navigate('/customer-account/orders');
+            // Hiển thị thông báo thành công
+            showSuccess('Gửi yêu cầu hoàn tiền/ trả hàng thành công! Chúng tôi sẽ xử lý yêu cầu của bạn sớm nhất có thể.');
+
+            // Navigate sau một chút để người dùng thấy thông báo
+            setTimeout(() => {
+                navigate('/customer-account/orders');
+            }, 1500);
         } catch (err) {
             console.error('Error submitting refund request:', err);
             setError(err.message || 'Có lỗi xảy ra khi gửi yêu cầu. Vui lòng thử lại.');
@@ -451,6 +579,20 @@ export default function RefundRequestPage() {
                     <form className={cx('form')} onSubmit={handleSubmit}>
                         <h2 className={cx('section-title')}>Yêu cầu trả hàng / hoàn tiền</h2>
 
+                        {/* Rejection Reason Alert (only show if order was rejected) - Hiển thị ở trên cùng */}
+                        {rejectionReason && (
+                            <div className={cx('rejection-alert', 'top-alert')}>
+                                <div className={cx('alert-header')}>
+                                    <span className={cx('alert-icon')}>⚠️</span>
+                                    <h3 className={cx('alert-title')}>Lý do từ chối từ CSKH</h3>
+                                </div>
+                                <p className={cx('alert-message')}>{rejectionReason}</p>
+                                <p className={cx('alert-hint')}>
+                                    Vui lòng xem lại và chỉnh sửa thông tin trước khi gửi lại yêu cầu.
+                                </p>
+                            </div>
+                        )}
+
                         {/* Products in Order */}
                         <div className={cx('form-section')}>
                             <label className={cx('section-label')}>Sản phẩm trong đơn</label>
@@ -504,30 +646,88 @@ export default function RefundRequestPage() {
                             {/* Image Previews */}
                             {imagePreviews.length > 0 && (
                                 <div className={cx('image-previews')}>
-                                    {imagePreviews.map((preview) => (
-                                        <div key={preview.id} className={cx('image-preview-item')}>
-                                            {preview.url ? (
-                                                <img 
-                                                    src={preview.url} 
-                                                    alt={preview.name}
-                                                    className={cx('preview-image')}
-                                                />
-                                            ) : (
-                                                <div className={cx('preview-placeholder')}>
-                                                    <span className={cx('preview-icon')}>📹</span>
-                                                    <span className={cx('preview-filename')}>{preview.name}</span>
-                                                </div>
-                                            )}
-                                            <button
-                                                type="button"
-                                                className={cx('remove-image-btn')}
-                                                onClick={() => handleRemoveImage(preview.id)}
-                                                title="Xóa tệp"
-                                            >
-                                                ×
-                                            </button>
-                                        </div>
-                                    ))}
+                                    {imagePreviews.map((preview) => {
+                                        const isVideo = preview.isVideo || /\.(mp4|webm|ogg|mov|avi|mkv|flv|wmv)$/i.test(preview.url || '');
+                                        return (
+                                            <div key={preview.id} className={cx('image-preview-item')}>
+                                                {preview.url ? (
+                                                    <>
+                                                        {isVideo ? (
+                                                            <div className={cx('video-wrapper')}>
+                                                                <video 
+                                                                    src={preview.url} 
+                                                                    className={cx('preview-image', 'preview-video')}
+                                                                    preload="metadata"
+                                                                    muted
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        setSelectedImagePreview(preview);
+                                                                    }}
+                                                                    onMouseEnter={(e) => {
+                                                                        e.target.play().catch(() => {});
+                                                                    }}
+                                                                    onMouseLeave={(e) => {
+                                                                        e.target.pause();
+                                                                        e.target.currentTime = 0;
+                                                                    }}
+                                                                >
+                                                                    Trình duyệt của bạn không hỗ trợ video.
+                                                                </video>
+                                                                <div className={cx('video-overlay')} onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setSelectedImagePreview(preview);
+                                                                }}>
+                                                                    <span className={cx('play-icon')}>▶</span>
+                                                                </div>
+                                                            </div>
+                                                        ) : (
+                                                            <img 
+                                                                src={preview.url} 
+                                                                alt={preview.name}
+                                                                className={cx('preview-image')}
+                                                                onClick={() => setSelectedImagePreview(preview)}
+                                                                style={{ cursor: 'pointer' }}
+                                                            />
+                                                        )}
+                                                        {preview.isExisting && (
+                                                            <span className={cx('existing-badge')}>Đã gửi</span>
+                                                        )}
+                                                    </>
+                                                ) : (
+                                                    <div 
+                                                        className={cx('preview-placeholder')}
+                                                        onClick={() => {
+                                                            // Nếu có file, tạo blob URL tạm thời để xem
+                                                            if (preview.file) {
+                                                                const tempUrl = URL.createObjectURL(preview.file);
+                                                                setSelectedImagePreview({
+                                                                    ...preview,
+                                                                    url: tempUrl
+                                                                });
+                                                            } else if (preview.url) {
+                                                                setSelectedImagePreview(preview);
+                                                            }
+                                                        }}
+                                                        style={{ cursor: preview.file || preview.url ? 'pointer' : 'default' }}
+                                                    >
+                                                        <span className={cx('preview-icon')}>📹</span>
+                                                        <span className={cx('preview-filename')}>{preview.name}</span>
+                                                        {(preview.file || preview.url) && (
+                                                            <span className={cx('preview-hint')}>Click để xem</span>
+                                                        )}
+                                                    </div>
+                                                )}
+                                                <button
+                                                    type="button"
+                                                    className={cx('remove-image-btn')}
+                                                    onClick={() => handleRemoveImage(preview.id)}
+                                                    title="Xóa tệp"
+                                                >
+                                                    ×
+                                                </button>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             )}
                         </div>
@@ -736,6 +936,37 @@ export default function RefundRequestPage() {
                     }
                 }}
             />
+
+            {/* Image Preview Modal */}
+            {selectedImagePreview && (
+                <div className={cx('image-modal')} onClick={() => setSelectedImagePreview(null)}>
+                    <div className={cx('image-modal-content')} onClick={(e) => e.stopPropagation()}>
+                        <button
+                            className={cx('image-modal-close')}
+                            onClick={() => setSelectedImagePreview(null)}
+                        >
+                            ×
+                        </button>
+                        {selectedImagePreview.isVideo || /\.(mp4|webm|ogg|mov|avi|mkv|flv|wmv)$/i.test(selectedImagePreview.url || '') ? (
+                            <video 
+                                src={selectedImagePreview.url} 
+                                controls
+                                autoPlay
+                                className={cx('image-modal-media')}
+                            >
+                                Trình duyệt của bạn không hỗ trợ video.
+                            </video>
+                        ) : (
+                            <img 
+                                src={selectedImagePreview.url} 
+                                alt={selectedImagePreview.name}
+                                className={cx('image-modal-image')}
+                            />
+                        )}
+                        <p className={cx('image-modal-name')}>{selectedImagePreview.name}</p>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

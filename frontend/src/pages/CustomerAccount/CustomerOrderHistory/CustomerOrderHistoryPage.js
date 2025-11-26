@@ -314,7 +314,16 @@ function CustomerOrderHistoryPage() {
 
     // Filter orders based on active tab
     const filteredOrders = useMemo(() => {
-        let list = orders.filter((order) => order.statusKey === activeTab);
+        let list = [];
+        
+        // Tab "Hoàn tiền/ trả hàng" hiển thị cả RETURN_REQUESTED và RETURN_REJECTED
+        if (activeTab === 'return-requested') {
+            list = orders.filter((order) => 
+                order.statusKey === 'return-requested' || order.statusKey === 'return-rejected'
+            );
+        } else {
+            list = orders.filter((order) => order.statusKey === activeTab);
+        }
 
         // Search filter
         if (searchQuery.trim()) {

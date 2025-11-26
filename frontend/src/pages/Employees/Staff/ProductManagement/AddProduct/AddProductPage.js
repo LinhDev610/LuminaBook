@@ -72,7 +72,7 @@ export default function AddProductPage() {
         setProductId(cleaned);
     }, []);
 
-    // Hàm xử lý nhập thuế (chỉ cho phép số nguyên từ 1-99)
+    // Hàm xử lý nhập thuế (chỉ cho phép số nguyên từ 0-99)
     const handleTaxInput = useCallback((value) => {
         // Chỉ lấy số nguyên, loại bỏ tất cả ký tự không phải số
         const cleaned = (value || '').replace(/[^0-9]/g, '');
@@ -90,9 +90,9 @@ export default function AddProductPage() {
             return;
         }
 
-        // Giới hạn trong khoảng 1-99
-        if (num < 1) {
-            setTaxPercent('1');
+        // Giới hạn trong khoảng 0-99
+        if (num < 0) {
+            setTaxPercent('0');
         } else if (num > 99) {
             setTaxPercent('99');
         } else {
@@ -201,11 +201,11 @@ export default function AddProductPage() {
 
         // Validate phần trăm thuế
         if (taxPercent === undefined || taxPercent === null || taxPercent === '') {
-            newErrors.taxPercent = 'Vui lòng nhập thuế (từ 1 đến 99%).';
+            newErrors.taxPercent = 'Vui lòng nhập thuế (từ 0 đến 99%).';
         } else {
             const taxNum = parseInt(taxPercent, 10);
-            if (isNaN(taxNum) || taxNum < 1 || taxNum > 99) {
-                newErrors.taxPercent = 'Thuế phải là số nguyên từ 1 đến 99.';
+            if (isNaN(taxNum) || taxNum < 0 || taxNum > 99) {
+                newErrors.taxPercent = 'Thuế phải là số nguyên từ 0 đến 99.';
             }
         }
 
@@ -222,8 +222,8 @@ export default function AddProductPage() {
             10,
         );
         if (Number.isNaN(n)) return 0;
-        // Giới hạn trong khoảng 1-99
-        const clamped = Math.max(1, Math.min(99, n));
+        // Giới hạn trong khoảng 0-99
+        const clamped = Math.max(0, Math.min(99, n));
         return clamped / 100;
     }, [taxPercent]);
 

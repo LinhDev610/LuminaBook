@@ -3,6 +3,7 @@ package com.lumina_book.backend.entity;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Set;
+import java.util.HashSet;
 
 import jakarta.persistence.*;
 
@@ -58,4 +59,12 @@ public class User {
             joinColumns = @JoinColumn(name = "user_id"),
             inverseJoinColumns = @JoinColumn(name = "notification_id"))
     Set<Notification> notifications;
+
+    @Builder.Default
+    @ManyToMany
+    @JoinTable(
+            name = "user_voucher_usage",
+            joinColumns = @JoinColumn(name = "user_id"),
+            inverseJoinColumns = @JoinColumn(name = "voucher_id"))
+    Set<Voucher> usedVouchers = new HashSet<>();
 }

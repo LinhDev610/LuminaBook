@@ -97,4 +97,8 @@ public class Voucher {
         inverseJoinColumns = @JoinColumn(name = "product_id"))
     @Builder.Default
     Set<Product> productApply = new HashSet<>();
+
+    @Builder.Default
+    @ManyToMany(mappedBy = "usedVouchers")
+    Set<User> usedByUsers = new HashSet<>();
 }

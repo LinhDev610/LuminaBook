@@ -8,6 +8,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.Objects;
 import java.util.function.Function;
 import java.util.Optional;
 
@@ -135,7 +136,27 @@ public class VoucherService {
     }
 
     public List<VoucherResponse> getActiveVouchers() {
-        return voucherRepository.findActiveVouchers(LocalDate.now()).stream()
+        List<Voucher> activeVouchers = voucherRepository.findActiveVouchers(LocalDate.now());
+        User currentUser = tryGetCurrentUser();
+
+        if (currentUser != null) {
+            User managedUser = userRepository.findById(currentUser.getId()).orElse(currentUser);
+            Set<Voucher> used = managedUser.getUsedVouchers();
+            if (used != null && !used.isEmpty()) {
+                Set<String> usedIds = used.stream()
+                        .map(Voucher::getId)
+                        .filter(Objects::nonNull)
+                        .collect(Collectors.toSet());
+
+                if (!usedIds.isEmpty()) {
+                    activeVouchers = activeVouchers.stream()
+                            .filter(voucher -> voucher.getId() != null && !usedIds.contains(voucher.getId()))
+                            .collect(Collectors.toList());
+                }
+            }
+        }
+
+        return activeVouchers.stream()
                 .map(voucherMapper::toResponse)
                 .collect(Collectors.toList());
     }
@@ -366,6 +387,17 @@ public class VoucherService {
             }
         } catch (Exception e) {
             log.warn("Could not delete media file for url {}: {}", url, e.getMessage());
+        }
+    }
+
+    private User tryGetCurrentUser() {
+        try {
+            return getCurrentUser();
+        } catch (AppException ex) {
+            if (ex.getErrorCode() == ErrorCode.UNAUTHENTICATED) {
+                return null;
+            }
+            throw ex;
         }
     }
 }

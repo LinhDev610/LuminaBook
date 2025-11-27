@@ -16,7 +16,6 @@ import com.lumina_book.backend.repository.UserRepository;
 import com.lumina_book.backend.enums.DiscountValueType;
 import com.lumina_book.backend.enums.DiscountApplyScope;
 import com.lumina_book.backend.repository.VoucherRepository;
-import com.lumina_book.backend.repository.OrderRepository;
 import com.lumina_book.backend.util.SecurityUtil;
 
 import java.time.LocalDate;
@@ -37,7 +36,6 @@ public class CartService {
     @SuppressWarnings("unused")
     PromotionRepository promotionRepository;
     VoucherRepository voucherRepository;
-    OrderRepository orderRepository;
 
     @Transactional
     @PreAuthorize("hasRole('CUSTOMER')")
@@ -141,6 +139,11 @@ public class CartService {
         double voucherDiscount = rawVoucherDiscount == null ? 0.0 : rawVoucherDiscount;
         // Làm tròn tiền giảm giá về đơn vị đồng
         voucherDiscount = Math.round(voucherDiscount);
+
+        if (subtotal <= 0) {
+            cart.setAppliedVoucherCode(null);
+            voucherDiscount = 0.0;
+        }
         cart.setVoucherDiscount(voucherDiscount);
 
         double total = Math.max(0.0, subtotal - voucherDiscount);
@@ -183,17 +186,9 @@ public class CartService {
         // Lưu userId vào biến final để sử dụng trong lambda
         final String userId = currentUser.getId();
         
-        // Kiểm tra usagePerUser: số lần user đã dùng voucher này
-        if (voucher.getUsagePerUser() != null && voucher.getUsagePerUser() > 0) {
-            long userUsageCount = orderRepository.findAll().stream()
-                    .filter(order -> order.getUser() != null && userId.equals(order.getUser().getId()))
-                    .filter(order -> order.getCart() != null && order.getCart().getAppliedVoucherCode() != null)
-                    .filter(order -> voucher.getCode().equals(order.getCart().getAppliedVoucherCode()))
-                    .count();
-            
-            if (userUsageCount >= voucher.getUsagePerUser()) {
-                throw new AppException(ErrorCode.VOUCHER_USAGE_LIMIT_EXCEEDED);
-            }
+        boolean alreadyUsed = userRepository.existsByIdAndUsedVouchers_Id(userId, voucher.getId());
+        if (alreadyUsed) {
+            throw new AppException(ErrorCode.VOUCHER_ALREADY_USED);
         }
         
         recalcCartTotals(cart);
@@ -330,6 +325,19 @@ public class CartService {
         cart.setVoucherDiscount(0.0);
         recalcCartTotals(cart);
         return cart;
+    }
+
+    @Transactional
+    public void clearVoucherForUser(User user) {
+        if (user == null || user.getId() == null) {
+            return;
+        }
+
+        cartRepository.findByUserId(user.getId()).ifPresent(cart -> {
+            cart.setAppliedVoucherCode(null);
+            cart.setVoucherDiscount(0.0);
+            recalcCartTotals(cart);
+        });
     }
 
     @Transactional

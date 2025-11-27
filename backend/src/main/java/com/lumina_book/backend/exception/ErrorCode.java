@@ -40,6 +40,7 @@ public enum ErrorCode {
     INVALID_VOUCHER_MINIUM(3006, "Không thỏa mãn giá trị tối thiểu của voucher", HttpStatus.BAD_REQUEST),
     INVALID_VOUCHER_SCOPE(3007, "Phạm vi áp dụng voucher không hợp lệ", HttpStatus.BAD_REQUEST),
     VOUCHER_USAGE_LIMIT_EXCEEDED(3008, "Bạn đã sử dụng hết số lần được phép dùng voucher này", HttpStatus.BAD_REQUEST),
+    VOUCHER_ALREADY_USED(3009, "Không thể áp dụng voucher", HttpStatus.BAD_REQUEST),
 
     // Banner
     BANNER_NOT_EXISTED(4001, "Banner không tồn tại", HttpStatus.NOT_FOUND),

@@ -25,6 +25,7 @@ import com.lumina_book.backend.entity.CartItem;
 import com.lumina_book.backend.entity.Order;
 import com.lumina_book.backend.entity.OrderItem;
 import com.lumina_book.backend.entity.User;
+import com.lumina_book.backend.entity.Voucher;
 import com.lumina_book.backend.enums.CancellationSource;
 import com.lumina_book.backend.enums.OrderStatus;
 import com.lumina_book.backend.enums.PaymentMethod;
@@ -35,7 +36,9 @@ import com.lumina_book.backend.repository.AddressRepository;
 import com.lumina_book.backend.repository.OrderItemRepository;
 import com.lumina_book.backend.repository.OrderRepository;
 import com.lumina_book.backend.repository.ProductRepository;
+import com.lumina_book.backend.repository.CartRepository;
 import com.lumina_book.backend.repository.UserRepository;
+import com.lumina_book.backend.repository.VoucherRepository;
 import com.lumina_book.backend.entity.Product;
 import com.lumina_book.backend.dto.request.DirectCheckoutRequest;
 import com.lumina_book.backend.util.SecurityUtil;
@@ -63,12 +66,14 @@ public class OrderService {
     OrderItemRepository orderItemRepository;
     AddressRepository addressRepository;
     CartService cartService;
+    CartRepository cartRepository;
     MomoService momoService;
     BrevoEmailService brevoEmailService;
     ProductRepository productRepository;
     UserRepository userRepository;
     ShipmentService shipmentService;
     NotificationService notificationService;
+    VoucherRepository voucherRepository;
 
     ObjectMapper objectMapper = new ObjectMapper();
 
@@ -80,6 +85,7 @@ public class OrderService {
     @PreAuthorize("hasRole('CUSTOMER')")
     public CheckoutResult createOrderFromCurrentCart(CreateOrderRequest request) {
         Cart cart = cartService.getCart();
+        String appliedVoucherCode = cart.getAppliedVoucherCode();
         if (cart.getCartItems() == null || cart.getCartItems().isEmpty()) {
             throw new AppException(ErrorCode.CART_ITEM_NOT_EXISTED);
         }
@@ -149,6 +155,9 @@ public class OrderService {
         persistOrderItems(savedOrder, selectedItems);
         orderRepository.flush();
 
+        registerVoucherUsage(cart.getUser(), appliedVoucherCode);
+        cartService.clearVoucherForUser(cart.getUser());
+
         // Xóa cart items sau khi tạo đơn hàng
         if (savedOrder.getUser() != null && pricing.selectedCartItemIds != null && !pricing.selectedCartItemIds.isEmpty()) {
             cartService.removeCartItemsForOrder(savedOrder.getUser(), pricing.selectedCartItemIds);
@@ -158,10 +167,7 @@ public class OrderService {
         return new CheckoutResult(savedOrder, null);
     }
 
-    /**
-     * Tạo đơn hàng trực tiếp từ sản phẩm (không qua giỏ hàng).
-     * Số lượng mặc định là 1.
-     */
+    // Tạo đơn hàng trực tiếp từ sản phẩm (không qua giỏ hàng). Số lượng mặc định là 1.
     @Transactional
     public CheckoutResult createOrderDirectly(DirectCheckoutRequest request) {
         // Lấy user hiện tại
@@ -277,6 +283,7 @@ public class OrderService {
         savedOrder.setItems(new ArrayList<>(List.of(orderItem)));
 
         updateInventoryAndSales(product, quantity);
+                finalizeVoucherUsageForUser(user);
 
                 // COD: Tạo đơn hàng ngay và giữ status CREATED, chờ admin/staff xác nhận
                 return new CheckoutResult(savedOrder, null);
@@ -309,6 +316,7 @@ public class OrderService {
     @PreAuthorize("hasRole('CUSTOMER')")
     public Order createOrderFromCurrentCartAfterPayment(CreateOrderRequest request) {
         Cart cart = cartService.getCart();
+        String appliedVoucherCode = cart.getAppliedVoucherCode();
         if (cart.getCartItems() == null || cart.getCartItems().isEmpty()) {
             throw new AppException(ErrorCode.CART_ITEM_NOT_EXISTED);
         }
@@ -362,6 +370,8 @@ public class OrderService {
                 Order savedOrder = orderRepository.save(order);
                 persistOrderItems(savedOrder, selectedItems);
                 orderRepository.flush();
+                registerVoucherUsage(cart.getUser(), appliedVoucherCode);
+                cartService.clearVoucherForUser(cart.getUser());
                 
                 // Xóa cart items sau khi tạo đơn hàng
                 if (savedOrder.getUser() != null && pricing.selectedCartItemIds != null && !pricing.selectedCartItemIds.isEmpty()) {
@@ -470,6 +480,7 @@ public class OrderService {
         savedOrder.setItems(new ArrayList<>(List.of(orderItem)));
 
         updateInventoryAndSales(product, quantity);
+                finalizeVoucherUsageForUser(user);
 
                 return savedOrder;
             } catch (org.springframework.dao.DataIntegrityViolationException e) {
@@ -554,6 +565,48 @@ public class OrderService {
         summary.cartItemIdsSnapshot = serializeCartItemIds(summary.selectedCartItemIds);
 
         return summary;
+    }
+
+    // Đăng ký sử dụng voucher cho user khi tạo đơn hàng
+    private void registerVoucherUsage(User user, String voucherCode) {
+        if (user == null || voucherCode == null || voucherCode.isBlank()) {
+            return;
+        }
+
+        voucherRepository.findByCode(voucherCode.trim()).ifPresent(voucher -> {
+            if (userRepository.existsByIdAndUsedVouchers_Id(user.getId(), voucher.getId())) {
+                return;
+            }
+
+            User managedUser = userRepository.findById(user.getId()).orElse(user);
+            if (managedUser.getUsedVouchers() == null) {
+                managedUser.setUsedVouchers(new java.util.HashSet<>());
+            }
+            managedUser.getUsedVouchers().add(voucher);
+            userRepository.save(managedUser);
+        });
+    }
+
+    // Đăng ký sử dụng voucher cho user khi tạo đơn hàng và xóa voucher khỏi cart
+    private void finalizeVoucherUsageForUser(User user) {
+        String appliedVoucherCode = resolveAppliedVoucherCode(user);
+        if (appliedVoucherCode == null) {
+            return;
+        }
+        registerVoucherUsage(user, appliedVoucherCode);
+        cartService.clearVoucherForUser(user);
+    }
+
+    // Lấy mã voucher đã áp dụng cho user khi tạo đơn hàng
+    private String resolveAppliedVoucherCode(User user) {
+        if (user == null || user.getId() == null) {
+            return null;
+        }
+        return cartRepository.findByUserId(user.getId())
+                .filter(cart -> cart.getVoucherDiscount() != null && cart.getVoucherDiscount() > 0)
+                .map(Cart::getAppliedVoucherCode)
+                .filter(code -> code != null && !code.isBlank())
+                .orElse(null);
     }
 
     private String serializeCartItemIds(List<String> ids) {

@@ -73,7 +73,7 @@ export default function CartPage() {
             try {
                 setLoading(true);
                 const token = getStoredToken('token');
-                
+
                 if (!token) {
                     showError('Vui lòng đăng nhập để xem giỏ hàng');
                     openLoginModal();
@@ -137,7 +137,7 @@ export default function CartPage() {
                                     (typeof product?.price === 'number' && product.price > 0
                                         ? product.price
                                         : typeof product?.unitPrice === 'number' &&
-                                          product.unitPrice > 0
+                                            product.unitPrice > 0
                                             ? product.unitPrice
                                             : undefined) ?? item.unitPrice ?? 0;
 
@@ -146,7 +146,7 @@ export default function CartPage() {
                                         product.originalPrice > 0
                                         ? product.originalPrice
                                         : typeof product?.unitPrice === 'number' &&
-                                          product.unitPrice > 0
+                                            product.unitPrice > 0
                                             ? product.unitPrice
                                             : undefined) ?? currentPrice;
 
@@ -299,8 +299,15 @@ export default function CartPage() {
                     showError('Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại');
                     openLoginModal();
                 } else {
-                    const errorMessage = data?.message || data?.error || 'Không thể áp dụng mã giảm giá';
-                    showError(errorMessage);
+                    const backendCode = data?.code ?? data?.errorCode ?? data?.statusCode;
+                    if (backendCode === 3009) {
+                        showError('Bạn đã sử dụng voucher này cho một đơn hàng khác.');
+                        setSelectedVoucherCode('');
+                    } else {
+                        const errorMessage =
+                            data?.message || data?.error || 'Không thể áp dụng mã giảm giá';
+                        showError(errorMessage);
+                    }
                 }
                 return;
             }

@@ -730,11 +730,17 @@ export default function CheckoutDetailPage() {
                     showError('Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại');
                     openLoginModal();
                 } else {
-                    const msg =
-                        data?.message ||
-                        data?.error ||
-                        `Không thể áp dụng mã giảm giá (Lỗi: ${status})`;
-                    showError(msg);
+                    const backendCode = data?.code ?? data?.errorCode ?? data?.statusCode;
+                    if (backendCode === 3009) {
+                        showError('Bạn đã sử dụng voucher này cho một đơn hàng khác.');
+                        setSelectedVoucherCode('');
+                    } else {
+                        const msg =
+                            data?.message ||
+                            data?.error ||
+                            `Không thể áp dụng mã giảm giá (Lỗi: ${status})`;
+                        showError(msg);
+                    }
                 }
                 return;
             }

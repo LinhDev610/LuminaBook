@@ -6,6 +6,7 @@ import java.util.List;
 
 import jakarta.persistence.*;
 
+import com.lumina_book.backend.enums.CancellationSource;
 import com.lumina_book.backend.enums.OrderStatus;
 import com.lumina_book.backend.enums.PaymentMethod;
 import com.lumina_book.backend.enums.PaymentStatus;
@@ -43,6 +44,13 @@ public class Order {
 
     @Column(columnDefinition = "TEXT")
     String note;
+
+    @Column(name = "cancellation_reason", columnDefinition = "TEXT")
+    String cancellationReason;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "cancellation_source", length = 32)
+    CancellationSource cancellationSource;
     String shippingAddress;
     LocalDate orderDate;
 

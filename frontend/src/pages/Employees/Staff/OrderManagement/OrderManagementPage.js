@@ -3,12 +3,14 @@ import classNames from 'classnames/bind';
 import styles from './OrderManagementPage.scss';
 import { useNavigate } from 'react-router-dom';
 import SearchAndSort from '../../../../components/Common/SearchAndSort';
+import CancelOrderDialog from '../../../../components/Common/ConfirmDialog/CancelOrderDialog';
 import {
     formatDateTime,
     getApiBaseUrl,
     getStoredToken,
     confirmOrder as confirmOrderApi,
     createShipment as createShipmentApi,
+    cancelOrder as cancelOrderApi,
 } from '../../../../services';
 
 const cx = classNames.bind(styles);
@@ -119,6 +121,7 @@ export default function OrderManagementPage() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [actionError, setActionError] = useState('');
+    const [cancelDialogOrderId, setCancelDialogOrderId] = useState(null);
     const [actionMessage, setActionMessage] = useState('');
     const [processingOrderId, setProcessingOrderId] = useState(null);
 
@@ -273,19 +276,39 @@ export default function OrderManagementPage() {
         }
     };
 
-    const handleCancelOrder = (orderId) => {
-        // TODO: Gọi API cập nhật trạng thái đơn sang CANCELLED
-        setOrders((prev) =>
-            prev.map((o) =>
-                o.id === orderId
-                    ? {
-                        ...o,
-                        rawStatus: 'CANCELLED',
-                        ...mapOrderStatus('CANCELLED'),
-                    }
-                    : o,
-            ),
-        );
+    const handleOpenCancelDialog = (orderId) => {
+        setCancelDialogOrderId(orderId);
+    };
+
+    const handleConfirmCancelOrder = async (reason) => {
+        const orderId = cancelDialogOrderId;
+        if (!orderId) return;
+        try {
+            setProcessingOrderId(orderId);
+            const token = getStoredToken('token');
+            const { ok } = await cancelOrderApi(orderId, reason, token);
+            if (!ok) {
+                setActionError('Không thể hủy đơn hàng. Vui lòng thử lại.');
+                return;
+            }
+            setOrders((prev) =>
+                prev.map((o) =>
+                    o.id === orderId
+                        ? {
+                            ...o,
+                            rawStatus: 'CANCELLED',
+                            ...mapOrderStatus('CANCELLED'),
+                        }
+                        : o,
+                ),
+            );
+        } catch (err) {
+            console.error('OrderManagement: hủy đơn hàng thất bại', err);
+            setActionError(err?.message || 'Không thể hủy đơn hàng. Vui lòng thử lại.');
+        } finally {
+            setProcessingOrderId(null);
+            setCancelDialogOrderId(null);
+        }
     };
 
     const handleViewDetail = (orderId) => {
@@ -414,7 +437,7 @@ export default function OrderManagementPage() {
                                                 </button>
                                                 <button
                                                     className={cx('btn', 'cancel')}
-                                                    onClick={() => handleCancelOrder(order.id)}
+                                                    onClick={() => handleOpenCancelDialog(order.id)}
                                                 >
                                                     Hủy đơn
                                                 </button>
@@ -434,6 +457,16 @@ export default function OrderManagementPage() {
                     </table>
                 </div>
             </div>
+            <CancelOrderDialog
+                open={Boolean(cancelDialogOrderId)}
+                loading={Boolean(processingOrderId && processingOrderId === cancelDialogOrderId)}
+                title="Hủy đơn hàng của khách"
+                message="Bạn có chắc chắn muốn hủy đơn hàng này? Vui lòng nhập lý do để lưu lại lịch sử."
+                confirmText="Hủy đơn"
+                cancelText="Đóng"
+                onConfirm={handleConfirmCancelOrder}
+                onCancel={() => !processingOrderId && setCancelDialogOrderId(null)}
+            />
         </div>
     );
 }

@@ -194,6 +194,19 @@ public class OrderController {
                 .build();
     }
 
+    @PostMapping("/{id}/cancel")
+    @PreAuthorize("hasAnyRole('CUSTOMER','STAFF','ADMIN')")
+    public ApiResponse<OrderDetailResponse> cancelOrder(
+            @PathVariable String id,
+            @RequestBody(required = false) com.lumina_book.backend.dto.request.CancelOrderRequest request) {
+        String reason = request != null ? request.getReason() : null;
+        Order order = orderService.cancelOrder(id, reason);
+        return ApiResponse.<OrderDetailResponse>builder()
+                .result(toDetailResponse(order))
+                .message("Đơn hàng đã được hủy thành công.")
+                .build();
+    }
+
     private OrderResponse toResponse(Order order) {
         if (order == null) {
             return null;
@@ -215,6 +228,8 @@ public class OrderController {
                 .code(order.getCode() != null ? order.getCode() : order.getId())
                 .customerName(customerName)
                 .customerEmail(customerEmail)
+                .cancellationReason(resolveCancellationReason(order))
+                .cancellationSource(resolveCancellationSource(order))
                 .receiverName(resolveReceiverName(order, customerName))
                 .receiverPhone(resolveReceiverPhone(order))
                 .shippingAddress(resolveShippingAddressText(order))
@@ -287,6 +302,8 @@ public class OrderController {
                 .code(order.getCode() != null ? order.getCode() : order.getId())
                 .customerName(customerName)
                 .customerEmail(customerEmail)
+                .cancellationReason(resolveCancellationReason(order))
+                .cancellationSource(resolveCancellationSource(order))
                 .receiverName(resolveReceiverName(order, customerName))
                 .receiverPhone(resolveReceiverPhone(order))
                 .shippingAddress(resolveShippingAddressText(order))
@@ -404,6 +421,44 @@ public class OrderController {
             }
         }
         return null;
+    }
+
+    private String resolveCancellationReason(Order order) {
+        if (order == null) {
+            return null;
+        }
+        if (order.getCancellationReason() != null && !order.getCancellationReason().isBlank()) {
+            return order.getCancellationReason();
+        }
+        String note = order.getNote();
+        if (note == null || note.isBlank()) {
+            return null;
+        }
+        String lower = note.toLowerCase();
+        if (!lower.contains("hủy") && !lower.contains("huy")) {
+            return null;
+        }
+
+        // Lý do: ...
+        int idx = lower.indexOf("lý do");
+        if (idx < 0) {
+            idx = lower.indexOf("ly do");
+        }
+        if (idx >= 0) {
+            String candidate = note.substring(idx);
+            candidate = candidate.replaceFirst("(?i)lý do[:\\s-]*", "").trim();
+            if (!candidate.isBlank()) {
+                return candidate;
+            }
+        }
+        return note;
+    }
+
+    private String resolveCancellationSource(Order order) {
+        if (order == null || order.getCancellationSource() == null) {
+            return null;
+        }
+        return order.getCancellationSource().name();
     }
 
     private LocalDateTime resolveOrderDateTime(Order order) {

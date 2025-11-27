@@ -106,6 +106,7 @@ export const API_ROUTES = {
         detail: (orderId) => `/orders/${orderId}`,
         myOrders: '/orders/my-orders',
         confirm: (orderId) => `/orders/${orderId}/confirm`,
+        cancel: (orderId) => `/orders/${orderId}/cancel`,
         resendEmail: (orderId) => `/orders/${orderId}/resend-email`,
         verifyPayment: (orderId) => `/orders/${orderId}/verify-payment`,
     },

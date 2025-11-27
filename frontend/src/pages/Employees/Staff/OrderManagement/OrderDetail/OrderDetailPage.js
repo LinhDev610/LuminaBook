@@ -56,6 +56,48 @@ const MOCK_ORDER_DETAIL = {
     ],
 };
 
+const extractCancellationReason = (order) => {
+    if (!order) return '';
+    const direct =
+        order.cancellationReason ||
+        order.cancellation_reason ||
+        (typeof order.cancellation_reason === 'string' ? order.cancellation_reason : null);
+    if (typeof direct === 'string' && direct.trim()) {
+        return direct.trim();
+    }
+    const note = order.note || '';
+    if (typeof note !== 'string' || note.trim() === '') {
+        return '';
+    }
+    if (!/hủy|huy/i.test(note)) {
+        return '';
+    }
+    const match = note.match(/Lý do[:\s-]*(.+)$/i);
+    if (match && match[1]) {
+        return match[1].trim();
+    }
+    return note.trim();
+};
+
+// Lấy nguồn hủy đơn hàng
+const extractCancellationSource = (order) => {
+    if (!order) return '';
+    const raw = order.cancellationSource || order.cancellation_source;
+    if (!raw) return '';
+    return String(raw).toUpperCase();
+};
+
+const getCancellationSourceLabel = (source) => {
+    switch (source) {
+        case 'STAFF':
+            return 'Nhân viên';
+        case 'CUSTOMER':
+            return 'Khách hàng';
+        default:
+            return '';
+    }
+};
+
 const mapItemsFromOrder = (order) => {
     if (!order) return [];
     const cart = order.cart || order.orderCart || {};
@@ -204,6 +246,8 @@ const mapOrderDetailFromApi = (order) => {
         items,
         totalAmount,
         history: timeline,
+        cancellationReason: extractCancellationReason(order),
+        cancellationSource: extractCancellationSource(order),
     };
 };
 
@@ -365,8 +409,13 @@ export default function OrderDetailPage() {
 
     const { ghnStatusLabel, ghnStatusClass } = mapOrderStatus(order.ghnStatus);
     const orderStatusUpper = String(order.ghnStatus || '').toUpperCase();
+    const isCancelled = orderStatusUpper === 'CANCELLED';
+    const cancellationReason = order.cancellationReason;
     const isConfirmable = ['CREATED', 'PENDING', 'PAID'].includes(orderStatusUpper);
     const items = order.items || [];
+    const cancellationSourceLabel = order.cancellationSource
+        ? getCancellationSourceLabel(order.cancellationSource)
+        : '';
 
     return (
         <div className={cx('page')}>
@@ -440,6 +489,16 @@ export default function OrderDetailPage() {
                 <div className={cx('card')}>
                     <div className={cx('card-header')}>Danh sách sản phẩm</div>
                     <div className={cx('card-body')}>
+                        {isCancelled && cancellationReason && (
+                            <div className={cx('cancel-reason')}>
+                                <strong>Lý do hủy đơn:</strong> {cancellationReason}
+                                {cancellationSourceLabel && (
+                                    <div className={cx('cancel-meta')}>
+                                        Người hủy: <span>{cancellationSourceLabel}</span>
+                                    </div>
+                                )}
+                            </div>
+                        )}
                         <table className={cx('table')}>
                             <thead>
                                 <tr>

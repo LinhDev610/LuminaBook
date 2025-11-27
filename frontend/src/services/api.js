@@ -253,6 +253,15 @@ export async function confirmOrder(orderId, token = null) {
     return { ok, status, data: extractResult(data) };
 }
 
+export async function cancelOrder(orderId, reason = '', token = null) {
+    const { data, ok, status } = await apiRequest(orders.cancel(orderId), {
+        method: 'POST',
+        body: { reason },
+        token,
+    });
+    return { ok, status, data: extractResult(data) };
+}
+
 export async function createShipment(orderId, payload = null, token = null) {
     const { data, ok, status } = await apiRequest(shipments.create(orderId), {
         method: 'POST',

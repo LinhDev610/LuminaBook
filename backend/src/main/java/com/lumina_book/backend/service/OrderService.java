@@ -25,6 +25,7 @@ import com.lumina_book.backend.entity.CartItem;
 import com.lumina_book.backend.entity.Order;
 import com.lumina_book.backend.entity.OrderItem;
 import com.lumina_book.backend.entity.User;
+import com.lumina_book.backend.enums.CancellationSource;
 import com.lumina_book.backend.enums.OrderStatus;
 import com.lumina_book.backend.enums.PaymentMethod;
 import com.lumina_book.backend.enums.PaymentStatus;
@@ -918,6 +919,90 @@ public class OrderService {
     }
 
     // Danh sách tất cả đơn hàng cho nhân viên / admin.
+    @Transactional
+    public Order cancelOrder(String orderId, String reason) {
+        Order order = orderRepository.findById(orderId)
+                .orElseGet(() -> orderRepository.findByCode(orderId)
+                        .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_EXISTED)));
+
+        OrderStatus currentStatus = order.getStatus() != null ? order.getStatus() : OrderStatus.CREATED;
+        if (currentStatus == OrderStatus.DELIVERED
+                || currentStatus == OrderStatus.SHIPPED
+                || currentStatus == OrderStatus.REFUNDED) {
+            throw new AppException(
+                    ErrorCode.UNCATEGORIZED_EXCEPTION,
+                    "Không thể hủy đơn hàng ở trạng thái hiện tại.");
+        }
+
+        if (currentStatus == OrderStatus.CANCELLED) {
+            boolean updated = false;
+            if (order.getCancellationReason() == null
+                    && reason != null
+                    && !reason.isBlank()) {
+                String resolvedReason = reason.trim();
+                order.setCancellationReason(resolvedReason);
+                order.setNote(buildCancellationNote(resolvedReason));
+                updated = true;
+            }
+            if (order.getCancellationSource() == null) {
+                order.setCancellationSource(guessCancellationSourceFromReason(order.getCancellationReason()));
+                updated = true;
+            }
+            return updated ? orderRepository.save(order) : order;
+        }
+
+        var auth = SecurityUtil.getAuthentication();
+        boolean isPrivileged = auth.getAuthorities().stream()
+                .anyMatch(a -> {
+                    String role = a.getAuthority();
+                    return "ROLE_STAFF".equals(role)
+                            || "ROLE_ADMIN".equals(role)
+                            || "ROLE_CUSTOMER_SUPPORT".equals(role);
+                });
+
+        if (!isPrivileged) {
+            String email = auth.getName();
+            if (order.getUser() == null
+                    || order.getUser().getEmail() == null
+                    || !order.getUser().getEmail().equalsIgnoreCase(email)) {
+                throw new AppException(ErrorCode.UNAUTHORIZED);
+            }
+        }
+
+        CancellationSource source = isPrivileged ? CancellationSource.STAFF : CancellationSource.CUSTOMER;
+        String resolvedReason = (reason != null && !reason.isBlank())
+                ? reason.trim()
+                : (source == CancellationSource.STAFF ? "Nhân viên hủy đơn" : "Khách hàng hủy đơn");
+
+        order.setStatus(OrderStatus.CANCELLED);
+        order.setCancellationReason(resolvedReason);
+        order.setCancellationSource(source);
+        order.setNote(buildCancellationNote(resolvedReason));
+
+        return orderRepository.save(order);
+    }
+
+    private String buildCancellationNote(String reason) {
+        if (reason == null || reason.isBlank()) {
+            return "Đơn hàng đã được hủy.";
+        }
+        return "Đơn hàng đã được hủy. Lý do: " + reason;
+    }
+
+    private CancellationSource guessCancellationSourceFromReason(String reason) {
+        if (reason == null) {
+            return null;
+        }
+        String normalized = reason.toLowerCase();
+        if (normalized.contains("nhân viên") || normalized.contains("cửa hàng")) {
+            return CancellationSource.STAFF;
+        }
+        if (normalized.contains("khách hàng") || normalized.contains("khach hang")) {
+            return CancellationSource.CUSTOMER;
+        }
+        return null;
+    }
+
     @Transactional(readOnly = true)
     @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
     public List<Order> getAllOrders() {

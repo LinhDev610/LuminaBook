@@ -51,6 +51,9 @@ public class OrderDetailResponse {
     String refundSelectedProductIds; // JSON array string
     String refundMediaUrls; // JSON array string of media URLs
     String refundRejectionReason; // Lý do từ chối hoàn tiền từ CSKH
+
+    String cancellationReason;
+    String cancellationSource;
 }
 
 

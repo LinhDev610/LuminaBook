@@ -55,6 +55,7 @@ public class ProductService {
     VoucherRepository voucherRepository;
     BannerRepository bannerRepository;
     ProductMapper productMapper;
+    PromotionService promotionService;
 
     // ========== CREATE OPERATIONS ==========
     @Transactional
@@ -426,7 +427,10 @@ public class ProductService {
             product.setApprovedAt(LocalDateTime.now());
             product.setRejectionReason(null);
             product.setUpdatedAt(LocalDateTime.now());
-            log.info("Product approved: {} by admin: {}", product.getId(), adminEmail);
+            
+            if (product.getPromotion() == null) {
+                promotionService.applyCategoryPromotionToProduct(product);
+            }
         } else if ("REJECT".equals(request.getAction())) {
             product.setStatus(ProductStatus.REJECTED);
             product.setApprovedBy(null);
@@ -440,6 +444,11 @@ public class ProductService {
         } else if ("ENABLE".equals(request.getAction())) {
             product.setStatus(ProductStatus.APPROVED);
             product.setUpdatedAt(LocalDateTime.now());
+            
+            // Khi enable lại sản phẩm, cũng kiểm tra và áp dụng promotion theo category
+            if (product.getPromotion() == null) {
+                promotionService.applyCategoryPromotionToProduct(product);
+            }
         }
 
         Product savedProduct = productRepository.save(product);

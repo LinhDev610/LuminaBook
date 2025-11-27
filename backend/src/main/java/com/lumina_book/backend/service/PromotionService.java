@@ -652,6 +652,97 @@ public class PromotionService {
         productRepository.saveAll(products);
     }
 
+    /**
+     * Tự động áp dụng promotion theo category cho sản phẩm khi sản phẩm được approve.
+     * Tìm promotion active theo category của sản phẩm và áp dụng nếu không có conflict.
+     */
+    @Transactional
+    public void applyCategoryPromotionToProduct(Product product) {
+        if (product == null || product.getStatus() != ProductStatus.APPROVED) {
+            return;
+        }
+
+        if (product.getCategory() == null || product.getCategory().getId() == null) {
+            return;
+        }
+
+        LocalDate today = LocalDate.now();
+        
+        // Tìm các promotion active theo category
+        List<Promotion> categoryPromotions = promotionRepository.findActiveByCategoryId(
+                product.getCategory().getId(), today);
+        
+        if (categoryPromotions.isEmpty()) {
+            return;
+        }
+
+        // Lọc các promotion đã được approve và đang active
+        List<Promotion> activePromotions = categoryPromotions.stream()
+                .filter(p -> p.getStatus() == PromotionStatus.APPROVED 
+                        && Boolean.TRUE.equals(p.getIsActive())
+                        && (p.getStartDate() == null || !p.getStartDate().isAfter(today))
+                        && (p.getExpiryDate() == null || !p.getExpiryDate().isBefore(today)))
+                .collect(Collectors.toList());
+
+        if (activePromotions.isEmpty()) {
+            return;
+        }
+
+        // Chọn promotion có startDate sớm nhất
+        Promotion bestPromotion = activePromotions.stream()
+                .min(Comparator.comparing(Promotion::getStartDate, 
+                        Comparator.nullsLast(Comparator.naturalOrder())))
+                .orElse(null);
+
+        if (bestPromotion == null) {
+            return;
+        }
+
+        // Kiểm tra xem sản phẩm đã có promotion khác chưa
+        if (product.getPromotion() != null 
+                && !product.getPromotion().getId().equals(bestPromotion.getId())) {
+            Promotion existingPromo = product.getPromotion();
+            
+            // Kiểm tra xem promotion hiện tại còn active không
+            boolean isExistingActive = existingPromo.getStatus() == PromotionStatus.APPROVED
+                    && existingPromo.getIsActive()
+                    && (existingPromo.getExpiryDate() == null || !existingPromo.getExpiryDate().isBefore(today))
+                    && (existingPromo.getStartDate() == null || !existingPromo.getStartDate().isAfter(today));
+            
+            if (isExistingActive) {
+                // Kiểm tra date range overlap
+                boolean hasDateOverlap = hasDateRangeOverlap(
+                        bestPromotion.getStartDate(), bestPromotion.getExpiryDate(),
+                        existingPromo.getStartDate(), existingPromo.getExpiryDate());
+                
+                if (hasDateOverlap) {
+                    // Có conflict, không áp dụng promotion mới
+                    log.debug("Cannot apply category promotion {} to product {} due to conflict with existing promotion {}", 
+                            bestPromotion.getId(), product.getId(), existingPromo.getId());
+                    return;
+                }
+            }
+        }
+
+        // Áp dụng promotion cho sản phẩm
+        try {
+            double unitPrice = product.getUnitPrice() != null ? product.getUnitPrice() : 0.0;
+            double tax = product.getTax() != null ? product.getTax() : 0.0;
+            
+            double discountAmount = calculateDiscountAmount(bestPromotion, unitPrice);
+            double finalPrice = Math.max(0, unitPrice * (1 + tax) - discountAmount);
+
+            product.setDiscountValue(discountAmount);
+            product.setPrice(finalPrice);
+            product.setPromotion(bestPromotion);
+            
+            productRepository.save(product);
+        } catch (Exception e) {
+            log.warn("Failed to apply category promotion {} to product {}: {}", 
+                    bestPromotion.getId(), product.getId(), e.getMessage());
+        }
+    }
+
     private double calculateDiscountAmount(Promotion promotion, double basePrice) {
         if (basePrice <= 0) return 0;
         double discountValue = promotion.getDiscountValue() != null ? promotion.getDiscountValue() : 0;

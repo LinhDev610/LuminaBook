@@ -719,6 +719,7 @@ export async function notifyStaffOnApproval(itemType, itemName, token = null) {
         const typeLabels = {
             product: 'Sản phẩm',
             banner: 'Banner',
+            slider: 'Slider',
             voucher: 'Mã giảm giá',
             promotion: 'Chương trình khuyến mãi',
         };
@@ -751,6 +752,7 @@ export async function notifyStaffOnRejection(itemType, itemName, reason, token =
         const typeLabels = {
             product: 'Sản phẩm',
             banner: 'Banner',
+            slider: 'Slider',
             voucher: 'Mã giảm giá',
             promotion: 'Chương trình khuyến mãi',
         };
@@ -780,6 +782,7 @@ export async function notifyStaffOnDelete(itemType, itemName, token = null) {
         const typeLabels = {
             product: 'Sản phẩm',
             banner: 'Banner',
+            slider: 'Slider',
             voucher: 'Mã giảm giá',
             promotion: 'Chương trình khuyến mãi',
         };
@@ -809,6 +812,7 @@ export async function notifyStaffOnUpdate(itemType, itemName, token = null) {
         const typeLabels = {
             product: 'Sản phẩm',
             banner: 'Banner',
+            slider: 'Slider',
             voucher: 'Mã giảm giá',
             promotion: 'Chương trình khuyến mãi',
         };

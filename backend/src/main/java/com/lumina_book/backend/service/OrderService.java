@@ -39,6 +39,7 @@ import com.lumina_book.backend.repository.UserRepository;
 import com.lumina_book.backend.entity.Product;
 import com.lumina_book.backend.dto.request.DirectCheckoutRequest;
 import com.lumina_book.backend.util.SecurityUtil;
+import com.lumina_book.backend.service.NotificationService;
 import com.lumina_book.backend.service.ShipmentService;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -67,6 +68,7 @@ public class OrderService {
     ProductRepository productRepository;
     UserRepository userRepository;
     ShipmentService shipmentService;
+    NotificationService notificationService;
 
     ObjectMapper objectMapper = new ObjectMapper();
 
@@ -948,7 +950,11 @@ public class OrderService {
                 order.setCancellationSource(guessCancellationSourceFromReason(order.getCancellationReason()));
                 updated = true;
             }
-            return updated ? orderRepository.save(order) : order;
+            Order saved = updated ? orderRepository.save(order) : order;
+            if (saved.getCancellationSource() == CancellationSource.CUSTOMER) {
+                notifyStaffOrderCancelledByCustomer(saved);
+            }
+            return saved;
         }
 
         var auth = SecurityUtil.getAuthentication();
@@ -979,7 +985,11 @@ public class OrderService {
         order.setCancellationSource(source);
         order.setNote(buildCancellationNote(resolvedReason));
 
-        return orderRepository.save(order);
+        Order savedOrder = orderRepository.save(order);
+        if (source == CancellationSource.CUSTOMER) {
+            notifyStaffOrderCancelledByCustomer(savedOrder);
+        }
+        return savedOrder;
     }
 
     private String buildCancellationNote(String reason) {
@@ -1266,7 +1276,45 @@ public class OrderService {
         // Cập nhật status
         order.setStatus(OrderStatus.REFUNDED);
 
-        return orderRepository.save(order);
+        Order savedOrder = orderRepository.save(order);
+        notifyStaffOrderReturned(savedOrder);
+        return savedOrder;
+    }
+
+    private void notifyStaffOrderCancelledByCustomer(Order order) {
+        try {
+            String code = resolveDisplayOrderCode(order);
+            int itemCount = order.getItems() != null ? order.getItems().size() : 0;
+            String message = itemCount > 0
+                    ? String.format("Khách hàng đã hủy đơn %s với %d sản phẩm. Vui lòng kiểm tra tồn kho/đơn hàng.", code, itemCount)
+                    : String.format("Khách hàng đã hủy đơn %s. Vui lòng kiểm tra tồn kho/đơn hàng.", code);
+            notificationService.sendToStaff(
+                    "Khách hàng hủy đơn hàng",
+                    message,
+                    "WARNING");
+        } catch (Exception e) {
+            log.warn("Không thể gửi thông báo hủy đơn bởi khách hàng cho order {}", order.getId(), e);
+        }
+    }
+
+    private void notifyStaffOrderReturned(Order order) {
+        try {
+            String code = resolveDisplayOrderCode(order);
+            notificationService.sendToStaff(
+                    "Đơn hàng hoàn về cần kiểm tra",
+                    String.format("Bộ phận CSKH đã xác nhận hoàn trả cho đơn %s. Vui lòng kiểm tra hàng hoàn và xử lý tồn kho.", code),
+                    "INFO");
+        } catch (Exception e) {
+            log.warn("Không thể gửi thông báo đơn hoàn về cho order {}", order.getId(), e);
+        }
+    }
+
+    private String resolveDisplayOrderCode(Order order) {
+        if (order == null) return "";
+        if (order.getCode() != null && !order.getCode().isBlank()) {
+            return order.getCode();
+        }
+        return order.getId();
     }
 }
 

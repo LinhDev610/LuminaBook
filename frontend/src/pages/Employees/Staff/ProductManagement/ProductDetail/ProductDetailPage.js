@@ -7,6 +7,7 @@ import {
     normalizeMediaUrl,
 } from '../../../../../services/productUtils';
 import { formatDateTime, getApiBaseUrl, getStoredToken, getProductById } from '../../../../../services';
+import Lightbox from '../../../../../components/Common/Lightbox';
 
 const cx = classNames.bind(styles);
 
@@ -523,82 +524,15 @@ function ProductDetailPage() {
                         </div>
                     </div>
                 </div>
-                {lightboxOpen && (
-                    <div
-                        className={cx('modal-overlay')}
-                        onClick={() => setLightboxOpen(false)}
-                    >
-                        <div className={cx('modal')} onClick={(e) => e.stopPropagation()}>
-                            <div
-                                style={{
-                                    display: 'flex',
-                                    justifyContent: 'space-between',
-                                    alignItems: 'center',
-                                    marginBottom: 12,
-                                }}
-                            >
-                                <h2 className={cx('modal-title')}>{product.name}</h2>
-                                <button
-                                    className={cx('btn', 'btn-cancel')}
-                                    onClick={() => setLightboxOpen(false)}
-                                >
-                                    Đóng
-                                </button>
-                            </div>
-                            <div style={{ textAlign: 'center' }}>
-                                {(() => {
-                                    const mUrl = product.mediaUrls[lightboxIndex];
-                                    const nUrl = normalizeMediaUrl(mUrl, API_BASE_URL);
-                                    const isImg = /\.(jpg|jpeg|png|gif|webp)$/i.test(mUrl);
-                                    return isImg ? (
-                                        <img
-                                            src={nUrl}
-                                            alt="preview-large"
-                                            style={{
-                                                maxWidth: '100%',
-                                                maxHeight: '70vh',
-                                                borderRadius: 8,
-                                            }}
-                                        />
-                                    ) : (
-                                        <video
-                                            src={nUrl}
-                                            style={{
-                                                maxWidth: '100%',
-                                                maxHeight: '70vh',
-                                                borderRadius: 8,
-                                            }}
-                                            controls
-                                            autoPlay
-                                        />
-                                    );
-                                })()}
-                            </div>
-                            <div className={cx('media-thumbs')} style={{ marginTop: 12 }}>
-                                {product.mediaUrls.map((mUrl, idx) => {
-                                    const nUrl = normalizeMediaUrl(mUrl, API_BASE_URL);
-                                    const isImg = /\.(jpg|jpeg|png|gif|webp)$/i.test(mUrl);
-                                    const active = idx === lightboxIndex;
-                                    return (
-                                        <div
-                                            key={idx}
-                                            className={cx('thumb', {
-                                                'thumb-active': active,
-                                            })}
-                                            onClick={() => setLightboxIndex(idx)}
-                                        >
-                                            {isImg ? (
-                                                <img src={nUrl} alt={`lb-${idx}`} />
-                                            ) : (
-                                                <video src={nUrl} />
-                                            )}
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                    </div>
-                )}
+                <Lightbox
+                    isOpen={lightboxOpen}
+                    onClose={() => setLightboxOpen(false)}
+                    mediaUrls={product.mediaUrls || []}
+                    currentIndex={lightboxIndex}
+                    onIndexChange={setLightboxIndex}
+                    title={product.name}
+                    normalizeUrl={(url) => normalizeMediaUrl(url, API_BASE_URL)}
+                />
             </div>
         </div>
     );

@@ -64,6 +64,12 @@
       border: 1px solid #edf1f7;
       border-radius: 16px;
       background: #fdfdff;
+      transition: all 0.2s ease;
+
+      &:hover {
+        border-color: #2563eb;
+        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.1);
+      }
 
       img {
         width: 100%;
@@ -71,6 +77,11 @@
         height: 560px;
         object-fit: cover;
         border-radius: 12px;
+        transition: transform 0.2s ease;
+      }
+
+      &:hover img {
+        transform: scale(1.02);
       }
     }
 
@@ -151,6 +162,16 @@
         color: #fff;
         font-weight: 700;
         cursor: pointer;
+        transition: all 0.2s ease;
+
+        &:hover {
+          background: #374151;
+          transform: scale(1.05);
+        }
+
+        &:active {
+          transform: scale(0.98);
+        }
       }
     }
   }

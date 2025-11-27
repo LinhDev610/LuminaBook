@@ -10,6 +10,7 @@ import iconRefund from '../../../assets/icons/icon_refund.png';
 import iconShoppingCart from '../../../assets/icons/icon_shopping_cart.png';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useNotification } from '../Notification';
+import Lightbox from '../Lightbox';
 
 const ProductDetail = ({ productId }) => {
     const navigate = useNavigate();
@@ -20,6 +21,8 @@ const ProductDetail = ({ productId }) => {
     const [error, setError] = useState('');
     const [selectedImage, setSelectedImage] = useState('');
     const [quantity, setQuantity] = useState(1);
+    const [lightboxOpen, setLightboxOpen] = useState(false);
+    const [lightboxIndex, setLightboxIndex] = useState(0);
     const [userAddress, setUserAddress] = useState('');
     const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
     const [reviews, setReviews] = useState([]);
@@ -150,11 +153,15 @@ const ProductDetail = ({ productId }) => {
         });
     };
 
-    const productImages = product?.mediaUrls?.length
-        ? product.mediaUrls.map((img) => normalizeMediaUrl(img, API_BASE_URL))
-        : (displayProduct.images || []).map((img) =>
-            normalizeMediaUrl(img, API_BASE_URL),
-        );
+    // Tạo danh sách URL media gốc cho Lightbox
+    const originalMediaUrls = product?.mediaUrls?.length
+        ? product.mediaUrls
+        : displayProduct.images || [];
+
+    // Chuẩn hóa URL media thành URL đầy đủ
+    const productImages = originalMediaUrls.map((img) =>
+        normalizeMediaUrl(img, API_BASE_URL),
+    );
     const heroFallback = product?.defaultMediaUrl
         ? normalizeMediaUrl(product.defaultMediaUrl, API_BASE_URL)
         : productImages[0] || require('../../../assets/images/img_sach.png');
@@ -567,7 +574,28 @@ const ProductDetail = ({ productId }) => {
 
                 <div className={styles.productContent}>
                     <div className={styles.productImages}>
-                        <div className={styles.mainImage}>
+                        <div
+                            className={styles.mainImage}
+                            onClick={() => {
+                                if (originalMediaUrls.length === 0) return;
+
+                                // Tìm index của ảnh hiện tại trong originalMediaUrls
+                                const currentImage = selectedImage || heroFallback;
+                                let currentIndex = originalMediaUrls.findIndex(
+                                    (url) => normalizeMediaUrl(url, API_BASE_URL) === currentImage
+                                );
+
+                                // Nếu không tìm thấy, thử tìm trong productImages
+                                if (currentIndex < 0) {
+                                    const imgIndex = productImages.findIndex(img => img === currentImage);
+                                    currentIndex = imgIndex >= 0 ? imgIndex : 0;
+                                }
+
+                                setLightboxIndex(currentIndex >= 0 ? currentIndex : 0);
+                                setLightboxOpen(true);
+                            }}
+                            style={{ cursor: 'pointer' }}
+                        >
                             <img
                                 src={selectedImage || heroFallback}
                                 alt={displayProduct.name}
@@ -578,22 +606,40 @@ const ProductDetail = ({ productId }) => {
                         </div>
                         {productImages.length > 0 && (
                             <div className={styles.thumbnailImages}>
-                                {productImages.slice(0, 4).map((img, idx) => (
-                                    <img
-                                        key={idx}
-                                        src={img}
-                                        alt={`${displayProduct.name} ${idx + 1}`}
-                                        className={
-                                            selectedImage === img ? styles.active : ''
-                                        }
-                                        onClick={() => setSelectedImage(img)}
-                                        onError={(e) => {
-                                            e.target.src = require('../../../assets/images/img_sach.png');
-                                        }}
-                                    />
-                                ))}
+                                {productImages.slice(0, 4).map((img, idx) => {
+                                    // Find the original index in originalMediaUrls
+                                    const originalIndex = originalMediaUrls.findIndex(
+                                        (url) => normalizeMediaUrl(url, API_BASE_URL) === img
+                                    );
+                                    return (
+                                        <img
+                                            key={idx}
+                                            src={img}
+                                            alt={`${displayProduct.name} ${idx + 1}`}
+                                            className={
+                                                selectedImage === img ? styles.active : ''
+                                            }
+                                            onClick={() => {
+                                                setSelectedImage(img);
+                                                setLightboxIndex(originalIndex >= 0 ? originalIndex : idx);
+                                                setLightboxOpen(true);
+                                            }}
+                                            onError={(e) => {
+                                                e.target.src = require('../../../assets/images/img_sach.png');
+                                            }}
+                                        />
+                                    );
+                                })}
                                 {productImages.length > 4 && (
-                                    <div className={styles.moreImages}>
+                                    <div
+                                        className={styles.moreImages}
+                                        onClick={() => {
+                                            // Mở lightbox với ảnh đầu tiên chưa hiển thị (index 4)
+                                            setLightboxIndex(4);
+                                            setLightboxOpen(true);
+                                        }}
+                                        style={{ cursor: 'pointer' }}
+                                    >
                                         +{productImages.length - 4}
                                     </div>
                                 )}
@@ -975,28 +1021,28 @@ const ProductDetail = ({ productId }) => {
                     {/* Danh sách đánh giá chi tiết */}
                     <div className={styles.reviewListWrapper}>
                         <div className={styles.reviewTabs}>
-                        <button
-                            type="button"
-                            className={
-                                activeReviewTab === 'latest'
-                                    ? `${styles.reviewTab} ${styles.reviewTabActive}`
-                                    : styles.reviewTab
-                            }
-                            onClick={() => setActiveReviewTab('latest')}
-                        >
-                            Mới nhất
-                        </button>
-                        <button
-                            type="button"
-                            className={
-                                activeReviewTab === 'top'
-                                    ? `${styles.reviewTab} ${styles.reviewTabActive}`
-                                    : styles.reviewTab
-                            }
-                            onClick={() => setActiveReviewTab('top')}
-                        >
-                            Đánh giá cao nhất
-                        </button>
+                            <button
+                                type="button"
+                                className={
+                                    activeReviewTab === 'latest'
+                                        ? `${styles.reviewTab} ${styles.reviewTabActive}`
+                                        : styles.reviewTab
+                                }
+                                onClick={() => setActiveReviewTab('latest')}
+                            >
+                                Mới nhất
+                            </button>
+                            <button
+                                type="button"
+                                className={
+                                    activeReviewTab === 'top'
+                                        ? `${styles.reviewTab} ${styles.reviewTabActive}`
+                                        : styles.reviewTab
+                                }
+                                onClick={() => setActiveReviewTab('top')}
+                            >
+                                Đánh giá cao nhất
+                            </button>
                         </div>
 
                         {loadingReviews ? (
@@ -1083,6 +1129,16 @@ const ProductDetail = ({ productId }) => {
                     </div>
                 </div>
             </div>
+
+            <Lightbox
+                isOpen={lightboxOpen}
+                onClose={() => setLightboxOpen(false)}
+                mediaUrls={originalMediaUrls}
+                currentIndex={lightboxIndex}
+                onIndexChange={setLightboxIndex}
+                title={displayProduct.name}
+                normalizeUrl={(url) => normalizeMediaUrl(url, API_BASE_URL)}
+            />
         </div>
     );
 };

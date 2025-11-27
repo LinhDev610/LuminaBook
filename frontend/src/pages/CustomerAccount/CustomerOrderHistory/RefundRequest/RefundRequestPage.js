@@ -73,7 +73,9 @@ export default function RefundRequestPage() {
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState('');
     const [rejectionReason, setRejectionReason] = useState(''); // Lý do từ chối từ staff
+    const [isRejected, setIsRejected] = useState(false); // Đánh dấu đơn có bị từ chối không
     const [selectedImagePreview, setSelectedImagePreview] = useState(null); // Ảnh đang được xem chi tiết
+    const [fieldErrors, setFieldErrors] = useState({}); // Lỗi validation cho từng trường
 
     // Address modal states
     const [showAddressList, setShowAddressList] = useState(false);
@@ -161,6 +163,8 @@ export default function RefundRequestPage() {
 
                             // Nếu đơn đã bị từ chối (RETURN_REJECTED), load dữ liệu cũ
                             if (rawOrder.status === 'RETURN_REJECTED') {
+                                setIsRejected(true);
+                                
                                 // Parse lý do từ chối từ nhiều nguồn
                                 let parsedRejectionReason = rawOrder.refundRejectionReason || 
                                                            rawOrder.refund_rejection_reason || 
@@ -352,7 +356,16 @@ export default function RefundRequestPage() {
                     prevFiles.filter(file => file !== imageToRemove.file)
                 );
             }
-            return prev.filter(img => img.id !== imageId);
+            const newPreviews = prev.filter(img => img.id !== imageId);
+            // Clear lỗi nếu còn ảnh, hoặc giữ lỗi nếu không còn ảnh nào
+            if (newPreviews.length > 0 && fieldErrors.media) {
+                setFieldErrors(prev => {
+                    const newErrors = { ...prev };
+                    delete newErrors.media;
+                    return newErrors;
+                });
+            }
+            return newPreviews;
         });
     };
 
@@ -384,28 +397,71 @@ export default function RefundRequestPage() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
+        const errors = {};
 
+        // Validate lý do trả hàng
+        if (!selectedReasonType) {
+            errors.reasonType = 'Vui lòng chọn lý do trả hàng';
+        }
+
+        // Validate sản phẩm
         if (selectedProducts.length === 0) {
-            setError('Vui lòng chọn ít nhất một sản phẩm');
-            return;
+            errors.products = 'Vui lòng chọn ít nhất một sản phẩm';
         }
 
-        if (!formData.description) {
-            setError('Vui lòng mô tả chi tiết vấn đề');
-            return;
+        // Validate ảnh/video
+        if (imagePreviews.length === 0) {
+            errors.media = 'Vui lòng đính kèm ít nhất một ảnh hoặc video làm bằng chứng';
         }
 
+        // Validate mô tả
+        if (!formData.description || !formData.description.trim()) {
+            errors.description = 'Vui lòng mô tả chi tiết vấn đề';
+        }
+
+        // Validate email
+        if (!formData.email || !formData.email.trim()) {
+            errors.email = 'Vui lòng nhập email liên hệ';
+        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+            errors.email = 'Email không hợp lệ';
+        }
+
+        // Validate địa chỉ
         if (!formData.returnAddress || !formData.returnAddress.trim()) {
-            setError('Vui lòng nhập địa chỉ gửi hàng');
-            return;
+            errors.returnAddress = 'Vui lòng chọn địa chỉ gửi hàng';
         }
 
+        // Validate thông tin ngân hàng
         if (formData.refundMethod === 'Hoàn tiền bằng tài khoản ngân hàng') {
-            if (!formData.bank || !formData.accountNumber || !formData.accountHolder) {
-                setError('Vui lòng điền đầy đủ thông tin ngân hàng');
-                return;
+            if (!formData.bank || !formData.bank.trim()) {
+                errors.bank = 'Vui lòng chọn ngân hàng';
+            }
+            if (!formData.accountNumber || !formData.accountNumber.trim()) {
+                errors.accountNumber = 'Vui lòng nhập số tài khoản';
+            } else if (!/^\d+$/.test(formData.accountNumber.trim())) {
+                errors.accountNumber = 'Số tài khoản chỉ được chứa số';
+            }
+            if (!formData.accountHolder || !formData.accountHolder.trim()) {
+                errors.accountHolder = 'Vui lòng nhập tên chủ tài khoản';
+            } else if (!/^[a-zA-ZÀ-ỹ\s]+$/.test(formData.accountHolder.trim())) {
+                errors.accountHolder = 'Tên chủ tài khoản chỉ được chứa chữ cái';
             }
         }
+
+        // Nếu có lỗi, hiển thị và dừng lại
+        if (Object.keys(errors).length > 0) {
+            setFieldErrors(errors);
+            // Scroll đến lỗi đầu tiên
+            const firstErrorField = Object.keys(errors)[0];
+            const errorElement = document.querySelector(`[data-field="${firstErrorField}"]`);
+            if (errorElement) {
+                errorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+            return;
+        }
+
+        // Clear errors nếu không có lỗi
+        setFieldErrors({});
 
         try {
             setSubmitting(true);
@@ -527,18 +583,18 @@ export default function RefundRequestPage() {
     return (
         <div className={cx('page')}>
             <div className={cx('container')}>
-                {/* Return Conditions */}
-                <div className={cx('conditions-box')}>
-                    <h3 className={cx('conditions-title')}>Điều kiện áp dụng trả hàng</h3>
-                    <ul className={cx('conditions-list')}>
-                        <li>Yêu cầu gửi trong vòng 7 ngày kể từ khi nhận sách.</li>
-                        <li>Sách còn nguyên trạng (không rách, không viết/đánh dấu).</li>
-                        <li>Cung cấp ảnh/video làm bằng chứng.</li>
-                    </ul>
-                </div>
-
                 {step === 1 ? (
                     <>
+                        {/* Return Conditions */}
+                        <div className={cx('conditions-box')}>
+                            <h3 className={cx('conditions-title')}>Điều kiện áp dụng trả hàng</h3>
+                            <ul className={cx('conditions-list')}>
+                                <li>Yêu cầu gửi trong vòng 7 ngày kể từ khi nhận sách.</li>
+                                <li>Sách còn nguyên trạng (không rách, không viết/đánh dấu).</li>
+                                <li>Cung cấp ảnh/video làm bằng chứng.</li>
+                            </ul>
+                        </div>
+
                         {/* Reason Selection */}
                         <div className={cx('reason-section')}>
                             <h2 className={cx('section-title')}>Lý do trả hàng / hoàn tiền</h2>
@@ -593,8 +649,72 @@ export default function RefundRequestPage() {
                             </div>
                         )}
 
+                        {/* Return Conditions and Reasons (only show if order was rejected) */}
+                        {isRejected && (
+                            <>
+                                {/* Return Conditions */}
+                                <div className={cx('conditions-box')}>
+                                    <h3 className={cx('conditions-title')}>Điều kiện áp dụng trả hàng</h3>
+                                    <ul className={cx('conditions-list')}>
+                                        <li>Yêu cầu gửi trong vòng 7 ngày kể từ khi nhận sách.</li>
+                                        <li>Sách còn nguyên trạng (không rách, không viết/đánh dấu).</li>
+                                        <li>Cung cấp ảnh/video làm bằng chứng.</li>
+                                    </ul>
+                                </div>
+
+                                {/* Reason Selection */}
+                                <div className={cx('reason-section')} data-field="reasonType">
+                                    <h2 className={cx('section-title')}>Lý do trả hàng / hoàn tiền</h2>
+                                    <div className={cx('reason-cards')}>
+                                        <div 
+                                            className={cx('reason-card', { selected: selectedReasonType === 'store' })}
+                                            onClick={() => {
+                                                handleReasonSelect('store');
+                                                if (fieldErrors.reasonType) {
+                                                    setFieldErrors(prev => {
+                                                        const newErrors = { ...prev };
+                                                        delete newErrors.reasonType;
+                                                        return newErrors;
+                                                    });
+                                                }
+                                            }}
+                                        >
+                                            <h3 className={cx('reason-title')}>Sản phẩm gặp sự cố từ cửa hàng</h3>
+                                            <p className={cx('reason-desc')}>
+                                                Sản phẩm có lỗi kỹ thuật, thiếu trang, bị hỏng do đóng gói, hoặc thông tin hiển thị không đúng.
+                                            </p>
+                                            <button className={cx('reason-badge', 'free')}>Miễn phí trả hàng</button>
+                                        </div>
+
+                                        <div 
+                                            className={cx('reason-card', { selected: selectedReasonType === 'customer' })}
+                                            onClick={() => {
+                                                handleReasonSelect('customer');
+                                                if (fieldErrors.reasonType) {
+                                                    setFieldErrors(prev => {
+                                                        const newErrors = { ...prev };
+                                                        delete newErrors.reasonType;
+                                                        return newErrors;
+                                                    });
+                                                }
+                                            }}
+                                        >
+                                            <h3 className={cx('reason-title')}>Thay đổi nhu cầu / Mua nhầm</h3>
+                                            <p className={cx('reason-desc')}>
+                                                Khách hàng muốn đổi phiên bản, đặt nhầm, hoặc thay đổi nhu cầu sử dụng sản phẩm.
+                                            </p>
+                                            <button className={cx('reason-badge', 'paid')}>Khách hỗ trợ phí trả hàng</button>
+                                        </div>
+                                    </div>
+                                    {fieldErrors.reasonType && (
+                                        <p className={cx('field-error')}>{fieldErrors.reasonType}</p>
+                                    )}
+                                </div>
+                            </>
+                        )}
+
                         {/* Products in Order */}
-                        <div className={cx('form-section')}>
+                        <div className={cx('form-section')} data-field="products">
                             <label className={cx('section-label')}>Sản phẩm trong đơn</label>
                             <div className={cx('products-list')}>
                                 {order?.items?.map((item) => (
@@ -602,7 +722,16 @@ export default function RefundRequestPage() {
                                         <input
                                             type="checkbox"
                                             checked={selectedProducts.includes(item.id)}
-                                            onChange={() => handleProductToggle(item.id)}
+                                            onChange={() => {
+                                                handleProductToggle(item.id);
+                                                if (fieldErrors.products) {
+                                                    setFieldErrors(prev => {
+                                                        const newErrors = { ...prev };
+                                                        delete newErrors.products;
+                                                        return newErrors;
+                                                    });
+                                                }
+                                            }}
                                             className={cx('product-checkbox')}
                                         />
                                         <img src={item.image} alt={item.name} className={cx('product-image')} />
@@ -616,10 +745,13 @@ export default function RefundRequestPage() {
                                     </div>
                                 ))}
                             </div>
+                            {fieldErrors.products && (
+                                <p className={cx('field-error')}>{fieldErrors.products}</p>
+                            )}
                         </div>
 
                         {/* Attached Files */}
-                        <div className={cx('form-section')}>
+                        <div className={cx('form-section')} data-field="media">
                             <label className={cx('section-label')}>Ảnh / Video đính kèm</label>
                             <div className={cx('file-upload')}>
                                 <label className={cx('file-label')}>
@@ -627,14 +759,23 @@ export default function RefundRequestPage() {
                                         type="file"
                                         multiple
                                         accept="image/*,video/*"
-                                        onChange={handleFileChange}
+                                        onChange={(e) => {
+                                            handleFileChange(e);
+                                            if (fieldErrors.media) {
+                                                setFieldErrors(prev => {
+                                                    const newErrors = { ...prev };
+                                                    delete newErrors.media;
+                                                    return newErrors;
+                                                });
+                                            }
+                                        }}
                                         className={cx('file-input')}
                                         disabled={attachedFiles.length >= 5}
                                     />
                                     <span className={cx('file-button')}>Chọn tệp</span>
                                     <span className={cx('file-text')}>
-                                        {attachedFiles.length > 0 
-                                            ? `${attachedFiles.length}/5 tệp đã chọn`
+                                        {imagePreviews.length > 0 
+                                            ? `${imagePreviews.length}/5 tệp đã chọn`
                                             : 'Chưa có tệp nào được chọn'}
                                     </span>
                                 </label>
@@ -642,6 +783,9 @@ export default function RefundRequestPage() {
                                     Chọn tối đa 5 tệp. Vui lòng đảm bảo hình ảnh/video rõ ràng.
                                 </p>
                             </div>
+                            {fieldErrors.media && (
+                                <p className={cx('field-error')}>{fieldErrors.media}</p>
+                            )}
 
                             {/* Image Previews */}
                             {imagePreviews.length > 0 && (
@@ -733,45 +877,90 @@ export default function RefundRequestPage() {
                         </div>
 
                         {/* Description */}
-                        <div className={cx('form-section')}>
+                        <div className={cx('form-section')} data-field="description">
                             <label className={cx('section-label')}>Mô tả chi tiết</label>
                             <textarea
                                 name="description"
                                 value={formData.description}
-                                onChange={handleInputChange}
-                                className={cx('textarea')}
+                                onChange={(e) => {
+                                    handleInputChange(e);
+                                    if (fieldErrors.description) {
+                                        setFieldErrors(prev => {
+                                            const newErrors = { ...prev };
+                                            delete newErrors.description;
+                                            return newErrors;
+                                        });
+                                    }
+                                }}
+                                className={cx('textarea', { error: fieldErrors.description })}
                                 placeholder="Mô tả vấn đề... (bắt buộc)"
                                 rows="6"
                                 required
                             />
+                            {fieldErrors.description && (
+                                <p className={cx('field-error')}>{fieldErrors.description}</p>
+                            )}
                         </div>
 
                         {/* Contact Email */}
-                        <div className={cx('form-section')}>
+                        <div className={cx('form-section')} data-field="email">
                             <label className={cx('section-label')}>Email liên hệ</label>
                             <input
                                 type="email"
                                 name="email"
                                 value={formData.email}
-                                onChange={handleInputChange}
-                                className={cx('input')}
+                                onChange={(e) => {
+                                    handleInputChange(e);
+                                    if (fieldErrors.email) {
+                                        setFieldErrors(prev => {
+                                            const newErrors = { ...prev };
+                                            delete newErrors.email;
+                                            return newErrors;
+                                        });
+                                    }
+                                }}
+                                className={cx('input', { error: fieldErrors.email })}
                                 required
                             />
+                            {fieldErrors.email && (
+                                <p className={cx('field-error')}>{fieldErrors.email}</p>
+                            )}
                         </div>
 
                         {/* Return Address */}
-                        <div className={cx('form-section')}>
+                        <div className={cx('form-section')} data-field="returnAddress">
                             <label className={cx('section-label')}>Địa chỉ gửi hàng</label>
                             <input
                                 type="text"
                                 value={formData.returnAddress || ''}
                                 readOnly
-                                onClick={() => setShowAddressList(true)}
-                                onFocus={() => setShowAddressList(true)}
-                                className={cx('input')}
+                                onClick={() => {
+                                    setShowAddressList(true);
+                                    if (fieldErrors.returnAddress) {
+                                        setFieldErrors(prev => {
+                                            const newErrors = { ...prev };
+                                            delete newErrors.returnAddress;
+                                            return newErrors;
+                                        });
+                                    }
+                                }}
+                                onFocus={() => {
+                                    setShowAddressList(true);
+                                    if (fieldErrors.returnAddress) {
+                                        setFieldErrors(prev => {
+                                            const newErrors = { ...prev };
+                                            delete newErrors.returnAddress;
+                                            return newErrors;
+                                        });
+                                    }
+                                }}
+                                className={cx('input', { error: fieldErrors.returnAddress })}
                                 placeholder="Chọn từ danh sách địa chỉ của bạn"
                                 required
                             />
+                            {fieldErrors.returnAddress && (
+                                <p className={cx('field-error')}>{fieldErrors.returnAddress}</p>
+                            )}
                         </div>
 
                         {/* Refund Method */}
@@ -789,36 +978,88 @@ export default function RefundRequestPage() {
 
                             {formData.refundMethod === 'Hoàn tiền bằng tài khoản ngân hàng' && (
                                 <div className={cx('bank-details')}>
-                                    <select
-                                        name="bank"
-                                        value={formData.bank}
-                                        onChange={handleInputChange}
-                                        className={cx('select')}
-                                        required
-                                    >
-                                        <option value="">Chọn ngân hàng</option>
-                                        {BANKS.map(bank => (
-                                            <option key={bank} value={bank}>{bank}</option>
-                                        ))}
-                                    </select>
-                                    <input
-                                        type="text"
-                                        name="accountNumber"
-                                        value={formData.accountNumber}
-                                        onChange={handleInputChange}
-                                        className={cx('input')}
-                                        placeholder="Nhập số tài khoản"
-                                        required
-                                    />
-                                    <input
-                                        type="text"
-                                        name="accountHolder"
-                                        value={formData.accountHolder}
-                                        onChange={handleInputChange}
-                                        className={cx('input')}
-                                        placeholder="Nhập tên chủ tài khoản"
-                                        required
-                                    />
+                                    <div data-field="bank">
+                                        <select
+                                            name="bank"
+                                            value={formData.bank}
+                                            onChange={(e) => {
+                                                handleInputChange(e);
+                                                if (fieldErrors.bank) {
+                                                    setFieldErrors(prev => {
+                                                        const newErrors = { ...prev };
+                                                        delete newErrors.bank;
+                                                        return newErrors;
+                                                    });
+                                                }
+                                            }}
+                                            className={cx('select', { error: fieldErrors.bank })}
+                                            required
+                                        >
+                                            <option value="">Chọn ngân hàng</option>
+                                            {BANKS.map(bank => (
+                                                <option key={bank} value={bank}>{bank}</option>
+                                            ))}
+                                        </select>
+                                        {fieldErrors.bank && (
+                                            <p className={cx('field-error')}>{fieldErrors.bank}</p>
+                                        )}
+                                    </div>
+                                    <div data-field="accountNumber">
+                                        <input
+                                            type="text"
+                                            name="accountNumber"
+                                            value={formData.accountNumber}
+                                            onChange={(e) => {
+                                                // Chỉ cho phép nhập số
+                                                const value = e.target.value.replace(/\D/g, '');
+                                                setFormData(prev => ({
+                                                    ...prev,
+                                                    accountNumber: value,
+                                                }));
+                                                if (fieldErrors.accountNumber) {
+                                                    setFieldErrors(prev => {
+                                                        const newErrors = { ...prev };
+                                                        delete newErrors.accountNumber;
+                                                        return newErrors;
+                                                    });
+                                                }
+                                            }}
+                                            className={cx('input', { error: fieldErrors.accountNumber })}
+                                            placeholder="Nhập số tài khoản"
+                                            required
+                                        />
+                                        {fieldErrors.accountNumber && (
+                                            <p className={cx('field-error')}>{fieldErrors.accountNumber}</p>
+                                        )}
+                                    </div>
+                                    <div data-field="accountHolder">
+                                        <input
+                                            type="text"
+                                            name="accountHolder"
+                                            value={formData.accountHolder}
+                                            onChange={(e) => {
+                                                // Chỉ cho phép nhập chữ cái, dấu cách và dấu tiếng Việt
+                                                const value = e.target.value.replace(/[^a-zA-ZÀ-ỹ\s]/g, '');
+                                                setFormData(prev => ({
+                                                    ...prev,
+                                                    accountHolder: value,
+                                                }));
+                                                if (fieldErrors.accountHolder) {
+                                                    setFieldErrors(prev => {
+                                                        const newErrors = { ...prev };
+                                                        delete newErrors.accountHolder;
+                                                        return newErrors;
+                                                    });
+                                                }
+                                            }}
+                                            className={cx('input', { error: fieldErrors.accountHolder })}
+                                            placeholder="Nhập tên chủ tài khoản"
+                                            required
+                                        />
+                                        {fieldErrors.accountHolder && (
+                                            <p className={cx('field-error')}>{fieldErrors.accountHolder}</p>
+                                        )}
+                                    </div>
                                 </div>
                             )}
                         </div>
@@ -882,6 +1123,13 @@ export default function RefundRequestPage() {
                     }));
                     setSelectedAddress(address);
                     setShowAddressList(false);
+                    if (fieldErrors.returnAddress) {
+                        setFieldErrors(prev => {
+                            const newErrors = { ...prev };
+                            delete newErrors.returnAddress;
+                            return newErrors;
+                        });
+                    }
                 }}
                 onViewDetail={(address) => {
                     setSelectedAddress(address);
@@ -905,6 +1153,13 @@ export default function RefundRequestPage() {
                         }));
                         setSelectedAddress(newAddress);
                         setAddressRefreshKey((prev) => prev + 1);
+                        if (fieldErrors.returnAddress) {
+                            setFieldErrors(prev => {
+                                const newErrors = { ...prev };
+                                delete newErrors.returnAddress;
+                                return newErrors;
+                            });
+                        }
                     }
                     setShowNewAddressModal(false);
                     setShowAddressList(false);
@@ -923,6 +1178,13 @@ export default function RefundRequestPage() {
                     }));
                     setSelectedAddress(updated);
                     setAddressRefreshKey((prev) => prev + 1);
+                    if (fieldErrors.returnAddress) {
+                        setFieldErrors(prev => {
+                            const newErrors = { ...prev };
+                            delete newErrors.returnAddress;
+                            return newErrors;
+                        });
+                    }
                 }}
                 onDeleted={(deletedId) => {
                     setShowAddressDetailModal(false);

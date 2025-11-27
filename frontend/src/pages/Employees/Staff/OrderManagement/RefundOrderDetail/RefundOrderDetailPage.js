@@ -4,6 +4,7 @@ import classNames from 'classnames/bind';
 import styles from './RefundOrderDetailPage.module.scss';
 import { getApiBaseUrl, getStoredToken, formatCurrency } from '../../../../../services';
 import { normalizeMediaUrl } from '../../../../../services/productUtils';
+import ConfirmDialog from '../../../../../components/Common/ConfirmDialog/DeleteAccountDialog';
 
 const cx = classNames.bind(styles);
 
@@ -81,8 +82,15 @@ export default function RefundOrderDetailPage() {
     const [inspectionStatus, setInspectionStatus] = useState('valid_customer');
     const [receivedDate, setReceivedDate] = useState(formatDateInput(new Date()));
     const [refundAmount, setRefundAmount] = useState('');
+    const [amountTouched, setAmountTouched] = useState(false);
     const [inspectionNote, setInspectionNote] = useState('');
     const [processing, setProcessing] = useState(false);
+    const [confirmDialog, setConfirmDialog] = useState({
+        open: false,
+        title: '',
+        message: '',
+        onConfirm: null,
+    });
 
     const apiBaseUrl = getApiBaseUrl();
 
@@ -120,6 +128,7 @@ export default function RefundOrderDetailPage() {
                         orderData.totalAmount ||
                         0,
                 );
+                setAmountTouched(false);
             } catch (err) {
                 setError(err.message || 'Đã xảy ra lỗi khi tải thông tin.');
             } finally {
@@ -137,7 +146,6 @@ export default function RefundOrderDetailPage() {
 
     const refundInfo = useMemo(() => parseRefundInfo(order), [order]);
     const shippingInfo = useMemo(() => parseShippingInfo(order?.shippingAddress), [order]);
-    const shippingFee = useMemo(() => Number(order?.shippingFee) || 0, [order]);
 
     const selectedItems =
         order?.items?.filter((item) => {
@@ -145,25 +153,56 @@ export default function RefundOrderDetailPage() {
             return refundInfo.selectedProductIds.includes(item.id);
         }) || [];
 
-    const calculatedRefundAmount = useMemo(() => {
+    const productSubtotal = useMemo(
+        () =>
+            selectedItems.reduce(
+                (sum, item) => sum + Number(item.totalPrice || item.finalPrice || 0),
+                0,
+            ),
+        [selectedItems],
+    );
+
+    const baseRefundAmount = useMemo(() => {
+        if (productSubtotal > 0) return productSubtotal;
+        if (refundInfo.refundAmount) return Number(refundInfo.refundAmount);
+        if (order?.selectedItemsTotal) return Number(order.selectedItemsTotal);
+        if (order?.totalAmount) return Number(order.totalAmount);
+        return 0;
+    }, [productSubtotal, refundInfo.refundAmount, order?.selectedItemsTotal, order?.totalAmount]);
+
+    const shippingCompensation = useMemo(() => {
+        if (order?.shippingFee != null && !Number.isNaN(Number(order.shippingFee))) {
+            return Number(order.shippingFee);
+        }
+        if (productSubtotal > 0) {
+            const orderTotal = Number(order?.totalAmount) || 0;
+            const diff = orderTotal - productSubtotal;
+            return diff > 0 ? diff : 0;
+        }
+        return 0;
+    }, [order?.shippingFee, order?.totalAmount, productSubtotal]);
+
+    useEffect(() => {
+        if (amountTouched) {
+            return;
+        }
+        let autoAmount = baseRefundAmount;
+        if (inspectionStatus === 'valid_store') {
+            autoAmount += shippingCompensation;
+        }
+        if (!Number.isFinite(autoAmount)) {
+            autoAmount = 0;
+        }
+        setRefundAmount(autoAmount);
+    }, [inspectionStatus, baseRefundAmount, shippingCompensation, amountTouched]);
+
+    const requestedRefundAmount = useMemo(() => {
         if (refundInfo.refundAmount) return Number(refundInfo.refundAmount);
         return selectedItems.reduce(
             (sum, item) => sum + Number(item.totalPrice || item.finalPrice || 0),
             0,
         );
     }, [refundInfo.refundAmount, selectedItems]);
-
-    useEffect(() => {
-        let autoAmount = 0;
-        if (inspectionStatus === 'invalid') {
-            autoAmount = 0;
-        } else if (inspectionStatus === 'valid_store') {
-            autoAmount = calculatedRefundAmount + shippingFee;
-        } else {
-            autoAmount = calculatedRefundAmount;
-        }
-        setRefundAmount(autoAmount);
-    }, [inspectionStatus, calculatedRefundAmount, shippingFee]);
 
     const normalizedMediaUrls = useMemo(() => {
         if (!refundInfo.mediaUrls || !refundInfo.mediaUrls.length) return [];
@@ -176,6 +215,10 @@ export default function RefundOrderDetailPage() {
     };
 
     const handleReject = async () => {
+        if (!canProcess) {
+            alert('Đơn này chưa được CSKH chuyển hoặc đã được xử lý.');
+            return;
+        }
         if (!inspectionNote.trim()) {
             alert('Vui lòng nhập ghi chú/ lý do từ chối');
             return;
@@ -192,7 +235,7 @@ export default function RefundOrderDetailPage() {
                         'Content-Type': 'application/json',
                         Authorization: `Bearer ${token}`,
                     },
-                    body: JSON.stringify({ reason: inspectionNote }),
+                    body: JSON.stringify({ reason: inspectionNote, source: 'STAFF' }),
                 },
             );
 
@@ -210,18 +253,44 @@ export default function RefundOrderDetailPage() {
         }
     };
 
-    const handleConfirm = async () => {
+    const inspectionStatusLabel = (status) => {
+        switch (status) {
+            case 'valid_store':
+                return 'Hợp lệ - lỗi cửa hàng';
+            case 'valid_customer':
+                return 'Hợp lệ - lỗi khách hàng';
+            default:
+                return 'Chưa xác định';
+        }
+    };
+
+    const handleConfirmRefund = async () => {
+        const normalizedAmount =
+            typeof refundAmount === 'number' ? refundAmount : Number(refundAmount);
+        if (!Number.isFinite(normalizedAmount)) {
+            alert('Vui lòng nhập số tiền hoàn hợp lệ.');
+            return;
+        }
         try {
             setProcessing(true);
             const token = getStoredToken('token');
             const response = await fetch(
-                `${apiBaseUrl}/orders/${encodeURIComponent(id)}/confirm-refund`,
+                `${apiBaseUrl}/orders/${encodeURIComponent(id)}/staff-confirm-refund`,
                 {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         Authorization: `Bearer ${token}`,
                     },
+                    body: JSON.stringify({
+                        note: [
+                            inspectionStatusLabel(inspectionStatus),
+                            inspectionNote ? `Ghi chú: ${inspectionNote}` : null,
+                        ]
+                            .filter(Boolean)
+                            .join('\n'),
+                        refundAmount: normalizedAmount,
+                    }),
                 },
             );
 
@@ -230,13 +299,32 @@ export default function RefundOrderDetailPage() {
                 throw new Error(errorData.message || 'Không thể xác nhận đơn này');
             }
 
-            alert('Đã xác nhận đơn hoàn về thành công.');
+            alert('Đã xác nhận và chuyển hồ sơ cho Admin xử lý hoàn tiền.');
             navigate('/staff/orders');
         } catch (err) {
             alert(err.message || 'Có lỗi xảy ra, vui lòng thử lại.');
         } finally {
             setProcessing(false);
         }
+    };
+
+    const handleConfirm = () => {
+        const normalizedAmount =
+            typeof refundAmount === 'number' ? refundAmount : Number(refundAmount);
+        if (!Number.isFinite(normalizedAmount)) {
+            alert('Vui lòng nhập số tiền hoàn hợp lệ.');
+            return;
+        }
+
+        setConfirmDialog({
+            open: true,
+            title: 'Xác nhận hoàn tiền',
+            message: `Bạn có chắc chắn muốn xác nhận đơn hoàn tiền này và chuyển cho Admin xử lý không?`,
+            onConfirm: async () => {
+                setConfirmDialog({ open: false, title: '', message: '', onConfirm: null });
+                await handleConfirmRefund();
+            },
+        });
     };
 
     if (loading) {
@@ -259,7 +347,7 @@ export default function RefundOrderDetailPage() {
     }
 
     const normalizedStatus = (order?.status || '').toUpperCase();
-    const canProcess = normalizedStatus === 'RETURN_REQUESTED';
+    const canProcess = normalizedStatus === 'RETURN_CS_CONFIRMED';
 
     return (
         <div className={cx('page')}>
@@ -325,7 +413,7 @@ export default function RefundOrderDetailPage() {
                         </div>
                         <div className={cx('request-row')}>
                             <span>Yêu cầu hoàn tiền:</span>
-                            <span>{formatCurrency(calculatedRefundAmount)}</span>
+                            <span>{formatCurrency(requestedRefundAmount)}</span>
                         </div>
                         <div className={cx('request-row')}>
                             <span>Lý do:</span>
@@ -380,7 +468,6 @@ export default function RefundOrderDetailPage() {
                             >
                                 <option value="valid_store">Hợp lệ - lỗi cửa hàng</option>
                                 <option value="valid_customer">Hợp lệ - lỗi khách hàng</option>
-                                <option value="invalid">Không hợp lệ</option>
                             </select>
                         </div>
                         <div>
@@ -398,7 +485,10 @@ export default function RefundOrderDetailPage() {
                                 type="number"
                                 className={cx('input-inline')}
                                 value={refundAmount}
-                                onChange={(e) => setRefundAmount(Number(e.target.value))}
+                                onChange={(e) => {
+                                    setAmountTouched(true);
+                                    setRefundAmount(e.target.value);
+                                }}
                             />
                         </div>
                     </div>
@@ -417,7 +507,11 @@ export default function RefundOrderDetailPage() {
                     <button className={cx('btn', 'btn-cancel')} onClick={handleBack} disabled={processing}>
                         Hủy
                     </button>
-                    <button className={cx('btn', 'btn-reject')} onClick={handleReject} disabled={processing}>
+                    <button
+                        className={cx('btn', 'btn-reject')}
+                        onClick={handleReject}
+                        disabled={processing || !canProcess}
+                    >
                         {processing ? 'Đang xử lý...' : 'Từ chối'}
                     </button>
                     <button
@@ -429,6 +523,17 @@ export default function RefundOrderDetailPage() {
                     </button>
                 </div>
             </div>
+            <ConfirmDialog
+                open={confirmDialog.open}
+                title={confirmDialog.title}
+                message={confirmDialog.message}
+                onConfirm={confirmDialog.onConfirm}
+                onCancel={() =>
+                    setConfirmDialog({ open: false, title: '', message: '', onConfirm: null })
+                }
+                confirmText="Xác nhận"
+                cancelText="Hủy"
+            />
         </div>
     );
 }

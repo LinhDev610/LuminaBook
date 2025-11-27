@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.lumina_book.backend.dto.request.CreateOrderRequest;
 import com.lumina_book.backend.dto.request.MomoIpnRequest;
+import com.lumina_book.backend.dto.request.ReturnProcessRequest;
 import com.lumina_book.backend.dto.response.CreateMomoResponse;
 import com.lumina_book.backend.entity.Address;
 import com.lumina_book.backend.entity.Cart;
@@ -839,13 +840,15 @@ public class OrderService {
     /**
      * Danh sách các yêu cầu trả hàng/hoàn tiền.
      * Dành cho Customer Support để quản lý và xử lý các yêu cầu trả hàng.
+     * Không bao gồm các đơn đã hoàn tiền thành công (REFUNDED).
      */
     @Transactional(readOnly = true)
     @PreAuthorize("hasAnyRole('CUSTOMER_SUPPORT','STAFF','ADMIN')")
     public List<Order> getReturnRequests() {
         List<OrderStatus> returnStatuses = List.of(
                 OrderStatus.RETURN_REQUESTED,
-                OrderStatus.REFUNDED,
+                OrderStatus.RETURN_CS_CONFIRMED,
+                OrderStatus.RETURN_STAFF_CONFIRMED,
                 OrderStatus.RETURN_REJECTED
         );
         return orderRepository.findByStatusIn(returnStatuses);
@@ -1027,8 +1030,10 @@ public class OrderService {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_EXISTED));
 
-        // Chỉ có thể từ chối đơn hàng có status RETURN_REQUESTED
-        if (order.getStatus() != OrderStatus.RETURN_REQUESTED) {
+        // Chỉ có thể từ chối đơn hàng chưa hoàn tất
+        if (order.getStatus() != OrderStatus.RETURN_REQUESTED
+                && order.getStatus() != OrderStatus.RETURN_CS_CONFIRMED
+                && order.getStatus() != OrderStatus.RETURN_STAFF_CONFIRMED) {
             throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION, 
                     "Chỉ có thể từ chối yêu cầu hoàn tiền cho đơn hàng đang ở trạng thái 'Hoàn tiền/ trả hàng'");
         }
@@ -1037,6 +1042,9 @@ public class OrderService {
         order.setStatus(OrderStatus.RETURN_REJECTED);
         String rejectionReason = request.getReason() != null ? request.getReason() : "Không có lý do";
         order.setRefundRejectionReason(rejectionReason);
+        String rejectionSource = request.getSource() != null ? request.getSource().trim() : null;
+        order.setRefundRejectionSource(
+                rejectionSource != null && !rejectionSource.isBlank() ? rejectionSource.toUpperCase() : null);
         // Cũng lưu vào note để tương thích với code cũ
         String rejectionNote = "Yêu cầu hoàn tiền đã bị từ chối. Lý do: " + rejectionReason;
         order.setNote(rejectionNote);
@@ -1045,20 +1053,82 @@ public class OrderService {
     }
 
     @Transactional
-    public Order confirmRefund(String orderId) {
+    public Order csConfirmReturn(String orderId, ReturnProcessRequest request) {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_EXISTED));
 
-        // Chỉ có thể xác nhận hoàn tiền cho đơn hàng có status RETURN_REQUESTED
         if (order.getStatus() != OrderStatus.RETURN_REQUESTED) {
+            throw new AppException(
+                    ErrorCode.UNCATEGORIZED_EXCEPTION,
+                    "Chỉ xác nhận các đơn đang ở trạng thái 'Khách yêu cầu hoàn tiền / trả hàng'");
+        }
+
+        appendProcessingNote(order, request);
+        order.setStatus(OrderStatus.RETURN_CS_CONFIRMED);
+        return orderRepository.save(order);
+    }
+
+    @Transactional
+    public Order staffConfirmReturn(String orderId, ReturnProcessRequest request) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_EXISTED));
+
+        if (order.getStatus() != OrderStatus.RETURN_CS_CONFIRMED) {
+            throw new AppException(
+                    ErrorCode.UNCATEGORIZED_EXCEPTION,
+                    "Chỉ xử lý các đơn đã được CSKH xác nhận.");
+        }
+
+        appendProcessingNote(order, request);
+        if (request != null && request.getNote() != null && !request.getNote().isBlank()) {
+            order.setStaffInspectionResult(request.getNote().trim());
+        }
+        if (request != null && request.getRefundAmount() != null) {
+            order.setRefundAmount(request.getRefundAmount());
+        }
+        order.setStatus(OrderStatus.RETURN_STAFF_CONFIRMED);
+        return orderRepository.save(order);
+    }
+
+    @Transactional
+    public Order confirmRefund(String orderId, ReturnProcessRequest request) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_EXISTED));
+
+        // Chỉ có thể xác nhận hoàn tiền cho đơn hàng đã được staff kiểm tra
+        if (order.getStatus() != OrderStatus.RETURN_STAFF_CONFIRMED) {
             throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION, 
                     "Chỉ có thể xác nhận hoàn tiền cho đơn hàng đang ở trạng thái 'Hoàn tiền/ trả hàng'");
         }
 
-        // Cập nhật status
+        if (request != null && request.getNote() != null && !request.getNote().isBlank()) {
+            String trimmed = request.getNote().trim();
+            order.setAdminProcessingNote(trimmed);
+            appendProcessingNote(order, ReturnProcessRequest.builder().note(trimmed).build());
+        }
+
+        if (request != null && request.getRefundAmount() != null) {
+            order.setRefundAmount(request.getRefundAmount());
+        }
         order.setStatus(OrderStatus.REFUNDED);
 
         return orderRepository.save(order);
+    }
+
+    private void appendProcessingNote(Order order, ReturnProcessRequest request) {
+        if (request == null) {
+            return;
+        }
+        String note = request.getNote();
+        if (note == null || note.isBlank()) {
+            return;
+        }
+        String current = order.getNote();
+        if (current == null || current.isBlank()) {
+            order.setNote(note.trim());
+        } else {
+            order.setNote(current + System.lineSeparator() + note.trim());
+        }
     }
 }
 

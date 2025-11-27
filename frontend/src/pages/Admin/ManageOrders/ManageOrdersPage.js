@@ -22,15 +22,29 @@ const mapOrderStatus = (statusRaw) => {
         case 'CANCELLED':
             return { label: 'Đã hủy', css: 'cancelled' };
         case 'RETURN_REQUESTED':
-            return { label: 'Yêu cầu hoàn tiền/ trả hàng', css: 'return-requested' };
+            return { label: 'Khách hàng yêu cầu hoàn tiền/ trả hàng', css: 'return-requested' };
+        case 'RETURN_CS_CONFIRMED':
+            return { label: 'CSKH đã xác nhận', css: 'return-requested' };
+        case 'RETURN_STAFF_CONFIRMED':
+            return { label: 'Nhân viên đã xác nhận hàng', css: 'processing' };
         case 'REFUNDED':
-            return { label: 'Đã hoàn tiền/ trả hàng', css: 'refunded' };
+            return { label: 'Hoàn tiền thành công', css: 'refunded' };
         case 'RETURN_REJECTED':
             return { label: 'Từ chối hoàn tiền/ trả hàng', css: 'return-rejected' };
         default:
             return { label: statusRaw || 'Chờ xác nhận', css: 'pending' };
     }
 };
+
+const REFUND_STATUS_SET = new Set([
+    'RETURN_REQUESTED',
+    'RETURN_CS_CONFIRMED',
+    'RETURN_STAFF_CONFIRMED',
+    'REFUNDED',
+    'RETURN_REJECTED',
+]);
+
+const isRefundOrder = (order) => REFUND_STATUS_SET.has(String(order?.rawStatus || order?.status || '').toUpperCase());
 
 const STATUS_FILTERS = [
     { value: 'all', label: 'Tất cả trạng thái' },
@@ -43,8 +57,9 @@ const STATUS_FILTERS = [
 
 const REFUND_STATUS_FILTERS = [
     { value: 'all', label: 'Tất cả trạng thái' },
-    { value: 'return-requested', label: 'Chưa xác nhận' },
-    { value: 'refunded', label: 'Đã xác nhận & gửi Admin' },
+    { value: 'return-requested', label: 'Khách hàng yêu cầu hoàn tiền/ trả hàng' },
+    { value: 'return-cs', label: 'CSKH đã xác nhận' },
+    { value: 'return-staff', label: 'Nhân viên đã xác nhận hàng' },
     { value: 'return-rejected', label: 'Từ chối' },
 ];
 
@@ -207,38 +222,7 @@ function ManageOrdersPage() {
 
     // Filter orders - exclude return/refund orders from main table
     const filteredOrders = useMemo(() => {
-        console.log('🔍 Filtering orders. Total orders:', orders.length);
-        if (orders.length > 0) {
-            console.log('🔍 All order statuses:', orders.map(o => ({ 
-                code: o.code, 
-                rawStatus: o.rawStatus, 
-                statusClass: o.statusClass,
-                statusLabel: o.statusLabel 
-            })));
-        }
-        
-        // TẠM THỜI: Hiển thị TẤT CẢ đơn hàng để debug
-        let list = [...orders];
-        console.log('🔍 DEBUG: Showing ALL orders (filter disabled):', list.length);
-        
-        // TODO: Uncomment sau khi debug xong
-        /*
-        let list = orders.filter((order) => {
-            // Exclude return/refund statuses from main orders table
-            const returnStatuses = [
-                'RETURN_REQUESTED',
-                'REFUNDED',
-                'RETURN_REJECTED'
-            ];
-            const orderStatus = (order.rawStatus || '').toUpperCase();
-            const shouldInclude = !returnStatuses.includes(orderStatus);
-            if (!shouldInclude) {
-                console.log('🔍 Excluding order from main table:', order.code, 'status:', orderStatus, '(will show in refund table)');
-            }
-            return shouldInclude;
-        });
-        console.log('🔍 After return/refund filter:', list.length, 'orders remaining');
-        */
+        let list = orders.filter((order) => !isRefundOrder(order));
 
         if (searchTerm.trim()) {
             const query = searchTerm.trim().toLowerCase();
@@ -289,23 +273,13 @@ function ManageOrdersPage() {
     }, [filteredOrders, currentPage]);
 
     // Filter return/refund orders for the second table
+    // Loại bỏ các đơn đã hoàn tiền thành công (REFUNDED)
     const refundEligibleOrders = useMemo(() => {
-        const returnStatuses = [
-            'RETURN_REQUESTED',
-            'REFUNDED',
-            'RETURN_REJECTED'
-        ];
-        
-        console.log('🔍 Filtering refund orders. Total orders:', orders.length);
         let list = orders.filter((order) => {
-            const orderStatus = (order.rawStatus || '').toUpperCase();
-            const isRefundOrder = returnStatuses.includes(orderStatus);
-            if (isRefundOrder) {
-                console.log('🔍 Including refund order:', order.code, 'status:', orderStatus);
-            }
-            return isRefundOrder;
+            if (!isRefundOrder(order)) return false;
+            const status = (order.rawStatus || order.status || '').toUpperCase();
+            return status !== 'REFUNDED'; // Loại bỏ đơn đã hoàn tiền thành công
         });
-        console.log('🔍 Refund eligible orders:', list.length);
 
         // Apply search filter if needed
         if (refundSearchTerm.trim()) {
@@ -319,7 +293,22 @@ function ManageOrdersPage() {
         }
 
         if (refundStatusFilter !== 'all') {
-            list = list.filter((order) => order.statusClass === refundStatusFilter);
+            list = list.filter((order) => {
+                const status = (order.rawStatus || '').toUpperCase();
+                if (refundStatusFilter === 'return-requested') {
+                    return status === 'RETURN_REQUESTED';
+                }
+                if (refundStatusFilter === 'return-cs') {
+                    return status === 'RETURN_CS_CONFIRMED';
+                }
+                if (refundStatusFilter === 'return-staff') {
+                    return status === 'RETURN_STAFF_CONFIRMED';
+                }
+                if (refundStatusFilter === 'return-rejected') {
+                    return status === 'RETURN_REJECTED';
+                }
+                return true;
+            });
         }
 
         return [...list].sort((a, b) => {

@@ -11,5 +11,10 @@ import lombok.*;
 public class RejectRefundRequest {
     @NotBlank(message = "Lý do từ chối không được để trống")
     private String reason;
+
+    /**
+     * Nguồn từ chối: CSKH hoặc STAFF. Có thể null để tương thích dữ liệu cũ.
+     */
+    private String source;
 }
 

@@ -24,9 +24,13 @@ const mapOrderStatus = (statusRaw) => {
         case 'CANCELLED':
             return { label: 'Đã hủy', css: 'cancelled' };
         case 'RETURN_REQUESTED':
-            return { label: 'Chưa xác nhận', css: 'return-requested' };
+            return { label: 'Khách hàng yêu cầu hoàn tiền/ trả hàng', css: 'return-requested' };
+        case 'RETURN_CS_CONFIRMED':
+            return { label: 'Chờ nhân viên xác nhận hàng', css: 'return-requested' };
+        case 'RETURN_STAFF_CONFIRMED':
+            return { label: 'Chờ Admin hoàn tiền', css: 'processing' };
         case 'REFUNDED':
-            return { label: 'Đã xác nhận & gửi Admin', css: 'refunded' };
+            return { label: 'Hoàn tiền thành công', css: 'refunded' };
         case 'RETURN_REJECTED':
             return { label: 'Từ chối', css: 'return-rejected' };
         default:
@@ -37,9 +41,13 @@ const mapOrderStatus = (statusRaw) => {
 // Kiểm tra xem đơn hàng có phải là đơn hoàn về không
 const isRefundOrder = (order) => {
     const status = String(order?.rawStatus || order?.status || '').toUpperCase();
-    return status === 'RETURN_REQUESTED' || 
-           status === 'REFUNDED' || 
-           status === 'RETURN_REJECTED';
+    return (
+        status === 'RETURN_REQUESTED' ||
+        status === 'RETURN_CS_CONFIRMED' ||
+        status === 'RETURN_STAFF_CONFIRMED' ||
+        status === 'REFUNDED' ||
+        status === 'RETURN_REJECTED'
+    );
 };
 
 // Dữ liệu mẫu dùng tạm nếu API chưa có / lỗi
@@ -254,13 +262,18 @@ export default function OrderManagementPage() {
     }, []);
 
     // Tách orders thành 2 nhóm: normal orders và refund orders
+    // Loại bỏ các đơn đã hoàn tiền thành công (REFUNDED)
     const { normalOrders, refundOrders } = useMemo(() => {
         const normal = [];
         const refund = [];
         
         orders.forEach((order) => {
             if (isRefundOrder(order)) {
-                refund.push(order);
+                const status = String(order?.rawStatus || order?.status || '').toUpperCase();
+                // Chỉ thêm vào refundOrders nếu không phải RETURN_REQUESTED và không phải REFUNDED
+                if (status !== 'RETURN_REQUESTED' && status !== 'REFUNDED') {
+                    refund.push(order);
+                }
             } else {
                 normal.push(order);
             }
@@ -360,10 +373,10 @@ export default function OrderManagementPage() {
         if (refundStatusFilter !== 'all') {
             result = result.filter((o) => {
                 const status = String(o.rawStatus || o.status || '').toUpperCase();
-                if (refundStatusFilter === 'return-requested') {
-                    return status === 'RETURN_REQUESTED';
-                } else if (refundStatusFilter === 'refunded') {
-                    return status === 'REFUNDED';
+                if (refundStatusFilter === 'return-cs') {
+                    return status === 'RETURN_CS_CONFIRMED';
+                } else if (refundStatusFilter === 'return-staff') {
+                    return status === 'RETURN_STAFF_CONFIRMED';
                 } else if (refundStatusFilter === 'return-rejected') {
                     return status === 'RETURN_REJECTED';
                 }
@@ -620,8 +633,8 @@ export default function OrderManagementPage() {
                         sortLabel="Sắp xếp:"
                         sortOptions={[
                             { value: 'all', label: 'Tất cả trạng thái' },
-                            { value: 'return-requested', label: 'Chưa xác nhận' },
-                            { value: 'refunded', label: 'Đã xác nhận & gửi Admin' },
+                            { value: 'return-cs', label: 'Chờ nhân viên xác nhận hàng' },
+                            { value: 'return-staff', label: 'Chờ Admin' },
                             { value: 'return-rejected', label: 'Từ chối' },
                         ]}
                         sortValue={refundStatusFilter}

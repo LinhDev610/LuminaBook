@@ -8,8 +8,10 @@ const cx = classNames.bind(styles);
 
 // Map status from backend to display
 const statusMap = {
-    RETURN_REQUESTED: 'Yêu cầu hoàn tiền/ trả hàng',
-    REFUNDED: 'Đã hoàn tiền/ trả hàng',
+    RETURN_REQUESTED: 'Khách hàng yêu cầu hoàn tiền/ trả hàng',
+    RETURN_CS_CONFIRMED: 'CSKH đã xác nhận',
+    RETURN_STAFF_CONFIRMED: 'Nhân viên đã xác nhận hàng',
+    REFUNDED: 'Hoàn tiền thành công',
     RETURN_REJECTED: 'Từ chối hoàn tiền/ trả hàng',
 };
 
@@ -132,8 +134,12 @@ export default function RefundManagementPage() {
     }, [API_BASE_URL]);
 
     // Filter refunds based on search, date, and status
+    // Loại bỏ các đơn đã hoàn tiền thành công (REFUNDED)
     const filteredRefunds = useMemo(() => {
-        let filtered = [...refunds];
+        let filtered = refunds.filter((refund) => {
+            const status = (refund.statusRaw || '').toUpperCase();
+            return status !== 'REFUNDED'; // Loại bỏ đơn đã hoàn tiền thành công
+        });
 
         // Search filter
         if (searchQuery.trim()) {
@@ -190,6 +196,8 @@ export default function RefundManagementPage() {
     const getStatusClass = (statusRaw) => {
         const statusClasses = {
             RETURN_REQUESTED: 'pending',
+            RETURN_CS_CONFIRMED: 'processing',
+            RETURN_STAFF_CONFIRMED: 'processing',
             REFUNDED: 'completed',
             RETURN_REJECTED: 'rejected',
         };
@@ -234,8 +242,10 @@ export default function RefundManagementPage() {
                             onChange={(e) => setStatusFilter(e.target.value)}
                         >
                             <option value="all">Tất cả trạng thái</option>
-                            <option value="RETURN_REQUESTED">Yêu cầu hoàn tiền/ trả hàng</option>
-                            <option value="REFUNDED">Đã hoàn tiền/ trả hàng</option>
+                            <option value="RETURN_REQUESTED">Khách hàng yêu cầu hoàn tiền/ trả hàng</option>
+                            <option value="RETURN_CS_CONFIRMED">CSKH đã xác nhận</option>
+                            <option value="RETURN_STAFF_CONFIRMED">Nhân viên đã xác nhận hàng</option>
+                            <option value="REFUNDED">Hoàn tiền thành công</option>
                             <option value="RETURN_REJECTED">Từ chối hoàn tiền/ trả hàng</option>
                         </select>
                     </div>

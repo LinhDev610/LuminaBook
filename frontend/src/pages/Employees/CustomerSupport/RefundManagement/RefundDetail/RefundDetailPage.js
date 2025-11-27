@@ -4,6 +4,8 @@ import classNames from 'classnames/bind';
 import styles from './RefundDetailPage.module.scss';
 import { getApiBaseUrl, getStoredToken, formatCurrency } from '../../../../../services';
 import { normalizeMediaUrl } from '../../../../../services/productUtils';
+import { useNotification } from '../../../../../components/Common/Notification';
+import ConfirmDialog from '../../../../../components/Common/ConfirmDialog/DeleteAccountDialog';
 
 const cx = classNames.bind(styles);
 
@@ -162,6 +164,7 @@ const parseShippingInfo = (raw) => {
 export default function RefundDetailPage() {
     const { id } = useParams();
     const navigate = useNavigate();
+    const { success: notifySuccess, error: notifyError } = useNotification();
     const [order, setOrder] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -169,6 +172,12 @@ export default function RefundDetailPage() {
     const [processing, setProcessing] = useState(false);
     const [lightboxOpen, setLightboxOpen] = useState(false);
     const [lightboxIndex, setLightboxIndex] = useState(0);
+    const [confirmDialog, setConfirmDialog] = useState({
+        open: false,
+        title: '',
+        message: '',
+        onConfirm: null,
+    });
 
     useEffect(() => {
         const fetchOrderDetail = async () => {
@@ -262,9 +271,17 @@ export default function RefundDetailPage() {
         }
     };
 
+    const orderStatus = order?.status || '';
+    const normalizedStatus = (orderStatus || '').toUpperCase();
+    const canProcess = normalizedStatus === 'RETURN_REQUESTED';
+
     const handleReject = async () => {
+        if (!canProcess) {
+            notifyError('Đơn này đã được chuyển sang bộ phận tiếp theo, không thể từ chối.');
+            return;
+        }
         if (!rejectionNote.trim()) {
-            alert('Vui lòng nhập lý do từ chối');
+            notifyError('Vui lòng nhập lý do từ chối.');
             return;
         }
 
@@ -277,8 +294,6 @@ export default function RefundDetailPage() {
             const token = getStoredToken('token');
             const apiBaseUrl = getApiBaseUrl();
 
-            // TODO: Implement API endpoint for rejecting refund
-            // For now, we'll update the order status via a generic update endpoint
             const response = await fetch(`${apiBaseUrl}/orders/${encodeURIComponent(id)}/reject-refund`, {
                 method: 'POST',
                 headers: {
@@ -287,6 +302,7 @@ export default function RefundDetailPage() {
                 },
                 body: JSON.stringify({
                     reason: rejectionNote,
+                    source: 'CSKH',
                 }),
             });
 
@@ -295,33 +311,31 @@ export default function RefundDetailPage() {
                 throw new Error(errorData?.message || 'Không thể từ chối yêu cầu hoàn tiền');
             }
 
-            alert('Đã từ chối yêu cầu hoàn tiền thành công');
+            notifySuccess('Đã từ chối yêu cầu hoàn tiền.');
             navigate('/customer-support/refund-management');
         } catch (err) {
             console.error('Error rejecting refund:', err);
-            alert(err.message || 'Có lỗi xảy ra khi từ chối yêu cầu. Vui lòng thử lại.');
+            notifyError(err.message || 'Có lỗi xảy ra khi từ chối yêu cầu. Vui lòng thử lại.');
         } finally {
             setProcessing(false);
         }
     };
 
-    const handleConfirm = async () => {
-        if (!window.confirm('Bạn có chắc chắn muốn xác nhận yêu cầu hoàn tiền này?')) {
-            return;
-        }
-
+    const handleConfirmRefund = async () => {
         try {
             setProcessing(true);
             const token = getStoredToken('token');
             const apiBaseUrl = getApiBaseUrl();
 
-            // TODO: Implement API endpoint for confirming refund
-            const response = await fetch(`${apiBaseUrl}/orders/${encodeURIComponent(id)}/confirm-refund`, {
+            const response = await fetch(`${apiBaseUrl}/orders/${encodeURIComponent(id)}/cs-confirm-refund`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     Authorization: `Bearer ${token}`,
                 },
+                body: JSON.stringify({
+                    note: rejectionNote || undefined,
+                }),
             });
 
             if (!response.ok) {
@@ -329,14 +343,31 @@ export default function RefundDetailPage() {
                 throw new Error(errorData?.message || 'Không thể xác nhận yêu cầu hoàn tiền');
             }
 
-            alert('Đã xác nhận yêu cầu hoàn tiền thành công');
+            notifySuccess('Đã xác nhận và chuyển yêu cầu cho nhân viên xử lý.');
             navigate('/customer-support/refund-management');
         } catch (err) {
             console.error('Error confirming refund:', err);
-            alert(err.message || 'Có lỗi xảy ra khi xác nhận yêu cầu. Vui lòng thử lại.');
+            notifyError(err.message || 'Có lỗi xảy ra khi xác nhận yêu cầu. Vui lòng thử lại.');
         } finally {
             setProcessing(false);
         }
+    };
+
+    const handleConfirm = () => {
+        if (!canProcess) {
+            notifyError('Đơn này đã được chuyển sang cho nhân viên xử lý.');
+            return;
+        }
+
+        setConfirmDialog({
+            open: true,
+            title: 'Xác nhận hoàn tiền',
+            message: 'Bạn có chắc chắn muốn xác nhận hồ sơ hoàn hàng và chuyển cho nhân viên xử lý không?',
+            onConfirm: async () => {
+                setConfirmDialog({ open: false, title: '', message: '', onConfirm: null });
+                await handleConfirmRefund();
+            },
+        });
     };
 
     if (loading) {
@@ -374,7 +405,6 @@ export default function RefundDetailPage() {
     );
 
     // Parse rejection reason nếu đơn đã bị từ chối
-    const orderStatus = order?.status || '';
     const isRejected = orderStatus && (
         orderStatus.toUpperCase() === 'RETURN_REJECTED' || 
         orderStatus === 'RETURN_REJECTED' ||
@@ -596,14 +626,14 @@ export default function RefundDetailPage() {
                     <button 
                         className={cx('btn', 'btn-reject')} 
                         onClick={handleReject}
-                        disabled={processing}
+                        disabled={processing || !canProcess}
                     >
                         {processing ? 'Đang xử lý...' : 'Từ chối'}
                     </button>
                     <button 
                         className={cx('btn', 'btn-confirm')} 
                         onClick={handleConfirm}
-                        disabled={processing}
+                        disabled={processing || !canProcess}
                     >
                         {processing ? 'Đang xử lý...' : 'Xác nhận đơn'}
                     </button>
@@ -655,6 +685,17 @@ export default function RefundDetailPage() {
                     </div>
                 </div>
             )}
+            <ConfirmDialog
+                open={confirmDialog.open}
+                title={confirmDialog.title}
+                message={confirmDialog.message}
+                onConfirm={confirmDialog.onConfirm}
+                onCancel={() =>
+                    setConfirmDialog({ open: false, title: '', message: '', onConfirm: null })
+                }
+                confirmText="Xác nhận"
+                cancelText="Hủy"
+            />
         </div>
     );
 }

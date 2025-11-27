@@ -638,8 +638,13 @@ public class OrderService {
                 stock = 0;
             }
             int updatedStock = stock - quantity;
-            product.getInventory().setStockQuantity(Math.max(0, updatedStock));
+            int normalizedStock = Math.max(0, updatedStock);
+            product.getInventory().setStockQuantity(normalizedStock);
             product.getInventory().setLastUpdated(LocalDate.now());
+
+            if (stock > 40 && normalizedStock <= 40) {
+                notifyStaffLowStock(product, normalizedStock);
+            }
         }
 
         productRepository.save(product);
@@ -1291,7 +1296,8 @@ public class OrderService {
             notificationService.sendToStaff(
                     "Khách hàng hủy đơn hàng",
                     message,
-                    "WARNING");
+                    "WARNING",
+                    String.format("/staff/orders/%s", order.getId()));
         } catch (Exception e) {
             log.warn("Không thể gửi thông báo hủy đơn bởi khách hàng cho order {}", order.getId(), e);
         }
@@ -1303,7 +1309,8 @@ public class OrderService {
             notificationService.sendToStaff(
                     "Đơn hàng hoàn về cần kiểm tra",
                     String.format("Bộ phận CSKH đã xác nhận hoàn trả cho đơn %s. Vui lòng kiểm tra hàng hoàn và xử lý tồn kho.", code),
-                    "INFO");
+                    "INFO",
+                    String.format("/staff/orders/%s", order.getId()));
         } catch (Exception e) {
             log.warn("Không thể gửi thông báo đơn hoàn về cho order {}", order.getId(), e);
         }
@@ -1315,6 +1322,23 @@ public class OrderService {
             return order.getCode();
         }
         return order.getId();
+    }
+
+    private void notifyStaffLowStock(Product product, int stock) {
+        if (product == null) {
+            return;
+        }
+        try {
+            String name = product.getName() != null ? product.getName() : product.getId();
+            String code = product.getId();
+            notificationService.sendToStaff(
+                    "Sản phẩm sắp hết hàng",
+                    String.format("Sản phẩm \"%s\" (Mã: %s) chỉ còn %d sản phẩm trong kho. Vui lòng nhập thêm.", name, code, stock),
+                    "WARNING",
+                    String.format("/staff/products/%s", product.getId()));
+        } catch (Exception e) {
+            log.warn("Không thể gửi thông báo low-stock cho sản phẩm {}", product.getId(), e);
+        }
     }
 }
 

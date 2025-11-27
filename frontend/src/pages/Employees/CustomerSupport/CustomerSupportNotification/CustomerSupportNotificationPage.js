@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import classNames from 'classnames/bind';
+import { useNavigate } from 'react-router-dom';
 import styles from './CustomerSupportNotificationPage.module.scss';
 import { useNotification } from '../../../../components/Common/Notification';
 import {
@@ -17,7 +18,7 @@ const cx = classNames.bind(styles);
 // Format thời gian tương đối (ví dụ: "5 phút trước")
 const formatRelativeTime = (dateString) => {
     if (!dateString) return '';
-    
+
     try {
         const date = new Date(dateString);
         const now = new Date();
@@ -43,6 +44,7 @@ const formatRelativeTime = (dateString) => {
 };
 
 export default function StaffNotificationPage() {
+    const navigate = useNavigate();
     const { success, error: notifyError } = useNotification();
     const [notifications, setNotifications] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -60,7 +62,7 @@ export default function StaffNotificationPage() {
 
             const result = await getMyNotifications(token);
             console.log('Notification API result:', result);
-            
+
             if (result.ok) {
                 // Kiểm tra nếu result.data là mảng
                 if (Array.isArray(result.data)) {
@@ -69,7 +71,7 @@ export default function StaffNotificationPage() {
                         const complaintNotifications = result.data.filter((notification) => {
                             const title = (notification.title || '').toLowerCase();
                             const message = (notification.message || notification.content || '').toLowerCase();
-                            
+
                             // Kiểm tra nếu title hoặc message chứa từ khóa liên quan đến khiếu nại
                             return (
                                 title.includes('khiếu nại') ||
@@ -80,7 +82,7 @@ export default function StaffNotificationPage() {
                                 message.includes('ticket')
                             );
                         });
-                        
+
                         // Sắp xếp theo thời gian mới nhất trước
                         const sorted = complaintNotifications.sort((a, b) => {
                             const dateA = new Date(a.createdAt || a.created_at || 0);
@@ -235,6 +237,14 @@ export default function StaffNotificationPage() {
 
     const unreadCount = notifications.filter((n) => !n.isRead && !n.readAt).length;
 
+    const handleViewDetail = (notification) => {
+        if (!notification?.link) return;
+        if (!notification.isRead && !notification.readAt) {
+            handleMarkAsRead(notification.id);
+        }
+        navigate(notification.link);
+    };
+
     return (
         <div className={cx('container')}>
             <div className={cx('header')}>
@@ -295,6 +305,14 @@ export default function StaffNotificationPage() {
                                     <span className={cx('notification-time')}>{relativeTime}</span>
                                 </div>
                                 <div className={cx('notification-actions')}>
+                                    {notification.link && (
+                                        <button
+                                            className={cx('btn', 'btn-link')}
+                                            onClick={() => handleViewDetail(notification)}
+                                        >
+                                            Xem chi tiết
+                                        </button>
+                                    )}
                                     {!isRead && (
                                         <button
                                             className={cx('btn', 'btn-read')}

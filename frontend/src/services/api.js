@@ -374,6 +374,15 @@ export async function updateProduct(productId, productData, token = null) {
     return { ok, data: extractResult(data) };
 }
 
+export async function restockProduct(productId, quantity, token = null) {
+    const { data, ok } = await apiRequest(products.restock(productId), {
+        method: 'POST',
+        body: { quantity },
+        token,
+    });
+    return { ok, data: extractResult(data) };
+}
+
 export async function approveProduct(approveData, token = null) {
     const { data, ok } = await apiRequest(products.approve, { method: 'POST', body: approveData, token });
     return { ok, data: extractResult(data) };

@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.*;
 import com.lumina_book.backend.dto.request.ApiResponse;
 import com.lumina_book.backend.dto.request.ApproveProductRequest;
 import com.lumina_book.backend.dto.request.ProductCreationRequest;
+import com.lumina_book.backend.dto.request.ProductRestockRequest;
 import com.lumina_book.backend.dto.request.ProductUpdateRequest;
 import com.lumina_book.backend.dto.response.ProductResponse;
 import com.lumina_book.backend.service.ProductService;
@@ -104,6 +105,14 @@ public class ProductController {
             @PathVariable String productId, @RequestBody @Valid ProductUpdateRequest request) {
         return ApiResponse.<ProductResponse>builder()
                 .result(productService.updateProduct(productId, request))
+                .build();
+    }
+
+    @PostMapping("/{productId}/restock")
+    ApiResponse<ProductResponse> restockProduct(
+            @PathVariable String productId, @RequestBody @Valid ProductRestockRequest request) {
+        return ApiResponse.<ProductResponse>builder()
+                .result(productService.restockProduct(productId, request))
                 .build();
     }
 

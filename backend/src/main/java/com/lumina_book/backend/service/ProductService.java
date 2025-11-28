@@ -20,6 +20,7 @@ import com.lumina_book.backend.entity.*;
 
 import com.lumina_book.backend.dto.request.ApproveProductRequest;
 import com.lumina_book.backend.dto.request.ProductCreationRequest;
+import com.lumina_book.backend.dto.request.ProductRestockRequest;
 import com.lumina_book.backend.dto.request.ProductUpdateRequest;
 import com.lumina_book.backend.dto.response.ProductResponse;
 import com.lumina_book.backend.enums.ProductStatus;
@@ -224,6 +225,48 @@ public class ProductService {
 
         Product savedProduct = productRepository.save(product);
         log.info("Product updated: {} by user: {}", productId, user.getEmail());
+        return productMapper.toResponse(savedProduct);
+    }
+
+    @Transactional
+    public ProductResponse restockProduct(String productId, ProductRestockRequest request) {
+        Authentication authentication = SecurityUtil.getAuthentication();
+        String userEmail = authentication.getName();
+        User user = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+
+        Product product = productRepository
+                .findById(productId)
+                .orElseThrow(() -> new AppException(ErrorCode.PRODUCT_NOT_EXISTED));
+
+        boolean isAdmin = authentication.getAuthorities().stream()
+                .anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN"));
+
+        if (!isAdmin && !product.getSubmittedBy().getId().equals(user.getId())) {
+            throw new AppException(ErrorCode.UNAUTHORIZED);
+        }
+
+        int quantityToAdd = request.getQuantity();
+        if (quantityToAdd <= 0) {
+            throw new AppException(ErrorCode.BAD_REQUEST);
+        }
+
+        Inventory inventory = product.getInventory();
+        if (inventory == null) {
+            inventory = Inventory.builder()
+                    .stockQuantity(quantityToAdd)
+                    .lastUpdated(LocalDate.now())
+                    .product(product)
+                    .build();
+            product.setInventory(inventory);
+        } else {
+            int currentStock = inventory.getStockQuantity() != null ? inventory.getStockQuantity() : 0;
+            inventory.setStockQuantity(currentStock + quantityToAdd);
+            inventory.setLastUpdated(LocalDate.now());
+        }
+
+        product.setUpdatedAt(LocalDateTime.now());
+        Product savedProduct = productRepository.save(product);
         return productMapper.toResponse(savedProduct);
     }
 

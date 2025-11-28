@@ -1,6 +1,6 @@
 import classNames from 'classnames/bind';
 import styles from './ProductManagementPage.scss';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useLocalStorage from '../../../../hooks/useLocalStorage';
 import { useProducts } from '../../../../hooks/useProducts';
@@ -11,10 +11,13 @@ import {
     filterByStatus,
     filterByDate,
     sortByDate,
-    STATUS_MAP, FALLBACK_THUMB
+    STATUS_MAP, FALLBACK_THUMB,
+    restockProduct,
 } from '../../../../services';
 import SearchAndSort from '../../../../components/Common/SearchAndSort';
 import StatusBadge from '../../../../components/Common/StatusBadge';
+import RestockProductDialog from '../../../../components/Common/RestockProductDialog';
+import RestockDialog from '../../../../components/Common/ConfirmDialog/RestockDialog';
 
 const cx = classNames.bind(styles);
 
@@ -25,6 +28,14 @@ export default function ProductManagementPage() {
     const [keyword, setKeyword] = useState('');
     const [dateFilter, setDateFilter] = useState('');
     const [tab, setTab] = useState('all');
+    const [productsData, setProductsData] = useState([]);
+    const [restockTarget, setRestockTarget] = useState(null);
+    const [restockOpen, setRestockOpen] = useState(false);
+    const [restockConfirmOpen, setRestockConfirmOpen] = useState(false);
+    const [restockLoading, setRestockLoading] = useState(false);
+    const [restockSuccess, setRestockSuccess] = useState('');
+    const [restockErrorMsg, setRestockErrorMsg] = useState('');
+    const [pendingQuantity, setPendingQuantity] = useState(null);
 
     // Fetch data using custom hooks (API endpoint (backend)
     const { products: allProducts, loading, error } = useProducts({
@@ -33,11 +44,15 @@ export default function ProductManagementPage() {
     });
     const { activeCategoryIdSet, activeCategoryNameSet, loaded: activeLoaded } = useActiveCategories(token);
 
+    useEffect(() => {
+        setProductsData(allProducts);
+    }, [allProducts]);
+
     // ========== Filter Logic ==========
 
     // Filter products using utility functions
     const filtered = useMemo(() => {
-        let result = allProducts;
+        let result = productsData;
         if (activeLoaded) {
             result = filterByActiveCategories(result, activeCategoryIdSet, activeCategoryNameSet);
         }
@@ -45,7 +60,94 @@ export default function ProductManagementPage() {
         result = filterByKeyword(result, keyword);
         result = filterByDate(result, dateFilter);
         return sortByDate(result);
-    }, [allProducts, tab, keyword, dateFilter, activeCategoryIdSet, activeCategoryNameSet, activeLoaded]);
+    }, [productsData, tab, keyword, dateFilter, activeCategoryIdSet, activeCategoryNameSet, activeLoaded]);
+
+    const resetRestockFlow = () => {
+        setRestockOpen(false);
+        setRestockConfirmOpen(false);
+        setRestockTarget(null);
+        setPendingQuantity(null);
+    };
+
+    const handleOpenRestock = (product) => {
+        setRestockTarget(product);
+        setPendingQuantity(null);
+        setRestockOpen(true);
+        setRestockConfirmOpen(false);
+        setRestockErrorMsg('');
+        setRestockSuccess('');
+    };
+
+    const handleDialogCancel = () => {
+        if (restockLoading) return;
+        resetRestockFlow();
+    };
+
+    const handleConfirmCancel = () => {
+        if (restockLoading) return;
+        setRestockConfirmOpen(false);
+        setRestockOpen(true);
+    };
+
+    const clearRestockAlert = () => {
+        setRestockSuccess('');
+        setRestockErrorMsg('');
+    };
+
+    const handleRestockFormSubmit = (quantity) => {
+        setPendingQuantity(quantity);
+        setRestockOpen(false);
+        setRestockConfirmOpen(true);
+        setRestockErrorMsg('');
+    };
+
+    const handleRestockSubmit = async () => {
+        if (!restockTarget) return;
+        if (!token) {
+            setRestockErrorMsg('Vui lòng đăng nhập để bổ sung tồn kho.');
+            setRestockConfirmOpen(false);
+            setRestockOpen(true);
+            return;
+        }
+
+        const quantityValue = Number(pendingQuantity);
+        if (!quantityValue || Number.isNaN(quantityValue) || quantityValue <= 0) {
+            setRestockErrorMsg('Số lượng bổ sung không hợp lệ.');
+            setRestockConfirmOpen(false);
+            setRestockOpen(true);
+            return;
+        }
+
+        const targetId = restockTarget.id;
+        const targetName = restockTarget.name;
+
+        try {
+            setRestockLoading(true);
+            const response = await restockProduct(targetId, quantityValue, token);
+
+            if (!response?.ok) {
+                throw new Error(response?.data?.message || 'Không thể cập nhật tồn kho.');
+            }
+
+            const updatedStock =
+                typeof response?.data?.stockQuantity === 'number'
+                    ? response.data.stockQuantity
+                    : (restockTarget.stockQuantity ?? 0) + quantityValue;
+
+            setProductsData((prev) =>
+                prev.map((p) => (p.id === targetId ? { ...p, stockQuantity: updatedStock } : p)),
+            );
+            setRestockSuccess(`Đã bổ sung ${quantityValue} sản phẩm cho "${targetName}".`);
+            setRestockErrorMsg('');
+            resetRestockFlow();
+        } catch (err) {
+            setRestockErrorMsg(err.message || 'Không thể bổ sung tồn kho. Vui lòng thử lại.');
+            setRestockConfirmOpen(false);
+            setRestockOpen(true);
+        } finally {
+            setRestockLoading(false);
+        }
+    };
 
     // ========== Render States ==========
 
@@ -105,6 +207,20 @@ export default function ProductManagementPage() {
                     onDateChange={(value) => setDateFilter(value)}
                     dateLabel="Ngày"
                 />
+
+                {(restockSuccess || restockErrorMsg) && (
+                    <div className={cx('alert', restockErrorMsg ? 'error' : 'success')}>
+                        <span>{restockErrorMsg || restockSuccess}</span>
+                        <button
+                            type="button"
+                            className={cx('alert-close')}
+                            onClick={clearRestockAlert}
+                            aria-label="Đóng"
+                        >
+                            ×
+                        </button>
+                    </div>
+                )}
 
                 {/* Action Buttons */}
                 <div className={cx('bottom-actions')}>
@@ -189,21 +305,30 @@ export default function ProductManagementPage() {
                                         <StatusBadge status={p.status} />
                                     </td>
                                     <td>
-                                        <button
-                                            className={cx('btn', 'view-btn')}
-                                            onClick={() =>
-                                                navigate(`/staff/products/${p.id}`)
-                                            }
-                                        >
-                                            Xem chi tiết
-                                        </button>
+                                        <div className={cx('action-group')}>
+                                            <button
+                                                className={cx('btn', 'view-btn')}
+                                                onClick={() =>
+                                                    navigate(`/staff/products/${p.id}`)
+                                                }
+                                            >
+                                                Xem chi tiết
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className={cx('btn', 'restock-btn')}
+                                                onClick={() => handleOpenRestock(p)}
+                                            >
+                                                Bổ sung kho
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             ))}
                             {filtered.length === 0 && (
                                 <tr>
                                     <td colSpan={6} className={cx('empty')}>
-                                        {allProducts.length === 0
+                                        {productsData.length === 0
                                             ? 'Bạn chưa tạo sản phẩm nào.'
                                             : 'Không có sản phẩm phù hợp.'}
                                     </td>
@@ -213,6 +338,23 @@ export default function ProductManagementPage() {
                     </table>
                 </div>
             </div>
+
+            <RestockProductDialog
+                open={restockOpen}
+                product={restockTarget}
+                defaultQuantity={pendingQuantity}
+                loading={restockLoading}
+                onSubmit={handleRestockFormSubmit}
+                onCancel={handleDialogCancel}
+            />
+            <RestockDialog
+                open={restockConfirmOpen}
+                product={restockTarget}
+                quantity={pendingQuantity}
+                loading={restockLoading}
+                onConfirm={handleRestockSubmit}
+                onCancel={handleConfirmCancel}
+            />
         </div>
     );
 }

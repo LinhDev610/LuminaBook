@@ -235,16 +235,16 @@ const privateRoutes = [
         component: ReviewCommentManagementPage,
         layout: CustomerSupportLayout,
     },
-        {
-            path: '/customer-support/refund-management',
-            component: RefundManagementPage,
-            layout: CustomerSupportLayout,
-        },
-        {
-            path: '/customer-support/refund-management/:id',
-            component: RefundDetailPage,
-            layout: CustomerSupportLayout,
-        },
+    {
+        path: '/customer-support/refund-management',
+        component: RefundManagementPage,
+        layout: CustomerSupportLayout,
+    },
+    {
+        path: '/customer-support/refund-management/:id',
+        component: RefundDetailPage,
+        layout: CustomerSupportLayout,
+    },
     {
         path: '/customer-support/profile',
         component: ProfileCustomerSupportPage,

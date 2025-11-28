@@ -365,8 +365,8 @@ export async function getProductsByPriceRange(minPrice, maxPrice, token = null) 
 }
 
 export async function createProduct(productData, token = null) {
-    const { data, ok } = await apiRequest(products.root, { method: 'POST', body: productData, token });
-    return { ok, data: extractResult(data) };
+    const { data, ok, status } = await apiRequest(products.root, { method: 'POST', body: productData, token });
+    return { ok, status, data: extractResult(data) };
 }
 
 export async function updateProduct(productId, productData, token = null) {

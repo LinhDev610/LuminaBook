@@ -34,6 +34,34 @@ export default function CartPage() {
 
     const isLoggedIn = !!getStoredToken('token');
 
+    const broadcastCartCount = (cartData) => {
+        const items = cartData?.items || cartData?.cartItems;
+        let count = 0;
+        if (Array.isArray(items)) {
+            count = items.reduce((sum, item) => {
+                const qty = Number(item?.quantity);
+                if (!Number.isNaN(qty) && qty > 0) {
+                    return sum + qty;
+                }
+                return sum + 1;
+            }, 0);
+        }
+        window.dispatchEvent(new CustomEvent('cartUpdated', { detail: { count } }));
+    };
+
+    const setCartWithBroadcast = (updater) => {
+        if (typeof updater === 'function') {
+            setCart((prevCart) => {
+                const nextCart = updater(prevCart);
+                broadcastCartCount(nextCart);
+                return nextCart;
+            });
+        } else {
+            setCart(updater);
+            broadcastCartCount(updater);
+        }
+    };
+
     // Fetch cart data
     useEffect(() => {
         if (!isLoggedIn) {
@@ -73,7 +101,7 @@ export default function CartPage() {
                     return;
                 }
 
-                setCart(data);
+                setCartWithBroadcast(data);
                 if (data?.appliedVoucherCode) {
                     setSelectedVoucherCode(data.appliedVoucherCode);
                 }
@@ -194,8 +222,7 @@ export default function CartPage() {
                 return;
             }
 
-            setCart(data);
-            success('Đã cập nhật số lượng');
+            setCartWithBroadcast(data);
         } catch (err) {
             console.error('Error updating quantity:', err);
             showError('Có lỗi xảy ra khi cập nhật số lượng');
@@ -226,7 +253,7 @@ export default function CartPage() {
             }
 
             // Xóa item khỏi state giỏ hàng trên UI, độc lập với payload backend trả về
-            setCart((prev) => {
+            setCartWithBroadcast((prev) => {
                 if (!prev) return prev;
                 const nextItems = (prev.items || []).filter((item) => item.id !== itemId);
                 return { ...prev, items: nextItems };
@@ -278,7 +305,7 @@ export default function CartPage() {
                 return;
             }
 
-            setCart(data);
+            setCartWithBroadcast(data);
             setSelectedVoucherCode(code);
             setVoucherCodeInput('');
             success('Đã áp dụng mã giảm giá thành công');
@@ -306,7 +333,7 @@ export default function CartPage() {
                 return;
             }
 
-            setCart(data);
+            setCartWithBroadcast(data);
             setSelectedVoucherCode('');
             success('Đã hủy mã giảm giá');
         } catch (err) {

@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import classNames from 'classnames/bind';
 import { useNavigate } from 'react-router-dom';
 import styles from './StaffHeader.module.scss';
 import adminHeaderStyles from '../Admin/AdminHeader.module.scss';
+import { getStoredToken, getMyNotifications } from '../../../../services';
 
 const cx = classNames.bind(styles);
 const cxModal = classNames.bind(adminHeaderStyles);
@@ -10,6 +11,8 @@ const cxModal = classNames.bind(adminHeaderStyles);
 function StaffHeader() {
     const navigate = useNavigate();
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+    const [unreadCount, setUnreadCount] = useState(0);
+    const [loadingNotifications, setLoadingNotifications] = useState(false);
 
     const handleLogout = () => {
         setShowLogoutConfirm(false);
@@ -19,6 +22,42 @@ function StaffHeader() {
         sessionStorage.removeItem('token');
         navigate('/', { replace: true });
     };
+
+    useEffect(() => {
+        let isMounted = true;
+        const fetchNotifications = async () => {
+            try {
+                setLoadingNotifications(true);
+                const token = getStoredToken('token');
+                if (!token) {
+                    setUnreadCount(0);
+                    return;
+                }
+                const result = await getMyNotifications(token);
+                if (!isMounted) return;
+                if (result.ok && Array.isArray(result.data)) {
+                    const unread = result.data.filter((n) => !n.isRead && !n.readAt).length;
+                    setUnreadCount(unread);
+                } else {
+                    setUnreadCount(0);
+                }
+            } catch (error) {
+                if (isMounted) {
+                    setUnreadCount(0);
+                }
+            } finally {
+                if (isMounted) {
+                    setLoadingNotifications(false);
+                }
+            }
+        };
+
+        fetchNotifications();
+
+        return () => {
+            isMounted = false;
+        };
+    }, []);
 
     return (
         <>
@@ -30,6 +69,11 @@ function StaffHeader() {
                         onClick={() => navigate('/staff/notifications')}
                     >
                         Thông báo
+                        {loadingNotifications ? null : unreadCount > 0 && (
+                            <span className={cx('badge')}>
+                                {unreadCount > 99 ? '99+' : unreadCount}
+                            </span>
+                        )}
                     </button>
                     <button className={cx('btn', 'btn-danger')} onClick={() => setShowLogoutConfirm(true)}>
                         Đăng xuất

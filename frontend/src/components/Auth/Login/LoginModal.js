@@ -16,7 +16,7 @@ const cx = classNames.bind(styles);
 
 export default function LoginModal({ open = false, onClose }) {
     const navigate = useNavigate();
-    const { switchToRegister, switchToForgotPassword } = useAuth();
+    const { switchToRegister, switchToForgotPassword, authRedirectPath, setAuthRedirectPath } = useAuth();
     const [token, setToken] = useLocalStorage('token', null);
     const [refreshToken, setRefreshToken, removeRefreshToken] = useLocalStorage(
         'refreshToken',
@@ -80,8 +80,17 @@ export default function LoginModal({ open = false, onClose }) {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
+        const emailEmpty = !email || email.trim() === '';
+        const passwordEmpty = !password || password.trim() === '';
+
+        // Kiểm tra cả 2 trường cùng lúc
+        if (emailEmpty && passwordEmpty) {
+            setError('Vui lòng nhập địa chỉ email và mật khẩu');
+            return;
+        }
+
         // Validation bình thường cho tất cả tài khoản
-        if (!email || email.trim() === '') {
+        if (emailEmpty) {
             setError('Vui lòng nhập địa chỉ email');
             return;
         }
@@ -93,9 +102,15 @@ export default function LoginModal({ open = false, onClose }) {
             return;
         }
 
+        if (passwordEmpty) {
+            setError('Vui lòng nhập mật khẩu');
+            return;
+        }
+
         setError('');
         setIsLoading(true);
 
+        let roleRedirectPath = null;
         try {
             const payload = { email: email.trim(), password };
             // console.log('Login attempt with:', { email: email.trim(), password: password ? '***' : 'empty' });
@@ -175,24 +190,11 @@ export default function LoginModal({ open = false, onClose }) {
                     // console.log('Full meData structure:', JSON.stringify(meData, null, 2));
 
                     if (userRole === 'ADMIN') {
-                        // console.log('Admin detected, redirecting to /admin');
-                        onClose?.();
-                        navigate('/admin', { replace: true });
-                        return;
-                    }
-
-                    if (userRole === 'CUSTOMER_SUPPORT') {
-                        // console.log('Customer Support detected, redirecting to /customer-support');
-                        onClose?.();
-                        navigate('/customer-support', { replace: true });
-                        return;
-                    }
-
-                    if (userRole === 'STAFF') {
-                        console.log('Staff detected, redirecting to /staff');
-                        onClose?.();
-                        navigate('/staff', { replace: true });
-                        return;
+                        roleRedirectPath = '/admin';
+                    } else if (userRole === 'CUSTOMER_SUPPORT') {
+                        roleRedirectPath = '/customer-support';
+                    } else if (userRole === 'STAFF') {
+                        roleRedirectPath = '/staff';
                     }
 
                     // console.log('Role not matched for admin/staff, redirecting to home page');
@@ -205,9 +207,11 @@ export default function LoginModal({ open = false, onClose }) {
                     window.dispatchEvent(new CustomEvent('displayNameUpdated'));
                 }
 
+                const fallbackRedirect = authRedirectPath || '/';
+                const finalRedirect = roleRedirectPath || fallbackRedirect;
                 onClose?.();
-                // console.log('LoginModal: Redirecting to home page');
-                navigate('/', { replace: true });
+                navigate(finalRedirect, { replace: true });
+                setAuthRedirectPath(null);
             } else {
                 setError('Tài khoản hoặc mật khẩu không đúng');
             }
@@ -237,16 +241,20 @@ export default function LoginModal({ open = false, onClose }) {
                     Đăng ký
                 </button>
             </p>
-            <form onSubmit={handleSubmit} className={cx('auth-form')}>
+            <form onSubmit={handleSubmit} className={cx('auth-form')} noValidate>
                 <div className={cx('form-group')}>
                     <label className={cx('form-label')}>Email</label>
                     <input
                         type="text"
                         value={email}
-                        onChange={(e) => setEmail(e.target.value)}
+                        onChange={(e) => {
+                            setEmail(e.target.value);
+                            if (error && e.target.value.trim() !== '') {
+                                setError('');
+                            }
+                        }}
                         placeholder="email@domain.com"
                         className={cx('form-input')}
-                        required
                     />
                 </div>
                 <div className={cx('form-group')}>
@@ -255,10 +263,14 @@ export default function LoginModal({ open = false, onClose }) {
                         <input
                             type={showPassword ? 'text' : 'password'}
                             value={password}
-                            onChange={(e) => setPassword(e.target.value)}
+                            onChange={(e) => {
+                                setPassword(e.target.value);
+                                if (error && e.target.value.trim() !== '') {
+                                    setError('');
+                                }
+                            }}
                             placeholder="********"
                             className={cx('form-input', 'pw-input')}
-                            required
                         />
                         <Button
                             type="button"

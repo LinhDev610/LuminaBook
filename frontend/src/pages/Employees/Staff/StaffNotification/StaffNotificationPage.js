@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import classNames from 'classnames/bind';
+import { useNavigate } from 'react-router-dom';
 import styles from './StaffNotificationPage.module.scss';
 import { useNotification } from '../../../../components/Common/Notification';
 import {
@@ -43,6 +44,7 @@ const formatRelativeTime = (dateString) => {
 };
 
 export default function StaffNotificationPage() {
+    const navigate = useNavigate();
     const { success, error: notifyError } = useNotification();
     const [notifications, setNotifications] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -224,6 +226,9 @@ export default function StaffNotificationPage() {
             <div className={cx('header')}>
                 <h1 className={cx('title')}>Thông báo</h1>
                 <div className={cx('actions')}>
+                    <button className={cx('btn', 'btn-secondary')} onClick={() => navigate('/staff')}>
+                        ← Quay lại Dashboard
+                    </button>
                     <button
                         className={cx('btn', 'btn-primary')}
                         onClick={handleMarkAllAsRead}
@@ -248,13 +253,6 @@ export default function StaffNotificationPage() {
                     <p className={cx('empty-title')}>Không có thông báo nào</p>
                     <p className={cx('empty-desc')}>
                         Các thông báo từ admin sẽ hiển thị tại đây khi bạn có thông báo mới.
-                    </p>
-                    <p className={cx('empty-note')}>
-                        <small>
-                            Lưu ý: Nếu bạn vừa được admin duyệt/từ chối item mà không thấy thông báo, 
-                            vui lòng kiểm tra xem backend đã implement API notification chưa. 
-                            Xem file <code>NOTIFICATION_API_SPEC.md</code> để biết chi tiết.
-                        </small>
                     </p>
                 </div>
             ) : (

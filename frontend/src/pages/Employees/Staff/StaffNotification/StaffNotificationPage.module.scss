@@ -67,6 +67,15 @@
     }
 }
 
+.btn-secondary {
+    background-color: #e5e7eb;
+    color: #1a3c5a;
+
+    &:hover:not(:disabled) {
+        background-color: #d1d5db;
+    }
+}
+
 .loading,
 .empty {
     text-align: center;

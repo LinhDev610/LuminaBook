@@ -7,7 +7,6 @@ import Banner1 from '../../components/Common/Banner/Banner1';
 // Tái sử dụng mock dữ liệu nhanh từ Home nếu cần, nhưng ở trang thật sẽ lấy API
 import imgsach_test from '../../assets/images/img_sach.png';
 import heroImage from '../../assets/images/img_qc.png';
-import promoImage1 from '../../assets/images/img_kinangsong.png';
 import promoImage2 from '../../assets/images/img_taichinh.png';
 import promoImage3 from '../../assets/images/img_sachgiadinh.png';
 import iconFire from '../../assets/icons/icon_fire.png';
@@ -42,7 +41,7 @@ export default function NewBookPage() {
                 <Banner1
                     heroImage={heroImage}
                     promos={[
-                        { image: promoImage1, alt: 'Sách kĩ năng sống' },
+                        { image: imgsach_test, alt: 'Sách kĩ năng sống' },
                         { image: promoImage2, alt: 'Sách tài chính' },
                         { image: promoImage3, alt: 'Sách gia đình' },
                     ]}

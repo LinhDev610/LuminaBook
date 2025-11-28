@@ -14,6 +14,7 @@ import CustomerProfilePage from '../pages/CustomerAccount/CustomerProfile';
 import CustomerOrderHistoryPage from '../pages/CustomerAccount/CustomerOrderHistory';
 import CustomerOrderDetailPage from '../pages/CustomerAccount/CustomerOrderHistory/CustomerOrderDetailPage';
 import RefundRequestPage from '../pages/CustomerAccount/CustomerOrderHistory/RefundRequest';
+import CustomerRefundDetailPage from '../pages/CustomerAccount/CustomerOrderHistory/RefundDetail';
 import CustomerVoucherPromotionPage from '../pages/CustomerAccount/CustomerVoucherPromotion';
 import CustomerChangePasswordPage from '../pages/CustomerAccount/CustomerChangePassword';
 import CartPage from '../pages/CartPage';
@@ -24,6 +25,7 @@ import CustomerAccountLayout from '../layouts/CustomerAccountLayout';
 import AdminLayout from '../layouts/AdminLayout';
 import StaffLayout from '../layouts/StaffLayout';
 import CustomerSupportLayout from '../layouts/CustomerSupportLayout';
+import SearchResultsPage from '../pages/SearchResults';
 import ManageStaffAccountsPage from '../pages/Admin/ManageStaffAccounts';
 import ManageOrdersPage from '../pages/Admin/ManageOrders';
 import ManageOrderDetailPage from '../pages/Admin/ManageOrders/ManageOrderDetail';
@@ -63,6 +65,7 @@ import UpdateContentPage from '../pages/Employees/Staff/ContentManagement/Update
 import VouchersPromotionsPage from '../pages/Employees/Staff/VouchersPromotionsPage';
 import OrderManagementPage from '../pages/Employees/Staff/OrderManagement';
 import OrderDetailPage from '../pages/Employees/Staff/OrderManagement/OrderDetail';
+import RefundOrderDetailPage from '../pages/Employees/Staff/OrderManagement/RefundOrderDetail';
 import AddVoucherPage from '../pages/Employees/Staff/VouchersPromotionsPage/Voucher/AddVoucher/AddVoucherPage';
 import AddPromotionPage from '../pages/Employees/Staff/VouchersPromotionsPage/Promotion/AddPromotion';
 import VoucherDetailPage from '../pages/Employees/Staff/VouchersPromotionsPage/Voucher/VoucherDetail';
@@ -72,6 +75,8 @@ import UpdatePromotionPage from '../pages/Employees/Staff/VouchersPromotionsPage
 import CustomerSupportMainPage from '../pages/Employees/CustomerSupport/CustomerSupportMain';
 import ComplaintManagementPage from '../pages/Employees/CustomerSupport/ComplaintManagement';
 import ReviewCommentManagementPage from '../pages/Employees/CustomerSupport/ReviewCommentManagement';
+import RefundManagementPage from '../pages/Employees/CustomerSupport/RefundManagement';
+import RefundDetailPage from '../pages/Employees/CustomerSupport/RefundManagement/RefundDetail';
 import ProfileCustomerSupportPage from '../pages/Employees/CustomerSupport/ProfileCustomerSupport';
 import CustomerSupportNotificationPage from '../pages/Employees/CustomerSupport/CustomerSupportNotification';
 import SupportUserPage from '../pages/SupportUser';
@@ -79,10 +84,13 @@ import ShoppingGuidePage from '../pages/SupportUser/ShoppingGuide';
 import PaymentPolicyPage from '../pages/SupportUser/PaymentPolicy';
 import ShippingPolicyPage from '../pages/SupportUser/ShippingPolicy';
 import ReturnPolicyPage from '../pages/SupportUser/ReturnPolicy';
+import CategoryPage from '../pages/Category';
 
 // Public routes
 const publicRoutes = [
     { path: '/', component: Home },
+    { path: '/search', component: SearchResultsPage },
+    { path: '/category/:id', component: CategoryPage },
     { path: '/promotion', component: PromotionPage },
     { path: '/newbook', component: NewBookPage },
     { path: '/contact', component: Contact },
@@ -112,6 +120,7 @@ const privateRoutes = [
     { path: '/customer-account/orders', component: CustomerOrderHistoryPage, layout: CustomerAccountLayout },
     { path: '/customer-account/orders/:id', component: CustomerOrderDetailPage, layout: CustomerAccountLayout },
     { path: '/customer-account/orders/:id/refund', component: RefundRequestPage, layout: CustomerAccountLayout },
+    { path: '/customer-account/orders/:id/refund-detail', component: CustomerRefundDetailPage, layout: CustomerAccountLayout },
     { path: '/customer-account/vouchers', component: CustomerVoucherPromotionPage, layout: CustomerAccountLayout },
     { path: '/customer-account/password', component: CustomerChangePasswordPage, layout: CustomerAccountLayout },
 
@@ -199,6 +208,7 @@ const privateRoutes = [
 
     { path: '/staff/orders', component: OrderManagementPage, layout: StaffLayout },
     { path: '/staff/orders/:id', component: OrderDetailPage, layout: StaffLayout },
+    { path: '/staff/refund-orders/:id', component: RefundOrderDetailPage, layout: StaffLayout },
 
     { path: '/staff/notifications', component: StaffNotificationPage, layout: StaffLayout },
 
@@ -225,6 +235,16 @@ const privateRoutes = [
         component: ReviewCommentManagementPage,
         layout: CustomerSupportLayout,
     },
+        {
+            path: '/customer-support/refund-management',
+            component: RefundManagementPage,
+            layout: CustomerSupportLayout,
+        },
+        {
+            path: '/customer-support/refund-management/:id',
+            component: RefundDetailPage,
+            layout: CustomerSupportLayout,
+        },
     {
         path: '/customer-support/profile',
         component: ProfileCustomerSupportPage,

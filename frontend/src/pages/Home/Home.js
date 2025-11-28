@@ -12,7 +12,6 @@ import { normalizeMediaUrl } from '../../services/productUtils';
 // Import images
 import heroImage from '../../assets/images/img_qc.png';
 import Banner1 from '../../components/Common/Banner/Banner1';
-import promoImage1 from '../../assets/images/img_kinangsong.png';
 import promoImage2 from '../../assets/images/img_taichinh.png';
 import promoImage3 from '../../assets/images/img_sachgiadinh.png';
 import bannerImage1 from '../../assets/images/img_qc.png';
@@ -261,8 +260,18 @@ function Home() {
             .slice(0, Math.min(limit, products.length));
     };
 
-    const trendingProducts = sortAndSlice(allProducts, (p) => p.averageRating || 0);
+    // Sách yêu thích: chỉ lấy những sách có đánh giá trung bình ~ 5*
+    const favoriteProducts = sortAndSlice(
+        allProducts.filter((p) => (p.averageRating ?? 0) >= 4.9),
+        (p) => p.quantitySold || 0,
+    );
     const bestSellerProducts = sortAndSlice(allProducts, (p) => p.quantitySold || 0);
+    // Sách mới: 10 cuốn mới nhất dựa trên updatedAt / createdAt
+    const newestProducts = sortAndSlice(
+        allProducts,
+        (p) => (p.updatedAt ? new Date(p.updatedAt).getTime() : 0),
+        10,
+    );
 
     return (
         <div className={cx('home-wrapper')}>
@@ -273,7 +282,7 @@ function Home() {
                 <Banner1
                     heroImages={activeBannerImages.length ? activeBannerImages : [heroImage]}
                     promos={[
-                        { image: promoImage1, alt: 'Sách kĩ năng sống' },
+                        { image: imgsach_test, alt: 'Sách kĩ năng sống' },
                         { image: promoImage2, alt: 'Sách tài chính' },
                         { image: promoImage3, alt: 'Sách gia đình' },
                     ]}
@@ -316,11 +325,9 @@ function Home() {
                         <ProductList 
                             products={allProducts}
                             title="Tết ông trăng"
-                            showNavigation={false}
+                            showNavigation={true}
                             showHeader={false}
                             minimal={true}
-                            isGrid={true}
-                            gridColumns={5}
                         />
                     </div>
                 </section>
@@ -331,7 +338,7 @@ function Home() {
                         <h3 className={cx('trending-title')}>SÁCH YÊU THÍCH</h3>
                     </div>
                     <ProductList
-                        products={trendingProducts}
+                        products={favoriteProducts}
                         title="SÁCH YÊU THÍCH"
                         showNavigation={true}
                         showHeader={false}
@@ -358,11 +365,11 @@ function Home() {
 
                 <section className={cx('trending-section')}>
                     <div className={cx('trending-header')}>
-                        <h3 className={cx('trending-title')}>COMBO SÁCH HOT</h3>
+                        <h3 className={cx('trending-title')}>SÁCH MỚI</h3>
                     </div>
                     <ProductList
-                        products={allProducts}
-                        title="SÁCH BÁN CHẠY"
+                        products={newestProducts}
+                        title="SÁCH MỚI"
                         showNavigation={true}
                         showHeader={false}
                         minimal={true}

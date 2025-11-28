@@ -46,6 +46,20 @@ public class OrderResponse {
     String paymentStatus;
     Boolean paid;
     String paymentReference;
+
+    // Refund/Return request information (for list view)
+    String refundReasonType;
+    String refundDescription;
+    String refundEmail;
+    String refundReturnAddress;
+    String refundMethod;
+    String refundBank;
+    String refundAccountNumber;
+    String refundAccountHolder;
+    Double refundAmount;
+    Double refundReturnFee; // Phí trả hàng
+    String refundRejectionSource;
+    String adminProcessingNote;
 }
 
 

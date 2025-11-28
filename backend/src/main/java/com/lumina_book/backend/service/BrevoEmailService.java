@@ -192,6 +192,72 @@ public class BrevoEmailService {
         }
     }
 
+    public void sendAccountUnlockedEmail(String toEmail, String userName, String roleName) {
+        try {
+            // Prepare headers
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.set("api-key", apiKey);
+
+            // Prepare request body
+            Map<String, Object> requestBody = new HashMap<>();
+            requestBody.put("sender", Map.of("email", senderEmail, "name", "LuminaBook Admin"));
+            requestBody.put("to", new Object[] {Map.of("email", toEmail, "name", userName != null ? userName : "User")});
+            requestBody.put("subject", "Thông báo: Tài khoản của bạn đã được mở khóa - LuminaBook");
+
+            String roleDisplayName = "Khách hàng";
+            if (roleName != null) {
+                switch (roleName.toUpperCase()) {
+                    case "STAFF":
+                        roleDisplayName = "Nhân viên";
+                        break;
+                    case "CUSTOMER_SUPPORT":
+                        roleDisplayName = "Nhân viên chăm sóc khách hàng";
+                        break;
+                    case "CUSTOMER":
+                    default:
+                        roleDisplayName = "Khách hàng";
+                        break;
+                }
+            }
+
+            String emailContent = String.format(
+                    "Xin chào %s,\n\n"
+                            + "Chúng tôi xin thông báo rằng tài khoản %s của bạn tại LuminaBook đã được mở khóa.\n\n"
+                            + "Thông tin tài khoản:\n"
+                            + "- Email: %s\n"
+                            + "- Vai trò: %s\n\n"
+                            + "Bây giờ bạn có thể đăng nhập vào hệ thống và sử dụng các dịch vụ của chúng tôi.\n\n"
+                            + "Nếu bạn có bất kỳ câu hỏi nào hoặc cần hỗ trợ, vui lòng liên hệ với chúng tôi:\n"
+                            + "- Email hỗ trợ: %s\n"
+                            + "- Hoặc liên hệ qua hotline:  \n\n"
+                            + "Cảm ơn bạn đã sử dụng dịch vụ của LuminaBook.\n\n"
+                            + "Trân trọng,\n"
+                            + "Đội ngũ LuminaBook",
+                    userName != null ? userName : "Quý khách", roleDisplayName, toEmail, roleDisplayName, senderEmail);
+
+            requestBody.put("textContent", emailContent);
+            requestBody.put("htmlContent", emailContent.replace("\n", "<br>"));
+
+            HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
+
+            // Send request
+            @SuppressWarnings("rawtypes")
+            ResponseEntity<Map> response = restTemplate.postForEntity(BREVO_API_URL, request, Map.class);
+
+            if (response.getStatusCode() != HttpStatus.CREATED) {
+                log.error("Failed to send account unlocked email via Brevo API. Status: {}", response.getStatusCode());
+                throw new AppException(ErrorCode.EMAIL_SEND_FAILED);
+            }
+
+        } catch (Exception e) {
+            log.error(
+                    "Failed to send account unlocked email via Brevo API to: {} - Error: {}", toEmail, e.getMessage(), e);
+            // Don't throw exception here - account unlock should succeed even if email fails
+            // Just log the error
+        }
+    }
+
     public void sendOrderConfirmationEmail(Order order) {
         if (order == null || order.getUser() == null || order.getUser().getEmail() == null) {
             return;

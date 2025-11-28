@@ -231,16 +231,18 @@ public class UserService {
         }
 
         // active - chỉ cập nhật nếu active có trong request và user là ADMIN
-        if (request.getActive() != null) {
+        Boolean requestedActiveValue = request.getActive();
+
+        if (requestedActiveValue != null) {
             if (isAdmin) {
                 boolean oldIsActiveValue = user.isActive();
-                boolean newIsActiveValue = request.getActive();
+                boolean newIsActiveValue = requestedActiveValue;
+                
+                String userRoleName = user.getRole() != null ? user.getRole().getName() : null;
                 
                 // Check if account is being locked (transition from active to inactive)
                 if (oldIsActiveValue && !newIsActiveValue) {
                     // Account is being locked - send notification email
-                    String userRoleName = user.getRole() != null ? user.getRole().getName() : null;
-                    
                     // Only send email for CUSTOMER, STAFF, and CUSTOMER_SUPPORT (not ADMIN)
                     if (userRoleName != null && 
                         (userRoleName.equals("CUSTOMER") || 
@@ -256,6 +258,28 @@ public class UserService {
                         } catch (Exception e) {
                             // Log error but don't fail the account lock operation
                             log.error("Failed to send account locked email to: {} - Error: {}", 
+                                user.getEmail(), e.getMessage(), e);
+                        }
+                    }
+                }
+                // Check if account is being unlocked (transition from inactive to active)
+                else if (!oldIsActiveValue && newIsActiveValue) {
+                    // Account is being unlocked - send notification email
+                    // Only send email for CUSTOMER, STAFF, and CUSTOMER_SUPPORT (not ADMIN)
+                    if (userRoleName != null && 
+                        (userRoleName.equals("CUSTOMER") || 
+                         userRoleName.equals("STAFF") || 
+                         userRoleName.equals("CUSTOMER_SUPPORT"))) {
+                        try {
+                            brevoEmailService.sendAccountUnlockedEmail(
+                                user.getEmail(),
+                                user.getFullName(),
+                                userRoleName
+                            );
+                            log.info("Account unlocked notification email sent to: {} (Role: {})", user.getEmail(), userRoleName);
+                        } catch (Exception e) {
+                            // Log error but don't fail the account unlock operation
+                            log.error("Failed to send account unlocked email to: {} - Error: {}", 
                                 user.getEmail(), e.getMessage(), e);
                         }
                     }

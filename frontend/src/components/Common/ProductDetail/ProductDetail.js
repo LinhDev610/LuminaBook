@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import styles from './ProductDetail.module.scss';
 import { getApiBaseUrl, formatDateTime } from '../../../services/utils';
 import { normalizeMediaUrl } from '../../../services/productUtils';
@@ -13,6 +13,7 @@ import { useNotification } from '../Notification';
 
 const ProductDetail = ({ productId }) => {
     const navigate = useNavigate();
+    const location = useLocation();
     const API_BASE_URL = useMemo(() => getApiBaseUrl(), []);
     const [product, setProduct] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -35,6 +36,8 @@ const ProductDetail = ({ productId }) => {
     const { openLoginModal, openRegisterModal } = useAuth();
     const { success, error: showError } = useNotification();
     const isLoggedIn = !!getStoredToken('token');
+    const redirectPath = `${location.pathname}${location.search || ''}`;
+    const openLoginWithRedirect = () => openLoginModal(redirectPath);
 
     // Khi vào trang chi tiết sản phẩm, luôn đưa viewport về đầu trang
     useEffect(() => {
@@ -115,7 +118,6 @@ const ProductDetail = ({ productId }) => {
         longDescription:
             'Nếu phát huy được những khả năng còn tiềm ẩn ở bán cầu não phải bấy lâu, thì con sẽ trở thành những đứa trẻ sở hữu tư duy sáng tạo và nguồn cảm hứng dồi dào. Và chính cha mẹ sẽ là người khai phá tài năng của trẻ.',
         images: [
-            '/assets/images/img_kinangsong.png',
             '/assets/images/img_sach.png',
             '/assets/images/img_taichinh.png',
             '/assets/images/img_sachgiadinh.png',
@@ -164,6 +166,9 @@ const ProductDetail = ({ productId }) => {
     const availableStock =
         product?.availableQuantity ??
         product?.stock ??
+        product?.stockQuantity ??
+        product?.inventory?.quantity ??
+        displayProduct.stockQuantity ??
         displayProduct.availableQuantity ??
         displayProduct.stock ??
         0;
@@ -251,12 +256,12 @@ const ProductDetail = ({ productId }) => {
                 (a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0),
             );
         }
-        // "Yêu thích nhất" – tạm ưu tiên rating cao, rồi đến mới nhất
-        return copy.sort((a, b) => {
-            const ratingDiff = (b.rating || 0) - (a.rating || 0);
-            if (ratingDiff !== 0) return ratingDiff;
-            return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
-        });
+        // "Đánh giá cao nhất" – chỉ hiển thị các đánh giá 5 sao, ưu tiên mới nhất
+        return copy
+            .filter((review) => Number(review?.rating) === 5)
+            .sort(
+                (a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0),
+            );
     }, [reviews, activeReviewTab]);
 
     // Đồng bộ số lượng với tồn kho
@@ -292,7 +297,7 @@ const ProductDetail = ({ productId }) => {
         // Kiểm tra đăng nhập
         if (!isLoggedIn) {
             showError('Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng');
-            openLoginModal();
+            openLoginWithRedirect();
             return;
         }
 
@@ -313,7 +318,7 @@ const ProductDetail = ({ productId }) => {
             
             if (!token) {
                 showError('Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng');
-                openLoginModal();
+                openLoginWithRedirect();
                 return;
             }
 
@@ -324,10 +329,10 @@ const ProductDetail = ({ productId }) => {
             if (!ok) {
                 if (status === 401) {
                     showError('Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại');
-                    openLoginModal();
+                    openLoginWithRedirect();
                 } else if (status === 403) {
                     showError('Bạn không có quyền thêm sản phẩm vào giỏ hàng. Vui lòng đăng nhập với tài khoản khách hàng.');
-                    openLoginModal();
+                    openLoginWithRedirect();
                 } else if (status === 400 || status === 404) {
                     const errorMessage = data?.message || data?.error || 'Không thể thêm sản phẩm vào giỏ hàng';
                     showError(errorMessage);
@@ -342,6 +347,22 @@ const ProductDetail = ({ productId }) => {
             // Hiển thị thông báo thành công
             const productName = product?.name || displayProduct?.name || 'sản phẩm';
             success(`Đã thêm ${quantity} "${productName}" vào giỏ hàng thành công!`);
+
+            // Đồng bộ lại số lượng hiển thị trên icon giỏ hàng
+            try {
+                const { ok: cartOk, data: cartData } = await getCart(token);
+                if (cartOk) {
+                    const items = cartData?.items || cartData?.cartItems;
+                    const count = Array.isArray(items)
+                        ? items.length
+                        : typeof cartData?.itemCount === 'number'
+                            ? cartData.itemCount
+                            : 0;
+                    window.dispatchEvent(new CustomEvent('cartUpdated', { detail: { count } }));
+                }
+            } catch (syncErr) {
+                console.warn('Không thể đồng bộ số lượng giỏ hàng sau khi thêm sản phẩm:', syncErr);
+            }
         } catch (err) {
             console.error('Error adding to cart:', err);
             showError('Có lỗi xảy ra khi thêm sản phẩm vào giỏ hàng');
@@ -352,7 +373,7 @@ const ProductDetail = ({ productId }) => {
         // Kiểm tra đăng nhập
         if (!isLoggedIn) {
             showError('Vui lòng đăng nhập để mua sản phẩm');
-            openLoginModal();
+            openLoginWithRedirect();
             return;
         }
 
@@ -362,31 +383,15 @@ const ProductDetail = ({ productId }) => {
             return;
         }
 
-        // Mua ngay: mặc định số lượng là 1, không liên quan đến giỏ hàng
-        const buyNowQuantity = 1;
-
-        try {
-            let token = getStoredToken('token');
-            
-            if (!token) {
-                showError('Vui lòng đăng nhập để mua sản phẩm');
-                openLoginModal();
-                return;
-            }
-
-            // Chuyển đến trang checkout với thông tin sản phẩm để checkout trực tiếp
-            // Không thêm vào giỏ hàng
-            navigate('/checkout', {
-                state: {
-                    directCheckout: true,
-                    productId: productId,
-                    quantity: buyNowQuantity,
-                },
-            });
-        } catch (err) {
-            console.error('Error in buy now:', err);
-            showError('Có lỗi xảy ra khi xử lý mua ngay');
-        }
+        // Chuyển đến trang checkout với thông tin sản phẩm để checkout trực tiếp
+        // Không thêm vào giỏ hàng
+        navigate('/checkout', {
+            state: {
+                directCheckout: true,
+                productId: productId,
+                quantity: quantity,
+            },
+        });
     };
 
     const handleSubmitReview = async (e) => {
@@ -410,7 +415,7 @@ const ProductDetail = ({ productId }) => {
             if (status === 401) {
                 alert('Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại để viết đánh giá.');
                 setIsReviewModalOpen(false);
-                openLoginModal();
+                openLoginWithRedirect();
                 return;
             }
 
@@ -647,6 +652,14 @@ const ProductDetail = ({ productId }) => {
                                     <strong>Nhà xuất bản:</strong>{' '}
                                     {displayProduct.publisher || '-'}
                                 </div>
+                                <div>
+                                    <strong>Tồn kho:</strong>{' '}
+                                    {availableStock > 0
+                                        ? `${availableStock} quyển`
+                                        : availableStock === 0
+                                            ? 'Hết hàng'
+                                            : '-'}
+                                </div>
                             </div>
 
                             <div className={styles.ratingSection}>
@@ -876,7 +889,7 @@ const ProductDetail = ({ productId }) => {
                                     <button
                                         type="button"
                                         className={styles.inlineLink}
-                                        onClick={openLoginModal}
+                                        onClick={openLoginWithRedirect}
                                     >
                                         đăng nhập
                                     </button>
@@ -962,28 +975,28 @@ const ProductDetail = ({ productId }) => {
                     {/* Danh sách đánh giá chi tiết */}
                     <div className={styles.reviewListWrapper}>
                         <div className={styles.reviewTabs}>
-                            <button
-                                type="button"
-                                className={
-                                    activeReviewTab === 'latest'
-                                        ? `${styles.reviewTab} ${styles.reviewTabActive}`
-                                        : styles.reviewTab
-                                }
-                                onClick={() => setActiveReviewTab('latest')}
-                            >
-                                Mới nhất
-                            </button>
-                            <button
-                                type="button"
-                                className={
-                                    activeReviewTab === 'top'
-                                        ? `${styles.reviewTab} ${styles.reviewTabActive}`
-                                        : styles.reviewTab
-                                }
-                                onClick={() => setActiveReviewTab('top')}
-                            >
-                                Yêu thích nhất
-                            </button>
+                        <button
+                            type="button"
+                            className={
+                                activeReviewTab === 'latest'
+                                    ? `${styles.reviewTab} ${styles.reviewTabActive}`
+                                    : styles.reviewTab
+                            }
+                            onClick={() => setActiveReviewTab('latest')}
+                        >
+                            Mới nhất
+                        </button>
+                        <button
+                            type="button"
+                            className={
+                                activeReviewTab === 'top'
+                                    ? `${styles.reviewTab} ${styles.reviewTabActive}`
+                                    : styles.reviewTab
+                            }
+                            onClick={() => setActiveReviewTab('top')}
+                        >
+                            Đánh giá cao nhất
+                        </button>
                         </div>
 
                         {loadingReviews ? (

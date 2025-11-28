@@ -20,6 +20,28 @@
     }
 }
 
+.tabs {
+    display: inline-flex;
+    gap: 12px;
+}
+
+.tab {
+    border: 1px solid #ccd5e3;
+    background: #fff;
+    color: #1a3c5a;
+    padding: 10px 20px;
+    border-radius: 999px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    &.active {
+        background: #1a3c5a;
+        color: #fff;
+        border-color: #1a3c5a;
+    }
+}
+
 .filters {
     display: flex;
     flex-wrap: wrap;
@@ -190,6 +212,71 @@
 
     &:hover {
         opacity: 0.85;
+    }
+}
+
+.refundSection {
+    margin-top: 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.pagination {
+    margin-top: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+.paginationBtn {
+    min-width: 96px;
+    height: 40px;
+    border-radius: 999px;
+    border: 1px solid #ccd5e3;
+    background: #fff;
+    font-weight: 600;
+    color: #1a3c5a;
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    &:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+    }
+
+    &:not(:disabled):hover {
+        background: #1a3c5a;
+        color: #fff;
+        border-color: #1a3c5a;
+    }
+}
+
+.paginationInfo {
+    font-weight: 600;
+    color: #1a3c5a;
+}
+
+.refundSectionTitle {
+    font-size: 24px;
+    font-weight: 700;
+    color: #1a3c5a;
+    margin: 0;
+}
+
+.statusBadge {
+    &.return-requested {
+        background: #fff4e2;
+        color: #c77800;
+    }
+    &.refunded {
+        background: #e6f7ed;
+        color: #1b5e20;
+    }
+    &.return-rejected {
+        background: #fde8e8;
+        color: #c62828;
     }
 }
 

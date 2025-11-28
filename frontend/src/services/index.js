@@ -3,7 +3,7 @@
 // - constants: Hằng số
 // - utils: Hàm tiện ích
 
-// Re-export toàn bộ API (login, sendOTP, refreshToken, getCart, ...)
+// Re-export toàn bộ API (login, sendOTP, refreshToken, getCart, getApiBaseUrl, getStoredToken, ...)
 export * from './api';
 // Re-export hằng số
 export * from './constants';

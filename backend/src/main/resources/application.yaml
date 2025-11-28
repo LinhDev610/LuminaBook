@@ -38,7 +38,7 @@ brevo:
 jwt:
   signerKey: "/nvphzRqEgduNfnKy2ztU3XBeojbmK8jzDivxOxLIGnl+D5GfkjyXdLq15xz9af/\n"
   valid-duration: 3600  # in second
-  refreshable-duration: 360000 # in seconds
+  refreshable-duration: 360000 # in secondsor
 
 # Default avatar configuration
 app:
@@ -57,7 +57,7 @@ ghn:
 # Layer3 - Repository: Tang tuong tac truc tiep voi DBMS
 
 momo:
-  # Thông tin tích hợp MoMo sandbox (có thể thay bằng thông tin tài khoản của bạn)
+  # Thông tin tích hợp MoMo sandbox
   partner-code: MOMOLRJZ20181206
   return-url: "http://localhost:3000/order-success"
   end-point: "https://test-payment.momo.vn/v2/gateway/api"

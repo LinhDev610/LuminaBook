@@ -40,18 +40,25 @@
     overflow-x: auto;
     scroll-behavior: smooth;
     flex: 1;
+    flex-wrap: nowrap;
     scrollbar-width: none;
     -ms-overflow-style: none;
 
     &::-webkit-scrollbar {
         display: none;
     }
+
+    > * {
+        flex: 0 0 auto;
+    }
 }
 
 .grid-products {
-    padding: 16px 16px 0;
-    gap: 20px;
+    padding: 24px 40px;
+    gap: 36px;
     justify-items: center;
+    box-sizing: border-box;
+    width: 100%;
 }
 
 .nav-button {
@@ -73,6 +80,14 @@
 
     &:active {
         transform: translateY(-50%) scale(0.95);
+    }
+
+    &.disabled,
+    &:disabled {
+        opacity: 0.3;
+        cursor: default;
+        pointer-events: none;
+        transform: translateY(-50%);
     }
 }
 

@@ -1,0 +1,74 @@
+.search-page {
+    padding: 40px 60px;
+    min-height: 70vh;
+    background: #f5f7fb;
+}
+
+.search-header {
+    margin-bottom: 24px;
+
+    h1 {
+        margin: 0 0 8px;
+        font-size: 28px;
+        color: #1a3c5a;
+    }
+
+    p {
+        margin: 0;
+        color: #4b5675;
+    }
+}
+
+.state-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 24px;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    margin-top: 20px;
+    text-align: center;
+
+    &.error {
+        border-color: rgba(220, 38, 38, 0.3);
+        color: #b91c1c;
+    }
+
+    button {
+        margin-top: 12px;
+        padding: 10px 18px;
+        border-radius: 8px;
+        border: none;
+        background: #1a3c5a;
+        color: #fff;
+        cursor: pointer;
+    }
+}
+
+.empty-state {
+    background: #fff;
+    border-radius: 12px;
+    padding: 24px;
+    border: 1px dashed rgba(0, 0, 0, 0.2);
+    margin-top: 20px;
+    text-align: center;
+
+    p {
+        margin-bottom: 12px;
+    }
+
+    button {
+        padding: 10px 18px;
+        border-radius: 8px;
+        border: none;
+        background: #1a3c5a;
+        color: #fff;
+        cursor: pointer;
+    }
+}
+
+.results-grid {
+    margin-top: 24px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 24px;
+}
+

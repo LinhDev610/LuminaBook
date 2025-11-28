@@ -21,23 +21,26 @@ export default function ReturnPolicyPage() {
                     <div className={cx('section')}>
                         <h2 className={cx('section-title')}>1. Điều kiện đổi trả</h2>
                         <p className={cx('section-text')}>
-                            Sản phẩm được đổi/trả trong các trường hợp sau:
+                            Sản phẩm được trả hàng/ hoàn tiền trong các trường hợp sau:
                         </p>
                         <ul className={cx('list')}>
                             <li>Sản phẩm bị lỗi do nhà sản xuất</li>
                             <li>Sản phẩm không đúng với mô tả trên website</li>
                             <li>Sản phẩm bị hư hỏng trong quá trình vận chuyển</li>
                             <li>Giao nhầm sản phẩm</li>
+                            <li>Khách hàng đổi ý/ không còn nhu cầu sử dụng sản phẩm</li>
+                            <li>Đặt nhầm sản phẩm</li>
+                            <li>...</li>
                         </ul>
                     </div>
 
                     <div className={cx('section')}>
                         <h2 className={cx('section-title')}>2. Thời gian đổi trả</h2>
                         <p className={cx('section-text')}>
-                            Yêu cầu đổi trả phải được thực hiện trong vòng <strong>7 ngày</strong> kể từ ngày nhận hàng.
+                            Yêu cầu trả hàng/ hoàn tiền được thực hiện trong vòng <strong>7 ngày</strong> kể từ ngày nhận hàng.
                         </p>
                         <p className={cx('section-text', 'note')}>
-                            Sau thời hạn trên, chúng tôi không thể hỗ trợ đổi trả.
+                            Sau thời hạn trên, nếu bạn vẫn muốn trả hàng/ hoàn tiền, vui lòng liên hệ bộ phận Chăm sóc khách hàng qua qua Hotline 0123 456 789 hoặc gửi đơn khiếu nại để được hỗ trợ xử lý
                         </p>
                     </div>
 
@@ -50,21 +53,22 @@ export default function ReturnPolicyPage() {
                             <li>Còn nguyên vẹn, chưa sử dụng</li>
                             <li>Còn đầy đủ bao bì, tem mác</li>
                             <li>Không bị trầy xước, hư hỏng do người dùng</li>
-                            <li>Có hóa đơn mua hàng hoặc mã đơn hàng</li>
                         </ul>
                     </div>
 
                     <div className={cx('section')}>
                         <h2 className={cx('section-title')}>4. Quy trình đổi trả</h2>
                         <ol className={cx('ordered-list')}>
-                            <li>Liên hệ bộ phận chăm sóc khách hàng qua email hoặc hotline</li>
+                            <li>Tại mục lịch sử giao hàng/ Đã giao, đối với những sản phẩm đủ điều kiện, người dùng có thể chọn nút "Yêu cầu trả hàng/ Hoàn tiền" ngay tại từng sản phẩm</li>
                             <li>Cung cấp thông tin đơn hàng và lý do đổi trả</li>
                             <li>Chụp ảnh sản phẩm (nếu có lỗi) và gửi cho chúng tôi</li>
                             <li>Chờ xác nhận từ bộ phận hỗ trợ</li>
                             <li>Đóng gói sản phẩm và gửi về địa chỉ được chỉ định</li>
-                            <li>Nhận sản phẩm mới hoặc hoàn tiền (nếu yêu cầu trả)</li>
+                            <li>Nhận sản phẩm mới và hoàn tiền (nếu đủ điều kiện) sau 3-5 ngày nhận được đơn trả hàng.</li>
                         </ol>
                     </div>
+
+
 
                     <div className={cx('section')}>
                         <h2 className={cx('section-title')}>5. Chính sách Trả hàng & Hoàn tiền</h2>
@@ -105,11 +109,11 @@ export default function ReturnPolicyPage() {
                                 <ul className={cx('list')}>
                                     <li>
                                         <strong>Nếu sản phẩm có lỗi từ phía cửa hàng</strong> (sách bị rách, sai phiên bản, thiếu trang, lỗi in ấn), 
-                                        chúng tôi sẽ hoàn lại <strong>100% giá trị sản phẩm và chi phí vận chuyển</strong> cho quý khách.
+                                        chúng tôi sẽ hoàn lại <strong>100% giá trị sản phẩm và chi phí vận chuyển trả hàng</strong> cho quý khách.
                                     </li>
                                     <li>
                                         <strong>Nếu yêu cầu trả hàng/hoàn tiền xuất phát từ lý do cá nhân của khách hàng</strong> 
-                                        (đặt nhầm, không thích, không còn nhu cầu), chúng tôi sẽ trừ <strong>10% giá trị sản phẩm</strong> và khách hàng sẽ tự chịu toàn bộ chi phí vận chuyển trả hàng.
+                                        (đặt nhầm, không thích, không còn nhu cầu), chúng tôi sẽ trừ <strong>10% giá trị sản phẩm</strong> và khách hàng sẽ chịu toàn bộ chi phí vận chuyển trả hàng.
                                     </li>
                                 </ul>
                             </div>
@@ -125,8 +129,8 @@ export default function ReturnPolicyPage() {
                             Tiền sẽ được hoàn về:
                         </p>
                         <ul className={cx('list')}>
-                            <li>Tài khoản MoMo (nếu thanh toán qua MoMo)</li>
-                            <li>Tài khoản ngân hàng (nếu thanh toán COD)</li>
+                            
+                            <li>Tài khoản ngân hàng</li>
                         </ul>
                     </div>
                 </div>

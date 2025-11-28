@@ -401,7 +401,7 @@ function OrderDetailPage() {
     const statusKey = order.statusKey || mapOrderStatus(order.status || order.rawStatus).key;
     const statusInfo = STATUS_MAP[order.status] || STATUS_MAP.PENDING;
     const isReturnFlow = normalizedStatus === 'RETURNING' || RETURN_FLOW_STATUSES.includes(normalizedStatus);
-    const isRejected = normalizedStatus === 'RETURN_REJECTED';
+    const isRejected = normalizedStatus === 'RETURN_REJECTED' || normalizedStatus.includes('REJECTED');
     const rejectionSourceRaw = String(order?.refundRejectionSource || '').toUpperCase();
     const rejectionSourceLabel =
         rejectionSourceRaw === 'STAFF' ? 'Nhân viên' : 'CSKH';
@@ -412,13 +412,12 @@ function OrderDetailPage() {
         const active = !isRejected && !refundCompleted && index === currentReturnStep;
         return { ...step, completed, active };
     });
-    
+
     const isReturning = order.status === 'RETURNING' || order.status === 'RETURN_REQUESTED' || order.rawStatus === 'RETURN_REQUESTED';
 
     // Check if order is rejected
     const orderStatus = order?.status || order?.rawStatus || '';
     const statusStr = String(orderStatus).toUpperCase();
-    const isRejected = statusStr === 'RETURN_REJECTED' || statusStr.includes('REJECTED');
     const cancellationReason = order.cancellationReason;
     const cancellationSourceLabel = order.cancellationSource
         ? getCancellationSourceLabel(order.cancellationSource)
@@ -644,17 +643,15 @@ function OrderDetailPage() {
                             Hoàn tiền/ Trả hàng
                         </button>
                     )}
-                    {(order.status === 'RETURN_REQUESTED' || order.rawStatus === 'RETURN_REQUESTED') && (
-                        <button
                     {(RETURN_FLOW_STATUSES.includes(order.status) ||
                         RETURN_FLOW_STATUSES.includes(order.rawStatus)) && (
-                        <button
-                            className={cx('contact-btn', 'refund-detail-btn')}
-                            onClick={() => navigate(`/customer-account/orders/${order.id || order.code}/refund-detail`)}
-                        >
-                            Xem yêu cầu hoàn tiền
-                        </button>
-                    )}
+                            <button
+                                className={cx('contact-btn', 'refund-detail-btn')}
+                                onClick={() => navigate(`/customer-account/orders/${order.id || order.code}/refund-detail`)}
+                            >
+                                Xem yêu cầu hoàn tiền
+                            </button>
+                        )}
                     {(order.status === 'RETURN_REJECTED' || order.rawStatus === 'RETURN_REJECTED') && (
                         <button
                             className={cx('contact-btn', 'resubmit-btn')}

@@ -54,6 +54,9 @@ public class OrderDetailResponse {
     String refundRejectionSource;
     String staffInspectionResult;
     String adminProcessingNote;
+
+    String cancellationReason;
+    String cancellationSource;
 }
 
 

@@ -30,6 +30,9 @@ public class Notification {
     @Column(name = "type", nullable = false)
     String type;
 
+    @Column(name = "link", length = 512)
+    String link;
+
     @Column(name = "is_read", nullable = false)
     Boolean isRead;
 

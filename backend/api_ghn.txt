@@ -1,0 +1,579 @@
+1. Tạo đơn
+request:
+POST: https://dev-online-gateway.ghn.vn/shiip/public-api/v2/shipping-order/create 
+Headers: {token: <token GHN>, shop_id: <id của shop>}
+{
+    "payment_type_id": 2,
+    "note": "Tintest 123",
+    "required_note": "CHOTHUHANG",
+    "return_phone": "0332190158",
+    "client_order_code": "",
+    "from_name": "LuminaShop",
+    "from_phone": "0846120004",
+    "from_address": "136 Xuân Thủy, Dịch Vọng Hậu, Cầu Giấy, Hà Nội, Vietnam",
+    "from_ward_code": "1A0602",
+    "from_district_id": 1485,
+    "from_province_id": 201,
+    "to_name": "TinTest124",
+    "to_phone": "0987654321",
+    "to_address": "72 Thành Thái, Phường 14, Quận 10, Hồ Chí Minh, Vietnam",
+    "to_ward_code": "21014",
+    "to_district_id": 1452,
+    "to_province_id": 202,
+    "cod_amount": 200000,
+    "content": "Theo New York Times",
+    "length": 12,
+    "width": 12,
+    "height": 12,
+    "weight": 1200,
+    "cod_failed_amount": 2000,                  
+    "pick_station_id": null,
+    "deliver_station_id": null,
+    "insurance_value": 200000,
+    "service_type_id": 2,
+    "coupon": null,
+    "pickup_time": 1692840132,
+    "pick_shift": [2],
+    "items": [
+    {
+        "name": "Áo Polo",
+        "code": "Polo123",
+        "quantity": 1,
+        "price": 200000,
+        "length": 12,
+        "width": 12,
+        "height": 12,
+        "weight": 1200,
+        "category": 
+        {
+            "level1": "Áo"
+        }
+    }]
+}
+response:
+{
+    "code": 200,
+    "code_message_value": "",
+    "data": {
+        "order_code": "LK9CNH",
+        "sort_code": "0-000-0-00",
+        "trans_type": "truck",
+        "ward_encode": "",
+        "district_encode": "",
+        "fee": {
+            "main_service": 20500,
+            "insurance": 0,
+            "cod_fee": 0,
+            "station_do": 0,
+            "station_pu": 0,
+            "return": 0,
+            "r2s": 0,
+            "return_again": 0,
+            "coupon": 0,
+            "document_return": 0,
+            "double_check": 0,
+            "double_check_deliver": 0,
+            "pick_remote_areas_fee": 0,
+            "deliver_remote_areas_fee": 0,
+            "pick_remote_areas_fee_return": 0,
+            "deliver_remote_areas_fee_return": 0,
+            "cod_failed_fee": 0
+        },
+        "total_fee": 20500,
+        "expected_delivery_time": "2025-11-24T16:59:59Z",
+        "operation_partner": ""
+    },
+    "message": "Success",
+    "message_display": "Tạo đơn hàng thành công. Mã đơn hàng: LK9CNH"
+}
+- Note: 
++ Mặc định luôn set những trường sau:
+    {
+        "from_name": "LuminaShop",
+        "from_phone": "0846120004",
+        "from_address": "136 Xuân Thủy, Dịch Vọng Hậu, Cầu Giấy, Hà Nội, Vietnam",
+        "from_ward_code": "1A0602",
+        "from_district_id": 1485,
+        "from_province_id": 201,
+    }
+    đây là các thông tin của cửa hàng đã set trên GHN của shop.
++ GHN có 2 dịch vụ hàng nhẹ và hàng nặng.
+Tổng khối lượng đơn < 20 Kg là hàng nhẹ, >= 20 Kg là hàng nặng.
+Hàng nhẹ có service_type_id = 2, kích thước/khối lượng tính cước length, width, height và weight
+Hàng nặng có service_type_id = 5, kích thước/khối lượng tính cước lấy trong items (items[].length, items[].width, items[].height và items[].weight)
+Mỗi item là 1 kiện hàng
+GHN tính toán kích thước/khối lượng của Items rồi cập nhật lại kích thước/khối lượng của đơn hàng theo công thức: Max(length), Max(width), Sum(height)
+Với mỗi item, kích thước dài nhất được tính là Dài, kích thước nhỏ nhất được tính là Cao
+Khối lượng quy đổi được tính theo công thức:
+(Length x Width x Height) / 5 ; So sánh khối lượng quy đổi và trọng lượng thực tế, giá trị nào lớn hơn sẽ là khối lượng tính cước.
++ "coupon" luôn luôn = null vì cửa hàng chưa hợp tác GHN để lấy mã giảm giá
++ "pick_shift" sẽ tùy vào thời gian hiện tại để hệ thống tự chọn ca lấy hàng
++ "client_order_code" sẽ được dán vào là trường code của entity Order
++ "cod_amount" sẽ là giá trị đơn hàng chưa tính shipp
++ "pick_station_id", "deliver_station_id" luôn luôn = null vì cửa hàng chỉ gọi ship đến lấy chứ không đi ra bưu cục
++ "pickup_time": Tùy chỉnh để sau khi nhân viên ấn xác nhận đơn hàng thì shipper sẽ đến để lấy hàng luôn (cùng lúc đó nhân viên cũng sẽ chuẩn bị hàng), định dạng UnixtimeStamp.
+2. Get ca lấy đơn (pick_shift)
+request:
+GET: https://dev-online-gateway.ghn.vn/shiip/public-api/v2/shift/date
+Headers: {token: <token GHN>}
+body: không có
+response:
+{
+    "code": 200,
+    "message": "Success",
+    "data": [
+        {
+            "id": 2,
+            "title": "Ca lấy 22-11-2025 (12h00 - 18h00)",
+            "from_time": 43200,
+            "to_time": 64800
+        },
+        {
+            "id": 3,
+            "title": "Ca lấy 23-11-2025 (7h00 - 12h00)",
+            "from_time": 111600,
+            "to_time": 129600
+        },
+        {
+            "id": 4,
+            "title": "Ca lấy 23-11-2025 (12h00 - 18h00)",
+            "from_time": 129600,
+            "to_time": 151200
+        }
+    ]
+}
+3. Tính trước phí dịch vụ với hàng nhẹ
+request:
+GET: https://dev-online-gateway.ghn.vn/shiip/public-api/v2/shipping-order/fee
+Headers: {token: <token GHN>, shop_id: <id của shop>}
+body: 
+{
+    "service_type_id": 2,
+    "insurance_value":100000,
+    "coupon": null,
+    "from_district_id":1982,
+    "to_district_id":2048,
+    "to_ward_code":"640210",
+    "height":15,
+    "length":15,
+    "weight":1000,
+    "width":15
+}
+response:
+{
+    "code": 200,
+    "message": "Success",
+    "data": {
+        "total": 24900,
+        "service_fee": 24900,
+        "insurance_fee": 0,
+        "pick_station_fee": 0,
+        "coupon_value": 0,
+        "r2s_fee": 0,
+        "return_again": 0,
+        "document_return": 0,
+        "double_check": 0,
+        "cod_fee": 0,
+        "pick_remote_areas_fee": 0,
+        "deliver_remote_areas_fee": 0,
+        "cod_failed_fee": 0
+    }
+}
+4. Tính trước phí dịch vụ với hàng nặng
+request:
+GET: https://dev-online-gateway.ghn.vn/shiip/public-api/v2/shipping-order/fee
+Headers: {token: <token GHN>, shop_id: <id của shop>}
+body: 
+{
+    "service_type_id":5,
+    "insurance_value":100000,
+    "coupon": null,
+    "from_district_id":1982, 
+    "from_ward_code": "90312", // Xã Yên Hoa
+    "to_district_id":2048,
+    "to_ward_code":"640210",
+    "length":null,
+    "width":null,
+    "height":null,
+    "weight":1000,
+    "items": [
+    {
+        "name": "TEST1",
+        "quantity": 1,
+        "length": 200,
+        "width": 200,
+        "height": 200,
+        "weight": 500
+    },
+    {
+        "name": "TEST2",
+        "quantity": 1,
+        "length": 200,
+        "width": 200,
+        "height": 200,
+        "weight": 500
+    }
+    ]
+}
+response:
+{
+    "code": 200,
+    "message": "Success",
+    "data": {
+        "total": 550000,
+        "service_fee": 550000,
+        "insurance_fee": 0,
+        "pick_station_fee": 0,
+        "coupon_value": 0,
+        "r2s_fee": 0,
+        "return_again": 0,
+        "document_return": 0,
+        "double_check": 0,
+        "cod_fee": 0,
+        "pick_remote_areas_fee": 0,
+        "deliver_remote_areas_fee": 0,
+        "cod_failed_fee": 0
+    }
+}
+5. Tính thời gian giao dự kiến
+request:
+GET: https://dev-online-gateway.ghn.vn/shiip/public-api/v2/shipping-order/leadtime
+Headers: {token: <token GHN>, shop_id: <id của shop>}
+body: 
+{
+    "from_district_id": 1485,
+    "from_ward_code": "1A0602",
+    "to_district_id": 1452,
+    "to_ward_code": "21014",
+    "service_type_id": 2
+}
+response:
+{
+    "code": 200,
+    "message": "Success",
+    "data": {
+        "leadtime": 1764003599,
+        "leadtime_order": {
+            "from_estimate_date": "2025-11-24T16:59:59Z",
+            "to_estimate_date": "2025-11-25T16:59:59Z"
+        }
+    }
+}
+6. Xem thông tin trả về của đơn hàng trước khi tạo
+request:
+POST: https://dev-online-gateway.ghn.vn/shiip/public-api/v2/shipping-order/preview
+Headers: {token: <token GHN>, shop_id: <id của shop>}
+{
+    "payment_type_id": 2,
+    "note": "Tintest 123",
+    "required_note": "CHOTHUHANG",
+    "return_phone": "0332190158",
+    "client_order_code": "",
+    "from_name": "LuminaShop",
+    "from_phone": "0846120004",
+    "from_address": "136 Xuân Thủy, Dịch Vọng Hậu, Cầu Giấy, Hà Nội, Vietnam",
+    "from_ward_code": "1A0602",
+    "from_district_id": 1485,
+    "from_province_id": 201,
+    "to_name": "TinTest124",
+    "to_phone": "0987654321",
+    "to_address": "72 Thành Thái, Phường 14, Quận 10, Hồ Chí Minh, Vietnam",
+    "to_ward_code": "21014",
+    "to_district_id": 1452,
+    "to_province_id": 202,
+    "cod_amount": 200000,
+    "content": "Theo New York Times",
+    "length": 12,
+    "width": 12,
+    "height": 12,
+    "weight": 1200,
+    "cod_failed_amount": 2000,                  
+    "pick_station_id": null,
+    "deliver_station_id": null,
+    "insurance_value": 200000,
+    "service_type_id": 2,
+    "coupon": null,
+    "pickup_time": 1692840132,
+    "pick_shift": [2],
+    "items": [
+    {
+        "name": "Áo Polo",
+        "code": "Polo123",
+        "quantity": 1,
+        "price": 200000,
+        "length": 12,
+        "width": 12,
+        "height": 12,
+        "weight": 1200,
+        "category": 
+        {
+            "level1": "Áo"
+        }
+    }]
+}
+response:
+{
+    "code": 200,
+    "message": "Success",
+    "data": {
+        "order_code": "",
+        "sort_code": "0-000-0-00",
+        "trans_type": "truck",
+        "ward_encode": "",
+        "district_encode": "",
+        "fee": {
+            "main_service": 20500,
+            "insurance": 0,
+            "cod_fee": 0,
+            "station_do": 0,
+            "station_pu": 0,
+            "return": 0,
+            "r2s": 0,
+            "return_again": 0,
+            "coupon": 0,
+            "document_return": 0,
+            "double_check": 0,
+            "double_check_deliver": 0,
+            "pick_remote_areas_fee": 0,
+            "deliver_remote_areas_fee": 0,
+            "pick_remote_areas_fee_return": 0,
+            "deliver_remote_areas_fee_return": 0,
+            "cod_failed_fee": 0
+        },
+        "total_fee": 20500,
+        "expected_delivery_time": "2025-11-24T16:59:59Z",
+        "operation_partner": ""
+    }
+}
+7. Xem thông tin và trạng thái đơn
+request:
+POST: https://dev-online-gateway.ghn.vn/shiip/public-api/v2/shipping-order/detail
+Headers: {token: <token GHN>}
+{
+    "order_code": "LK967T"
+}
+response:
+{
+    "code": 200,
+    "message": "Success",
+    "data": {
+        "shop_id": 198175,
+        "client_id": 2510352,
+        "return_name": "LuminaShop",
+        "return_phone": "0332190158",
+        "return_address": "136 Xuân Thủy, Dịch Vọng Hậu, Cầu Giấy, Hà Nội, Vietnam",
+        "return_ward_code": "1A0602",
+        "return_district_id": 1485,
+        "return_location": {
+            "lat": 21.0366738,
+            "long": 105.7851264,
+            "cell_code": "00000000",
+            "place_id": "EkNYdcOibiBUaOG7p3ksIEThu4tjaCBW4buNbmcgSOG6rXUsIEPhuqd1IEdp4bqleSwgSMOgIE7hu5lpLCBWaWV0bmFtIi4qLAoUChIJp8eWgzWrNTEREOULQ5oCwAgSFAoSCe1NJ15KqzUxEan5zqAxTfon",
+            "trust_level": 5,
+            "wardcode": "1A0602",
+            "map_source": "source_ass_service"
+        },
+        "from_name": "LuminaShop",
+        "from_phone": "0846120004",
+        "from_hotline": "",
+        "from_address": "136 Xuân Thủy, Dịch Vọng Hậu, Cầu Giấy, Hà Nội, Vietnam",
+        "from_ward_code": "1A0602",
+        "from_district_id": 1485,
+        "from_location": {
+            "lat": 21.0366738,
+            "long": 105.7851264,
+            "cell_code": "00000000",
+            "place_id": "EkNYdcOibiBUaOG7p3ksIEThu4tjaCBW4buNbmcgSOG6rXUsIEPhuqd1IEdp4bqleSwgSMOgIE7hu5lpLCBWaWV0bmFtIi4qLAoUChIJp8eWgzWrNTEREOULQ5oCwAgSFAoSCe1NJ15KqzUxEan5zqAxTfon",
+            "trust_level": 5,
+            "wardcode": "1A0602",
+            "map_source": "source_ass_service"
+        },
+        "deliver_station_id": 0,
+        "to_name": "TinTest124",
+        "to_phone": "0987654321",
+        "to_address": "72 Thành Thái, Phường 14, Quận 10, Hồ Chí Minh, Vietnam",
+        "to_ward_code": "21014",
+        "to_district_id": 1452,
+        "to_location": {
+            "lat": 10.7721295569,
+            "long": 106.665286378,
+            "cell_code": "00000000",
+            "place_id": "ChIJh7-Q2NwudTERsbAIj9DVevg",
+            "trust_level": 5,
+            "wardcode": "21014",
+            "map_source": "source_ass_service"
+        },
+        "weight": 1200,
+        "length": 12,
+        "width": 12,
+        "height": 12,
+        "converted_weight": 345,
+        "calculate_weight": 1200,
+        "image_ids": null,
+        "service_type_id": 2,
+        "service_id": 53321,
+        "payment_type_id": 2,
+        "payment_type_ids": [
+            2
+        ],
+        "custom_service_fee": 0,
+        "sort_code": "0-000-0-00",
+        "cod_amount": 200000,
+        "cod_collect_date": null,
+        "cod_transfer_date": null,
+        "is_cod_transferred": false,
+        "is_cod_collected": false,
+        "insurance_value": 200000,
+        "order_value": 0,
+        "pick_station_id": 0,
+        "client_order_code": "",
+        "cod_failed_amount": 2000,
+        "cod_failed_collect_date": null,
+        "required_note": "CHOTHUHANG",
+        "content": "Áo Polo [Polo123] [1 cái]",
+        "note": "Tintest 123",
+        "employee_note": "",
+        "seal_code": "",
+        "pickup_time": "2025-11-23T08:35:43.613Z",
+        "request_delivery_time": null,
+        "deadline_pickup_time": null,
+        "items": [
+            {
+                "name": "Áo Polo",
+                "code": "Polo123",
+                "quantity": 1,
+                "length": 12,
+                "width": 12,
+                "height": 12,
+                "category": {
+                    "level1": "Áo"
+                },
+                "weight": 1200,
+                "status": "ready_to_pick",
+                "item_order_code": "LK967T_1",
+                "current_warehouse_id": 2331
+            }
+        ],
+        "coupon": "",
+        "coupon_campaign_id": 0,
+        "_id": "6922c760ac2bfb619f106cec",
+        "order_code": "LK967T",
+        "version_no": "b42be19d-21ea-4f4c-ae45-b691db3ddb8a",
+        "updated_ip": "",
+        "updated_employee": 242614,
+        "updated_client": 0,
+        "updated_source": "fe-toolsupport",
+        "updated_date": "2025-11-25T01:33:11.269Z",
+        "updated_warehouse": 0,
+        "created_ip": "192.168.255.96",
+        "created_employee": 0,
+        "created_client": 2510352,
+        "created_source": "shiip",
+        "created_date": "2025-11-23T08:35:43.613Z",
+        "status": "money_collect_delivering",
+        "internal_process": {
+            "status": "",
+            "type": ""
+        },
+        "pick_warehouse_id": 2331,
+        "deliver_warehouse_id": 21694000,
+        "current_warehouse_id": 2331,
+        "return_warehouse_id": 2330,
+        "next_warehouse_id": 0,
+        "current_transport_warehouse_id": 0,
+        "leadtime": "2025-11-25T16:59:59Z",
+        "leadtime_order": {
+            "from_estimate_date": "2025-11-25T16:59:59Z",
+            "to_estimate_date": "2025-11-26T16:59:59Z",
+            "picked_date": "2025-11-23T08:36:12.96Z"
+        },
+        "order_date": "2025-11-23T08:35:43.613Z",
+        "data": {
+            "last_sort_code_print": "0-000-0-00",
+            "print": {
+                "department_id": 0,
+                "is_employee": false,
+                "time": "2025-11-25T01:33:11.269Z",
+                "user_id": 2510352,
+                "user_name": "LinhDev61Prod"
+            },
+            "print_by_user_id": 2510352,
+            "print_by_user_name": "LinhDev61Prod",
+            "print_time": "2025-11-25T01:33:11.269Z"
+        },
+        "soc_id": "6922c75fac2bfb619f106ceb",
+        "finish_date": null,
+        "tag": [
+            "truck"
+        ],
+        "log": [
+            {
+                "status": "storing",
+                "payment_type_id": 2,
+                "trip_code": "",
+                "updated_date": "2025-11-23T08:36:12.967Z"
+            },
+            {
+                "status": "delivering",
+                "payment_type_id": 2,
+                "trip_code": "",
+                "updated_date": "2025-11-23T08:36:13.46Z"
+            },
+            {
+                "status": "money_collect_delivering",
+                "payment_type_id": 2,
+                "trip_code": "",
+                "updated_date": "2025-11-23T08:37:11.193Z"
+            }
+        ],
+        "is_partial_return": false,
+        "is_document_return": false,
+        "pick_shift": [
+            2
+        ],
+        "pickup_shift": {
+            "from_time": "2025-11-23T05:00:00Z",
+            "to_time": "2025-11-23T11:00:00Z"
+        },
+        "updated_date_pick_shift": "2025-11-23T08:35:43.589Z",
+        "transaction_ids": [
+            "b9ea898f-79da-4b24-8e8a-acb4563b2597"
+        ],
+        "transportation_status": "",
+        "transportation_phase": "",
+        "extra_service": {
+            "document_return": {
+                "flag": false
+            },
+            "double_check": false,
+            "lastmile_ahamove_bulky": false,
+            "lastmile_trip_code": "",
+            "original_deliver_warehouse_id": 0
+        },
+        "config_fee_id": "",
+        "extra_cost_id": "",
+        "standard_config_fee_id": "",
+        "standard_extra_cost_id": "",
+        "ecom_config_fee_id": 475,
+        "ecom_extra_cost_id": 2,
+        "ecom_standard_config_fee_id": 0,
+        "ecom_standard_extra_cost_id": 0,
+        "is_b2b": false,
+        "operation_partner": "",
+        "process_partner_name": "",
+        "delivery_days_of_week": 127,
+        "is_new_multiple": false,
+        "from_address_v2": "",
+        "from_ward_id_v2": 0,
+        "from_province_id_v2": 0,
+        "is_new_from_address": false,
+        "to_address_v2": "",
+        "to_ward_id_v2": 0,
+        "to_province_id_v2": 0,
+        "is_new_to_address": false,
+        "return_address_v2": "",
+        "return_ward_id_v2": 0,
+        "return_province_id_v2": 0,
+        "is_new_return_address": false
+    }
+}

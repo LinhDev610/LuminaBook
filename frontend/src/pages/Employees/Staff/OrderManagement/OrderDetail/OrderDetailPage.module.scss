@@ -153,6 +153,32 @@
     border-collapse: collapse;
 }
 
+.cancel-reason {
+    margin-bottom: 12px;
+    padding: 10px 14px;
+    border-radius: 6px;
+    background: #fff7ed;
+    color: #92400e;
+    font-size: 14px;
+    line-height: 1.4;
+    border: 1px solid #fed7aa;
+
+    strong {
+        font-weight: 700;
+        margin-right: 6px;
+    }
+
+    .cancel-meta {
+        margin-top: 6px;
+        font-size: 13px;
+        color: #7c2d12;
+
+        span {
+            font-weight: 600;
+        }
+    }
+}
+
 .table thead th {
     text-align: center;
     padding: 10px 16px;

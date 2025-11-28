@@ -6,6 +6,7 @@ import useLocalStorage from '../../../../hooks/useLocalStorage';
 import guestImgIcon from '../../../../assets/icons/icon_img_guest.png';
 import { getStoredToken, getMyInfo, updateUser, API_BASE_URL_FALLBACK } from '../../../../services';
 import SetAvatarDialog from '../../../../components/Common/ConfirmDialog/SetAvatarDialog';
+import { useNotification } from '../../../../components/Common/Notification';
 
 const cx = classNames.bind(styles);
 
@@ -27,6 +28,7 @@ export default function CustomerSideBar() {
         null,
     );
     const [user, setUser] = useState(null);
+    const { success: notifySuccess, error: notifyError } = useNotification();
 
     // Fetch user info for sidebar display
     useEffect(() => {
@@ -99,7 +101,7 @@ export default function CustomerSideBar() {
             const data = await resp.json().catch(() => ({}));
 
             if (!resp.ok || !Array.isArray(data?.result) || !data.result[0]) {
-                alert('Không thể tải ảnh lên máy chủ. Vui lòng thử lại.');
+                notifyError('Không thể tải ảnh lên máy chủ. Vui lòng thử lại.');
                 handleCancelAvatar();
                 return;
             }
@@ -127,12 +129,13 @@ export default function CustomerSideBar() {
                 setShowAvatarDialog(false);
                 setAvatarPreview(null);
                 setSelectedFile(null);
+                notifySuccess('Cập nhật ảnh đại diện thành công.');
             } else {
-                alert('Không thể cập nhật ảnh đại diện. Vui lòng thử lại.');
+                notifyError('Không thể cập nhật ảnh đại diện. Vui lòng thử lại.');
             }
         } catch (error) {
             console.error('Error updating avatar:', error);
-            alert('Có lỗi xảy ra. Vui lòng thử lại.');
+            notifyError('Có lỗi xảy ra. Vui lòng thử lại.');
         } finally {
             setUploadingAvatar(false);
         }

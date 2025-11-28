@@ -17,7 +17,7 @@ public class ApproveProductRequest {
     private String productId;
 
     @NotBlank(message = "Hành động không được để trống")
-    @Pattern(regexp = "^(APPROVE|REJECT)$", message = "Hành động phải là APPROVE hoặc REJECT")
+    @Pattern(regexp = "^(APPROVE|REJECT|DISABLE|ENABLE)$", message = "Hành động phải là APPROVE, REJECT, DISABLE hoặc ENABLE")
     private String action;
 
     private String reason; // Lý do từ chối (nếu action = REJECT)

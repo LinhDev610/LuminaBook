@@ -35,7 +35,8 @@ public class NotificationController {
         Notification notification = notificationService.sendToStaff(
                 request.getTitle(),
                 request.getMessage(),
-                request.getType()
+                request.getType(),
+                request.getLink()
         );
         NotificationResponse response = notificationMapper.toResponse(notification);
         return ApiResponse.<NotificationResponse>builder()
@@ -56,7 +57,8 @@ public class NotificationController {
                 request.getTitle(),
                 request.getMessage(),
                 request.getType(),
-                Set.of(userId)
+                Set.of(userId),
+                request.getLink()
         );
         NotificationResponse response = notificationMapper.toResponse(notification);
         return ApiResponse.<NotificationResponse>builder()

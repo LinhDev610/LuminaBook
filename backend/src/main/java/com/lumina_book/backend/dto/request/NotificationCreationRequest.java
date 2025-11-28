@@ -25,5 +25,8 @@ public class NotificationCreationRequest {
     @NotBlank(message = "Loại thông báo không được để trống")
     String type;
 
+    @Size(max = 512, message = "Link không được vượt quá 512 ký tự")
+    String link;
+
     Set<String> userIds;
 }

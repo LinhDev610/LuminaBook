@@ -52,6 +52,9 @@ public class ProductCreationRequest {
     @DecimalMin(value = "0.0", message = "Giá bán phải lớn hơn hoặc bằng 0")
     Double price;
 
+    @DecimalMin(value = "0.0", message = "Giá nhập phải lớn hơn hoặc bằng 0")
+    Double purchasePrice;
+
     @DecimalMin(value = "0.0", message = "Thuế phải lớn hơn hoặc bằng 0")
     Double tax;
 
@@ -67,6 +70,7 @@ public class ProductCreationRequest {
     // Promotion (optional)
     String promotionId;
 
+    @NotNull(message = "Số lượng tồn kho không được để trống")
     @Min(value = 0, message = "Số lượng tồn kho phải lớn hơn hoặc bằng 0")
     Integer stockQuantity;
 

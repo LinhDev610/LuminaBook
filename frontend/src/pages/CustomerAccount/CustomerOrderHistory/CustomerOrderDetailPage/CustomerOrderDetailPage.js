@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import classNames from 'classnames/bind';
 import styles from './CustomerOrderDetailPage.scss';
-import { formatCurrency, getApiBaseUrl, getStoredToken } from '../../../../services';
+import CancelOrderDialog from '../../../../components/Common/ConfirmDialog/CancelOrderDialog';
+import { formatCurrency, getApiBaseUrl, getStoredToken, cancelOrder } from '../../../../services';
 
 const cx = classNames.bind(styles);
 
@@ -22,96 +23,6 @@ const parseShippingInfo = (raw) => {
         return { address: raw };
     }
     return { address: raw };
-};
-
-// Mock data - sẽ được thay thế bằng API sau
-const MOCK_ORDER_DETAILS = {
-    '1': {
-        id: '1',
-        code: 'DH123456',
-        orderDate: '2025-09-25',
-        status: 'PENDING',
-        totalAmount: 200000,
-        items: [
-            {
-                id: '1',
-                name: 'Miền Bắc - Một Thời Chiến Tranh Một Thời Hòa Bình',
-                quantity: 1,
-                price: 200000,
-                image: 'https://via.placeholder.com/80x100',
-            },
-        ],
-        recipient: 'Nguyễn Văn A',
-        phone: '0123456789',
-        address: '123 Đường ABC, phường Thanh Xuân, Hà Nội',
-        paymentMethod: 'COD',
-        paymentMethodLabel: 'Thanh toán khi nhận hàng',
-    },
-    '2': {
-        id: '2',
-        code: 'DH123457',
-        orderDate: '2025-10-08',
-        status: 'DELIVERED',
-        totalAmount: 316600,
-        items: [
-            {
-                id: '1',
-                name: 'Miền Bắc - Một Thời Chiến Tranh Một Thời Hòa Bình',
-                quantity: 1,
-                price: 200000,
-                image: 'https://via.placeholder.com/80x100',
-            },
-            {
-                id: '2',
-                name: 'Hồ Điệp và Kình Ngư',
-                quantity: 1,
-                price: 111600,
-                image: 'https://via.placeholder.com/80x100',
-            },
-        ],
-        recipient: 'Nguyễn Văn A',
-        phone: '0123456789',
-        address: '123 Đường ABC, phường Thanh Xuân, Hà Nội',
-        paymentMethod: 'COD',
-        paymentMethodLabel: 'Thanh toán khi nhận hàng',
-    },
-    '3': {
-        id: '3',
-        code: 'DH123458',
-        orderDate: '2025-10-08',
-        status: 'RETURNING',
-        totalAmount: 316600,
-        items: [
-            {
-                id: '1',
-                name: 'Miền Bắc - Một Thời Chiến Tranh Một Thời Hòa Bình',
-                quantity: 1,
-                price: 200000,
-                image: 'https://via.placeholder.com/80x100',
-            },
-            {
-                id: '2',
-                name: 'Hồ Điệp và Kình Ngư',
-                quantity: 1,
-                price: 111600,
-                image: 'https://via.placeholder.com/80x100',
-            },
-        ],
-        recipient: 'Nguyễn Văn A',
-        phone: '0123456789',
-        address: '123 Đường ABC, Phường Tham Xuân, Hà Nội',
-        paymentMethod: 'ONLINE',
-        paymentMethodLabel: 'Online',
-        refundStatus: 'REFUNDING',
-        refundProgress: {
-            requestReturn: true,
-            shopReceived: true,
-            refunding: true,
-            completed: false,
-        },
-        refundMessage:
-            'Đang hoàn tiền: Shop đã nhận được hàng trả lại của bạn. Hệ thống đang xử lý hoàn tiền qua tài khoản ngân hàng đã thanh toán trước đó. Dự kiến hoàn tất trong 3-5 ngày làm việc.',
-    },
 };
 
 const STATUS_MAP = {
@@ -199,6 +110,47 @@ const resolveReturnStepIndex = (status) => {
 };
 
 // Map dữ liệu đơn hàng từ API /orders/{id} sang dạng dùng cho UI chi tiết của khách
+const extractCancellationReason = (apiOrder) => {
+    if (!apiOrder) return '';
+    const direct =
+        apiOrder.cancellationReason ||
+        apiOrder.cancellation_reason ||
+        (typeof apiOrder.cancellation_reason === 'string' ? apiOrder.cancellation_reason : '');
+    if (typeof direct === 'string' && direct.trim()) {
+        return direct.trim();
+    }
+    const note = apiOrder.note;
+    if (typeof note !== 'string' || note.trim() === '') {
+        return '';
+    }
+    if (!/hủy|huy/i.test(note)) {
+        return '';
+    }
+    const match = note.match(/Lý do[:\s-]*(.+)$/i);
+    if (match && match[1]) {
+        return match[1].trim();
+    }
+    return note.trim();
+};
+
+const extractCancellationSource = (apiOrder) => {
+    if (!apiOrder) return '';
+    const raw = apiOrder.cancellationSource || apiOrder.cancellation_source;
+    if (!raw) return '';
+    return String(raw).toUpperCase();
+};
+
+const getCancellationSourceLabel = (source) => {
+    switch (source) {
+        case 'STAFF':
+            return 'Nhân viên';
+        case 'CUSTOMER':
+            return 'Khách hàng';
+        default:
+            return '';
+    }
+};
+
 const mapOrderFromApi = (apiOrder) => {
     if (!apiOrder) return null;
 
@@ -208,12 +160,12 @@ const mapOrderFromApi = (apiOrder) => {
     // Map items từ API response
     const items = Array.isArray(apiOrder.items)
         ? apiOrder.items.map((item, index) => ({
-              id: item.id || String(index),
-              name: item.name || 'Sản phẩm',
-              quantity: item.quantity || 1,
-              price: item.unitPrice || 0,
-              image: item.imageUrl || 'https://via.placeholder.com/80x100',
-          }))
+            id: item.id || String(index),
+            name: item.name || 'Sản phẩm',
+            quantity: item.quantity || 1,
+            price: item.unitPrice || 0,
+            image: item.imageUrl || 'https://via.placeholder.com/80x100',
+        }))
         : [];
 
     const orderDateValue = apiOrder.orderDateTime || apiOrder.orderDate || null;
@@ -222,7 +174,7 @@ const mapOrderFromApi = (apiOrder) => {
     const rawPaymentMethod = (apiOrder.paymentMethod || '').toUpperCase();
     let paymentMethod = 'ONLINE';
     let paymentMethodLabel = 'Thanh toán online';
-    
+
     if (rawPaymentMethod === 'COD') {
         paymentMethod = 'COD';
         paymentMethodLabel = 'Thanh toán khi nhận hàng';
@@ -261,6 +213,8 @@ const mapOrderFromApi = (apiOrder) => {
         refundRejectionReason: apiOrder.refundRejectionReason || apiOrder.refund_rejection_reason || '',
         refundRejectionSource: apiOrder.refundRejectionSource || apiOrder.refund_rejection_source || '',
         note: apiOrder.note || '',
+        cancellationReason: extractCancellationReason(apiOrder),
+        cancellationSource: extractCancellationSource(apiOrder),
     };
 };
 
@@ -270,6 +224,8 @@ function OrderDetailPage() {
     const [order, setOrder] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [cancelling, setCancelling] = useState(false);
+    const [showCancelDialog, setShowCancelDialog] = useState(false);
 
     useEffect(() => {
         const fetchOrderDetail = async () => {
@@ -331,7 +287,7 @@ function OrderDetailPage() {
                 }
 
                 const mapped = mapOrderFromApi(raw);
-                
+
                 if (!mapped) {
                     setError('Không thể xử lý dữ liệu đơn hàng.');
                     setLoading(false);
@@ -379,13 +335,53 @@ function OrderDetailPage() {
                 date.getMinutes() !== 0 ||
                 date.getSeconds() !== 0;
             if (!hasTime) {
-            return `${day}/${month}/${year}`;
+                return `${day}/${month}/${year}`;
             }
             const hour = String(date.getHours()).padStart(2, '0');
             const minute = String(date.getMinutes()).padStart(2, '0');
             return `${hour}:${minute} ${day}/${month}/${year}`;
         } catch {
             return dateString;
+        }
+    };
+
+    const canCancel =
+        order &&
+        ['PENDING', 'CONFIRMED'].includes(String(order.status || order.rawStatus).toUpperCase());
+
+    const handleCancelOrder = () => {
+        if (!order?.id) return;
+        setShowCancelDialog(true);
+    };
+
+    const handleConfirmCancel = async (reason) => {
+        if (!order?.id) return;
+        try {
+            setCancelling(true);
+            const token = getStoredToken('token');
+            const { ok } = await cancelOrder(order.id, reason, token);
+            if (!ok) {
+                alert('Không thể hủy đơn hàng. Vui lòng thử lại sau.');
+                setCancelling(false);
+                return;
+            }
+            // Cập nhật trạng thái local và điều hướng về tab "Đã hủy"
+            setOrder((prev) =>
+                prev
+                    ? {
+                        ...prev,
+                        status: 'CANCELLED',
+                        rawStatus: 'CANCELLED',
+                    }
+                    : prev,
+            );
+            navigate('/customer-account/orders?tab=cancelled');
+        } catch (err) {
+            console.error('CustomerOrderDetail: lỗi khi hủy đơn', err);
+            alert('Có lỗi xảy ra khi hủy đơn. Vui lòng thử lại.');
+        } finally {
+            setCancelling(false);
+            setShowCancelDialog(false);
         }
     };
 
@@ -417,9 +413,20 @@ function OrderDetailPage() {
         return { ...step, completed, active };
     });
     
+    const isReturning = order.status === 'RETURNING' || order.status === 'RETURN_REQUESTED' || order.rawStatus === 'RETURN_REQUESTED';
+
+    // Check if order is rejected
+    const orderStatus = order?.status || order?.rawStatus || '';
+    const statusStr = String(orderStatus).toUpperCase();
+    const isRejected = statusStr === 'RETURN_REJECTED' || statusStr.includes('REJECTED');
+    const cancellationReason = order.cancellationReason;
+    const cancellationSourceLabel = order.cancellationSource
+        ? getCancellationSourceLabel(order.cancellationSource)
+        : '';
+
     // Parse rejection reason từ nhiều nguồn
     let rejectionReason = order?.refundRejectionReason || order?.refund_rejection_reason || '';
-    
+
     // Nếu không có refundRejectionReason, parse từ note
     if (!rejectionReason && order?.note) {
         const noteText = String(order.note);
@@ -567,6 +574,17 @@ function OrderDetailPage() {
                             </div>
                         ))}
                     </div>
+                    {statusStr === 'CANCELLED' && cancellationReason && (
+                        <div className={cx('cancel-reason-box')}>
+                            <h3>Lý do hủy đơn</h3>
+                            <p>{cancellationReason}</p>
+                            {cancellationSourceLabel && (
+                                <p className={cx('cancel-meta')}>
+                                    Đơn được hủy bởi: <span>{cancellationSourceLabel}</span>
+                                </p>
+                            )}
+                        </div>
+                    )}
                     <div className={cx('total-row')}>
                         <span className={cx('total-label')}>Tổng cộng:</span>
                         <span className={cx('total-value')}>
@@ -609,17 +627,28 @@ function OrderDetailPage() {
 
                 {/* Action Buttons */}
                 <div className={cx('actions-section')}>
+                    {canCancel && (
+                        <button
+                            className={cx('contact-btn', 'cancel-btn')}
+                            disabled={cancelling}
+                            onClick={handleCancelOrder}
+                        >
+                            {cancelling ? 'Đang hủy...' : 'Hủy đơn hàng'}
+                        </button>
+                    )}
                     {order.status === 'DELIVERED' && (
-                        <button 
+                        <button
                             className={cx('contact-btn')}
                             onClick={() => navigate(`/customer-account/orders/${order.id || order.code}/refund`, { state: { orderCode: order.code, orderId: order.id } })}
                         >
                             Hoàn tiền/ Trả hàng
                         </button>
                     )}
+                    {(order.status === 'RETURN_REQUESTED' || order.rawStatus === 'RETURN_REQUESTED') && (
+                        <button
                     {(RETURN_FLOW_STATUSES.includes(order.status) ||
                         RETURN_FLOW_STATUSES.includes(order.rawStatus)) && (
-                        <button 
+                        <button
                             className={cx('contact-btn', 'refund-detail-btn')}
                             onClick={() => navigate(`/customer-account/orders/${order.id || order.code}/refund-detail`)}
                         >
@@ -627,20 +656,26 @@ function OrderDetailPage() {
                         </button>
                     )}
                     {(order.status === 'RETURN_REJECTED' || order.rawStatus === 'RETURN_REJECTED') && (
-                        <button 
+                        <button
                             className={cx('contact-btn', 'resubmit-btn')}
-                            onClick={() => navigate(`/customer-account/orders/${order.id || order.code}/refund`, { 
-                                state: { 
-                                    orderCode: order.code, 
+                            onClick={() => navigate(`/customer-account/orders/${order.id || order.code}/refund`, {
+                                state: {
+                                    orderCode: order.code,
                                     orderId: order.id,
-                                    isResubmit: true 
-                                } 
+                                    isResubmit: true
+                                }
                             })}
                         >
                             Sửa lại và gửi lại yêu cầu
                         </button>
                     )}
                 </div>
+                <CancelOrderDialog
+                    open={showCancelDialog}
+                    loading={cancelling}
+                    onConfirm={handleConfirmCancel}
+                    onCancel={() => !cancelling && setShowCancelDialog(false)}
+                />
             </div>
         </div>
     );

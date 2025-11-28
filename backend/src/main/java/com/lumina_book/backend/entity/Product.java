@@ -58,6 +58,9 @@ public class Product {
     @Column(name = "unit_price", nullable = false)
     Double unitPrice;
 
+    @Column(name = "purchase_price")
+    Double purchasePrice;
+
     @Column(name = "discount_value")
     Double discountValue;
 
@@ -121,7 +124,7 @@ public class Product {
 
     // Banners
     @ManyToMany(mappedBy = "products")
-List<Banner> banners;
+    List<Banner> banners;
 
     // Promotions
     @ManyToOne(fetch = FetchType.LAZY)

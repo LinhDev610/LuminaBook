@@ -3,7 +3,15 @@ import classNames from 'classnames/bind';
 import styles from './OrderManagementPage.scss';
 import { useNavigate } from 'react-router-dom';
 import SearchAndSort from '../../../../components/Common/SearchAndSort';
-import { formatDateTime, getApiBaseUrl, getStoredToken } from '../../../../services';
+import CancelOrderDialog from '../../../../components/Common/ConfirmDialog/CancelOrderDialog';
+import {
+    formatDateTime,
+    getApiBaseUrl,
+    getStoredToken,
+    confirmOrder as confirmOrderApi,
+    createShipment as createShipmentApi,
+    cancelOrder as cancelOrderApi,
+} from '../../../../services';
 
 const cx = classNames.bind(styles);
 
@@ -50,50 +58,6 @@ const isRefundOrder = (order) => {
     );
 };
 
-// Dữ liệu mẫu dùng tạm nếu API chưa có / lỗi
-const MOCK_ORDERS = [
-    {
-        id: 'DH001',
-        username: '@nguyenvana',
-        email: 'nguyenvana@gmail.com',
-        orderDate: '2025-10-10',
-        totalAmount: 1250000,
-        status: 'CREATED',
-    },
-    {
-        id: 'DH002',
-        username: '@tranthib',
-        email: 'tranthib@gmail.com',
-        orderDate: '2025-10-11',
-        totalAmount: 890000,
-        status: 'PAID',
-    },
-    {
-        id: 'DH003',
-        username: '@levanc',
-        email: 'levanc@gmail.com',
-        orderDate: '2025-10-12',
-        totalAmount: 2100000,
-        status: 'SHIPPED',
-    },
-    {
-        id: 'DH004',
-        username: '@phamdd',
-        email: 'phamdd@gmail.com',
-        orderDate: '2025-10-09',
-        totalAmount: 460000,
-        status: 'DELIVERED',
-    },
-    {
-        id: 'DH005',
-        username: '@dothie',
-        email: 'dothie@gmail.com',
-        orderDate: '2025-10-08',
-        totalAmount: 1780000,
-        status: 'CREATED',
-    },
-];
-
 const parseShippingInfo = (raw) => {
     if (!raw || typeof raw !== 'string') return null;
     try {
@@ -125,9 +89,9 @@ const mapOrderFromApi = (order) => {
     const orderDateValue = getOrderDateValue(order);
 
     // Tính refund amount (nếu có)
-    const refundAmount = order.refundAmount || 
-                        (order.totalAmount && order.refundReturnFee 
-                            ? order.totalAmount - (order.refundReturnFee || 0) 
+    const refundAmount = order.refundAmount ||
+                        (order.totalAmount && order.refundReturnFee
+                            ? order.totalAmount - (order.refundReturnFee || 0)
                             : order.totalAmount || 0);
 
     return {
@@ -187,15 +151,18 @@ export default function OrderManagementPage() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [actionError, setActionError] = useState('');
+    const [cancelDialogOrderId, setCancelDialogOrderId] = useState(null);
+    const [actionMessage, setActionMessage] = useState('');
     const [processingOrderId, setProcessingOrderId] = useState(null);
 
     // Filters cho phần Quản lý đơn hàng
     const [keyword, setKeyword] = useState('');
     const [dateFilter, setDateFilter] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
+    const apiBaseUrl = useMemo(() => getApiBaseUrl(), []);
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 8;
-    
+
     // Filters cho phần Quản lý đơn hoàn về
     const [refundKeyword, setRefundKeyword] = useState('');
     const [refundDateFilter, setRefundDateFilter] = useState('');
@@ -210,10 +177,10 @@ export default function OrderManagementPage() {
             try {
                 setLoading(true);
                 setError('');
+                setActionError('');
+                setActionMessage('');
 
                 const token = getStoredToken('token');
-                const apiBaseUrl = getApiBaseUrl();
-
                 // Staff xem tất cả đơn hàng
                 const resp = await fetch(`${apiBaseUrl}/orders`, {
                     headers: {
@@ -223,15 +190,9 @@ export default function OrderManagementPage() {
                 });
 
                 if (!resp.ok) {
-                    console.warn('OrderManagement: API /orders/my-orders trả lỗi, dùng MOCK_ORDERS');
-                    setOrders(
-                        MOCK_ORDERS.map((o) => ({
-                            ...o,
-                            code: o.id,
-                            statusLabel: mapOrderStatus(o.status).label,
-                            statusClass: mapOrderStatus(o.status).css,
-                        })),
-                    );
+                    console.error('OrderManagement: API /orders trả lỗi:', resp.status, resp.statusText);
+                    setError('Không thể tải danh sách đơn hàng từ server. Vui lòng thử lại sau.');
+                    setOrders([]);
                     return;
                 }
 
@@ -243,30 +204,23 @@ export default function OrderManagementPage() {
                     .filter(Boolean);
                 setOrders(mapped.length > 0 ? mapped : []);
             } catch (err) {
-                console.error('OrderManagement: Lỗi khi tải đơn hàng, dùng MOCK_ORDERS:', err);
-                setError('Không thể tải danh sách đơn hàng từ server. Đang hiển thị dữ liệu mẫu.');
-                setOrders(
-                    MOCK_ORDERS.map((o) => ({
-                        ...o,
-                        code: o.id,
-                        statusLabel: mapOrderStatus(o.status).label,
-                        statusClass: mapOrderStatus(o.status).css,
-                    })),
-                );
+                console.error('OrderManagement: Lỗi khi tải đơn hàng:', err);
+                setError('Không thể tải danh sách đơn hàng từ server. Vui lòng thử lại sau.');
+                setOrders([]);
             } finally {
                 setLoading(false);
             }
         };
 
         fetchOrders();
-    }, []);
+    }, [apiBaseUrl]);
 
     // Tách orders thành 2 nhóm: normal orders và refund orders
     // Loại bỏ các đơn đã hoàn tiền thành công (REFUNDED)
     const { normalOrders, refundOrders } = useMemo(() => {
         const normal = [];
         const refund = [];
-        
+
         orders.forEach((order) => {
             if (isRefundOrder(order)) {
                 const status = String(order?.rawStatus || order?.status || '').toUpperCase();
@@ -278,7 +232,7 @@ export default function OrderManagementPage() {
                 normal.push(order);
             }
         });
-        
+
         return { normalOrders: normal, refundOrders: refund };
     }, [orders]);
 
@@ -432,54 +386,93 @@ export default function OrderManagementPage() {
 
     const handleConfirmOrder = async (orderId) => {
         if (!orderId) return;
+
         try {
             setActionError('');
+            setActionMessage('');
             setProcessingOrderId(orderId);
 
             const token = getStoredToken('token');
-            const apiBaseUrl = getApiBaseUrl();
-            const resp = await fetch(`${apiBaseUrl}/orders/${orderId}/confirm`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-                },
-            });
+            const { ok: confirmOk, data: confirmedOrder, status } = await confirmOrderApi(orderId, token);
 
-            if (!resp.ok) {
-                throw new Error(`Confirm API error ${resp.status}`);
+            if (!confirmOk) {
+                throw new Error(`Confirm API error ${status || ''}`.trim());
             }
 
-            const data = await resp.json().catch(() => ({}));
-            const raw = data?.result || data || null;
-            const mapped = mapOrderFromApi(raw);
+            const mapped = mapOrderFromApi(confirmedOrder);
 
             if (!mapped) {
                 throw new Error('Không nhận được dữ liệu đơn hàng sau khi xác nhận');
             }
 
             setOrders((prev) => prev.map((o) => (o.id === orderId ? mapped : o)));
+            setActionMessage(`Đã xác nhận đơn #${mapped.code}.`);
+
+            try {
+                const {
+                    ok: shipmentOk,
+                    status: shipmentStatus,
+                    data: shipmentData,
+                } = await createShipmentApi(orderId, {}, token);
+
+                if (!shipmentOk || !shipmentData) {
+                    throw new Error(
+                        shipmentStatus
+                            ? `Không thể tạo vận đơn GHN (HTTP ${shipmentStatus})`
+                            : 'Không thể tạo vận đơn GHN.',
+                    );
+                }
+
+                setActionMessage(`Đã xác nhận đơn #${mapped.code} và tạo vận đơn GHN.`);
+            } catch (shipmentErr) {
+                console.error('OrderManagement: tạo vận đơn GHN thất bại', shipmentErr);
+                setActionError(
+                    shipmentErr?.message
+                        ? `Không thể tạo vận đơn GHN: ${shipmentErr.message}`
+                        : 'Không thể tạo vận đơn GHN. Vui lòng thử lại trong trang chi tiết đơn.',
+                );
+            }
         } catch (err) {
             console.error('OrderManagement: xác nhận đơn hàng thất bại', err);
-            setActionError('Không thể xác nhận đơn hàng. Vui lòng thử lại.');
+            setActionError(err?.message || 'Không thể xác nhận đơn hàng. Vui lòng thử lại.');
         } finally {
             setProcessingOrderId(null);
         }
     };
 
-    const handleCancelOrder = (orderId) => {
-        // TODO: Gọi API cập nhật trạng thái đơn sang CANCELLED
-        setOrders((prev) =>
-            prev.map((o) =>
-                o.id === orderId
-                    ? {
-                          ...o,
-                          rawStatus: 'CANCELLED',
-                          ...mapOrderStatus('CANCELLED'),
-                      }
-                    : o,
-            ),
-        );
+    const handleOpenCancelDialog = (orderId) => {
+        setCancelDialogOrderId(orderId);
+    };
+
+    const handleConfirmCancelOrder = async (reason) => {
+        const orderId = cancelDialogOrderId;
+        if (!orderId) return;
+        try {
+            setProcessingOrderId(orderId);
+            const token = getStoredToken('token');
+            const { ok } = await cancelOrderApi(orderId, reason, token);
+            if (!ok) {
+                setActionError('Không thể hủy đơn hàng. Vui lòng thử lại.');
+                return;
+            }
+            setOrders((prev) =>
+                prev.map((o) =>
+                    o.id === orderId
+                        ? {
+                            ...o,
+                            rawStatus: 'CANCELLED',
+                            ...mapOrderStatus('CANCELLED'),
+                        }
+                        : o,
+                ),
+            );
+        } catch (err) {
+            console.error('OrderManagement: hủy đơn hàng thất bại', err);
+            setActionError(err?.message || 'Không thể hủy đơn hàng. Vui lòng thử lại.');
+        } finally {
+            setProcessingOrderId(null);
+            setCancelDialogOrderId(null);
+        }
     };
 
     const handleViewRefundDetail = (orderId) => {
@@ -512,15 +505,18 @@ export default function OrderManagementPage() {
                         onSortChange={(e) => setStatusFilter(e.target.value)}
                     />
 
-                    {loading && (
-                        <div className={cx('info-row')}>Đang tải danh sách đơn hàng...</div>
-                    )}
-                    {error && !loading && (
-                        <div className={cx('info-row', 'error')}>{error}</div>
-                    )}
-                    {actionError && (
-                        <div className={cx('info-row', 'error')}>{actionError}</div>
-                    )}
+                {loading && (
+                    <div className={cx('info-row')}>Đang tải danh sách đơn hàng...</div>
+                )}
+                {error && !loading && (
+                    <div className={cx('info-row', 'error')}>{error}</div>
+                )}
+                {actionMessage && (
+                    <div className={cx('info-row', 'success')}>{actionMessage}</div>
+                )}
+                {actionError && (
+                    <div className={cx('info-row', 'error')}>{actionError}</div>
+                )}
 
                     <div className={cx('card')}>
                         <div className={cx('card-header')}>Danh sách đơn hàng</div>
@@ -615,6 +611,16 @@ export default function OrderManagementPage() {
                     () => setCurrentPage((prev) => Math.min(totalPages, prev + 1)),
                 )}
             </div>
+            <CancelOrderDialog
+                open={Boolean(cancelDialogOrderId)}
+                loading={Boolean(processingOrderId && processingOrderId === cancelDialogOrderId)}
+                title="Hủy đơn hàng của khách"
+                message="Bạn có chắc chắn muốn hủy đơn hàng này? Vui lòng nhập lý do để lưu lại lịch sử."
+                confirmText="Hủy đơn"
+                cancelText="Đóng"
+                onConfirm={handleConfirmCancelOrder}
+                onCancel={() => !processingOrderId && setCancelDialogOrderId(null)}
+            />
         </div>
     );
 
@@ -687,7 +693,7 @@ export default function OrderManagementPage() {
                                                 }).format(order.refundAmount || 0)}
                                             </td>
                                             <td>
-                                                {order.receivedDate 
+                                                {order.receivedDate
                                                     ? formatOrderDateTime(order.receivedDate).split(' ')[1] || formatOrderDateTime(order.receivedDate)
                                                     : '--'}
                                             </td>

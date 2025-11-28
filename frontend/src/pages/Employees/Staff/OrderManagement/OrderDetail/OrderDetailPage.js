@@ -2,7 +2,14 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import classNames from 'classnames/bind';
 import styles from './OrderDetailPage.module.scss';
-import { formatCurrency, formatDateTime, getApiBaseUrl, getStoredToken } from '../../../../../services';
+import {
+    formatCurrency,
+    formatDateTime,
+    getApiBaseUrl,
+    getStoredToken,
+    confirmOrder as confirmOrderApi,
+    createShipment as createShipmentApi,
+} from '../../../../../services';
 
 const cx = classNames.bind(styles);
 
@@ -47,6 +54,48 @@ const MOCK_ORDER_DETAIL = {
             description: 'Đơn được tạo (Chờ xác nhận)',
         },
     ],
+};
+
+const extractCancellationReason = (order) => {
+    if (!order) return '';
+    const direct =
+        order.cancellationReason ||
+        order.cancellation_reason ||
+        (typeof order.cancellation_reason === 'string' ? order.cancellation_reason : null);
+    if (typeof direct === 'string' && direct.trim()) {
+        return direct.trim();
+    }
+    const note = order.note || '';
+    if (typeof note !== 'string' || note.trim() === '') {
+        return '';
+    }
+    if (!/hủy|huy/i.test(note)) {
+        return '';
+    }
+    const match = note.match(/Lý do[:\s-]*(.+)$/i);
+    if (match && match[1]) {
+        return match[1].trim();
+    }
+    return note.trim();
+};
+
+// Lấy nguồn hủy đơn hàng
+const extractCancellationSource = (order) => {
+    if (!order) return '';
+    const raw = order.cancellationSource || order.cancellation_source;
+    if (!raw) return '';
+    return String(raw).toUpperCase();
+};
+
+const getCancellationSourceLabel = (source) => {
+    switch (source) {
+        case 'STAFF':
+            return 'Nhân viên';
+        case 'CUSTOMER':
+            return 'Khách hàng';
+        default:
+            return '';
+    }
 };
 
 const mapItemsFromOrder = (order) => {
@@ -165,16 +214,16 @@ const mapOrderDetailFromApi = (order) => {
         typeof order.totalAmount === 'number'
             ? order.totalAmount
             : typeof order.cartTotal === 'number'
-              ? order.cartTotal
-              : items.reduce((sum, it) => sum + (Number(it.totalPrice) || 0), 0);
+                ? order.cartTotal
+                : items.reduce((sum, it) => sum + (Number(it.totalPrice) || 0), 0);
 
     const historyRaw = order.history || order.logs || order.events || [];
     const history = Array.isArray(historyRaw)
         ? historyRaw.map((h, idx) => ({
-              id: h.id || String(idx),
-              time: h.time || h.createdAt || order.orderDateTime || order.orderDate || null,
-              description: h.description || h.note || h.message || '',
-          }))
+            id: h.id || String(idx),
+            time: h.time || h.createdAt || order.orderDateTime || order.orderDate || null,
+            description: h.description || h.note || h.message || '',
+        }))
         : [];
     const timeline = history.length > 0 ? history : generateFallbackHistory(order);
 
@@ -197,6 +246,8 @@ const mapOrderDetailFromApi = (order) => {
         items,
         totalAmount,
         history: timeline,
+        cancellationReason: extractCancellationReason(order),
+        cancellationSource: extractCancellationSource(order),
     };
 };
 
@@ -274,37 +325,56 @@ export default function OrderDetailPage() {
 
     const handleConfirmOrder = async () => {
         if (!id) return;
+
+        setActionError('');
+        setActionMessage('');
+        setConfirming(true);
+
         try {
-            setActionError('');
-            setActionMessage('');
-            setConfirming(true);
-
             const token = getStoredToken('token');
-            const resp = await fetch(`${apiBaseUrl}/orders/${id}/confirm`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-                },
-            });
+            const { ok: confirmOk, data: confirmedOrder, status } = await confirmOrderApi(id, token);
 
-            if (!resp.ok) {
-                throw new Error(`Confirm API error ${resp.status}`);
+            if (!confirmOk) {
+                throw new Error(`Confirm API error ${status || ''}`.trim());
             }
 
-            const data = await resp.json().catch(() => ({}));
-            const raw = data?.result || data || null;
-            const mapped = mapOrderDetailFromApi(raw);
+            const mapped = mapOrderDetailFromApi(confirmedOrder);
 
             if (!mapped) {
                 throw new Error('Không nhận được dữ liệu đơn hàng sau khi xác nhận');
             }
 
             setOrder(mapped);
-            setActionMessage('Đã xác nhận đơn hàng thành công.');
+            setActionMessage('Đơn đã được xác nhận.');
+
+            try {
+                const { ok: shipmentOk, status: shipmentStatus, data: shipmentData } = await createShipmentApi(
+                    id,
+                    {},
+                    token,
+                );
+
+                if (!shipmentOk || !shipmentData) {
+                    throw new Error(
+                        shipmentStatus
+                            ? `Không thể tạo vận đơn GHN (HTTP ${shipmentStatus})`
+                            : 'Không thể tạo vận đơn GHN',
+                    );
+                }
+
+                setActionMessage('Đã xác nhận đơn và gửi yêu cầu tạo vận đơn GHN.');
+                setActionError('');
+            } catch (shipmentErr) {
+                console.error('OrderDetail: tạo vận đơn GHN thất bại', shipmentErr);
+                setActionError(
+                    shipmentErr?.message
+                        ? `Không thể tạo vận đơn GHN: ${shipmentErr.message}`
+                        : 'Không thể tạo vận đơn GHN. Vui lòng thử lại trong mục GHN.'
+                );
+            }
         } catch (err) {
             console.error('OrderDetail: xác nhận đơn hàng thất bại', err);
-            setActionError('Không thể xác nhận đơn hàng. Vui lòng thử lại.');
+            setActionError(err?.message || 'Không thể xác nhận đơn hàng. Vui lòng thử lại.');
         } finally {
             setConfirming(false);
         }
@@ -339,8 +409,13 @@ export default function OrderDetailPage() {
 
     const { ghnStatusLabel, ghnStatusClass } = mapOrderStatus(order.ghnStatus);
     const orderStatusUpper = String(order.ghnStatus || '').toUpperCase();
+    const isCancelled = orderStatusUpper === 'CANCELLED';
+    const cancellationReason = order.cancellationReason;
     const isConfirmable = ['CREATED', 'PENDING', 'PAID'].includes(orderStatusUpper);
     const items = order.items || [];
+    const cancellationSourceLabel = order.cancellationSource
+        ? getCancellationSourceLabel(order.cancellationSource)
+        : '';
 
     return (
         <div className={cx('page')}>
@@ -414,6 +489,16 @@ export default function OrderDetailPage() {
                 <div className={cx('card')}>
                     <div className={cx('card-header')}>Danh sách sản phẩm</div>
                     <div className={cx('card-body')}>
+                        {isCancelled && cancellationReason && (
+                            <div className={cx('cancel-reason')}>
+                                <strong>Lý do hủy đơn:</strong> {cancellationReason}
+                                {cancellationSourceLabel && (
+                                    <div className={cx('cancel-meta')}>
+                                        Người hủy: <span>{cancellationSourceLabel}</span>
+                                    </div>
+                                )}
+                            </div>
+                        )}
                         <table className={cx('table')}>
                             <thead>
                                 <tr>

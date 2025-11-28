@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import classNames from 'classnames/bind';
 import styles from './CustomerOrderHistoryPage.module.scss';
 import { formatCurrency, getApiBaseUrl, getStoredToken } from '../../../services';
+import defaultProductImage from '../../../assets/images/img_sach.png';
 
 const cx = classNames.bind(styles);
 
@@ -22,139 +23,6 @@ const parseShippingInfo = (raw) => {
     }
     return { address: raw };
 };
-
-// Mock data - sẽ được thay thế bằng API sau
-const MOCK_ORDERS = [
-    {
-        id: '1',
-        code: 'DH123456',
-        orderDate: '2025-09-25',
-        status: 'PENDING',
-        totalAmount: 200000,
-        items: [
-            {
-                id: '1',
-                name: 'Miền Bắc - Một Thời Chiến Tranh Một Thời Hòa Bình',
-                quantity: 1,
-                price: 200000,
-                image: 'https://via.placeholder.com/80x100',
-            },
-        ],
-        recipient: 'Nguyễn Văn A',
-        phone: '0123456789',
-        address: '123 Đường ABC, phường Thanh Xuân, Hà Nội',
-    },
-    {
-        id: '2',
-        code: 'DH123457',
-        orderDate: '2025-10-08',
-        status: 'DELIVERED',
-        totalAmount: 316600,
-        items: [
-            {
-                id: '1',
-                name: 'Miền Bắc - Một Thời Chiến Tranh Một Thời Hòa Bình',
-                quantity: 1,
-                price: 200000,
-                image: 'https://via.placeholder.com/80x100',
-            },
-            {
-                id: '2',
-                name: 'Hồ Điệp và Kình Ngư',
-                quantity: 1,
-                price: 111600,
-                image: 'https://via.placeholder.com/80x100',
-            },
-        ],
-        recipient: 'Nguyễn Văn A',
-        phone: '0123456789',
-        address: '123 Đường ABC, phường Thanh Xuân, Hà Nội',
-    },
-    {
-        id: '3',
-        code: 'DH123458',
-        orderDate: '2025-09-20',
-        status: 'RETURNING',
-        totalAmount: 316600,
-        items: [
-            {
-                id: '1',
-                name: 'Miền Bắc - Một Thời Chiến Tranh Một Thời Hòa Bình',
-                quantity: 1,
-                price: 200000,
-                image: 'https://via.placeholder.com/80x100',
-            },
-            {
-                id: '2',
-                name: 'Hồ Điệp và Kình Ngư',
-                quantity: 1,
-                price: 111600,
-                image: 'https://via.placeholder.com/80x100',
-            },
-        ],
-        recipient: 'Nguyễn Văn A',
-        phone: '0123456789',
-        address: '123 Đường ABC, Phường Tham Xuân, Hà Nội',
-        refundStatus: 'REFUNDING',
-    },
-    {
-        id: '4',
-        code: 'DH123459',
-        orderDate: '2025-09-15',
-        status: 'CONFIRMED',
-        totalAmount: 150000,
-        items: [
-            {
-                id: '3',
-                name: 'Sách Văn Học',
-                quantity: 1,
-                price: 150000,
-                image: 'https://via.placeholder.com/80x100',
-            },
-        ],
-        recipient: 'Nguyễn Văn A',
-        phone: '0123456789',
-        address: '123 Đường ABC, phường Thanh Xuân, Hà Nội',
-    },
-    {
-        id: '5',
-        code: 'DH123460',
-        orderDate: '2025-09-10',
-        status: 'SHIPPING',
-        totalAmount: 250000,
-        items: [
-            {
-                id: '4',
-                name: 'Sách Khoa Học',
-                quantity: 2,
-                price: 125000,
-                image: 'https://via.placeholder.com/80x100',
-            },
-        ],
-        recipient: 'Nguyễn Văn A',
-        phone: '0123456789',
-        address: '123 Đường ABC, phường Thanh Xuân, Hà Nội',
-    },
-    {
-        id: '6',
-        code: 'DH123461',
-        orderDate: '2025-09-05',
-        status: 'CANCELLED',
-        totalAmount: 180000,
-        items: [
-            {
-                id: '5',
-                name: 'Sách Lịch Sử',
-                quantity: 1,
-                price: 180000,
-                image: 'https://via.placeholder.com/80x100',
-            },
-        ],
-        recipient: 'Nguyễn Văn A',
-        phone: '0123456789',
-        address: '123 Đường ABC, phường Thanh Xuân, Hà Nội',
-    },
-];
 
 // Mapping status
 const STATUS_MAP = {
@@ -255,18 +123,20 @@ function CustomerOrderHistoryPage() {
     const [sortBy, setSortBy] = useState('newest');
 
     const [orders, setOrders] = useState([]);
+    const [orderThumbnails, setOrderThumbnails] = useState({});
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
     // Lấy lịch sử đơn hàng thật từ backend (/orders/my-orders)
     useEffect(() => {
+        const apiBaseUrl = getApiBaseUrl();
+
         const fetchOrders = async () => {
             try {
                 setLoading(true);
                 setError('');
 
                 const token = getStoredToken('token');
-                const apiBaseUrl = getApiBaseUrl();
 
                 const resp = await fetch(`${apiBaseUrl}/orders/my-orders`, {
                     headers: {
@@ -276,18 +146,9 @@ function CustomerOrderHistoryPage() {
                 });
 
                 if (!resp.ok) {
-                    console.warn('CustomerOrderHistory: API /orders/my-orders trả lỗi, dùng MOCK_ORDERS');
-                    setError('Không thể tải lịch sử đơn hàng từ server. Đang hiển thị dữ liệu mẫu.');
-                    setOrders(
-                        MOCK_ORDERS.map((o) => {
-                            const mapped = mapOrderStatus(o.status);
-                            return {
-                                ...o,
-                                rawStatus: o.status,
-                                statusKey: mapped.key,
-                            };
-                        }),
-                    );
+                    console.error('CustomerOrderHistory: API /orders/my-orders trả lỗi:', resp.status, resp.statusText);
+                    setError('Không thể tải lịch sử đơn hàng từ server. Vui lòng thử lại sau.');
+                    setOrders([]);
                     return;
                 }
 
@@ -299,18 +160,9 @@ function CustomerOrderHistoryPage() {
                     .filter(Boolean);
                 setOrders(mapped);
             } catch (err) {
-                console.error('CustomerOrderHistory: Lỗi khi tải lịch sử đơn hàng, dùng MOCK_ORDERS:', err);
-                setError('Không thể tải lịch sử đơn hàng từ server. Đang hiển thị dữ liệu mẫu.');
-                setOrders(
-                    MOCK_ORDERS.map((o) => {
-                        const mapped = mapOrderStatus(o.status);
-                        return {
-                            ...o,
-                            rawStatus: o.status,
-                            statusKey: mapped.key,
-                        };
-                    }),
-                );
+                console.error('CustomerOrderHistory: Lỗi khi tải lịch sử đơn hàng:', err);
+                setError('Không thể tải lịch sử đơn hàng từ server. Vui lòng thử lại sau.');
+                setOrders([]);
             } finally {
                 setLoading(false);
             }
@@ -319,17 +171,90 @@ function CustomerOrderHistoryPage() {
         fetchOrders();
     }, []);
 
+    // Sau khi đã có danh sách orders, gọi thêm API chi tiết để lấy ảnh sản phẩm đầu tiên của từng đơn
+    useEffect(() => {
+        const apiBaseUrl = getApiBaseUrl();
+
+        const fetchThumbnails = async () => {
+            try {
+                const token = getStoredToken('token');
+                if (!token) return;
+
+                const targets = orders.filter(
+                    (o) => o.id && !orderThumbnails[o.id],
+                );
+                if (targets.length === 0) return;
+
+                const headers = {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`,
+                };
+
+                const results = await Promise.all(
+                    targets.map(async (order) => {
+                        try {
+                            const resp = await fetch(
+                                `${apiBaseUrl}/orders/${order.id}`,
+                                { headers },
+                            );
+                            if (!resp.ok) return null;
+                            const data = await resp.json().catch(() => ({}));
+                            const detail = data?.result || data || {};
+                            const items = Array.isArray(detail.items)
+                                ? detail.items
+                                : [];
+                            if (!items.length) return null;
+                            const firstItem = items[0];
+                            const image =
+                                firstItem.image ||
+                                firstItem.imageUrl ||
+                                defaultProductImage;
+                            const name = firstItem.name || 'Sản phẩm';
+                            return {
+                                orderId: order.id,
+                                image,
+                                name,
+                                count: items.length,
+                            };
+                        } catch {
+                            return null;
+                        }
+                    }),
+                );
+
+                const nextMap = {};
+                results.forEach((r) => {
+                    if (!r) return;
+                    nextMap[r.orderId] = {
+                        image: r.image,
+                        name: r.name,
+                        count: r.count,
+                    };
+                });
+
+                if (Object.keys(nextMap).length > 0) {
+                    setOrderThumbnails((prev) => ({ ...prev, ...nextMap }));
+                }
+            } catch {
+                // ignore thumbnail errors, không chặn trang
+            }
+        };
+
+        if (orders.length > 0) {
+            fetchThumbnails();
+        }
+    }, [orders, orderThumbnails]);
+
     // Filter orders based on active tab
     const filteredOrders = useMemo(() => {
         let list = [];
-        
-        // Tab "Hoàn tiền/ trả hàng" hiển thị tất cả các đơn liên quan đến hoàn tiền/trả hàng
-        // Bao gồm: RETURN_REQUESTED, RETURN_CS_CONFIRMED, RETURN_STAFF_CONFIRMED, REFUNDED, RETURN_REJECTED
+
+        // Tab "Hoàn tiền/ trả hàng" hiển thị cả RETURN_REQUESTED và RETURN_REJECTED
         if (activeTab === 'return-requested') {
             list = orders.filter((order) => {
                 const status = (order.rawStatus || '').toUpperCase();
                 return (
-                    order.statusKey === 'return-requested' || 
+                    order.statusKey === 'return-requested' ||
                     order.statusKey === 'return-rejected' ||
                     order.statusKey === 'refunded' ||
                     status === 'RETURN_REQUESTED' ||
@@ -339,6 +264,9 @@ function CustomerOrderHistoryPage() {
                     status === 'RETURN_REJECTED'
                 );
             });
+            list = orders.filter((order) =>
+                order.statusKey === 'return-requested' || order.statusKey === 'return-rejected'
+            );
         } else {
             list = orders.filter((order) => order.statusKey === activeTab);
         }
@@ -412,7 +340,7 @@ function CustomerOrderHistoryPage() {
                 date.getMinutes() !== 0 ||
                 date.getSeconds() !== 0;
             if (!hasTime) {
-            return `${day}/${month}/${year}`;
+                return `${day}/${month}/${year}`;
             }
             const hour = String(date.getHours()).padStart(2, '0');
             const minute = String(date.getMinutes()).padStart(2, '0');
@@ -515,13 +443,17 @@ function CustomerOrderHistoryPage() {
                                     // Nếu order có rawStatus là RETURN_REQUESTED, REFUNDED, hoặc RETURN_REJECTED,
                                     // thì hiển thị status đó thay vì status mapped
                                     let displayStatus = order.status;
-                                    if (order.rawStatus === 'RETURN_REQUESTED' || 
-                                        order.rawStatus === 'REFUNDED' || 
+                                    if (order.rawStatus === 'RETURN_REQUESTED' ||
+                                        order.rawStatus === 'REFUNDED' ||
                                         order.rawStatus === 'RETURN_REJECTED') {
                                         displayStatus = order.rawStatus;
                                     }
                                     const statusInfo = STATUS_MAP[displayStatus] || STATUS_MAP.PENDING;
-                                    
+                                    const thumb = orderThumbnails[order.id];
+                                    const hasThumb = !!thumb;
+                                    const firstItemImage = thumb?.image || defaultProductImage;
+                                    const firstItemName = thumb?.name || 'Sản phẩm';
+
                                     return (
                                         <div key={order.id} className={cx('order-card')}>
                                             <div className={cx('order-header')}>
@@ -532,6 +464,20 @@ function CustomerOrderHistoryPage() {
                                                     <p className={cx('order-date')}>
                                                         Ngày đặt: {formatOrderDate(order.orderDate)}
                                                     </p>
+                                                    {hasThumb && (
+                                                        <div className={cx('order-thumb')}>
+                                                            <img
+                                                                src={firstItemImage}
+                                                                alt={firstItemName}
+                                                                className={cx('order-thumb-image')}
+                                                            />
+                                                            {thumb.count > 1 && (
+                                                                <span className={cx('order-thumb-count')}>
+                                                                    +{thumb.count - 1} sản phẩm khác
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    )}
                                                 </div>
                                                 <div className={cx('order-status-wrapper')}>
                                                     <button
@@ -546,25 +492,25 @@ function CustomerOrderHistoryPage() {
                                             </div>
 
                                             {Array.isArray(order.items) && order.items.length > 0 && (
-                                            <div className={cx('order-items')}>
-                                                {order.items.map((item) => (
-                                                    <div key={item.id} className={cx('order-item')}>
-                                                        <img
-                                                            src={item.image}
-                                                            alt={item.name}
-                                                            className={cx('item-image')}
-                                                        />
-                                                        <div className={cx('item-info')}>
-                                                            <p className={cx('item-name')}>
-                                                                {item.name}
-                                                            </p>
-                                                            <p className={cx('item-quantity')}>
-                                                                Số lượng: {item.quantity}
-                                                            </p>
+                                                <div className={cx('order-items')}>
+                                                    {order.items.map((item) => (
+                                                        <div key={item.id} className={cx('order-item')}>
+                                                            <img
+                                                                src={item.image}
+                                                                alt={item.name}
+                                                                className={cx('item-image')}
+                                                            />
+                                                            <div className={cx('item-info')}>
+                                                                <p className={cx('item-name')}>
+                                                                    {item.name}
+                                                                </p>
+                                                                <p className={cx('item-quantity')}>
+                                                                    Số lượng: {item.quantity}
+                                                                </p>
+                                                            </div>
                                                         </div>
-                                                    </div>
-                                                ))}
-                                            </div>
+                                                    ))}
+                                                </div>
                                             )}
 
                                             <div className={cx('order-actions')}>

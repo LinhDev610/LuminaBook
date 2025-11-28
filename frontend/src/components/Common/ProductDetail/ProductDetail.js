@@ -153,8 +153,8 @@ const ProductDetail = ({ productId }) => {
     const productImages = product?.mediaUrls?.length
         ? product.mediaUrls.map((img) => normalizeMediaUrl(img, API_BASE_URL))
         : (displayProduct.images || []).map((img) =>
-              normalizeMediaUrl(img, API_BASE_URL),
-          );
+            normalizeMediaUrl(img, API_BASE_URL),
+        );
     const heroFallback = product?.defaultMediaUrl
         ? normalizeMediaUrl(product.defaultMediaUrl, API_BASE_URL)
         : productImages[0] || require('../../../assets/images/img_sach.png');
@@ -315,7 +315,7 @@ const ProductDetail = ({ productId }) => {
 
         try {
             const token = getStoredToken('token');
-            
+
             if (!token) {
                 showError('Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng');
                 openLoginWithRedirect();
@@ -413,7 +413,7 @@ const ProductDetail = ({ productId }) => {
 
             const { ok, status, data } = await createReview(payload);
             if (status === 401) {
-                alert('Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại để viết đánh giá.');
+                showError('Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại để viết đánh giá.');
                 setIsReviewModalOpen(false);
                 openLoginWithRedirect();
                 return;
@@ -422,7 +422,7 @@ const ProductDetail = ({ productId }) => {
             // Kiểm tra kết quả từ server
             if (!ok && status >= 400) {
                 const errorMessage = data?.message || data?.error || 'Không thể gửi đánh giá';
-                alert(`${errorMessage} (Lỗi: ${status})`);
+                showError(`${errorMessage} (Lỗi: ${status})`);
                 return;
             }
 
@@ -432,7 +432,7 @@ const ProductDetail = ({ productId }) => {
             setHoverRating(0);
             setNewNameDisplay('');
             setNewComment('');
-            
+
             // Reload reviews từ server ngay lập tức và retry nếu cần
             const reloadReviews = async (retryCount = 0) => {
                 try {
@@ -453,14 +453,14 @@ const ProductDetail = ({ productId }) => {
                     setLoadingReviews(false);
                 }
             };
-            
+
             // Đợi một chút để đảm bảo database đã commit, sau đó reload
             setTimeout(() => reloadReviews(), 500);
-            
-            alert('Gửi đánh giá thành công');
+
+            success('Gửi đánh giá thành công');
         } catch (err) {
             console.error('Error submitting review:', err);
-            alert('Có lỗi xảy ra khi gửi đánh giá.');
+            showError('Có lỗi xảy ra khi gửi đánh giá.');
         } finally {
             setSubmittingReview(false);
         }
@@ -722,9 +722,9 @@ const ProductDetail = ({ productId }) => {
                                         '3-5 ngày làm việc'}
                                 </span>
                             </div>
-                            
+
                             <div className={styles.quantityDivider}></div>
-                            
+
                             <div className={styles.quantitySection}>
                                 <span className={styles.quantityLabel}>Số lượng</span>
                                 <div className={styles.quantityControls}>
@@ -1027,8 +1027,8 @@ const ProductDetail = ({ productId }) => {
                                 })();
 
                                 // Đảm bảo rating luôn có giá trị hợp lệ
-                                const reviewRating = review.rating !== undefined && review.rating !== null 
-                                    ? Number(review.rating) 
+                                const reviewRating = review.rating !== undefined && review.rating !== null
+                                    ? Number(review.rating)
                                     : 0;
 
                                 return (

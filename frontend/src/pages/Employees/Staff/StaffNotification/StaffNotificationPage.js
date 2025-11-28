@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import classNames from 'classnames/bind';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import styles from './StaffNotificationPage.module.scss';
 import { useNotification } from '../../../../components/Common/Notification';
 import {
@@ -14,11 +14,13 @@ import {
 } from '../../../../services';
 
 const cx = classNames.bind(styles);
+const LOW_STOCK_REGEX =
+    /sản phẩm\s+"([^"]+)"\s*\(Mã:\s*([^)]+)\).*vui lòng nhập thêm\./i;
 
 // Format thời gian tương đối (ví dụ: "5 phút trước")
 const formatRelativeTime = (dateString) => {
     if (!dateString) return '';
-    
+
     try {
         const date = new Date(dateString);
         const now = new Date();
@@ -62,7 +64,7 @@ export default function StaffNotificationPage() {
 
             const result = await getMyNotifications(token);
             console.log('Notification API result:', result);
-            
+
             if (result.ok) {
                 // Kiểm tra nếu result.data là mảng
                 if (Array.isArray(result.data)) {
@@ -221,6 +223,48 @@ export default function StaffNotificationPage() {
 
     const unreadCount = notifications.filter((n) => !n.isRead && !n.readAt).length;
 
+    const handleViewDetail = (notification) => {
+        if (!notification?.link) return;
+        if (!notification.isRead && !notification.readAt) {
+            handleMarkAsRead(notification.id);
+        }
+        navigate(notification.link);
+    };
+
+    const renderNotificationMessage = (notification) => {
+        const rawMessage = notification.message || notification.content || '';
+        if (!rawMessage) return '';
+
+        if (LOW_STOCK_REGEX.test(rawMessage)) {
+            const match = rawMessage.match(LOW_STOCK_REGEX);
+            const productCode = match?.[2]?.trim();
+
+            if (productCode) {
+                const productLink = `/staff/products/${encodeURIComponent(productCode)}`;
+
+                return (
+                    <>
+                        {rawMessage}{' '}
+                        <Link
+                            to={productLink}
+                            className={cx('notification-inline-link')}
+                            onClick={(event) => {
+                                event.stopPropagation();
+                                if (!notification.isRead && !notification.readAt) {
+                                    handleMarkAsRead(notification.id);
+                                }
+                            }}
+                        >
+                            Xem chi tiết sản phẩm
+                        </Link>
+                    </>
+                );
+            }
+        }
+
+        return rawMessage;
+    };
+
     return (
         <div className={cx('container')}>
             <div className={cx('header')}>
@@ -274,11 +318,19 @@ export default function StaffNotificationPage() {
                                         {notification.title || 'Thông báo'}
                                     </h3>
                                     <p className={cx('notification-message')}>
-                                        {notification.message || notification.content || ''}
+                                        {renderNotificationMessage(notification)}
                                     </p>
                                     <span className={cx('notification-time')}>{relativeTime}</span>
                                 </div>
                                 <div className={cx('notification-actions')}>
+                                    {notification.link && (
+                                        <button
+                                            className={cx('btn', 'btn-link')}
+                                            onClick={() => handleViewDetail(notification)}
+                                        >
+                                            Xem chi tiết
+                                        </button>
+                                    )}
                                     {!isRead && (
                                         <button
                                             className={cx('btn', 'btn-read')}

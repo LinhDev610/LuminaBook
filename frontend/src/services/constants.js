@@ -73,10 +73,21 @@ export const API_ROUTES = {
         detail: (addressId) => `/addresses/${addressId}`,
     },
     ghn: {
-        provinces: '/ghn/provinces',
-        districts: (provinceId) => `/ghn/districts?province_id=${provinceId}`,
-        wards: (districtId) => `/ghn/wards?district_id=${districtId}`,
-        shippingFees: '/ghn/shipping-fees',
+        provinces: '/shipments/ghn/provinces',
+        districts: (provinceId) => `/shipments/ghn/districts?province_id=${provinceId}`,
+        wards: (districtId) => `/shipments/ghn/wards?district_id=${districtId}`,
+        shippingFees: '/shipments/ghn/fees',
+        leadtime: '/shipments/ghn/leadtime',
+    },
+    shipments: {
+        root: '/shipments',
+        pickShifts: '/shipments/pick-shifts',
+        calculateFee: (orderId) => `/shipments/calculate-fee/${orderId}`,
+        leadtime: (orderId) => `/shipments/leadtime/${orderId}`,
+        preview: (orderId) => `/shipments/preview/${orderId}`,
+        create: (orderId) => `/shipments/create/${orderId}`,
+        byOrderId: (orderId) => `/shipments/order/${orderId}`,
+        byGhnCode: (orderCode) => `/shipments/ghn-code/${orderCode}`,
     },
     notifications: {
         root: '/notifications',
@@ -94,10 +105,37 @@ export const API_ROUTES = {
         checkoutDirect: '/orders/checkout-direct',
         detail: (orderId) => `/orders/${orderId}`,
         myOrders: '/orders/my-orders',
+        confirm: (orderId) => `/orders/${orderId}/confirm`,
+        cancel: (orderId) => `/orders/${orderId}/cancel`,
         resendEmail: (orderId) => `/orders/${orderId}/resend-email`,
         verifyPayment: (orderId) => `/orders/${orderId}/verify-payment`,
     },
 };
+
+// =========== GHN Constants ===========
+
+// Default shop info (from api_ghn.txt)
+export const GHN_DEFAULT_FROM_NAME = 'LuminaShop';
+export const GHN_DEFAULT_FROM_PHONE = '0846120004';
+export const GHN_DEFAULT_FROM_ADDRESS = '136 Xuân Thủy, Dịch Vọng Hậu, Cầu Giấy, Hà Nội, Vietnam';
+export const GHN_DEFAULT_FROM_WARD_CODE = '1A0602';
+export const GHN_DEFAULT_FROM_DISTRICT_ID = 1485;
+export const GHN_DEFAULT_FROM_PROVINCE_ID = 201;
+
+// Service type
+export const GHN_SERVICE_TYPE_LIGHT = 2; // < 20kg
+export const GHN_SERVICE_TYPE_HEAVY = 5; // >= 20kg
+
+// Weight threshold
+export const GHN_HEAVY_SERVICE_WEIGHT_THRESHOLD = 20000; // 20kg in grams
+
+// Default dimensions and weight
+export const GHN_DEFAULT_DIMENSION = 12; // cm
+export const GHN_DEFAULT_WEIGHT = 1200; // grams
+
+// Other constants
+export const GHN_REQUIRED_NOTE = 'CHOTHUHANG';
+export const GHN_CONTENT = 'Sách từ LuminaBook';
 
 // =========== Product Constants ===========
 
@@ -227,6 +265,7 @@ export const INITIAL_FORM_STATE_PRODUCT = {
     price: 0.0,
     taxPercent: '0',
     discountValue: 0.0,
+    purchasePrice: 0.0,
     categoryId: '',
     publicationDate: '',
     stockQuantity: '',

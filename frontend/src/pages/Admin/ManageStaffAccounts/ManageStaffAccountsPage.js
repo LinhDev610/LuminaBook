@@ -17,12 +17,13 @@ function ManageStaffAccountsPage() {
     const [filteredEmployees, setFilteredEmployees] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [confirmDialog, setConfirmDialog] = useState({
+    const initialConfirmState = {
         open: false,
         title: '',
         message: '',
         onConfirm: null,
-    });
+    };
+    const [confirmDialog, setConfirmDialog] = useState(initialConfirmState);
     const [notif, setNotif] = useState({ open: false, type: 'success', title: '', message: '', duration: 3000 });
 
     // Helper function to get token from storage
@@ -197,7 +198,7 @@ function ManageStaffAccountsPage() {
     };
 
     const performToggleLock = async (employeeId, currentStatus) => {
-        setConfirmDialog({ open: false, title: '', message: '', onConfirm: null });
+        setConfirmDialog(initialConfirmState);
 
         const isCurrentlyActive = currentStatus === 'active';
         const newIsActive = !isCurrentlyActive;
@@ -206,7 +207,13 @@ function ManageStaffAccountsPage() {
         try {
             const token = getStoredToken();
             if (!token) {
-                alert('Vui lòng đăng nhập để tiếp tục');
+                setNotif({
+                    open: true,
+                    type: 'error',
+                    title: 'Chưa đăng nhập',
+                    message: 'Vui lòng đăng nhập để tiếp tục',
+                    duration: 3000,
+                });
                 return;
             }
 
@@ -249,15 +256,30 @@ function ManageStaffAccountsPage() {
     };
 
     // Handle delete staff account
-    const handleDelete = async (employeeId) => {
-        if (!window.confirm('Bạn có chắc chắn muốn xóa tài khoản này? Hành động này không thể hoàn tác.')) {
-            return;
-        }
+    const handleDelete = (employeeId) => {
+        const employee = allEmployees.find((e) => e.id === employeeId);
+        const employeeName = employee?.fullName || employee?.name || employee?.email || `#${employeeId}`;
+        setConfirmDialog({
+            open: true,
+            title: 'Xác nhận xóa tài khoản',
+            message: `Bạn có chắc chắn muốn xóa tài khoản ${employeeName}? Hành động này không thể hoàn tác.`,
+            onConfirm: () => performDelete(employeeId),
+        });
+    };
+
+    const performDelete = async (employeeId) => {
+        setConfirmDialog(initialConfirmState);
 
         try {
             const token = getStoredToken();
             if (!token) {
-                alert('Vui lòng đăng nhập để tiếp tục');
+                setNotif({
+                    open: true,
+                    type: 'error',
+                    title: 'Chưa đăng nhập',
+                    message: 'Vui lòng đăng nhập để tiếp tục',
+                    duration: 3000,
+                });
                 return;
             }
 
@@ -265,10 +287,22 @@ function ManageStaffAccountsPage() {
 
             // Sau khi xóa thành công, fetch lại dữ liệu từ backend để đảm bảo hiển thị đúng
             await fetchStaff();
-            alert('Đã xóa tài khoản thành công');
+            setNotif({
+                open: true,
+                type: 'success',
+                title: 'Thành công',
+                message: 'Đã xóa tài khoản thành công',
+                duration: 3000,
+            });
         } catch (err) {
             console.error('Error deleting staff:', err);
-            alert('Không thể xóa tài khoản. Vui lòng thử lại sau.');
+            setNotif({
+                open: true,
+                type: 'error',
+                title: 'Thất bại',
+                message: 'Không thể xóa tài khoản. Vui lòng thử lại sau.',
+                duration: 4000,
+            });
         }
     };
 
@@ -387,7 +421,7 @@ function ManageStaffAccountsPage() {
                 title={confirmDialog.title}
                 message={confirmDialog.message}
                 onConfirm={confirmDialog.onConfirm || (() => { })}
-                onCancel={() => setConfirmDialog({ open: false, title: '', message: '', onConfirm: null })}
+                onCancel={() => setConfirmDialog(initialConfirmState)}
             />
             <Notification
                 open={notif.open}

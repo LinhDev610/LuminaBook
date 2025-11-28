@@ -36,7 +36,6 @@ function NavBar() {
     const handleMobileMenuClick = () => {
         // console.log('Mobile menu clicked, current state:', isMobileMenuOpen);
         setIsMobileMenuOpen(!isMobileMenuOpen);
-
         setIsDropdownOpen(false);
     };
 

@@ -15,6 +15,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.lumina_book.backend.dto.request.ReturnRequestRequest;
 import com.lumina_book.backend.dto.request.CreateOrderRequest;
 import com.lumina_book.backend.dto.request.MomoIpnRequest;
 import com.lumina_book.backend.dto.request.ReturnProcessRequest;
@@ -25,6 +26,7 @@ import com.lumina_book.backend.entity.CartItem;
 import com.lumina_book.backend.entity.Order;
 import com.lumina_book.backend.entity.OrderItem;
 import com.lumina_book.backend.entity.User;
+import com.lumina_book.backend.enums.CancellationSource;
 import com.lumina_book.backend.enums.OrderStatus;
 import com.lumina_book.backend.enums.PaymentMethod;
 import com.lumina_book.backend.enums.PaymentStatus;
@@ -38,6 +40,8 @@ import com.lumina_book.backend.repository.UserRepository;
 import com.lumina_book.backend.entity.Product;
 import com.lumina_book.backend.dto.request.DirectCheckoutRequest;
 import com.lumina_book.backend.util.SecurityUtil;
+import com.lumina_book.backend.service.NotificationService;
+import com.lumina_book.backend.service.ShipmentService;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -47,6 +51,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.hibernate.exception.ConstraintViolationException;
 
 @Slf4j
 @Service
@@ -62,6 +68,8 @@ public class OrderService {
     BrevoEmailService brevoEmailService;
     ProductRepository productRepository;
     UserRepository userRepository;
+    ShipmentService shipmentService;
+    NotificationService notificationService;
 
     ObjectMapper objectMapper = new ObjectMapper();
 
@@ -232,25 +240,30 @@ public class OrderService {
                 request.getShippingAddress(),
                 user);
 
-        // Tạo Order
-        Order order = Order.builder()
-                .user(user)
-                .code(generateOrderCode())
-                .note(request.getNote())
-                .shippingAddress(shippingAddressSnapshot)
-                .address(shippingAddressEntity)
-                .orderDate(LocalDate.now())
-                .orderDateTime(LocalDateTime.now())
-                .shippingFee(shippingFee)
-                .totalAmount(orderTotal)
-                .status(OrderStatus.CREATED)
-                .paymentMethod(paymentMethod)
-                .paymentStatus(PaymentStatus.PAID)
-                .paid(true)
-                .cartItemIdsSnapshot("[]") // Không có cart items
-                .build();
+        // Retry logic để xử lý race condition (nếu có duplicate order code)
+        String finalOrderCode = generateOrderCode();
+        int maxRetries = 3;
+        for (int attempt = 0; attempt < maxRetries; attempt++) {
+            try {
+                // Tạo Order
+                Order order = Order.builder()
+                        .user(user)
+                        .code(finalOrderCode)
+                        .note(request.getNote())
+                        .shippingAddress(shippingAddressSnapshot)
+                        .address(shippingAddressEntity)
+                        .orderDate(LocalDate.now())
+                        .orderDateTime(LocalDateTime.now())
+                        .shippingFee(shippingFee)
+                        .totalAmount(orderTotal)
+                        .status(OrderStatus.CREATED)
+                        .paymentMethod(paymentMethod)
+                        .paymentStatus(PaymentStatus.PAID)
+                        .paid(true)
+                        .cartItemIdsSnapshot("[]") // Không có cart items
+                        .build();
 
-        Order savedOrder = orderRepository.save(order);
+                Order savedOrder = orderRepository.save(order);
 
         // Tạo OrderItem trực tiếp từ product
         OrderItem orderItem = OrderItem.builder()
@@ -267,14 +280,27 @@ public class OrderService {
 
         updateInventoryAndSales(product, quantity);
 
-        // COD: Tạo đơn hàng ngay và giữ status CREATED, chờ admin/staff xác nhận
-        if (paymentMethod == PaymentMethod.COD) {
-            return new CheckoutResult(savedOrder, null);
+                // COD: Tạo đơn hàng ngay và giữ status CREATED, chờ admin/staff xác nhận
+                return new CheckoutResult(savedOrder, null);
+            } catch (DataIntegrityViolationException e) {
+                // Nếu duplicate order code, generate lại và retry
+                if (e.getCause() instanceof ConstraintViolationException) {
+                    ConstraintViolationException cve =
+                            (ConstraintViolationException) e.getCause();
+                    if (cve.getConstraintName() != null && cve.getConstraintName().contains("order_code")) {
+                        log.warn("Duplicate order code detected: {}, generating new code (attempt {}/{})",
+                                finalOrderCode, attempt + 1, maxRetries);
+                        finalOrderCode = generateOrderCode();
+                        continue; // Retry với order code mới
+                    }
+                }
+                throw e; // Nếu không phải duplicate order code, throw exception
+            }
         }
 
-        // MoMo: Không tạo đơn hàng ở đây, đã xử lý ở trên
-        // Code này không nên chạy đến vì đã return ở trên
-        throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION, "Logic error: MoMo payment should have been handled earlier");
+        // Nếu vẫn fail sau maxRetries, throw exception
+        throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION,
+                "Không thể tạo đơn hàng sau nhiều lần thử. Vui lòng thử lại.");
     }
 
     /**
@@ -299,33 +325,71 @@ public class OrderService {
                 cart.getUser());
 
         // Tạo đơn hàng với paymentStatus = PAID (vì đã thanh toán thành công)
-        Order order = Order.builder()
-                .user(cart.getUser())
-                .code(generateOrderCode())
-                .note(request.getNote())
-                .shippingAddress(shippingAddressSnapshot)
-                .address(shippingAddressEntity)
-                .orderDate(LocalDate.now())
-                .orderDateTime(LocalDateTime.now())
-                .shippingFee(pricing.shippingFee)
-                .totalAmount(pricing.orderTotal)
-                .status(OrderStatus.CREATED)
-                .paymentMethod(PaymentMethod.MOMO)
-                .paymentStatus(PaymentStatus.PAID)
-                .paid(true)
-                .cartItemIdsSnapshot(pricing.cartItemIdsSnapshot)
-                .build();
+        String reusableOrderCode = normalizeOrderCode(request.getOrderCode());
+        String finalOrderCode;
 
-        Order savedOrder = orderRepository.save(order);
-        persistOrderItems(savedOrder, selectedItems);
-        orderRepository.flush();
-
-        // Xóa cart items sau khi tạo đơn hàng
-        if (savedOrder.getUser() != null && pricing.selectedCartItemIds != null && !pricing.selectedCartItemIds.isEmpty()) {
-            cartService.removeCartItemsForOrder(savedOrder.getUser(), pricing.selectedCartItemIds);
+        if (reusableOrderCode != null) {
+            // Kiểm tra xem order code đã tồn tại chưa
+            Order existing = orderRepository.findByCode(reusableOrderCode).orElse(null);
+            if (existing != null) {
+                log.info("Order with code {} already exists, returning existing order", reusableOrderCode);
+                return existing;
+            }
+            finalOrderCode = reusableOrderCode;
+        } else {
+            finalOrderCode = generateOrderCode();
         }
 
-        return savedOrder;
+        // Retry logic để xử lý race condition (nếu có duplicate order code)
+        int maxRetries = 3;
+        for (int attempt = 0; attempt < maxRetries; attempt++) {
+            try {
+                Order order = Order.builder()
+                        .user(cart.getUser())
+                        .code(finalOrderCode)
+                        .note(request.getNote())
+                        .shippingAddress(shippingAddressSnapshot)
+                        .address(shippingAddressEntity)
+                        .orderDate(LocalDate.now())
+                        .orderDateTime(LocalDateTime.now())
+                        .shippingFee(pricing.shippingFee)
+                        .totalAmount(pricing.orderTotal)
+                        .status(OrderStatus.CREATED)
+                        .paymentMethod(PaymentMethod.MOMO)
+                        .paymentStatus(PaymentStatus.PAID)
+                        .paid(true)
+                        .cartItemIdsSnapshot(pricing.cartItemIdsSnapshot)
+                        .build();
+
+                Order savedOrder = orderRepository.save(order);
+                persistOrderItems(savedOrder, selectedItems);
+                orderRepository.flush();
+
+                // Xóa cart items sau khi tạo đơn hàng
+                if (savedOrder.getUser() != null && pricing.selectedCartItemIds != null && !pricing.selectedCartItemIds.isEmpty()) {
+                    cartService.removeCartItemsForOrder(savedOrder.getUser(), pricing.selectedCartItemIds);
+                }
+
+                return savedOrder;
+            } catch (DataIntegrityViolationException e) {
+                // Nếu duplicate order code, generate lại và retry
+                if (e.getCause() instanceof ConstraintViolationException) {
+                    ConstraintViolationException cve =
+                            (ConstraintViolationException) e.getCause();
+                    if (cve.getConstraintName() != null && cve.getConstraintName().contains("order_code")) {
+                        log.warn("Duplicate order code detected: {}, generating new code (attempt {}/{})",
+                                finalOrderCode, attempt + 1, maxRetries);
+                        finalOrderCode = generateOrderCode();
+                        continue; // Retry với order code mới
+                    }
+                }
+                throw e; // Nếu không phải duplicate order code, throw exception
+            }
+        }
+
+        // Nếu vẫn fail sau maxRetries, throw exception
+        throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION,
+                "Không thể tạo đơn hàng sau nhiều lần thử. Vui lòng thử lại.");
     }
 
     /**
@@ -358,24 +422,43 @@ public class OrderService {
                 user);
 
         // Tạo đơn hàng với paymentStatus = PAID (vì đã thanh toán thành công)
-        Order order = Order.builder()
-                .user(user)
-                .code(generateOrderCode())
-                .note(request.getNote())
-                .shippingAddress(shippingAddressSnapshot)
-                .address(shippingAddressEntity)
-                .orderDate(LocalDate.now())
-                .orderDateTime(LocalDateTime.now())
-                .shippingFee(shippingFee)
-                .totalAmount(orderTotal)
-                .status(OrderStatus.CREATED)
-                .paymentMethod(PaymentMethod.MOMO)
-                .paymentStatus(PaymentStatus.PAID)
-                .paid(true)
-                .cartItemIdsSnapshot("[]")
-                .build();
+        String reusableOrderCode = normalizeOrderCode(request.getOrderCode());
+        String finalOrderCode;
 
-        Order savedOrder = orderRepository.save(order);
+        if (reusableOrderCode != null) {
+            // Kiểm tra xem order code đã tồn tại chưa
+            Order existing = orderRepository.findByCode(reusableOrderCode).orElse(null);
+            if (existing != null) {
+                log.info("Order with code {} already exists, returning existing order", reusableOrderCode);
+                return existing;
+            }
+            finalOrderCode = reusableOrderCode;
+        } else {
+            finalOrderCode = generateOrderCode();
+        }
+
+        // Retry logic để xử lý race condition (nếu có duplicate order code)
+        int maxRetries = 3;
+        for (int attempt = 0; attempt < maxRetries; attempt++) {
+            try {
+                Order order = Order.builder()
+                        .user(user)
+                        .code(finalOrderCode)
+                        .note(request.getNote())
+                        .shippingAddress(shippingAddressSnapshot)
+                        .address(shippingAddressEntity)
+                        .orderDate(LocalDate.now())
+                        .orderDateTime(LocalDateTime.now())
+                        .shippingFee(shippingFee)
+                        .totalAmount(orderTotal)
+                        .status(OrderStatus.CREATED)
+                        .paymentMethod(PaymentMethod.MOMO)
+                        .paymentStatus(PaymentStatus.PAID)
+                        .paid(true)
+                        .cartItemIdsSnapshot("[]")
+                        .build();
+
+                Order savedOrder = orderRepository.save(order);
 
         OrderItem orderItem = OrderItem.builder()
                 .order(savedOrder)
@@ -390,7 +473,26 @@ public class OrderService {
 
         updateInventoryAndSales(product, quantity);
 
-        return savedOrder;
+                return savedOrder;
+            } catch (org.springframework.dao.DataIntegrityViolationException e) {
+                // Nếu duplicate order code, generate lại và retry
+                if (e.getCause() instanceof org.hibernate.exception.ConstraintViolationException) {
+                    org.hibernate.exception.ConstraintViolationException cve =
+                            (org.hibernate.exception.ConstraintViolationException) e.getCause();
+                    if (cve.getConstraintName() != null && cve.getConstraintName().contains("order_code")) {
+                        log.warn("Duplicate order code detected: {}, generating new code (attempt {}/{})",
+                                finalOrderCode, attempt + 1, maxRetries);
+                        finalOrderCode = generateOrderCode();
+                        continue; // Retry với order code mới
+                    }
+                }
+                throw e; // Nếu không phải duplicate order code, throw exception
+            }
+        }
+
+        // Nếu vẫn fail sau maxRetries, throw exception
+        throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION,
+                "Không thể tạo đơn hàng sau nhiều lần thử. Vui lòng thử lại.");
     }
 
     private Address resolveShippingAddressForDirectCheckout(DirectCheckoutRequest request, User user) {
@@ -538,8 +640,13 @@ public class OrderService {
                 stock = 0;
             }
             int updatedStock = stock - quantity;
-            product.getInventory().setStockQuantity(Math.max(0, updatedStock));
+            int normalizedStock = Math.max(0, updatedStock);
+            product.getInventory().setStockQuantity(normalizedStock);
             product.getInventory().setLastUpdated(LocalDate.now());
+
+            if (stock > 40 && normalizedStock <= 40) {
+                notifyStaffLowStock(product, normalizedStock);
+            }
         }
 
         productRepository.save(product);
@@ -765,6 +872,14 @@ public class OrderService {
         sb.append(value);
     }
 
+    private String normalizeOrderCode(String code) {
+        if (code == null) {
+            return null;
+        }
+        String trimmed = code.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
     private static class ShippingSnapshot {
         String name;
         String phone;
@@ -812,27 +927,138 @@ public class OrderService {
         return "LMN" + datePart + "-" + randomPart;
     }
 
-    /**
-     * Danh sách tất cả đơn hàng cho nhân viên / admin.
-     */
+    // Danh sách tất cả đơn hàng cho nhân viên / admin.
+    @Transactional
+    public Order cancelOrder(String orderId, String reason) {
+        Order order = orderRepository.findById(orderId)
+                .orElseGet(() -> orderRepository.findByCode(orderId)
+                        .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_EXISTED)));
+
+        OrderStatus currentStatus = order.getStatus() != null ? order.getStatus() : OrderStatus.CREATED;
+        if (currentStatus == OrderStatus.DELIVERED
+                || currentStatus == OrderStatus.SHIPPED
+                || currentStatus == OrderStatus.REFUNDED) {
+            throw new AppException(
+                    ErrorCode.UNCATEGORIZED_EXCEPTION,
+                    "Không thể hủy đơn hàng ở trạng thái hiện tại.");
+        }
+
+        if (currentStatus == OrderStatus.CANCELLED) {
+            boolean updated = false;
+            if (order.getCancellationReason() == null
+                    && reason != null
+                    && !reason.isBlank()) {
+                String resolvedReason = reason.trim();
+                order.setCancellationReason(resolvedReason);
+                order.setNote(buildCancellationNote(resolvedReason));
+                updated = true;
+            }
+            if (order.getCancellationSource() == null) {
+                order.setCancellationSource(guessCancellationSourceFromReason(order.getCancellationReason()));
+                updated = true;
+            }
+            Order saved = updated ? orderRepository.save(order) : order;
+            if (saved.getCancellationSource() == CancellationSource.CUSTOMER) {
+                notifyStaffOrderCancelledByCustomer(saved);
+            }
+            return saved;
+        }
+
+        var auth = SecurityUtil.getAuthentication();
+        boolean isPrivileged = auth.getAuthorities().stream()
+                .anyMatch(a -> {
+                    String role = a.getAuthority();
+                    return "ROLE_STAFF".equals(role)
+                            || "ROLE_ADMIN".equals(role)
+                            || "ROLE_CUSTOMER_SUPPORT".equals(role);
+                });
+
+        if (!isPrivileged) {
+            String email = auth.getName();
+            if (order.getUser() == null
+                    || order.getUser().getEmail() == null
+                    || !order.getUser().getEmail().equalsIgnoreCase(email)) {
+                throw new AppException(ErrorCode.UNAUTHORIZED);
+            }
+        }
+
+        CancellationSource source = isPrivileged ? CancellationSource.STAFF : CancellationSource.CUSTOMER;
+        String resolvedReason = (reason != null && !reason.isBlank())
+                ? reason.trim()
+                : (source == CancellationSource.STAFF ? "Nhân viên hủy đơn" : "Khách hàng hủy đơn");
+
+        order.setStatus(OrderStatus.CANCELLED);
+        order.setCancellationReason(resolvedReason);
+        order.setCancellationSource(source);
+        order.setNote(buildCancellationNote(resolvedReason));
+
+        Order savedOrder = orderRepository.save(order);
+        if (source == CancellationSource.CUSTOMER) {
+            notifyStaffOrderCancelledByCustomer(savedOrder);
+        }
+        return savedOrder;
+    }
+
+    private String buildCancellationNote(String reason) {
+        if (reason == null || reason.isBlank()) {
+            return "Đơn hàng đã được hủy.";
+        }
+        return "Đơn hàng đã được hủy. Lý do: " + reason;
+    }
+
+    private CancellationSource guessCancellationSourceFromReason(String reason) {
+        if (reason == null) {
+            return null;
+        }
+        String normalized = reason.toLowerCase();
+        if (normalized.contains("nhân viên") || normalized.contains("cửa hàng")) {
+            return CancellationSource.STAFF;
+        }
+        if (normalized.contains("khách hàng") || normalized.contains("khach hang")) {
+            return CancellationSource.CUSTOMER;
+        }
+        return null;
+    }
+
     @Transactional(readOnly = true)
     @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
     public List<Order> getAllOrders() {
+        List<Order> orders = orderRepository.findAll();
+        // Đồng bộ trạng thái từ GHN cho các đơn có shipment
+        for (Order order : orders) {
+            if (order.getShipment() != null && order.getShipment().getOrderCode() != null) {
+                try {
+                    shipmentService.syncOrderStatusFromGhn(order.getId());
+                } catch (Exception e) {
+                    log.warn("Không thể đồng bộ trạng thái từ GHN cho order: {}", order.getId(), e);
+                }
+            }
+        }
+        // Reload để lấy status mới nhất
         return orderRepository.findAll();
     }
 
-    /**
-     * Danh sách đơn hàng của chính khách hàng hiện đang đăng nhập.
-     */
+    // Danh sách đơn hàng của chính khách hàng hiện đang đăng nhập.
     @Transactional(readOnly = true)
     @PreAuthorize("hasRole('CUSTOMER')")
     public List<Order> getMyOrders() {
         try {
             String email = SecurityUtil.getAuthentication().getName();
+            List<Order> orders = orderRepository.findByUserEmail(email);
+            // Đồng bộ trạng thái từ GHN cho các đơn có shipment
+            for (Order order : orders) {
+                if (order.getShipment() != null && order.getShipment().getOrderCode() != null) {
+                    try {
+                        shipmentService.syncOrderStatusFromGhn(order.getId());
+                    } catch (Exception e) {
+                        log.warn("Không thể đồng bộ trạng thái từ GHN cho order: {}", order.getId(), e);
+                    }
+                }
+            }
+            // Reload để lấy status mới nhất
             return orderRepository.findByUserEmail(email);
         } catch (Exception e) {
             log.error("Error fetching orders for user: {}", e.getMessage(), e);
-            // Return empty list instead of throwing to prevent frontend crash
             return new ArrayList<>();
         }
     }
@@ -842,6 +1068,7 @@ public class OrderService {
      * Dành cho Customer Support để quản lý và xử lý các yêu cầu trả hàng.
      * Không bao gồm các đơn đã hoàn tiền thành công (REFUNDED).
      */
+    // Danh sách các yêu cầu trả hàng/hoàn tiền.
     @Transactional(readOnly = true)
     @PreAuthorize("hasAnyRole('CUSTOMER_SUPPORT','STAFF','ADMIN')")
     public List<Order> getReturnRequests() {
@@ -854,18 +1081,21 @@ public class OrderService {
         return orderRepository.findByStatusIn(returnStatuses);
     }
 
-    /**
-     * Lấy chi tiết một đơn hàng theo id, đảm bảo:
-     * - STAFF / ADMIN / CUSTOMER_SUPPORT có thể xem mọi đơn
-     * - CUSTOMER chỉ được xem đơn của chính mình
-     */
+    // Lấy chi tiết đơn hàng theo id
     @Transactional(readOnly = true)
     @PreAuthorize("hasAnyRole('CUSTOMER','CUSTOMER_SUPPORT','STAFF','ADMIN')")
     public Order getOrderByIdForCurrentUser(String orderId) {
-        // Try to find by ID (UUID) first, then by code (order code like LMN20251121-ABC123)
+        // Đồng bộ trạng thái từ GHN
+        try {
+            shipmentService.syncOrderStatusFromGhn(orderId);
+        } catch (Exception e) {
+            log.warn("Không thể đồng bộ trạng thái từ GHN cho order: {}", orderId, e);
+        }
+
+        // Tìm đơn hàng theo id
         Order order = orderRepository.findById(orderId)
                 .orElseGet(() -> {
-                    // If not found by ID, try to find by code
+                    // Nếu không tìm thấy theo id, tìm theo code
                     return orderRepository.findByCode(orderId)
                             .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_EXISTED));
                 });
@@ -885,7 +1115,7 @@ public class OrderService {
             }
         }
 
-        // Force load items to avoid lazy loading issues
+        // Load items để tránh vấn đề lazy loading
         if (order.getItems() != null) {
             order.getItems().size();
             order.getItems().forEach(item -> {
@@ -904,9 +1134,7 @@ public class OrderService {
         return order;
     }
 
-    /**
-     * Nhân viên xác nhận đơn hàng (chuyển trạng thái sang CONFIRMED).
-     */
+    // Nhân viên xác nhận đơn hàng
     @Transactional
     @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
     public Order confirmOrder(String orderId) {
@@ -926,7 +1154,7 @@ public class OrderService {
     }
 
     @Transactional
-    public Order requestReturn(String orderId, com.lumina_book.backend.dto.request.ReturnRequestRequest request) {
+    public Order requestReturn(String orderId, ReturnRequestRequest request) {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_EXISTED));
 
@@ -1097,7 +1325,7 @@ public class OrderService {
 
         // Chỉ có thể xác nhận hoàn tiền cho đơn hàng đã được staff kiểm tra
         if (order.getStatus() != OrderStatus.RETURN_STAFF_CONFIRMED) {
-            throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION, 
+            throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION,
                     "Chỉ có thể xác nhận hoàn tiền cho đơn hàng đang ở trạng thái 'Hoàn tiền/ trả hàng'");
         }
 
@@ -1112,7 +1340,64 @@ public class OrderService {
         }
         order.setStatus(OrderStatus.REFUNDED);
 
-        return orderRepository.save(order);
+        Order savedOrder = orderRepository.save(order);
+        notifyStaffOrderReturned(savedOrder);
+        return savedOrder;
+    }
+
+    private void notifyStaffOrderCancelledByCustomer(Order order) {
+        try {
+            String code = resolveDisplayOrderCode(order);
+            int itemCount = order.getItems() != null ? order.getItems().size() : 0;
+            String message = itemCount > 0
+                    ? String.format("Khách hàng đã hủy đơn %s với %d sản phẩm. Vui lòng kiểm tra tồn kho/đơn hàng.", code, itemCount)
+                    : String.format("Khách hàng đã hủy đơn %s. Vui lòng kiểm tra tồn kho/đơn hàng.", code);
+            notificationService.sendToStaff(
+                    "Khách hàng hủy đơn hàng",
+                    message,
+                    "WARNING",
+                    String.format("/staff/orders/%s", order.getId()));
+        } catch (Exception e) {
+            log.warn("Không thể gửi thông báo hủy đơn bởi khách hàng cho order {}", order.getId(), e);
+        }
+    }
+
+    private void notifyStaffOrderReturned(Order order) {
+        try {
+            String code = resolveDisplayOrderCode(order);
+            notificationService.sendToStaff(
+                    "Đơn hàng hoàn về cần kiểm tra",
+                    String.format("Bộ phận CSKH đã xác nhận hoàn trả cho đơn %s. Vui lòng kiểm tra hàng hoàn và xử lý tồn kho.", code),
+                    "INFO",
+                    String.format("/staff/orders/%s", order.getId()));
+        } catch (Exception e) {
+            log.warn("Không thể gửi thông báo đơn hoàn về cho order {}", order.getId(), e);
+        }
+    }
+
+    private String resolveDisplayOrderCode(Order order) {
+        if (order == null) return "";
+        if (order.getCode() != null && !order.getCode().isBlank()) {
+            return order.getCode();
+        }
+        return order.getId();
+    }
+
+    private void notifyStaffLowStock(Product product, int stock) {
+        if (product == null) {
+            return;
+        }
+        try {
+            String name = product.getName() != null ? product.getName() : product.getId();
+            String code = product.getId();
+            notificationService.sendToStaff(
+                    "Sản phẩm sắp hết hàng",
+                    String.format("Sản phẩm \"%s\" (Mã: %s) chỉ còn %d sản phẩm trong kho. Vui lòng nhập thêm.", name, code, stock),
+                    "WARNING",
+                    String.format("/staff/products/%s", product.getId()));
+        } catch (Exception e) {
+            log.warn("Không thể gửi thông báo low-stock cho sản phẩm {}", product.getId(), e);
+        }
     }
 
     private void appendProcessingNote(Order order, ReturnProcessRequest request) {

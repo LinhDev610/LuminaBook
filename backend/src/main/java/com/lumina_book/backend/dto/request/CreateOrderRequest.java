@@ -13,24 +13,16 @@ import lombok.experimental.FieldDefaults;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class CreateOrderRequest {
 
-    /**
-     * Snapshot đầy đủ của thông tin giao hàng (JSON string).
-     */
+    // Đầy đủ thông tin giao hàng (JSON string).
     String shippingAddress;
 
-    /**
-     * ID của địa chỉ mà khách đã chọn (nếu có trong sổ địa chỉ).
-     */
+    // ID của địa chỉ mà khách đã chọn
     String addressId;
 
-    /**
-     * Ghi chú đơn hàng từ phía khách hàng.
-     */
+    // Ghi chú đơn hàng từ phía khách hàng.
     String note;
 
-    /**
-     * Phí vận chuyển (VND). Nếu null sẽ mặc định 0.
-     */
+    // Phí vận chuyển (VND). Nếu null sẽ mặc định 0.
     Double shippingFee;
 
     /**
@@ -39,10 +31,10 @@ public class CreateOrderRequest {
      */
     List<String> cartItemIds;
 
-    /**
-     * Phương thức thanh toán khách chọn (momo | cod).
-     */
     String paymentMethod;
+
+    // Mã đơn hàng được tạo trước (dùng cho thanh toán MoMo để đảm bảo idempotent).
+    String orderCode;
 }
 
 

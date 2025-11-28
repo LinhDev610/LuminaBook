@@ -76,6 +76,17 @@
     }
 }
 
+.btn-link {
+    background-color: #2563eb;
+    color: #fff;
+    padding: 8px 16px;
+    font-size: 13px;
+
+    &:hover:not(:disabled) {
+        background-color: #1d4ed8;
+    }
+}
+
 .loading,
 .empty {
     text-align: center;
@@ -168,6 +179,17 @@
     color: #666;
     line-height: 1.6;
     margin: 0 0 8px 0;
+}
+
+.notification-inline-link {
+    color: #2563eb;
+    font-weight: 500;
+    text-decoration: underline;
+    margin-left: 6px;
+
+    &:hover {
+        color: #1d4ed8;
+    }
 }
 
 .notification-time {

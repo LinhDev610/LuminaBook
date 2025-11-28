@@ -6,6 +6,7 @@ import java.util.List;
 
 import jakarta.persistence.*;
 
+import com.lumina_book.backend.enums.CancellationSource;
 import com.lumina_book.backend.enums.OrderStatus;
 import com.lumina_book.backend.enums.PaymentMethod;
 import com.lumina_book.backend.enums.PaymentStatus;
@@ -37,20 +38,23 @@ public class Order {
     @OneToOne(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     Shipment shipment;
 
-    /**
-     * Mã đơn hàng hiển thị cho khách (ví dụ: LMN20241120ABC123).
-     */
+    // Mã đơn hàng hiển thị cho khách (ví dụ: LMN20241120ABC123).
     @Column(name = "order_code", unique = true)
     String code;
 
     @Column(columnDefinition = "TEXT")
     String note;
+
+    @Column(name = "cancellation_reason", columnDefinition = "TEXT")
+    String cancellationReason;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "cancellation_source", length = 32)
+    CancellationSource cancellationSource;
     String shippingAddress;
     LocalDate orderDate;
 
-    /**
-     * Thời điểm tạo đơn hàng đầy đủ (bao gồm giờ/phút/giây).
-     */
+    // Thời điểm tạo đơn hàng đầy đủ (bao gồm giờ/phút/giây).
     @Column(name = "order_date_time")
     LocalDateTime orderDateTime;
     LocalDate expectedDeliveryDate;

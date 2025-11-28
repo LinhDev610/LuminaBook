@@ -31,7 +31,6 @@ public enum ProductStatus {
                 return status;
             }
         }
-        // Fallback: tìm theo enum name (tiếng Anh) để tương thích ngược
         try {
             return ProductStatus.valueOf(value.toUpperCase());
         } catch (IllegalArgumentException e) {

@@ -4,6 +4,7 @@ import classNames from 'classnames/bind';
 import styles from './CustomerDetailPage.module.scss';
 import guestAvatar from '../../../../assets/icons/icon_img_guest.png';
 import Notification from '../../../../components/Common/Notification/Notification';
+import ConfirmDialog from '../../../../components/Common/ConfirmDialog/DeleteAccountDialog';
 import { getUserById, updateUser, deleteUser } from '../../../../services';
 
 const cx = classNames.bind(styles);
@@ -21,6 +22,13 @@ function CustomerDetailPage() {
     const [formData, setFormData] = useState({ fullName: '', phoneNumber: '', address: '' });
     const [saving, setSaving] = useState(false);
     const [notif, setNotif] = useState({ open: false, type: 'success', title: '', message: '', duration: 3000 });
+    const initialConfirmState = {
+        open: false,
+        title: '',
+        message: '',
+        onConfirm: null,
+    };
+    const [confirmDialog, setConfirmDialog] = useState(initialConfirmState);
 
     const getStoredToken = useMemo(() => () => {
         try {
@@ -82,35 +90,64 @@ function CustomerDetailPage() {
         return false;
     };
 
-    const handleToggleLock = async () => {
+    const handleToggleLock = () => {
         if (!customer) return;
         const isCurrentlyActive = resolveActive(customer);
         const newIsActive = !isCurrentlyActive;
         const action = isCurrentlyActive ? 'khóa' : 'mở khóa';
-        if (!window.confirm(`Bạn có chắc chắn muốn ${action} tài khoản này?`)) return;
+        setConfirmDialog({
+            open: true,
+            title: 'Xác nhận hành động',
+            message: `Bạn có chắc chắn muốn ${action} tài khoản này?`,
+            onConfirm: () => performToggleLock(newIsActive),
+        });
+    };
+
+    const performToggleLock = async (newIsActive) => {
+        setConfirmDialog(initialConfirmState);
+        if (!customer) return;
+        const action = newIsActive ? 'mở khóa' : 'khóa';
         try {
             const token = getStoredToken();
+            if (!token) {
+                setNotif({ open: true, type: 'error', title: 'Lỗi', message: 'Vui lòng đăng nhập để tiếp tục', duration: 3500 });
+                return;
+            }
             const next = await updateUser(customer.id, { isActive: newIsActive }, token) || { ...customer, isActive: newIsActive };
             // Normalize both fields for UI consistency
             if (next.isActive === undefined) next.isActive = newIsActive;
             if (next.active === undefined) next.active = newIsActive;
             setCustomer(next);
-            alert(`Đã ${action} tài khoản thành công`);
+            setNotif({ open: true, type: 'success', title: 'Thành công', message: `Đã ${action} tài khoản thành công`, duration: 2500 });
         } catch (e) {
-            alert(`Không thể ${action} tài khoản: ${e.message || 'Vui lòng thử lại sau.'}`);
+            setNotif({ open: true, type: 'error', title: 'Lỗi', message: `Không thể ${action} tài khoản: ${e.message || 'Vui lòng thử lại sau.'}`, duration: 4000 });
         }
     };
 
-    const handleDelete = async () => {
+    const handleDelete = () => {
         if (!customer) return;
-        if (!window.confirm('Bạn có chắc chắn muốn xóa tài khoản này? Hành động này không thể hoàn tác.')) return;
+        setConfirmDialog({
+            open: true,
+            title: 'Xác nhận xóa tài khoản',
+            message: 'Bạn có chắc chắn muốn xóa tài khoản này? Hành động này không thể hoàn tác.',
+            onConfirm: () => performDelete(),
+        });
+    };
+
+    const performDelete = async () => {
+        setConfirmDialog(initialConfirmState);
+        if (!customer) return;
         try {
             const token = getStoredToken();
+            if (!token) {
+                setNotif({ open: true, type: 'error', title: 'Lỗi', message: 'Vui lòng đăng nhập để tiếp tục', duration: 3500 });
+                return;
+            }
             await deleteUser(customer.id, token);
-            alert('Đã xóa tài khoản thành công');
+            setNotif({ open: true, type: 'success', title: 'Thành công', message: 'Đã xóa tài khoản thành công', duration: 2500 });
             navigate('/admin/customer-accounts');
         } catch (e) {
-            alert('Không thể xóa tài khoản. Vui lòng thử lại sau.');
+            setNotif({ open: true, type: 'error', title: 'Lỗi', message: 'Không thể xóa tài khoản. Vui lòng thử lại sau.', duration: 4000 });
         }
     };
 
@@ -317,6 +354,13 @@ function CustomerDetailPage() {
                 message={notif.message}
                 duration={notif.duration}
                 onClose={() => setNotif((prev) => ({ ...prev, open: false }))}
+            />
+            <ConfirmDialog
+                open={confirmDialog.open}
+                title={confirmDialog.title}
+                message={confirmDialog.message}
+                onConfirm={confirmDialog.onConfirm || (() => { })}
+                onCancel={() => setConfirmDialog(initialConfirmState)}
             />
         </div>
     );

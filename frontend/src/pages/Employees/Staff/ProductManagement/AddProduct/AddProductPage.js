@@ -14,6 +14,7 @@ import {
 } from '../../../../../services';
 
 const cx = classNames.bind(styles);
+const MAX_TOTAL_MEDIA_SIZE = 50 * 1024 * 1024; // 50MB tổng dung lượng ảnh/video
 
 export default function AddProductPage() {
     const navigate = useNavigate();
@@ -21,7 +22,7 @@ export default function AddProductPage() {
     const { success, error: notifyError } = useNotification();
     const [isLoading, setIsLoading] = useState(false);
 
-    // State form - sử dụng INITIAL_FORM_STATE từ constants
+    // State form
     const [productId, setProductId] = useState(INITIAL_FORM_STATE_PRODUCT.productId);
     const [name, setName] = useState(INITIAL_FORM_STATE_PRODUCT.name);
     const [description, setDescription] = useState(
@@ -37,6 +38,9 @@ export default function AddProductPage() {
     const [taxPercent, setTaxPercent] = useState(INITIAL_FORM_STATE_PRODUCT.taxPercent);
     const [discountValue, setDiscountValue] = useState(
         INITIAL_FORM_STATE_PRODUCT.discountValue,
+    );
+    const [purchasePrice, setPurchasePrice] = useState(
+        INITIAL_FORM_STATE_PRODUCT.purchasePrice,
     );
     const [categoryId, setCategoryId] = useState(INITIAL_FORM_STATE_PRODUCT.categoryId);
     const [publicationDate, setPublicationDate] = useState(
@@ -64,6 +68,42 @@ export default function AddProductPage() {
         setter(Number.isNaN(n) ? 0 : n);
     }, []);
 
+    const handleProductIdInput = useCallback((value) => {
+        const cleaned = (value || '')
+            .toString()
+            .replace(/[^0-9a-zA-Z]/g, '')
+            .toUpperCase();
+        setProductId(cleaned);
+    }, []);
+
+    // Hàm xử lý nhập thuế (chỉ cho phép số nguyên từ 0-99)
+    const handleTaxInput = useCallback((value) => {
+        // Chỉ lấy số nguyên, loại bỏ tất cả ký tự không phải số
+        const cleaned = (value || '').replace(/[^0-9]/g, '');
+
+        if (cleaned === '') {
+            setTaxPercent('');
+            return;
+        }
+
+        // Chuyển thành số nguyên
+        const num = parseInt(cleaned, 10);
+
+        // Nếu không phải số hợp lệ, không cập nhật
+        if (isNaN(num)) {
+            return;
+        }
+
+        // Giới hạn trong khoảng 0-99
+        if (num < 0) {
+            setTaxPercent('0');
+        } else if (num > 99) {
+            setTaxPercent('99');
+        } else {
+            setTaxPercent(num.toString());
+        }
+    }, []);
+
     // Reset form về trạng thái ban đầu
     const resetForm = useCallback(() => {
         try {
@@ -82,6 +122,7 @@ export default function AddProductPage() {
         setPrice(INITIAL_FORM_STATE_PRODUCT.price);
         setTaxPercent(INITIAL_FORM_STATE_PRODUCT.taxPercent);
         setDiscountValue(INITIAL_FORM_STATE_PRODUCT.discountValue);
+        setPurchasePrice(INITIAL_FORM_STATE_PRODUCT.purchasePrice);
         setCategoryId(INITIAL_FORM_STATE_PRODUCT.categoryId);
         setPublicationDate(INITIAL_FORM_STATE_PRODUCT.publicationDate);
         setStockQuantity(INITIAL_FORM_STATE_PRODUCT.stockQuantity);
@@ -108,7 +149,11 @@ export default function AddProductPage() {
     // ========== Validation ==========
     const validate = () => {
         const newErrors = {};
-        if (!productId.trim()) newErrors.id = 'Vui lòng nhập mã sản phẩm.';
+        if (!productId.trim()) {
+            newErrors.id = 'Vui lòng nhập mã sản phẩm.';
+        } else if (!/^[A-Z0-9]+$/.test(productId.trim())) {
+            newErrors.id = 'Mã sản phẩm chỉ chứa chữ và số (A-Z, 0-9).';
+        }
         if (!name.trim()) newErrors.name = 'Vui lòng nhập tên sản phẩm.';
         if (!author.trim()) newErrors.author = 'Vui lòng nhập tên tác giả.';
         if (!publisher.trim()) newErrors.publisher = 'Vui lòng nhập nhà xuất bản.';
@@ -119,6 +164,17 @@ export default function AddProductPage() {
         const priceNum = Number(price);
         if (isNaN(priceNum) || priceNum < 0) {
             newErrors.price = 'Giá không hợp lệ. Vui lòng nhập số lớn hơn hoặc bằng 0.';
+        }
+
+        if (
+            purchasePrice !== undefined &&
+            purchasePrice !== null &&
+            purchasePrice !== ''
+        ) {
+            const purchaseNum = Number(purchasePrice);
+            if (Number.isNaN(purchaseNum) || purchaseNum < 0) {
+                newErrors.purchasePrice = 'Giá nhập phải lớn hơn hoặc bằng 0.';
+            }
         }
 
         // Validate dimensions - only if provided, must be >= 1
@@ -147,13 +203,25 @@ export default function AddProductPage() {
             }
         }
         if (
-            stockQuantity !== undefined &&
-            stockQuantity !== null &&
-            stockQuantity !== ''
+            stockQuantity === undefined ||
+            stockQuantity === null ||
+            stockQuantity === ''
         ) {
+            newErrors.stockQuantity = 'Vui lòng nhập số lượng tồn kho.';
+        } else {
             const stockNum = Number(stockQuantity);
             if (Number.isNaN(stockNum) || stockNum < 0) {
                 newErrors.stockQuantity = 'Số lượng tồn kho tối thiểu là 0.';
+            }
+        }
+
+        // Validate phần trăm thuế
+        if (taxPercent === undefined || taxPercent === null || taxPercent === '') {
+            newErrors.taxPercent = 'Vui lòng nhập thuế (từ 0 đến 99%).';
+        } else {
+            const taxNum = parseInt(taxPercent, 10);
+            if (isNaN(taxNum) || taxNum < 0 || taxNum > 99) {
+                newErrors.taxPercent = 'Thuế phải là số nguyên từ 0 đến 99.';
             }
         }
 
@@ -170,7 +238,8 @@ export default function AddProductPage() {
             10,
         );
         if (Number.isNaN(n)) return 0;
-        const clamped = Math.max(0, Math.min(100, n));
+        // Giới hạn trong khoảng 0-99
+        const clamped = Math.max(0, Math.min(99, n));
         return clamped / 100;
     }, [taxPercent]);
 
@@ -260,17 +329,18 @@ export default function AddProductPage() {
             tax: taxDecimal || 0,
             discountValue:
                 discountValue && Number(discountValue) > 0 ? Number(discountValue) : null,
+            purchasePrice:
+                purchasePrice !== undefined &&
+                    purchasePrice !== null &&
+                    purchasePrice !== ''
+                    ? Number(purchasePrice)
+                    : null,
             categoryId: (categoryId || '').trim(),
             publicationDate: publicationDate || new Date().toISOString().slice(0, 10),
             imageUrls: imageUrls.length ? imageUrls : undefined,
             videoUrls: videoUrls.length ? videoUrls : undefined,
             defaultMediaUrl: defaultUrl || undefined,
-            stockQuantity:
-                stockQuantity !== undefined &&
-                    stockQuantity !== null &&
-                    stockQuantity !== ''
-                    ? Number(stockQuantity)
-                    : undefined,
+            stockQuantity: Number(stockQuantity),
         }),
         [
             productId,
@@ -285,6 +355,7 @@ export default function AddProductPage() {
             price,
             taxDecimal,
             discountValue,
+            purchasePrice,
             categoryId,
             publicationDate,
             stockQuantity,
@@ -295,12 +366,46 @@ export default function AddProductPage() {
     // ========== Event Handlers ==========
     const handleReset = resetForm;
 
-    /**
-     * Xử lý submit form
-     * 1. Validate form
-     * 2. Upload media files (nếu có)
-     * 3. Tạo sản phẩm mới
-     */
+    const handleMediaSelection = useCallback(
+        (event) => {
+            const selectedFiles = Array.from(event.target.files || []);
+            if (selectedFiles.length === 0) {
+                return;
+            }
+
+            const currentTotalSize = mediaFiles.reduce(
+                (sum, item) => sum + (item?.file?.size || 0),
+                0,
+            );
+            const selectedSize = selectedFiles.reduce(
+                (sum, file) => sum + (file?.size || 0),
+                0,
+            );
+
+            if (currentTotalSize + selectedSize > MAX_TOTAL_MEDIA_SIZE) {
+                notifyError('Tổng dung lượng ảnh/video không được vượt quá 50MB.');
+                event.target.value = '';
+                return;
+            }
+
+            const mapped = selectedFiles.map((f) => ({
+                file: f,
+                type: f.type.startsWith('image') ? 'IMAGE' : 'VIDEO',
+                preview: URL.createObjectURL(f),
+                isDefault: false,
+            }));
+
+            setMediaFiles((prev) => {
+                const next = [...prev, ...mapped];
+                if (next.length > 0 && !next.some((m) => m.isDefault)) {
+                    next[0].isDefault = true;
+                }
+                return next;
+            });
+        },
+        [mediaFiles, notifyError],
+    );
+
     const handleSubmit = async (e) => {
         e.preventDefault();
 
@@ -319,7 +424,7 @@ export default function AddProductPage() {
                 return;
             }
 
-            // Upload media files first (if any)
+            // Upload ảnh/video mặc định
             const { imageUrls, videoUrls, defaultUrl } = await uploadMediaFiles(
                 mediaFiles,
                 token,
@@ -377,106 +482,77 @@ export default function AddProductPage() {
             <div className={cx('card')}>
                 <div className={cx('card-header')}>Thêm sản phẩm mới</div>
                 <form ref={formRef} className={cx('form')} onSubmit={handleSubmit}>
-                    <div className={cx('row')}>
-                        <label>Mã sản phẩm</label>
-                        <input
-                            placeholder="VD: BK001"
-                            value={productId}
-                            onChange={(e) => setProductId(e.target.value)}
-                        />
-                        {errors.id && <div className={cx('errorText')}>{errors.id}</div>}
-                    </div>
-                    <div className={cx('row')}>
-                        <label>Tên sản phẩm</label>
-                        <input
-                            placeholder="VD: Sách lập trình C++"
-                            value={name}
-                            onChange={(e) => setName(e.target.value)}
-                        />
-                        {errors.name && (
-                            <div className={cx('errorText')}>{errors.name}</div>
-                        )}
-                    </div>
-                    <div className={cx('row')}>
-                        <label>Mô tả sản phẩm</label>
-                        <textarea
-                            rows={4}
-                            placeholder="Mô tả ngắn về sản phẩm"
-                            value={description}
-                            onChange={(e) => setDescription(e.target.value)}
-                        />
-                    </div>
-                    <div className={cx('grid2')}>
-                        <div className={cx('row')}>
-                            <label>Tác giả</label>
-                            <input
-                                placeholder="VD: Tô Năng"
-                                value={author}
-                                onChange={(e) => setAuthor(e.target.value)}
-                            />
-                            {errors.author && (
-                                <div className={cx('errorText')}>{errors.author}</div>
-                            )}
+                    <div className={cx('section')}>
+                        <div className={cx('sectionHeader')}>
+                            <div className={cx('sectionTitle')}>Thông tin sản phẩm</div>
+                            <div className={cx('sectionHint')}>
+                                Các trường hiển thị chính cho khách hàng
+                            </div>
                         </div>
-                        <div className={cx('row')}>
-                            <label>Nhà xuất bản</label>
-                            <input
-                                placeholder="VD: Vẹn B"
-                                value={publisher}
-                                onChange={(e) => setPublisher(e.target.value)}
-                            />
-                            {errors.publisher && (
-                                <div className={cx('errorText')}>{errors.publisher}</div>
-                            )}
-                        </div>
-                    </div>
-                    <div className={cx('row')}>
-                        <label>Giá niêm yết (VND)</label>
-                        <input
-                            placeholder="VD: 150000"
-                            inputMode="numeric"
-                            value={price}
-                            onChange={(e) =>
-                                setPrice(
-                                    Number(e.target.value.replace(/[^0-9]/g, '')) || 0,
-                                )
-                            }
-                        />
-                        {errors.price && (
-                            <div className={cx('errorText')}>{errors.price}</div>
-                        )}
-                    </div>
-                    <div className={cx('grid3')}>
-                        <div className={cx('row')}>
-                            <label>Danh mục sách</label>
-                            <select
-                                value={categoryId}
-                                onChange={(e) => setCategoryId(e.target.value)}
-                            >
-                                <option value="">--Chọn danh mục--</option>
-                                {categories.map((c) => (
-                                    <option
-                                        key={c.id || c.categoryId}
-                                        value={c.id || c.categoryId}
-                                    >
-                                        {c.name}
-                                    </option>
-                                ))}
-                            </select>
-                            {errors.categoryId && (
-                                <div className={cx('errorText')}>{errors.categoryId}</div>
-                            )}
-                        </div>
-                        <div className={cx('row')}>
-                            <label>Thuế (%)</label>
-                            <div className={cx('inputSuffix')}>
+                        <div className={cx('grid2')}>
+                            <div className={cx('row')}>
+                                <label>Mã sản phẩm</label>
                                 <input
-                                    placeholder="Ví dụ: 5 hoặc 10"
-                                    inputMode="numeric"
-                                    value={taxPercent}
-                                    onChange={(e) => setTaxPercent(e.target.value)}
+                                    placeholder="VD: BK001"
+                                    value={productId}
+                                    onChange={(e) => handleProductIdInput(e.target.value)}
                                 />
-                                <span className={cx('suffix')}>%</span>
+                                {errors.id && <div className={cx('errorText')}>{errors.id}</div>}
+                            </div>
+                            <div className={cx('row')}>
+                                <label>Danh mục sách</label>
+                                <select
+                                    value={categoryId}
+                                    onChange={(e) => setCategoryId(e.target.value)}
+                                >
+                                    <option value="">--Chọn danh mục--</option>
+                                    {categories.map((c) => (
+                                        <option
+                                            key={c.id || c.categoryId}
+                                            value={c.id || c.categoryId}
+                                        >
+                                            {c.name}
+                                        </option>
+                                    ))}
+                                </select>
+                                {errors.categoryId && (
+                                    <div className={cx('errorText')}>{errors.categoryId}</div>
+                                )}
+                            </div>
+                        </div>
+                        <div className={cx('row')}>
+                            <label>Tên sản phẩm</label>
+                            <input
+                                placeholder="VD: Sách lập trình C++"
+                                value={name}
+                                onChange={(e) => setName(e.target.value)}
+                            />
+                            {errors.name && (
+                                <div className={cx('errorText')}>{errors.name}</div>
+                            )}
+                        </div>
+                        <div className={cx('grid2')}>
+                            <div className={cx('row')}>
+                                <label>Tác giả</label>
+                                <input
+                                    placeholder="VD: Tô Năng"
+                                    value={author}
+                                    onChange={(e) => setAuthor(e.target.value)}
+                                />
+                                {errors.author && (
+                                    <div className={cx('errorText')}>{errors.author}</div>
+                                )}
+                            </div>
+                            <div className={cx('row')}>
+                                <label>Nhà xuất bản</label>
+                                <input
+                                    placeholder="VD: Vẹn B"
+                                    value={publisher}
+                                    onChange={(e) => setPublisher(e.target.value)}
+                                />
+                                {errors.publisher && (
+                                    <div className={cx('errorText')}>{errors.publisher}</div>
+                                )}
                             </div>
                         </div>
                         <div className={cx('row')}>
@@ -492,187 +568,270 @@ export default function AddProductPage() {
                                 </div>
                             )}
                         </div>
-                    </div>
-
-                    <div className={cx('row')}>
-                        <label>Giá cuối cùng (đã gồm thuế)</label>
-                        <input placeholder="Tự động tính" value={finalPrice} readOnly />
-                    </div>
-                    <div className={cx('row', 'dimension')}>
-                        <label>Kích thước (cm) & Trọng lượng</label>
-                        <div className={cx('grid4')}>
-                            <input
-                                type="number"
-                                inputMode="decimal"
-                                step="0.01"
-                                placeholder="Dài (cm)"
-                                value={length}
-                                onChange={(e) => handleDecimalInput(e.target.value, setLength)}
-                            />
-                            <input
-                                type="number"
-                                inputMode="decimal"
-                                step="0.01"
-                                placeholder="Rộng (cm)"
-                                value={width}
-                                onChange={(e) => handleDecimalInput(e.target.value, setWidth)}
-                            />
-                            <input
-                                type="number"
-                                inputMode="decimal"
-                                step="0.01"
-                                placeholder="Cao (cm)"
-                                value={height}
-                                onChange={(e) => handleDecimalInput(e.target.value, setHeight)}
-                            />
-                            <input
-                                type="number"
-                                inputMode="decimal"
-                                step="0.01"
-                                placeholder="Trọng lượng (g)"
-                                value={weight}
-                                onChange={(e) => handleDecimalInput(e.target.value, setWeight)}
-                            />
-                        </div>
-                        <div className={cx('grid4')}>
-                            <div>
-                                {errors.length && (
-                                    <div className={cx('errorText')}>{errors.length}</div>
-                                )}
-                            </div>
-                            <div>
-                                {errors.width && (
-                                    <div className={cx('errorText')}>{errors.width}</div>
-                                )}
-                            </div>
-                            <div>
-                                {errors.height && (
-                                    <div className={cx('errorText')}>{errors.height}</div>
-                                )}
-                            </div>
-                            <div>
-                                {errors.weight && (
-                                    <div className={cx('errorText')}>{errors.weight}</div>
-                                )}
-                            </div>
-                        </div>
-                        <div className={cx('example')}>
-                            Ví dụ kích thước: <strong>19.8 × 12.9 × 1.5 cm</strong>
-                        </div>
-                    </div>
-                    <div className={cx('row')}>
-                        <label>Chọn ảnh/video</label>
-                        <input
-                            type="file"
-                            accept="image/*,video/*"
-                            multiple
-                            onChange={(e) => {
-                                const files = Array.from(e.target.files || []);
-                                const mapped = files.map((f) => ({
-                                    file: f,
-                                    type: f.type.startsWith('image') ? 'IMAGE' : 'VIDEO',
-                                    preview: URL.createObjectURL(f),
-                                    isDefault: false,
-                                }));
-                                setMediaFiles((prev) => {
-                                    const next = [...prev, ...mapped];
-                                    if (
-                                        next.length > 0 &&
-                                        !next.some((m) => m.isDefault)
-                                    ) {
-                                        next[0].isDefault = true;
-                                    }
-                                    return next;
-                                });
-                            }}
-                        />
-                        {mediaFiles.length > 0 && (
-                            <div className={cx('mediaList')}>
-                                {mediaFiles.map((m, idx) => (
-                                    <div key={idx} className={cx('mediaItem')}>
-                                        {m.type === 'IMAGE' ? (
-                                            <img
-                                                src={m.preview}
-                                                alt="preview"
-                                                className={cx('mediaPreview')}
-                                            />
-                                        ) : (
-                                            <video
-                                                src={m.preview}
-                                                className={cx('mediaPreview')}
-                                                controls
-                                            />
-                                        )}
-                                        <div className={cx('mediaActions')}>
-                                            <label className={cx('defaultToggle')}>
-                                                <input
-                                                    type="radio"
-                                                    name="defaultMedia"
-                                                    checked={m.isDefault}
-                                                    onChange={() => {
-                                                        setMediaFiles((prev) =>
-                                                            prev.map((x, i) => ({
-                                                                ...x,
-                                                                isDefault: i === idx,
-                                                            })),
-                                                        );
-                                                    }}
-                                                />
-                                                Mặc định
-                                            </label>
-                                            <button
-                                                type="button"
-                                                className={cx('btn', 'muted')}
-                                                onClick={() => {
-                                                    setMediaFiles((prev) => {
-                                                        const next = prev.filter(
-                                                            (_, i) => i !== idx,
-                                                        );
-                                                        if (
-                                                            next.length > 0 &&
-                                                            !next.some((n) => n.isDefault)
-                                                        ) {
-                                                            next[0].isDefault = true;
-                                                        }
-                                                        return next;
-                                                    });
-                                                }}
-                                            >
-                                                Xóa
-                                            </button>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-
-                    <div className={cx('grid2')}>
                         <div className={cx('row')}>
-                            <label>Số lượng tồn kho</label>
-                            <input
-                                inputMode="numeric"
-                                value={stockQuantity}
-                                onChange={(e) => {
-                                    const cleaned = (e.target.value || '').replace(
-                                        /[^0-9]/g,
-                                        '',
-                                    );
-                                    setStockQuantity(cleaned);
-                                }}
+                            <label>Mô tả sản phẩm</label>
+                            <textarea
+                                rows={4}
+                                placeholder="Mô tả ngắn về sản phẩm"
+                                value={description}
+                                onChange={(e) => setDescription(e.target.value)}
                             />
-                            {errors.stockQuantity && (
-                                <div className={cx('errorText')}>
-                                    {errors.stockQuantity}
+                        </div>
+                    </div>
+
+                    <div className={cx('section')}>
+                        <div className={cx('sectionHeader')}>
+                            <div className={cx('sectionTitle')}>Giá & Thuế</div>
+                            <div className={cx('sectionHint')}>
+                                Các trường liên quan đến giá bán và thuế
+                            </div>
+                        </div>
+                        <div className={cx('grid2')}>
+                            <div className={cx('row')}>
+                                <label>Giá niêm yết (VND)</label>
+                                <input
+                                    placeholder="VD: 150000"
+                                    inputMode="numeric"
+                                    value={price}
+                                    onChange={(e) =>
+                                        setPrice(
+                                            Number(e.target.value.replace(/[^0-9]/g, '')) || 0,
+                                        )
+                                    }
+                                />
+                                {errors.price && (
+                                    <div className={cx('errorText')}>{errors.price}</div>
+                                )}
+                            </div>
+                            <div className={cx('row')}>
+                                <label>Thuế (%)</label>
+                                <div className={cx('inputSuffix')}>
+                                    <input
+                                        placeholder="Ví dụ: 5 hoặc 10"
+                                        inputMode="numeric"
+                                        value={taxPercent}
+                                        onChange={(e) => handleTaxInput(e.target.value)}
+                                    />
+                                    <span className={cx('suffix')}>%</span>
+                                </div>
+                                {errors.taxPercent && (
+                                    <div className={cx('errorText')}>{errors.taxPercent}</div>
+                                )}
+                            </div>
+                        </div>
+                        <div className={cx('grid2')}>
+                            <div className={cx('row')}>
+                                <label>Giá nhập (VND)</label>
+                                <input
+                                    placeholder="VD: 90000"
+                                    inputMode="numeric"
+                                    value={purchasePrice}
+                                    onChange={(e) => {
+                                        const raw = e.target.value.replace(/[^0-9]/g, '');
+                                        setPurchasePrice(raw === '' ? '' : Number(raw));
+                                    }}
+                                />
+                                {errors.purchasePrice && (
+                                    <div className={cx('errorText')}>{errors.purchasePrice}</div>
+                                )}
+                            </div>
+                            <div className={cx('row')}>
+                                <label>Giá cuối cùng (đã gồm thuế)</label>
+                                <input placeholder="Tự động tính" value={finalPrice} readOnly />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className={cx('section')}>
+                        <div className={cx('sectionHeader')}>
+                            <div className={cx('sectionTitle')}>Tồn kho & trạng thái</div>
+                            <div className={cx('sectionHint')}>
+                                Theo dõi số lượng và tình trạng sản phẩm
+                            </div>
+                        </div>
+                        <div className={cx('grid2')}>
+                            <div className={cx('row')}>
+                                <label>Số lượng tồn kho</label>
+                                <input
+                                    inputMode="numeric"
+                                    value={stockQuantity}
+                                    onChange={(e) => {
+                                        const cleaned = (e.target.value || '').replace(
+                                            /[^0-9]/g,
+                                            '',
+                                        );
+                                        setStockQuantity(cleaned);
+                                    }}
+                                />
+                                {errors.stockQuantity && (
+                                    <div className={cx('errorText')}>
+                                        {errors.stockQuantity}
+                                    </div>
+                                )}
+                            </div>
+                            <div className={cx('row')}>
+                                <label>Trạng thái</label>
+                                <select>
+                                    <option>Còn hàng</option>
+                                    <option>Hết hàng</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className={cx('section')}>
+                        <div className={cx('sectionHeader')}>
+                            <div className={cx('sectionTitle')}>Kích thước & trọng lượng</div>
+                            <div className={cx('sectionHint')}>
+                                Giúp hệ thống tự tính phí vận chuyển
+                            </div>
+                        </div>
+                        <div className={cx('row', 'dimension')}>
+                            <label>Kích thước (cm) & Trọng lượng</label>
+                            <div className={cx('grid4')}>
+                                <input
+                                    type="number"
+                                    inputMode="decimal"
+                                    step="0.01"
+                                    placeholder="Dài (cm)"
+                                    value={length}
+                                    onChange={(e) =>
+                                        handleDecimalInput(e.target.value, setLength)
+                                    }
+                                />
+                                <input
+                                    type="number"
+                                    inputMode="decimal"
+                                    step="0.01"
+                                    placeholder="Rộng (cm)"
+                                    value={width}
+                                    onChange={(e) =>
+                                        handleDecimalInput(e.target.value, setWidth)
+                                    }
+                                />
+                                <input
+                                    type="number"
+                                    inputMode="decimal"
+                                    step="0.01"
+                                    placeholder="Cao (cm)"
+                                    value={height}
+                                    onChange={(e) =>
+                                        handleDecimalInput(e.target.value, setHeight)
+                                    }
+                                />
+                                <input
+                                    type="number"
+                                    inputMode="decimal"
+                                    step="0.01"
+                                    placeholder="Trọng lượng (g)"
+                                    value={weight}
+                                    onChange={(e) =>
+                                        handleDecimalInput(e.target.value, setWeight)
+                                    }
+                                />
+                            </div>
+                            <div className={cx('grid4')}>
+                                <div>
+                                    {errors.length && (
+                                        <div className={cx('errorText')}>{errors.length}</div>
+                                    )}
+                                </div>
+                                <div>
+                                    {errors.width && (
+                                        <div className={cx('errorText')}>{errors.width}</div>
+                                    )}
+                                </div>
+                                <div>
+                                    {errors.height && (
+                                        <div className={cx('errorText')}>{errors.height}</div>
+                                    )}
+                                </div>
+                                <div>
+                                    {errors.weight && (
+                                        <div className={cx('errorText')}>{errors.weight}</div>
+                                    )}
+                                </div>
+                            </div>
+                            <div className={cx('example')}>
+                                Ví dụ kích thước: <strong>19.8 × 12.9 × 1.5 cm</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className={cx('section')}>
+                        <div className={cx('sectionHeader')}>
+                            <div className={cx('sectionTitle')}>Hình ảnh & video</div>
+                            <div className={cx('sectionHint')}>
+                                Tối đa 50MB cho toàn bộ tư liệu
+                            </div>
+                        </div>
+                        <div className={cx('row')}>
+                            <label>Chọn ảnh/video (tổng tối đa 50MB)</label>
+                            <input
+                                type="file"
+                                accept="image/*,video/*"
+                                multiple
+                                onChange={handleMediaSelection}
+                            />
+                            {mediaFiles.length > 0 && (
+                                <div className={cx('mediaList')}>
+                                    {mediaFiles.map((m, idx) => (
+                                        <div key={idx} className={cx('mediaItem')}>
+                                            {m.type === 'IMAGE' ? (
+                                                <img
+                                                    src={m.preview}
+                                                    alt="preview"
+                                                    className={cx('mediaPreview')}
+                                                />
+                                            ) : (
+                                                <video
+                                                    src={m.preview}
+                                                    className={cx('mediaPreview')}
+                                                    controls
+                                                />
+                                            )}
+                                            <div className={cx('mediaActions')}>
+                                                <label className={cx('defaultToggle')}>
+                                                    <input
+                                                        type="radio"
+                                                        name="defaultMedia"
+                                                        checked={m.isDefault}
+                                                        onChange={() => {
+                                                            setMediaFiles((prev) =>
+                                                                prev.map((x, i) => ({
+                                                                    ...x,
+                                                                    isDefault: i === idx,
+                                                                })),
+                                                            );
+                                                        }}
+                                                    />
+                                                    Mặc định
+                                                </label>
+                                                <button
+                                                    type="button"
+                                                    className={cx('btn', 'muted')}
+                                                    onClick={() => {
+                                                        setMediaFiles((prev) => {
+                                                            const next = prev.filter(
+                                                                (_, i) => i !== idx,
+                                                            );
+                                                            if (
+                                                                next.length > 0 &&
+                                                                !next.some((n) => n.isDefault)
+                                                            ) {
+                                                                next[0].isDefault = true;
+                                                            }
+                                                            return next;
+                                                        });
+                                                    }}
+                                                >
+                                                    Xóa
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
                                 </div>
                             )}
-                        </div>
-                        <div className={cx('row')}>
-                            <label>Trạng thái</label>
-                            <select>
-                                <option>Còn hàng</option>
-                                <option>Hết hàng</option>
-                            </select>
                         </div>
                     </div>
                     <div className={cx('actions')}>

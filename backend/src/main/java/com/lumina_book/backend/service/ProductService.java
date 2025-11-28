@@ -419,7 +419,7 @@ public class ProductService {
                 .findById(request.getProductId())
                 .orElseThrow(() -> new AppException(ErrorCode.PRODUCT_NOT_EXISTED));
 
-        // Xử lý approve hoặc reject
+        // Xử lý approve, reject, disable hoặc enable
         if ("APPROVE".equals(request.getAction())) {
             product.setStatus(ProductStatus.APPROVED);
             product.setApprovedBy(admin);
@@ -429,12 +429,17 @@ public class ProductService {
             log.info("Product approved: {} by admin: {}", product.getId(), adminEmail);
         } else if ("REJECT".equals(request.getAction())) {
             product.setStatus(ProductStatus.REJECTED);
-            // Không thiết lập thời gian duyệt khi từ chối
             product.setApprovedBy(null);
             product.setApprovedAt(null);
             product.setRejectionReason(request.getReason());
             product.setUpdatedAt(LocalDateTime.now());
             log.info("Product rejected: {} by admin: {}", product.getId(), adminEmail);
+        } else if ("DISABLE".equals(request.getAction())) {
+            product.setStatus(ProductStatus.DISABLED);
+            product.setUpdatedAt(LocalDateTime.now());
+        } else if ("ENABLE".equals(request.getAction())) {
+            product.setStatus(ProductStatus.APPROVED);
+            product.setUpdatedAt(LocalDateTime.now());
         }
 
         Product savedProduct = productRepository.save(product);

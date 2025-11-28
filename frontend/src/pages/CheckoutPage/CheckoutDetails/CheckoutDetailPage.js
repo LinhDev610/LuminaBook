@@ -2,15 +2,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import classNames from 'classnames/bind';
 import styles from './CheckoutDetailPage.module.scss';
-import { getApiBaseUrl, getStoredToken } from '../../../services/utils';
-import {
-    getMyInfo,
-    getCart,
-    applyVoucherToCart,
-    clearVoucherFromCart,
-    getMyAddresses,
-} from '../../../services';
-import { normalizeMediaUrl } from '../../../services/productUtils';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useNotification } from '../../../components/Common/Notification';
 import defaultProductImage from '../../../assets/images/img_sach.png';
@@ -18,6 +9,26 @@ import AddressListModal from '../../../components/Common/AddressModal/AddressLis
 import NewAddressModal from '../../../components/Common/AddressModal/NewAddressModal';
 import AddressDetailModal from '../../../components/Common/AddressModal/AddressDetailModal';
 import { formatFullAddress } from '../../../components/Common/AddressModal/useGhnLocations';
+import { normalizeMediaUrl } from '../../../services/productUtils';
+import { getApiBaseUrl, getStoredToken } from '../../../services/utils';
+import {
+    getMyInfo,
+    getCart,
+    applyVoucherToCart,
+    clearVoucherFromCart,
+    getMyAddresses,
+    calculateGhnShippingFee,
+    calculateGhnLeadtime,
+} from '../../../services';
+import {
+    GHN_DEFAULT_FROM_WARD_CODE,
+    GHN_DEFAULT_FROM_DISTRICT_ID,
+    GHN_SERVICE_TYPE_LIGHT,
+    GHN_SERVICE_TYPE_HEAVY,
+    GHN_HEAVY_SERVICE_WEIGHT_THRESHOLD,
+    GHN_DEFAULT_DIMENSION,
+    GHN_DEFAULT_WEIGHT,
+} from '../../../services/constants';
 
 const cx = classNames.bind(styles);
 
@@ -32,7 +43,7 @@ export default function CheckoutDetailPage() {
     const directCheckout = location.state?.directCheckout || false;
     const directProductId = location.state?.productId || null;
     const directQuantity = location.state?.quantity || 1;
-    
+
     // Debug log
     if (directCheckout) {
         console.log('CheckoutDetailPage: Direct checkout detected', {
@@ -60,6 +71,12 @@ export default function CheckoutDetailPage() {
     const [showAddressDetailModal, setShowAddressDetailModal] = useState(false);
     const [selectedAddress, setSelectedAddress] = useState(null);
     const [addressRefreshKey, setAddressRefreshKey] = useState(0);
+    const [shippingFee, setShippingFee] = useState(0);
+    const [shippingFeeLoading, setShippingFeeLoading] = useState(false);
+    const [shouldRefreshShippingFee, setShouldRefreshShippingFee] = useState(false);
+    const [shouldRefreshLeadtime, setShouldRefreshLeadtime] = useState(false);
+    const [estimatedDeliveryDate, setEstimatedDeliveryDate] = useState(null);
+    const [leadtimeLoading, setLeadtimeLoading] = useState(false);
 
     const isLoggedIn = !!getStoredToken('token');
 
@@ -85,7 +102,7 @@ export default function CheckoutDetailPage() {
                 }
 
                 let addresses = [];
-                
+
                 if (directCheckout && directProductId) {
                     // Direct checkout: load product trực tiếp, không cần cart
                     console.log('CheckoutDetailPage: Direct checkout, loading product:', directProductId);
@@ -170,6 +187,8 @@ export default function CheckoutDetailPage() {
                         addresses.find((addr) => addr?.defaultAddress) || addresses[0];
                     if (defaultAddress) {
                         setSelectedAddress(defaultAddress);
+                        setShouldRefreshShippingFee(true);
+                        setShouldRefreshLeadtime(true);
                     }
                 }
             } catch (err) {
@@ -204,7 +223,7 @@ export default function CheckoutDetailPage() {
 
             const originalUnitPrice =
                 typeof directProduct?.originalPrice === 'number' &&
-                directProduct.originalPrice > 0
+                    directProduct.originalPrice > 0
                     ? directProduct.originalPrice
                     : currentPrice;
 
@@ -247,20 +266,20 @@ export default function CheckoutDetailPage() {
                         (typeof product?.price === 'number' && product.price > 0
                             ? product.price
                             : typeof product?.unitPrice === 'number' &&
-                              product.unitPrice > 0
-                            ? product.unitPrice
-                            : undefined) ??
+                                product.unitPrice > 0
+                                ? product.unitPrice
+                                : undefined) ??
                         item.unitPrice ??
                         0;
 
                     const originalUnitPrice =
                         (typeof product?.originalPrice === 'number' &&
-                        product.originalPrice > 0
+                            product.originalPrice > 0
                             ? product.originalPrice
                             : typeof product?.unitPrice === 'number' &&
-                              product.unitPrice > 0
-                            ? product.unitPrice
-                            : undefined) ?? currentPrice;
+                                product.unitPrice > 0
+                                ? product.unitPrice
+                                : undefined) ?? currentPrice;
 
                     metaMap[item.productId] = {
                         imageUrl: normalizedImage,
@@ -290,7 +309,7 @@ export default function CheckoutDetailPage() {
             cartItems: cart?.items?.length || 0,
             selectedItemIds: selectedItemIds?.length || 0,
         });
-        
+
         if (directCheckout && directProductId) {
             // Direct checkout: tạo item từ product
             if (directProduct) {
@@ -325,11 +344,347 @@ export default function CheckoutDetailPage() {
         return filtered.length > 0 ? filtered : items;
     }, [directCheckout, directProductId, directProduct, directQuantity, cart, selectedItemIds, loading]);
 
-    const SHIPPING_FEE_STANDARD = 25000;
-    const SHIPPING_FEE_COD = 30000;
+    // Tính phí vận chuyển từ GHN API
+    useEffect(() => {
+        const calculateShippingFee = async () => {
+            if (!shouldRefreshShippingFee) {
+                return;
+            }
 
-    const shippingFee =
-        shippingMethod === 'standard' ? SHIPPING_FEE_STANDARD : SHIPPING_FEE_COD;
+            if (!selectedAddress || !checkoutItems || checkoutItems.length === 0) {
+                setShippingFee(0);
+                if (selectedAddress && checkoutItems && checkoutItems.length === 0) {
+                    // wait for items to load
+                    return;
+                }
+                setShouldRefreshShippingFee(false);
+                return;
+            }
+
+            if (!selectedAddress.wardCode || !selectedAddress.districtID) {
+                console.warn('Address missing wardCode or districtID');
+                setShippingFee(0);
+                setShouldRefreshShippingFee(false);
+                return;
+            }
+
+            try {
+                setShippingFeeLoading(true);
+
+                // Lấy chi tiết sản phẩm từ API
+                const productsWithDetails = await Promise.all(
+                    checkoutItems.map(async (item) => {
+                        // Nếu product object đã có chi tiết -> sử dụng 
+                        if (item.product && item.product.weight !== undefined) {
+                            return item.product;
+                        }
+                        // Nếu không -> lấy từ API
+                        try {
+                            const resp = await fetch(`${API_BASE_URL}/products/${item.productId}`, {
+                                headers: { 'Content-Type': 'application/json' },
+                            });
+                            if (resp.ok) {
+                                const data = await resp.json();
+                                return data?.result || data;
+                            }
+                        } catch (err) {
+                            console.error('Error fetching product details:', err);
+                        }
+                        return null;
+                    })
+                );
+
+                // Tính tổng trọng lượng sản phẩm (grams)
+                let totalWeightGrams = 0;
+                const validProducts = [];
+                for (let i = 0; i < checkoutItems.length; i++) {
+                    const item = checkoutItems[i];
+                    const product = productsWithDetails[i];
+                    if (!product) continue;
+
+                    const weightGrams = Math.round(product.weight || 0);
+                    const quantity = item.quantity || 1;
+                    totalWeightGrams += weightGrams * quantity;
+                    validProducts.push({ item, product });
+                }
+
+                // Nếu không có sản phẩm hợp lệ -> dùng default weight
+                if (validProducts.length === 0) {
+                    totalWeightGrams = GHN_DEFAULT_WEIGHT * checkoutItems.length;
+                }
+
+                // Xác định loại dịch vụ
+                const serviceTypeId =
+                    totalWeightGrams >= GHN_HEAVY_SERVICE_WEIGHT_THRESHOLD
+                        ? GHN_SERVICE_TYPE_HEAVY
+                        : GHN_SERVICE_TYPE_LIGHT;
+
+                // Build request
+                const toDistrictId = parseInt(selectedAddress.districtID, 10);
+                if (isNaN(toDistrictId)) {
+                    console.warn('Invalid districtID:', selectedAddress.districtID);
+                    setShippingFee(0);
+                    return;
+                }
+
+                // Tính tổng giá trị sản phẩm (VND) cho insuranceValue
+                const calculatedItemsSubtotal = checkoutItems.reduce((sum, item) => {
+                    const quantity = item.quantity || 1;
+                    const lineTotal =
+                        typeof item.finalPrice === 'number'
+                            ? item.finalPrice
+                            : (item.unitPrice || 0) * quantity;
+                    return sum + lineTotal;
+                }, 0);
+                const insuranceValue = Math.round(calculatedItemsSubtotal);
+
+                let requestBody = {
+                    service_type_id: serviceTypeId,
+                    insurance_value: insuranceValue,
+                    coupon: null,
+                    from_district_id: GHN_DEFAULT_FROM_DISTRICT_ID,
+                    from_ward_code: GHN_DEFAULT_FROM_WARD_CODE,
+                    to_district_id: toDistrictId,
+                    to_ward_code: selectedAddress.wardCode,
+                };
+
+                if (serviceTypeId === GHN_SERVICE_TYPE_LIGHT) {
+                    // Light service
+                    let maxLength = GHN_DEFAULT_DIMENSION;
+                    let maxWidth = GHN_DEFAULT_DIMENSION;
+                    let sumHeight = 0;
+                    let calculatedWeight = 0;
+
+                    for (const { item, product } of validProducts) {
+                        const quantity = item.quantity || 1;
+                        const length = product.length || GHN_DEFAULT_DIMENSION;
+                        const width = product.width || GHN_DEFAULT_DIMENSION;
+                        const height = product.height || GHN_DEFAULT_DIMENSION;
+                        const weightGrams = Math.round(product.weight || 0);
+
+                        maxLength = Math.max(maxLength, length);
+                        maxWidth = Math.max(maxWidth, width);
+                        sumHeight += height * quantity;
+                        calculatedWeight += weightGrams * quantity;
+                    }
+
+                    if (validProducts.length === 0) {
+                        calculatedWeight = totalWeightGrams;
+                    }
+
+                    requestBody.length = Math.max(maxLength, GHN_DEFAULT_DIMENSION);
+                    requestBody.width = Math.max(maxWidth, GHN_DEFAULT_DIMENSION);
+                    requestBody.height = Math.max(sumHeight, GHN_DEFAULT_DIMENSION);
+                    requestBody.weight = Math.max(calculatedWeight, GHN_DEFAULT_WEIGHT);
+                } else {
+                    // Heavy service
+                    const items = validProducts.map(({ item, product }) => {
+                        const quantity = item.quantity || 1;
+                        const length = product.length || GHN_DEFAULT_DIMENSION;
+                        const width = product.width || GHN_DEFAULT_DIMENSION;
+                        const height = product.height || GHN_DEFAULT_DIMENSION;
+                        const weightGrams = Math.round(product.weight || 0);
+                        const price = Math.round(item.finalPrice || item.unitPrice * quantity || 0);
+
+                        return {
+                            name: product.name || 'Sản phẩm',
+                            code: String(product.id || item.productId),
+                            quantity: quantity,
+                            price: price,
+                            length: Math.max(length, GHN_DEFAULT_DIMENSION),
+                            width: Math.max(width, GHN_DEFAULT_DIMENSION),
+                            height: Math.max(height, GHN_DEFAULT_DIMENSION),
+                            weight: Math.max(weightGrams, GHN_DEFAULT_WEIGHT),
+                            category: {
+                                level1: product.category?.name || 'Sách',
+                            },
+                        };
+                    });
+
+                    if (items.length === 0) {
+                        // Fallback nếu không có valid products
+                        items.push({
+                            name: 'Sản phẩm',
+                            code: 'default',
+                            quantity: 1,
+                            price: Math.round(itemsSubtotal),
+                            length: GHN_DEFAULT_DIMENSION,
+                            width: GHN_DEFAULT_DIMENSION,
+                            height: GHN_DEFAULT_DIMENSION,
+                            weight: GHN_DEFAULT_WEIGHT,
+                            category: { level1: 'Sách' },
+                        });
+                    }
+
+                    requestBody.items = items;
+                }
+
+                // Call GHN API
+                const token = getStoredToken('token');
+                const { ok, data: feeResponse } = await calculateGhnShippingFee(requestBody, token);
+
+                if (ok && feeResponse && feeResponse.total !== undefined) {
+                    setShippingFee(feeResponse.total || 0);
+                } else {
+                    console.error('Lỗi tính phí vận chuyển:', feeResponse);
+                    setShippingFee(0);
+                }
+            } catch (err) {
+                console.error('Lỗi tính phí vận chuyển:', err);
+                setShippingFee(0);
+            } finally {
+                setShippingFeeLoading(false);
+                setShouldRefreshShippingFee(false);
+            }
+        };
+
+        calculateShippingFee();
+    }, [shouldRefreshShippingFee, selectedAddress, checkoutItems, API_BASE_URL]);
+
+    // Tính thời gian dự kiến giao hàng từ GHN API
+    useEffect(() => {
+        if (!shouldRefreshLeadtime) {
+            return;
+        }
+
+        const calculateLeadtime = async () => {
+            if (!selectedAddress || !checkoutItems || checkoutItems.length === 0) {
+                setEstimatedDeliveryDate(null);
+                setShouldRefreshLeadtime(false);
+                return;
+            }
+
+            if (!selectedAddress.wardCode || !selectedAddress.districtID) {
+                setEstimatedDeliveryDate(null);
+                setShouldRefreshLeadtime(false);
+                return;
+            }
+
+            try {
+                setLeadtimeLoading(true);
+
+                // Lấy chi tiết sản phẩm từ API để tính service type
+                const productsWithDetails = await Promise.all(
+                    checkoutItems.map(async (item) => {
+                        // Nếu product object đã có weight -> sử dụng
+                        if (item.product && item.product.weight !== undefined) {
+                            return item.product;
+                        }
+                        try {
+                            const resp = await fetch(`${API_BASE_URL}/products/${item.productId}`, {
+                                headers: { 'Content-Type': 'application/json' },
+                            });
+                            if (resp.ok) {
+                                const data = await resp.json();
+                                return data?.result || data;
+                            }
+                        } catch (err) {
+                            console.error('Error fetching product details:', err);
+                        }
+                        return null;
+                    })
+                );
+
+                // Tính tổng trọng lượng sản phẩm (grams)
+                let totalWeightGrams = 0;
+                for (let i = 0; i < checkoutItems.length; i++) {
+                    const item = checkoutItems[i];
+                    const product = productsWithDetails[i];
+                    if (!product) continue;
+
+                    const weight = Math.round(product.weight || 0);
+                    const quantity = item.quantity || 1;
+                    totalWeightGrams += weight * quantity;
+                }
+
+                // Nếu không có sản phẩm hợp lệ -> dùng default weight
+                if (totalWeightGrams === 0) {
+                    totalWeightGrams = GHN_DEFAULT_WEIGHT * checkoutItems.length;
+                }
+
+                // Xác định loại dịch vụ
+                const serviceTypeId =
+                    totalWeightGrams >= GHN_HEAVY_SERVICE_WEIGHT_THRESHOLD
+                        ? GHN_SERVICE_TYPE_HEAVY
+                        : GHN_SERVICE_TYPE_LIGHT;
+
+                // Build request
+                const toDistrictId = parseInt(selectedAddress.districtID, 10);
+                if (isNaN(toDistrictId)) {
+                    console.warn('Invalid districtID:', selectedAddress.districtID);
+                    setEstimatedDeliveryDate(null);
+                    setShouldRefreshLeadtime(false);
+                    return;
+                }
+
+                const requestBody = {
+                    from_district_id: GHN_DEFAULT_FROM_DISTRICT_ID,
+                    from_ward_code: GHN_DEFAULT_FROM_WARD_CODE,
+                    to_district_id: toDistrictId,
+                    to_ward_code: selectedAddress.wardCode,
+                    service_type_id: serviceTypeId,
+                };
+
+                // Call GHN API
+                const token = getStoredToken('token');
+                const { data: leadtimeResponse } = await calculateGhnLeadtime(requestBody, token);
+
+                let fromDateIso =
+                    leadtimeResponse?.leadtimeOrder?.fromEstimateDate ?? null;
+                const toDateIso = leadtimeResponse?.leadtimeOrder?.toEstimateDate ?? null;
+
+                if (!fromDateIso && leadtimeResponse?.leadtime) {
+                    const unixMillis = Number(leadtimeResponse.leadtime) * 1000;
+                    if (!Number.isNaN(unixMillis) && unixMillis > 0) {
+                        fromDateIso = new Date(unixMillis).toISOString();
+                    }
+                }
+
+                if (fromDateIso) {
+                    setEstimatedDeliveryDate(formatDeliveryDate(fromDateIso, toDateIso));
+                } else {
+                    setEstimatedDeliveryDate(null);
+                }
+            } catch (err) {
+                console.error('Lỗi tính thời gian giao hàng:', err);
+                setEstimatedDeliveryDate(null);
+            } finally {
+                setLeadtimeLoading(false);
+                setShouldRefreshLeadtime(false);
+            }
+        };
+
+        calculateLeadtime();
+    }, [shouldRefreshLeadtime, selectedAddress, checkoutItems, API_BASE_URL]);
+
+    // Format ngày tháng từ ISO string sang định dạng tiếng Việt
+    const formatDeliveryDate = (fromDateStr, toDateStr) => {
+        try {
+            const fromDate = new Date(fromDateStr);
+            const toDate = toDateStr ? new Date(toDateStr) : null;
+
+            const daysOfWeek = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
+            const dayOfWeek = daysOfWeek[fromDate.getDay()];
+            const day = fromDate.getDate();
+            const month = fromDate.getMonth() + 1;
+
+            if (toDate && toDate.getTime() !== fromDate.getTime()) {
+                const toDay = toDate.getDate();
+                const toMonth = toDate.getMonth() + 1;
+                if (month === toMonth) {
+                    return `${dayOfWeek}, ${day}-${toDay}/${month}`;
+                } else {
+                    return `${dayOfWeek}, ${day}/${month} - ${toDay}/${toMonth}`;
+                }
+            } else {
+                // Chỉ có một ngày
+                return `${dayOfWeek}, ${day}/${month}`;
+            }
+        } catch (err) {
+            console.error('Error formatting delivery date:', err);
+            return null;
+        }
+    };
 
     // Tạm tính: CHỈ tính trên các item được chọn (checkoutItems),
     // dùng finalPrice backend để khớp công thức trong OrderService.createOrderFromCurrentCart.
@@ -422,13 +777,25 @@ export default function CheckoutDetailPage() {
         }
     };
 
+    const hasShippingInfo = useMemo(() => {
+        if (!selectedAddress) return false;
+        const requiredFields = [
+            selectedAddress.recipientName,
+            selectedAddress.recipientPhoneNumber || selectedAddress.recipientPhone,
+            selectedAddress.address,
+            selectedAddress.wardCode,
+            selectedAddress.districtID,
+        ];
+        return requiredFields.every((value) => value && String(value).trim().length > 0);
+    }, [selectedAddress]);
+
     const handlePlaceOrder = () => {
         // Kiểm tra nếu đang directCheckout nhưng product chưa load xong
         if (directCheckout && !directProduct) {
             showError('Đang tải thông tin sản phẩm, vui lòng đợi...');
             return;
         }
-        
+
         if (!checkoutItems.length) {
             showError('Không có sản phẩm nào để thanh toán');
             if (directCheckout) {
@@ -436,6 +803,12 @@ export default function CheckoutDetailPage() {
             } else {
                 navigate('/cart');
             }
+            return;
+        }
+
+        if (!hasShippingInfo) {
+            showError('Vui lòng cập nhật thông tin vận chuyển trước khi thanh toán.');
+            setShowAddressList(true);
             return;
         }
 
@@ -450,7 +823,7 @@ export default function CheckoutDetailPage() {
             const imageUrl = meta.imageUrl || defaultProductImage;
 
             // Lấy tên sản phẩm: từ product object hoặc productName
-            const productName = 
+            const productName =
                 (directCheckout && item.product?.name) ||
                 item.productName ||
                 item.product?.name ||
@@ -498,6 +871,7 @@ export default function CheckoutDetailPage() {
                 // Giữ lại danh sách cartItemId đã chọn để backend biết item nào cần thanh toán (nếu không phải direct checkout)
                 cartItemIds: directCheckout ? [] : selectedItemIds,
                 address: {
+                    ...(selectedAddress || {}),
                     recipientName,
                     recipientPhone,
                     addressText,
@@ -618,7 +992,13 @@ export default function CheckoutDetailPage() {
                                             Giao hàng GHN (Tiêu chuẩn)
                                         </span>
                                         <span className={cx('radio-desc')}>
-                                            Dự kiến giao: Thứ Ba, 14/10
+                                            {leadtimeLoading ? (
+                                                'Đang tính thời gian giao hàng...'
+                                            ) : estimatedDeliveryDate ? (
+                                                `Dự kiến giao: ${estimatedDeliveryDate}`
+                                            ) : (
+                                                'Dự kiến giao: Đang cập nhật...'
+                                            )}
                                         </span>
                                     </div>
                                 </label>
@@ -716,7 +1096,7 @@ export default function CheckoutDetailPage() {
                                         originalLineTotal > currentLineTotal &&
                                         originalLineTotal > 0;
 
-                                    const displayName = 
+                                    const displayName =
                                         (directCheckout && item.product?.name) ||
                                         item.productName ||
                                         item.product?.name ||
@@ -769,7 +1149,15 @@ export default function CheckoutDetailPage() {
                             </div>
                             <div className={cx('summary-row')}>
                                 <span>Phí vận chuyển (GHN):</span>
-                                <span>{formatPrice(shippingFee)}</span>
+                                <span>
+                                    {shippingFeeLoading ? (
+                                        <span style={{ color: '#666', fontSize: '0.9em' }}>
+                                            Đang tính...
+                                        </span>
+                                    ) : (
+                                        formatPrice(shippingFee)
+                                    )}
+                                </span>
                             </div>
                             <div className={cx('summary-row')}>
                                 <span>Giảm giá:</span>
@@ -823,10 +1211,17 @@ export default function CheckoutDetailPage() {
                                 </div>
                             </div>
 
+                            {!hasShippingInfo && (
+                                <p className={cx('payment-note')} style={{ color: '#d32f2f' }}>
+                                    Vui lòng cập nhật địa chỉ giao hàng trước khi thanh toán.
+                                </p>
+                            )}
+
                             <button
                                 type="button"
                                 className={cx('pay-btn')}
                                 onClick={handlePlaceOrder}
+                                disabled={!hasShippingInfo}
                             >
                                 Thanh toán
                             </button>
@@ -848,6 +1243,8 @@ export default function CheckoutDetailPage() {
                     if (!address) return;
                     setSelectedAddress(address);
                     setShowAddressList(false);
+                    setShouldRefreshShippingFee(true);
+                    setShouldRefreshLeadtime(true);
                 }}
                 onViewDetail={(address) => {
                     setSelectedAddress(address);
@@ -865,6 +1262,8 @@ export default function CheckoutDetailPage() {
                 onCreated={(newAddress) => {
                     if (newAddress) {
                         setSelectedAddress(newAddress);
+                        setShouldRefreshShippingFee(true);
+                        setShouldRefreshLeadtime(true);
                     }
                     setAddressRefreshKey((prev) => prev + 1);
                     setShowNewAddressModal(false);
@@ -878,6 +1277,8 @@ export default function CheckoutDetailPage() {
                 onUpdated={(updated) => {
                     if (!updated) return;
                     setSelectedAddress(updated);
+                    setShouldRefreshShippingFee(true);
+                    setShouldRefreshLeadtime(true);
                     setAddressRefreshKey((prev) => prev + 1);
                 }}
             />

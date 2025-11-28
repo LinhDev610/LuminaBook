@@ -35,7 +35,6 @@ export default function AddPromotionPage() {
     const [isDragging, setIsDragging] = useState(false);
     const [productSearchQuery, setProductSearchQuery] = useState('');
     const debouncedProductSearchQuery = useDebounce(productSearchQuery, 300);
-    const [visibleProductCount, setVisibleProductCount] = useState(50);
 
     const resetForm = useCallback(() => {
         setFormState({ ...INITIAL_FORM_STATE_PROMOTION });
@@ -107,10 +106,24 @@ export default function AddPromotionPage() {
         });
     }, [productOptions, debouncedProductSearchQuery]);
 
-    useEffect(() => {
-        // Reset số lượng sản phẩm hiển thị khi search query thay đổi
-        setVisibleProductCount(50);
-    }, [debouncedProductSearchQuery]);
+    const productMap = useMemo(() => {
+        const entries = new Map();
+        productOptions.forEach((option) => entries.set(option.value, option));
+        return entries;
+    }, [productOptions]);
+
+    const selectedProducts = useMemo(
+        () =>
+            formState.productIds
+                .map((id) => productMap.get(id))
+                .filter(Boolean),
+        [formState.productIds, productMap],
+    );
+
+    const availableProductOptions = useMemo(
+        () => filteredProductOptions.filter((option) => !formState.productIds.includes(option.value)),
+        [filteredProductOptions, formState.productIds],
+    );
 
     const handleChange = (field, value) => {
         setFormState((prev) => {
@@ -148,20 +161,25 @@ export default function AddPromotionPage() {
         }
     };
 
-    const handleToggleId = (field, id) => {
+    const handleSelectProduct = useCallback((productId) => {
         setFormState((prev) => {
-            const current = new Set(prev[field]);
-            if (current.has(id)) {
-                current.delete(id);
-            } else {
-                current.add(id);
+            if (prev.productIds.includes(productId)) {
+                return prev;
             }
             return {
                 ...prev,
-                [field]: Array.from(current),
+                productIds: [...prev.productIds, productId],
             };
         });
-    };
+        setProductSearchQuery('');
+    }, []);
+
+    const handleRemoveProduct = useCallback((productId) => {
+        setFormState((prev) => ({
+            ...prev,
+            productIds: prev.productIds.filter((id) => id !== productId),
+        }));
+    }, []);
 
     const handleImageFile = (file) => {
         if (!file) return;
@@ -622,14 +640,14 @@ export default function AddPromotionPage() {
         }
         if (formState.applyScope === 'PRODUCT') {
             return (
-                <div className={cx('option-section')}>
+                <div className={cx('product-selector')}>
                     <div className={cx('search-box')}>
                         <input
                             type="text"
                             value={productSearchQuery}
                             onChange={(e) => setProductSearchQuery(e.target.value)}
                             className={cx('search-input')}
-                            placeholder="Tìm kiếm sản phẩm theo tên..."
+                            placeholder="Nhập tên hoặc mã sách để tìm kiếm..."
                         />
                         {productSearchQuery && (
                             <button
@@ -640,42 +658,55 @@ export default function AddPromotionPage() {
                                 ✕
                             </button>
                         )}
-                    </div>
-                    <div className={cx('options-grid')}>
-                        {filteredProductOptions.length === 0 ? (
-                            <p className={cx('empty-text')}>
-                                {debouncedProductSearchQuery
-                                    ? 'Không tìm thấy sản phẩm phù hợp.'
-                                    : 'Chưa có sản phẩm phù hợp.'}
-                            </p>
-                        ) : (
-                            filteredProductOptions.slice(0, visibleProductCount).map((option) => (
-                                <label key={option.value} className={cx('option-item')}>
-                                    <input
-                                        type="checkbox"
-                                        checked={formState.productIds.includes(option.value)}
-                                        onChange={() => handleToggleId('productIds', option.value)}
-                                    />
-                                    <span>{option.label}</span>
-                                </label>
-                            ))
+                        {productSearchQuery.trim() && (
+                            <div className={cx('suggestion-dropdown')}>
+                                {availableProductOptions.length === 0 ? (
+                                    <div className={cx('empty-text')}>
+                                        Không tìm thấy sản phẩm phù hợp.
+                                    </div>
+                                ) : (
+                                    availableProductOptions.slice(0, 20).map((option) => (
+                                        <button
+                                            type="button"
+                                            key={option.value}
+                                            className={cx('suggestion-item')}
+                                            onMouseDown={(event) => {
+                                                event.preventDefault();
+                                                handleSelectProduct(option.value);
+                                            }}
+                                        >
+                                            <span className={cx('suggestion-name')}>{option.label}</span>
+                                            {option.code && (
+                                                <span className={cx('suggestion-code')}>{option.code}</span>
+                                            )}
+                                        </button>
+                                    ))
+                                )}
+                            </div>
                         )}
                     </div>
-                    {filteredProductOptions.length > visibleProductCount && (
-                        <div className={cx('load-more')}>
-                            <button
-                                type="button"
-                                className={cx('btn', 'btn-load-more')}
-                                onClick={() => setVisibleProductCount((c) => c + 50)}
-                            >
-                                Hiển thị thêm
-                            </button>
+                    {selectedProducts.length > 0 ? (
+                        <div className={cx('selected-products-list')}>
+                            {selectedProducts.map((product) => (
+                                <span key={product.value} className={cx('product-chip')}>
+                                    <span className={cx('product-chip-label')}>{product.label}</span>
+                                    <button
+                                        type="button"
+                                        className={cx('chip-remove-btn')}
+                                        onClick={() => handleRemoveProduct(product.value)}
+                                    >
+                                        ✕
+                                    </button>
+                                </span>
+                            ))}
                         </div>
+                    ) : (
+                        <p className={cx('helper-text')}>Chưa có sản phẩm nào được chọn.</p>
                     )}
                     {formState.productIds.length > 0 && (
-                        <div className={cx('selected-count')}>
+                        <span className={cx('selected-count')}>
                             Đã chọn: {formState.productIds.length} sản phẩm
-                        </div>
+                        </span>
                     )}
                     {errors.productIds && <span className={cx('error-text')}>{errors.productIds}</span>}
                 </div>

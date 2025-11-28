@@ -32,7 +32,7 @@ public class NotificationService {
     NotificationMapper notificationMapper;
 
     @Transactional
-    public Notification sendToUsers(String title, String message, String type, Set<String> userIds) {
+    public Notification sendToUsers(String title, String message, String type, Set<String> userIds, String link) {
         // Tạo một notification riêng cho mỗi user để mỗi user có thể đánh dấu đã đọc độc lập
         Set<User> users = new HashSet<>(userRepository.findAllById(userIds));
         Notification firstNotification = null;
@@ -42,6 +42,7 @@ public class NotificationService {
                     .title(title)
                     .message(message)
                     .type(type)
+                    .link(link)
                     .isRead(false)
                     .createdAt(LocalDateTime.now())
                     .users(Set.of(user)) // Mỗi notification chỉ gán cho 1 user
@@ -56,26 +57,26 @@ public class NotificationService {
     }
 
     @Transactional
-    public Notification sendToRole(String title, String message, String type, String roleName) {
+    public Notification sendToRole(String title, String message, String type, String roleName, String link) {
         List<User> targets = userRepository.findAll().stream()
                 .filter(u -> u.getRole() != null && u.getRole().getName().equals(roleName))
                 .toList();
         Set<String> ids = targets.stream().map(User::getId).collect(Collectors.toSet());
-        return sendToUsers(title, message, type, ids);
+        return sendToUsers(title, message, type, ids, link);
     }
 
     /**
      * Gửi thông báo cho tất cả nhân viên (STAFF và CUSTOMER_SUPPORT)
      */
     @Transactional
-    public Notification sendToStaff(String title, String message, String type) {
+    public Notification sendToStaff(String title, String message, String type, String link) {
         List<User> staffUsers = userRepository.findAll().stream()
                 .filter(u -> u.getRole() != null && 
                         ("STAFF".equals(u.getRole().getName()) || 
                          "CUSTOMER_SUPPORT".equals(u.getRole().getName())))
                 .toList();
         Set<String> staffIds = staffUsers.stream().map(User::getId).collect(Collectors.toSet());
-        return sendToUsers(title, message, type, staffIds);
+        return sendToUsers(title, message, type, staffIds, link);
     }
 
     /**

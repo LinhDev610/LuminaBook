@@ -281,8 +281,8 @@ export default function ComplaintManagementPage() {
 
             if (!response.ok) {
                 // Check if it's a permission error
-                if (response.status === 403 || data?.code === 1006 || 
-                    data?.message?.includes('permission') || 
+                if (response.status === 403 || data?.code === 1006 ||
+                    data?.message?.includes('permission') ||
                     data?.message?.includes('UNAUTHORIZED')) {
                     // Check if complaint is resolved
                     if (selectedComplaint.statusRaw === 'RESOLVED') {
@@ -324,7 +324,19 @@ export default function ComplaintManagementPage() {
 
     const handleTransferAdmin = () => {
         if (!selectedComplaint) return;
+        setConfirmDialog({
+            open: true,
+            title: 'Xác nhận chuyển khiếu nại',
+            message: 'Bạn có chắc chắn muốn chuyển khiếu nại này cho Admin không?',
+            onConfirm: () => performTransferAdmin(),
+        });
+    };
 
+    const performTransferAdmin = async () => {
+        setConfirmDialog(initialConfirmState);
+        if (!selectedComplaint) return;
+
+        setActionLoading(true);
         setActionError('');
         setActionSuccess('');
 
@@ -583,10 +595,10 @@ export default function ComplaintManagementPage() {
                                         <div className={cx('detail-row')}>
                                             <span className={cx('detail-label')}>Người xử lý:</span>
                                             <span className={cx('detail-value')}>
-                                                {selectedComplaint.handlerName 
+                                                {selectedComplaint.handlerName
                                                     ? `CSKH - ${selectedComplaint.handlerName}`
-                                                    : selectedComplaint.assignedToRaw === 'ADMIN' 
-                                                        ? 'Admin' 
+                                                    : selectedComplaint.assignedToRaw === 'ADMIN'
+                                                        ? 'Admin'
                                                         : 'Chưa có người xử lý'}
                                             </span>
                                         </div>
@@ -615,16 +627,16 @@ export default function ComplaintManagementPage() {
                                         <button
                                             className={cx('action-btn', 'btn-save-note')}
                                             onClick={handleAcceptComplaint}
-                                            disabled={actionLoading || 
+                                            disabled={actionLoading ||
                                                 selectedComplaint.statusRaw === 'RESOLVED' ||
                                                 (selectedComplaint.handlerId && selectedComplaint.handlerId !== '' && selectedComplaint.handlerId !== currentUserId)}
                                         >
-                                            {actionLoading 
-                                                ? 'Đang tiếp nhận...' 
+                                            {actionLoading
+                                                ? 'Đang tiếp nhận...'
                                                 : selectedComplaint.statusRaw === 'RESOLVED'
                                                     ? 'Đã giải quyết'
-                                                    : selectedComplaint.handlerId 
-                                                        ? (selectedComplaint.handlerId === currentUserId ? 'Đã tiếp nhận (Bạn)' : 'Đã có người xử lý') 
+                                                    : selectedComplaint.handlerId
+                                                        ? (selectedComplaint.handlerId === currentUserId ? 'Đã tiếp nhận (Bạn)' : 'Đã có người xử lý')
                                                         : 'Tiếp nhận khiếu nại'}
                                         </button>
                                         <button

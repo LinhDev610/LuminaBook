@@ -1,8 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import classNames from 'classnames/bind';
 import styles from './OrderReturnPage.module.scss';
 import { formatCurrency, getApiBaseUrl, getStoredToken } from '../../../../services';
+import { useNotification } from '../../../../components/Common/Notification';
+import ConfirmDialog from '../../../../components/Common/ConfirmDialog/DeleteAccountDialog';
 
 const cx = classNames.bind(styles);
 
@@ -11,22 +13,133 @@ export default function OrderReturnPage() {
     const { id } = useParams();
     const location = useLocation();
     const orderData = location.state?.order || null;
+    const { error: notifyError, success: notifySuccess } = useNotification();
 
     const [loading, setLoading] = useState(false);
     const [order, setOrder] = useState(null);
     const [complaint, setComplaint] = useState(null);
-
-    // Form state
-    const [formData, setFormData] = useState({
-        returnStatus: 'Khách đã gửi trả',
-        returnDate: new Date().toISOString().split('T')[0],
-        verificationResult: 'Hợp lệ - Hoàn tiền toàn bộ',
-        refundAmount: '',
-        refundMethod: 'Ví Momo',
-        processingNotes: 'Sản phẩm gửi nhầm tựa do lỗi kho. Đã xác nhận hoàn tiền và yêu cầu gửi trả hàng.',
+    const [confirming, setConfirming] = useState(false);
+    const [confirmDialog, setConfirmDialog] = useState({
+        open: false,
+        title: '',
+        message: '',
+        onConfirm: null,
     });
 
+    // Form state – chỉ để hiển thị lại dữ liệu kho đã nhập
+    const [formData, setFormData] = useState({
+        returnStatus: '',
+        returnDate: '',
+        verificationResult: '',
+        refundAmount: '',
+        refundMethod: '',
+        refundBank: '',
+        refundAccountNumber: '',
+        refundAccountHolder: '',
+        processingNotes: '',
+    });
+
+const RETURN_PROGRESS_STEPS = [
+    { id: 'requested', label: 'Khách hàng yêu cầu hoàn tiền/ trả hàng' },
+    { id: 'cskh', label: 'CSKH xác nhận' },
+    { id: 'staff', label: 'Nhân viên xác nhận hàng' },
+    { id: 'admin', label: 'Admin hoàn tiền' },
+];
+
+const resolveReturnStepIndex = (status) => {
+    switch (status) {
+        case 'RETURN_REQUESTED':
+            return 0;
+        case 'RETURN_CS_CONFIRMED':
+            return 1;
+        case 'RETURN_STAFF_CONFIRMED':
+            return 2;
+        case 'REFUNDED':
+            return 3;
+        default:
+            return 0;
+    }
+};
+
+const statusLabelMap = useMemo(
+    () => ({
+            RETURN_REQUESTED: 'Khách hàng yêu cầu hoàn tiền/ trả hàng',
+        RETURN_CS_CONFIRMED: 'CSKH đã xác nhận',
+            RETURN_STAFF_CONFIRMED: 'Nhân viên đã xác nhận hàng',
+        REFUNDED: 'Hoàn tiền thành công',
+        RETURN_REJECTED: 'Từ chối hoàn tiền',
+        CREATED: 'Đơn mới',
+        CONFIRMED: 'Đã xác nhận',
+        PAID: 'Đã thanh toán',
+        SHIPPED: 'Đang giao',
+        DELIVERED: 'Đã giao',
+        CANCELLED: 'Đã hủy',
+    }),
+    [],
+);
+
+    const resolveStatusLabel = (status) => {
+        if (!status) return '';
+        const normalized = String(status).toUpperCase();
+        return statusLabelMap[normalized] || status;
+    };
+
+    const initializeFormFromOrder = (orderObj) => {
+        if (!orderObj) return;
+
+        const normalizedStatus = String(orderObj.status || '').toUpperCase();
+        const staffReviewed = normalizedStatus === 'RETURN_STAFF_CONFIRMED' || normalizedStatus === 'REFUNDED';
+        const refundAmount = staffReviewed ? orderObj.refundAmount ?? '' : '';
+        const refundMethodRaw = orderObj.refundMethod || '';
+        const staffNotes = orderObj.note || orderObj.refundRejectionReason || '';
+
+        const humanRefundMethod = (() => {
+            if (!refundMethodRaw) {
+                if (orderObj.paymentMethod === 'COD') {
+                    return 'Hoàn bằng tiền mặt (COD)';
+                }
+                if (orderObj.paymentMethod === 'MOMO') {
+                    return 'Ví Momo';
+                }
+                return '';
+            }
+
+            const normalized = refundMethodRaw.trim().toUpperCase();
+            const directMap = {
+                MOMO: 'Ví Momo',
+                WALLET: 'Ví Momo',
+                BANK_TRANSFER: 'Chuyển khoản ngân hàng',
+                COD: 'Hoàn bằng tiền mặt (COD)',
+            };
+            if (directMap[normalized]) {
+                return directMap[normalized];
+            }
+            return refundMethodRaw;
+        })();
+
+        setFormData((prev) => ({
+            ...prev,
+            returnStatus: resolveStatusLabel(orderObj.status) || prev.returnStatus,
+            returnDate: orderObj.returnCheckedDate || prev.returnDate || '',
+            verificationResult:
+                staffReviewed && orderObj.staffInspectionResult ? orderObj.staffInspectionResult : '',
+            refundAmount: refundAmount !== '' ? String(refundAmount) : '',
+            refundMethod:
+                orderObj.refundMethod ||
+                orderObj.refundMethodLabel ||
+                humanRefundMethod ||
+                orderObj.paymentMethodLabel ||
+                '',
+            refundBank: orderObj.refundBank || '',
+            refundAccountNumber: orderObj.refundAccountNumber || '',
+            refundAccountHolder: orderObj.refundAccountHolder || '',
+            processingNotes: staffNotes || prev.processingNotes || '',
+        }));
+    };
+
     useEffect(() => {
+        let isMounted = true;
+
         const fetchData = async () => {
             if (!id) {
                 navigate('/admin/orders');
@@ -38,7 +151,6 @@ export default function OrderReturnPage() {
                 const token = getStoredToken('token');
                 const apiBaseUrl = getApiBaseUrl();
 
-                // Fetch order details
                 const orderResp = await fetch(`${apiBaseUrl}/orders/${id}`, {
                     headers: {
                         'Content-Type': 'application/json',
@@ -49,17 +161,11 @@ export default function OrderReturnPage() {
                 if (orderResp.ok) {
                     const orderData = await orderResp.json();
                     const orderResult = orderData?.result || orderData;
-                    setOrder(orderResult);
-                    
-                    // Set default refund amount to order total
-                    if (orderResult.totalAmount) {
-                        setFormData(prev => ({
-                            ...prev,
-                            refundAmount: orderResult.totalAmount.toString(),
-                        }));
+                    if (isMounted) {
+                        setOrder(orderResult);
+                        initializeFormFromOrder(orderResult);
                     }
 
-                    // Try to fetch complaint/ticket for this order
                     try {
                         const orderCode = orderResult.code || orderResult.orderCode || id;
                         const ticketsResp = await fetch(`${apiBaseUrl}/api/tickets?orderCode=${orderCode}`, {
@@ -71,7 +177,7 @@ export default function OrderReturnPage() {
                         if (ticketsResp.ok) {
                             const ticketsData = await ticketsResp.json();
                             const tickets = ticketsData?.result || ticketsData || [];
-                            if (Array.isArray(tickets) && tickets.length > 0) {
+                            if (isMounted && Array.isArray(tickets) && tickets.length > 0) {
                                 setComplaint(tickets[0]);
                             }
                         }
@@ -82,45 +188,69 @@ export default function OrderReturnPage() {
             } catch (err) {
                 console.error('Error fetching data:', err);
             } finally {
-                setLoading(false);
+                if (isMounted) {
+                    setLoading(false);
+                }
             }
         };
 
         if (orderData) {
             setOrder(orderData);
-            if (orderData.totalAmount) {
-                setFormData(prev => ({
-                    ...prev,
-                    refundAmount: orderData.totalAmount.toString(),
-                }));
-            }
-        } else {
-            fetchData();
+            initializeFormFromOrder(orderData);
         }
+        fetchData();
+
+        return () => {
+            isMounted = false;
+        };
     }, [id, navigate, orderData]);
 
-    const handleInputChange = (e) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({
-            ...prev,
-            [name]: value,
-        }));
+    const executeConfirmRefund = async () => {
+        try {
+            setConfirming(true);
+            const token = getStoredToken('token');
+            const apiBaseUrl = getApiBaseUrl();
+            const response = await fetch(`${apiBaseUrl}/orders/${encodeURIComponent(id)}/confirm-refund`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                },
+                body: JSON.stringify({
+                    note: formData.processingNotes || undefined,
+                }),
+            });
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData?.message || 'Không thể xác nhận hoàn tiền');
+            }
+            notifySuccess('Đã xác nhận hoàn tiền thành công.');
+            navigate(`/admin/orders/${id}`);
+        } catch (err) {
+            console.error(err);
+            notifyError(err.message || 'Có lỗi xảy ra khi xác nhận hoàn tiền.');
+        } finally {
+            setConfirming(false);
+        }
     };
 
-    const handleSave = async () => {
-        // TODO: Implement save logic
-        console.log('Saving return/refund data:', formData);
-        alert('Đã lưu thông tin xử lý hoàn tiền/trả hàng');
-    };
-
-    const handleConfirmRefund = async () => {
-        if (!window.confirm('Bạn có chắc chắn muốn xác nhận hoàn tiền?')) {
+    const handleConfirmRefund = () => {
+        const normalizedStatus = (order?.status || '').toUpperCase();
+        const canConfirm = normalizedStatus === 'RETURN_STAFF_CONFIRMED';
+        if (!canConfirm) {
+            notifyError('Không thể xác nhận hoàn tiền khi nhân viên chưa xác nhận đơn hàng.');
             return;
         }
-        // TODO: Implement confirm refund logic
-        console.log('Confirming refund:', formData);
-        alert('Đã xác nhận hoàn tiền thành công');
-        navigate(`/admin/orders/${id}`);
+
+        setConfirmDialog({
+            open: true,
+            title: 'Xác nhận hoàn tiền',
+            message: 'Bạn có chắc chắn muốn xác nhận hoàn tiền cho đơn hàng này không?',
+            onConfirm: async () => {
+                setConfirmDialog({ open: false, title: '', message: '', onConfirm: null });
+                await executeConfirmRefund();
+            },
+        });
     };
 
     const handleCancel = () => {
@@ -179,9 +309,23 @@ export default function OrderReturnPage() {
                           order.paymentMethod || 'Ví Momo');
     const orderItems = order.items || [];
     const totalAmount = order.totalAmount || 0;
-    const complaintContent = complaint?.issue || complaint?.notes || complaint?.content ||
-                            'Khách hàng phản ánh sản phẩm bị sai tựa sách và yêu cầu trả hàng + hoàn tiền 100%.';
-    const returnAddress = 'Kho trung tâm - 12 Nguyễn Văn Linh, Hà Nội';
+    const complaintContent =
+        complaint?.issue ||
+        complaint?.notes ||
+        complaint?.content ||
+        order.refundDescription ||
+        '';
+    const returnAddress = order.refundReturnAddress || order.shippingAddress || '';
+    const normalizedStatus = (order?.status || '').toUpperCase();
+    const canAdminConfirm = normalizedStatus === 'RETURN_STAFF_CONFIRMED';
+    const isReturnRejected = normalizedStatus === 'RETURN_REJECTED';
+    const isRefunded = normalizedStatus === 'REFUNDED';
+    const currentReturnStep = resolveReturnStepIndex(normalizedStatus);
+    const progressSteps = RETURN_PROGRESS_STEPS.map((step, index) => ({
+        ...step,
+        completed: !isReturnRejected && index < currentReturnStep,
+        active: !isReturnRejected && index === currentReturnStep,
+    }));
 
     return (
         <div className={cx('wrapper')}>
@@ -194,6 +338,34 @@ export default function OrderReturnPage() {
                 </div>
 
                 <div className={cx('content')}>
+                    <div className={cx('returnProgressWrapper', { rejected: isReturnRejected })}>
+                        {progressSteps.map((step, idx) => (
+                            <div
+                                key={step.id}
+                                className={cx('returnStep', {
+                                    completed: step.completed,
+                                    active: step.active,
+                                })}
+                            >
+                                <div className={cx('returnStepCircle')}>
+                                    {step.completed ? '✓' : idx + 1}
+                                </div>
+                                {idx < progressSteps.length - 1 && (
+                                    <div
+                                        className={cx('returnStepConnector', {
+                                            completed: step.completed,
+                                        })}
+                                    />
+                                )}
+                                <p className={cx('returnStepLabel')}>{step.label}</p>
+                            </div>
+                        ))}
+                        {isReturnRejected && (
+                            <div className={cx('returnStepRejected')}>
+                                Yêu cầu đã bị từ chối. {formData.processingNotes ? `Ghi chú: ${formData.processingNotes}` : ''}
+                            </div>
+                        )}
+                    </div>
                     {/* Order Info */}
                     <div className={cx('section')}>
                         <div className={cx('section-header')}>
@@ -301,37 +473,22 @@ export default function OrderReturnPage() {
                         <div className={cx('form-grid')}>
                             <div className={cx('form-group')}>
                                 <label className={cx('form-label')}>Trạng thái hàng hóa</label>
-                                <select
-                                    name="returnStatus"
-                                    value={formData.returnStatus}
-                                    onChange={handleInputChange}
-                                    className={cx('form-select')}
-                                >
-                                    <option value="Chưa nhận">Chưa nhận</option>
-                                    <option value="Khách đã gửi trả">Khách đã gửi trả</option>
-                                    <option value="Đã nhận hàng hoàn">Đã nhận hàng hoàn</option>
-                                    <option value="Đã kiểm tra">Đã kiểm tra</option>
-                                </select>
+                                <input
+                                    type="text"
+                                    className={cx('form-input', 'readonly')}
+                                    value={formData.returnStatus || 'Chưa cập nhật'}
+                                    readOnly
+                                />
                             </div>
                             <div className={cx('form-group')}>
                                 <label className={cx('form-label')}>Ngày nhận hàng hoàn</label>
                                 <input
                                     type="date"
-                                    name="returnDate"
                                     value={formData.returnDate}
-                                    onChange={handleInputChange}
                                     className={cx('form-input')}
+                                    readOnly
                                 />
                             </div>
-                        </div>
-                        <div className={cx('form-group')}>
-                            <label className={cx('form-label')}>Địa chỉ nhận hàng trả</label>
-                            <input
-                                type="text"
-                                className={cx('form-input', 'readonly')}
-                                value={returnAddress}
-                                readOnly
-                            />
                         </div>
                     </div>
 
@@ -341,41 +498,45 @@ export default function OrderReturnPage() {
                         <div className={cx('form-grid')}>
                             <div className={cx('form-group')}>
                                 <label className={cx('form-label')}>Kết quả xác minh</label>
-                                <select
-                                    name="verificationResult"
-                                    value={formData.verificationResult}
-                                    onChange={handleInputChange}
-                                    className={cx('form-select')}
-                                >
-                                    <option value="Chưa xác minh">Chưa xác minh</option>
-                                    <option value="Hợp lệ - Hoàn tiền toàn bộ">Hợp lệ - Hoàn tiền toàn bộ</option>
-                                    <option value="Hợp lệ - Hoàn tiền một phần">Hợp lệ - Hoàn tiền một phần</option>
-                                    <option value="Không hợp lệ">Không hợp lệ</option>
-                                </select>
+                                <input
+                                    type="text"
+                                    className={cx('form-input', 'readonly')}
+                                    value={formData.verificationResult || 'Chưa cập nhật'}
+                                    readOnly
+                                />
                             </div>
                             <div className={cx('form-group')}>
                                 <label className={cx('form-label')}>Số tiền hoàn (VNĐ)</label>
                                 <input
                                     type="number"
-                                    name="refundAmount"
                                     value={formData.refundAmount}
-                                    onChange={handleInputChange}
-                                    className={cx('form-input')}
-                                    placeholder="Nhập số tiền"
+                                    className={cx('form-input', 'readonly')}
+                                    readOnly
                                 />
                             </div>
                             <div className={cx('form-group')}>
                                 <label className={cx('form-label')}>Phương thức hoàn</label>
-                                <select
-                                    name="refundMethod"
-                                    value={formData.refundMethod}
-                                    onChange={handleInputChange}
-                                    className={cx('form-select')}
-                                >
-                                    <option value="Ví Momo">Ví Momo</option>
-                                    <option value="Chuyển khoản ngân hàng">Chuyển khoản ngân hàng</option>
-                                    <option value="Tiền mặt">Tiền mặt</option>
-                                </select>
+                                <input
+                                    type="text"
+                                    className={cx('form-input', 'readonly')}
+                                    value={formData.refundMethod || 'Chưa cập nhật'}
+                                    readOnly
+                                />
+                            </div>
+                        </div>
+                        <div className={cx('form-group')}>
+                            <label className={cx('form-label')}>Chi tiết hình thức hoàn tiền</label>
+                            <div className={cx('refund-method-card')}>
+                                <p className={cx('refund-method-main')}>
+                                    {formData.refundMethod || 'Chưa cập nhật'}
+                                </p>
+                                {(formData.refundBank || formData.refundAccountNumber || formData.refundAccountHolder) && (
+                                    <div className={cx('refund-method-details')}>
+                                        {formData.refundBank && <span>{formData.refundBank}</span>}
+                                        {formData.refundAccountNumber && <span>{formData.refundAccountNumber}</span>}
+                                        {formData.refundAccountHolder && <span>{formData.refundAccountHolder}</span>}
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -384,29 +545,54 @@ export default function OrderReturnPage() {
                     <div className={cx('section')}>
                         <h3 className={cx('section-label')}>Ghi chú xử lý</h3>
                         <textarea
-                            name="processingNotes"
                             value={formData.processingNotes}
-                            onChange={handleInputChange}
-                            className={cx('form-textarea')}
+                            className={cx('form-textarea', 'readonly')}
                             rows={4}
-                            placeholder="Nhập ghi chú xử lý..."
+                            readOnly
+                                placeholder="Chưa có ghi chú từ nhân viên"
                         />
                     </div>
 
                     {/* Action Buttons */}
                     <div className={cx('actions')}>
-                        <button type="button" className={cx('btn', 'btn-cancel')} onClick={handleCancel}>
-                            Hủy
-                        </button>
-                        <button type="button" className={cx('btn', 'btn-save')} onClick={handleSave}>
-                            Lưu
-                        </button>
-                        <button type="button" className={cx('btn', 'btn-confirm')} onClick={handleConfirmRefund}>
-                            Xác nhận hoàn tiền
-                        </button>
+                        {isRefunded ? (
+                            <div className={cx('refund-completed-message')}>
+                                <p>✓ Đơn hàng đã được hoàn tiền thành công</p>
+                            </div>
+                        ) : (
+                            <>
+                                <button 
+                                    type="button" 
+                                    className={cx('btn', 'btn-cancel')} 
+                                    onClick={handleCancel}
+                                    disabled={confirming || isRefunded}
+                                >
+                                    Hủy
+                                </button>
+                                <button
+                                    type="button"
+                                    className={cx('btn', 'btn-confirm')}
+                                    onClick={handleConfirmRefund}
+                                    disabled={confirming || !canAdminConfirm || isRefunded}
+                                >
+                                    {confirming ? 'Đang xử lý...' : 'Xác nhận hoàn tiền'}
+                                </button>
+                            </>
+                        )}
                     </div>
                 </div>
             </div>
+            <ConfirmDialog
+                open={confirmDialog.open}
+                title={confirmDialog.title}
+                message={confirmDialog.message}
+                onConfirm={confirmDialog.onConfirm}
+                onCancel={() =>
+                    setConfirmDialog({ open: false, title: '', message: '', onConfirm: null })
+                }
+                confirmText="Xác nhận"
+                cancelText="Hủy"
+            />
         </div>
     );
 }

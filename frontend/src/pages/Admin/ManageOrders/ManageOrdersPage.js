@@ -22,15 +22,29 @@ const mapOrderStatus = (statusRaw) => {
         case 'CANCELLED':
             return { label: 'Đã hủy', css: 'cancelled' };
         case 'RETURN_REQUESTED':
-            return { label: 'Yêu cầu hoàn tiền/ trả hàng', css: 'return-pending' };
+            return { label: 'Khách hàng yêu cầu hoàn tiền/ trả hàng', css: 'return-requested' };
+        case 'RETURN_CS_CONFIRMED':
+            return { label: 'CSKH đã xác nhận', css: 'return-requested' };
+        case 'RETURN_STAFF_CONFIRMED':
+            return { label: 'Nhân viên đã xác nhận hàng', css: 'processing' };
         case 'REFUNDED':
-            return { label: 'Đã hoàn tiền/ trả hàng', css: 'refunded' };
+            return { label: 'Hoàn tiền thành công', css: 'refunded' };
         case 'RETURN_REJECTED':
             return { label: 'Từ chối hoàn tiền/ trả hàng', css: 'return-rejected' };
         default:
             return { label: statusRaw || 'Chờ xác nhận', css: 'pending' };
     }
 };
+
+const REFUND_STATUS_SET = new Set([
+    'RETURN_REQUESTED',
+    'RETURN_CS_CONFIRMED',
+    'RETURN_STAFF_CONFIRMED',
+    'REFUNDED',
+    'RETURN_REJECTED',
+]);
+
+const isRefundOrder = (order) => REFUND_STATUS_SET.has(String(order?.rawStatus || order?.status || '').toUpperCase());
 
 const STATUS_FILTERS = [
     { value: 'all', label: 'Tất cả trạng thái' },
@@ -39,6 +53,14 @@ const STATUS_FILTERS = [
     { value: 'shipping', label: 'Đang giao' },
     { value: 'delivered', label: 'Đã giao' },
     { value: 'cancelled', label: 'Đã hủy' },
+];
+
+const REFUND_STATUS_FILTERS = [
+    { value: 'all', label: 'Tất cả trạng thái' },
+    { value: 'return-requested', label: 'Khách hàng yêu cầu hoàn tiền/ trả hàng' },
+    { value: 'return-cs', label: 'CSKH đã xác nhận' },
+    { value: 'return-staff', label: 'Nhân viên đã xác nhận hàng' },
+    { value: 'return-rejected', label: 'Từ chối' },
 ];
 
 const parseShippingInfo = (raw) => {
@@ -84,6 +106,8 @@ const formatDateOnly = (dateString) => {
         return dateString;
     }
 };
+
+const ITEMS_PER_PAGE = 8;
 
 const getOrderDateValue = (order) => {
     if (!order) return null;
@@ -134,6 +158,11 @@ function ManageOrdersPage() {
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedDate, setSelectedDate] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
+    const [refundSearchTerm, setRefundSearchTerm] = useState('');
+    const [refundStatusFilter, setRefundStatusFilter] = useState('all');
+    const [activeTab, setActiveTab] = useState('orders');
+    const [currentPage, setCurrentPage] = useState(1);
+    const [refundCurrentPage, setRefundCurrentPage] = useState(1);
 
     const fetchOrders = useMemo(
         () => async () => {
@@ -183,40 +212,17 @@ function ManageOrdersPage() {
         fetchOrders();
     }, [fetchOrders]);
 
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchTerm, selectedDate, statusFilter]);
+
+    useEffect(() => {
+        setRefundCurrentPage(1);
+    }, [refundSearchTerm, refundStatusFilter]);
+
     // Filter orders - exclude return/refund orders from main table
     const filteredOrders = useMemo(() => {
-        console.log('🔍 Filtering orders. Total orders:', orders.length);
-        if (orders.length > 0) {
-            console.log('🔍 All order statuses:', orders.map(o => ({ 
-                code: o.code, 
-                rawStatus: o.rawStatus, 
-                statusClass: o.statusClass,
-                statusLabel: o.statusLabel 
-            })));
-        }
-        
-        // TẠM THỜI: Hiển thị TẤT CẢ đơn hàng để debug
-        let list = [...orders];
-        console.log('🔍 DEBUG: Showing ALL orders (filter disabled):', list.length);
-        
-        // TODO: Uncomment sau khi debug xong
-        /*
-        let list = orders.filter((order) => {
-            // Exclude return/refund statuses from main orders table
-            const returnStatuses = [
-                'RETURN_REQUESTED',
-                'REFUNDED',
-                'RETURN_REJECTED'
-            ];
-            const orderStatus = (order.rawStatus || '').toUpperCase();
-            const shouldInclude = !returnStatuses.includes(orderStatus);
-            if (!shouldInclude) {
-                console.log('🔍 Excluding order from main table:', order.code, 'status:', orderStatus, '(will show in refund table)');
-            }
-            return shouldInclude;
-        });
-        console.log('🔍 After return/refund filter:', list.length, 'orders remaining');
-        */
+        let list = orders.filter((order) => !isRefundOrder(order));
 
         if (searchTerm.trim()) {
             const query = searchTerm.trim().toLowerCase();
@@ -259,28 +265,25 @@ function ManageOrdersPage() {
         });
     }, [orders, searchTerm, selectedDate, statusFilter]);
 
+    const totalOrderPages = Math.max(1, Math.ceil(filteredOrders.length / ITEMS_PER_PAGE)) || 1;
+
+    const paginatedOrders = useMemo(() => {
+        const start = (currentPage - 1) * ITEMS_PER_PAGE;
+        return filteredOrders.slice(start, start + ITEMS_PER_PAGE);
+    }, [filteredOrders, currentPage]);
+
     // Filter return/refund orders for the second table
+    // Loại bỏ các đơn đã hoàn tiền thành công (REFUNDED)
     const refundEligibleOrders = useMemo(() => {
-        const returnStatuses = [
-            'RETURN_REQUESTED',
-            'REFUNDED',
-            'RETURN_REJECTED'
-        ];
-        
-        console.log('🔍 Filtering refund orders. Total orders:', orders.length);
         let list = orders.filter((order) => {
-            const orderStatus = (order.rawStatus || '').toUpperCase();
-            const isRefundOrder = returnStatuses.includes(orderStatus);
-            if (isRefundOrder) {
-                console.log('🔍 Including refund order:', order.code, 'status:', orderStatus);
-            }
-            return isRefundOrder;
+            if (!isRefundOrder(order)) return false;
+            const status = (order.rawStatus || order.status || '').toUpperCase();
+            return status !== 'REFUNDED'; // Loại bỏ đơn đã hoàn tiền thành công
         });
-        console.log('🔍 Refund eligible orders:', list.length);
 
         // Apply search filter if needed
-        if (searchTerm.trim()) {
-            const query = searchTerm.trim().toLowerCase();
+        if (refundSearchTerm.trim()) {
+            const query = refundSearchTerm.trim().toLowerCase();
             list = list.filter((order) => {
                 return (
                     order.code?.toLowerCase().includes(query) ||
@@ -289,12 +292,77 @@ function ManageOrdersPage() {
             });
         }
 
+        if (refundStatusFilter !== 'all') {
+            list = list.filter((order) => {
+                const status = (order.rawStatus || '').toUpperCase();
+                if (refundStatusFilter === 'return-requested') {
+                    return status === 'RETURN_REQUESTED';
+                }
+                if (refundStatusFilter === 'return-cs') {
+                    return status === 'RETURN_CS_CONFIRMED';
+                }
+                if (refundStatusFilter === 'return-staff') {
+                    return status === 'RETURN_STAFF_CONFIRMED';
+                }
+                if (refundStatusFilter === 'return-rejected') {
+                    return status === 'RETURN_REJECTED';
+                }
+                return true;
+            });
+        }
+
         return [...list].sort((a, b) => {
             const da = a.orderDate ? new Date(a.orderDate) : 0;
             const db = b.orderDate ? new Date(b.orderDate) : 0;
             return db - da;
         });
-    }, [orders, searchTerm]);
+    }, [orders, refundSearchTerm, refundStatusFilter]);
+
+    useEffect(() => {
+        if (currentPage > totalOrderPages) {
+            setCurrentPage(totalOrderPages);
+        }
+    }, [currentPage, totalOrderPages]);
+
+    const totalRefundPages = Math.max(1, Math.ceil(refundEligibleOrders.length / ITEMS_PER_PAGE)) || 1;
+
+    const paginatedRefundOrders = useMemo(() => {
+        const start = (refundCurrentPage - 1) * ITEMS_PER_PAGE;
+        return refundEligibleOrders.slice(start, start + ITEMS_PER_PAGE);
+    }, [refundEligibleOrders, refundCurrentPage]);
+
+    useEffect(() => {
+        if (refundCurrentPage > totalRefundPages) {
+            setRefundCurrentPage(totalRefundPages);
+        }
+    }, [refundCurrentPage, totalRefundPages]);
+
+    const renderPagination = (page, totalPages, handlePrev, handleNext) => {
+        if (totalPages <= 1) return null;
+        return (
+            <div className={cx('pagination')}>
+                <button
+                    type="button"
+                    className={cx('paginationBtn')}
+                    disabled={page === 1}
+                    onClick={handlePrev}
+                >
+                    Trước
+                </button>
+                <span className={cx('paginationInfo')}>
+                    Trang {page}/{totalPages}
+                </span>
+                <button
+                    type="button"
+                    className={cx('paginationBtn')}
+                    disabled={page === totalPages}
+                    onClick={handleNext}
+                >
+                    Tiếp
+                </button>
+            </div>
+        );
+    };
 
     const handleViewDetail = (orderId) => {
         if (!orderId) return;
@@ -307,130 +375,184 @@ function ManageOrdersPage() {
                 <h1>Quản lý đơn hàng</h1>
             </div>
 
-            <form
-                className={cx('filters')}
-                onSubmit={(e) => {
-                    e.preventDefault();
-                }}
-            >
-                <input
-                    type="text"
-                    className={cx('searchInput')}
-                    placeholder="Tìm kiếm theo mã đơn, tên khách, email..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                />
-                <div className={cx('dateInputWrapper')}>
-                    <input
-                        type="date"
-                        className={cx('dateInput')}
-                        value={selectedDate}
-                        onChange={(e) => setSelectedDate(e.target.value)}
-                    />
-                </div>
-                <button type="submit" className={cx('searchButton')}>
-                    Tìm kiếm
+            <div className={cx('tabs')}>
+                <button
+                    type="button"
+                    className={cx('tab', { active: activeTab === 'orders' })}
+                    onClick={() => setActiveTab('orders')}
+                >
+                    Quản lý đơn hàng
                 </button>
-                <div className={cx('statusFilter')}>
-                    <label htmlFor="order-status-select">Sắp xếp:</label>
-                    <select
-                        id="order-status-select"
-                        value={statusFilter}
-                        onChange={(e) => setStatusFilter(e.target.value)}
-                    >
-                        {STATUS_FILTERS.map((opt) => (
-                            <option key={opt.value} value={opt.value}>
-                                {opt.label}
-                            </option>
-                        ))}
-                    </select>
-                </div>
-            </form>
+                <button
+                    type="button"
+                    className={cx('tab', { active: activeTab === 'refunds' })}
+                    onClick={() => setActiveTab('refunds')}
+                >
+                    Quản lý đơn hoàn về
+                </button>
+            </div>
 
-            {loading ? (
-                <div className={cx('stateCard')}>Đang tải danh sách đơn hàng...</div>
-            ) : error ? (
-                <div className={cx('stateCard', 'error')}>
-                    <p>{error}</p>
-                    <button type="button" onClick={fetchOrders}>
-                        Thử lại
-                    </button>
-                </div>
-            ) : filteredOrders.length === 0 && orders.length > 0 ? (
-                <div className={cx('stateCard')}>
-                    <p>Không có đơn hàng phù hợp với bộ lọc hiện tại.</p>
-                    <p style={{ fontSize: '0.9em', color: '#666', marginTop: '8px' }}>
-                        Tổng số đơn hàng: {orders.length} | Đã lọc: {filteredOrders.length}
-                    </p>
-                    <button 
-                        type="button" 
-                        onClick={() => {
-                            setSearchTerm('');
-                            setSelectedDate('');
-                            setStatusFilter('all');
+            {activeTab === 'orders' ? (
+                <>
+                    <form
+                        className={cx('filters')}
+                        onSubmit={(e) => {
+                            e.preventDefault();
                         }}
-                        style={{ marginTop: '12px', padding: '8px 16px', cursor: 'pointer' }}
                     >
-                        Xóa bộ lọc
-                    </button>
-                </div>
-            ) : filteredOrders.length === 0 ? (
-                <div className={cx('stateCard')}>
-                    <p>Không có đơn hàng nào trong hệ thống.</p>
-                    <p style={{ fontSize: '0.9em', color: '#666', marginTop: '8px' }}>
-                        Tổng số đơn hàng: {orders.length}
-                    </p>
-                </div>
+                        <input
+                            type="text"
+                            className={cx('searchInput')}
+                            placeholder="Tìm kiếm theo mã đơn, tên khách, email..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                        <div className={cx('dateInputWrapper')}>
+                            <input
+                                type="date"
+                                className={cx('dateInput')}
+                                value={selectedDate}
+                                onChange={(e) => setSelectedDate(e.target.value)}
+                            />
+                        </div>
+                        <button type="submit" className={cx('searchButton')}>
+                            Tìm kiếm
+                        </button>
+                        <div className={cx('statusFilter')}>
+                            <label htmlFor="order-status-select">Sắp xếp:</label>
+                            <select
+                                id="order-status-select"
+                                value={statusFilter}
+                                onChange={(e) => setStatusFilter(e.target.value)}
+                            >
+                                {STATUS_FILTERS.map((opt) => (
+                                    <option key={opt.value} value={opt.value}>
+                                        {opt.label}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                    </form>
+
+                    {loading ? (
+                        <div className={cx('stateCard')}>Đang tải danh sách đơn hàng...</div>
+                    ) : error ? (
+                        <div className={cx('stateCard', 'error')}>
+                            <p>{error}</p>
+                            <button type="button" onClick={fetchOrders}>
+                                Thử lại
+                            </button>
+                        </div>
+                    ) : filteredOrders.length === 0 && orders.length > 0 ? (
+                        <div className={cx('stateCard')}>
+                            <p>Không có đơn hàng phù hợp với bộ lọc hiện tại.</p>
+                            <p style={{ fontSize: '0.9em', color: '#666', marginTop: '8px' }}>
+                                Tổng số đơn hàng: {orders.length} | Đã lọc: {filteredOrders.length}
+                            </p>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setSearchTerm('');
+                                    setSelectedDate('');
+                                    setStatusFilter('all');
+                                }}
+                                style={{ marginTop: '12px', padding: '8px 16px', cursor: 'pointer' }}
+                            >
+                                Xóa bộ lọc
+                            </button>
+                        </div>
+                    ) : filteredOrders.length === 0 ? (
+                        <div className={cx('stateCard')}>
+                            <p>Không có đơn hàng nào trong hệ thống.</p>
+                            <p style={{ fontSize: '0.9em', color: '#666', marginTop: '8px' }}>
+                                Tổng số đơn hàng: {orders.length}
+                            </p>
+                        </div>
+                    ) : (
+                        <>
+                        <div className={cx('tableWrapper')}>
+                            <table className={cx('table')}>
+                                <thead>
+                                    <tr>
+                                        <th>Mã đơn</th>
+                                        <th>Họ và tên</th>
+                                        <th>Email</th>
+                                        <th>Ngày đặt</th>
+                                        <th>Tổng tiền</th>
+                                        <th>Trạng thái</th>
+                                        <th>Thao tác</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {paginatedOrders.map((order) => (
+                                        <tr key={order.id}>
+                                            <td>#{order.code}</td>
+                                            <td>{order.customerName}</td>
+                                            <td>{order.email || '---'}</td>
+                                            <td>
+                                                {order.orderDate ? formatDateTime(order.orderDate) : '--'}
+                                            </td>
+                                            <td>{formatPrice(order.totalAmount)}</td>
+                                            <td>
+                                                <span className={cx('statusBadge', order.statusClass)}>
+                                                    {order.statusLabel}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <button
+                                                    type="button"
+                                                    className={cx('detailButton')}
+                                                    onClick={() => handleViewDetail(order.id)}
+                                                >
+                                                    Xem chi tiết
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                        {renderPagination(
+                            currentPage,
+                            totalOrderPages,
+                            () => setCurrentPage((prev) => Math.max(1, prev - 1)),
+                            () => setCurrentPage((prev) => Math.min(totalOrderPages, prev + 1)),
+                        )}
+                        </>
+                    )}
+                </>
             ) : (
                 <>
-                    {/* Main Orders Table */}
-                    <div className={cx('tableWrapper')}>
-                        <table className={cx('table')}>
-                            <thead>
-                                <tr>
-                                    <th>Mã đơn</th>
-                                    <th>Họ và tên</th>
-                                    <th>Email</th>
-                                    <th>Ngày đặt</th>
-                                    <th>Tổng tiền</th>
-                                    <th>Trạng thái</th>
-                                    <th>Thao tác</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {filteredOrders.map((order) => (
-                                    <tr key={order.id}>
-                                        <td>#{order.code}</td>
-                                        <td>{order.customerName}</td>
-                                        <td>{order.email || '---'}</td>
-                                        <td>{order.orderDate ? formatDateTime(order.orderDate) : '--'}</td>
-                                        <td>{formatPrice(order.totalAmount)}</td>
-                                        <td>
-                                            <span className={cx('statusBadge', order.statusClass)}>
-                                                {order.statusLabel}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <button
-                                                type="button"
-                                                className={cx('detailButton')}
-                                                onClick={() => handleViewDetail(order.id)}
-                                            >
-                                                Xem chi tiết
-                                            </button>
-                                        </td>
-                                    </tr>
+                    <div className={cx('filters')}>
+                        <input
+                            type="text"
+                            className={cx('searchInput')}
+                            placeholder="Tìm kiếm theo mã đơn, tên khách..."
+                            value={refundSearchTerm}
+                            onChange={(e) => setRefundSearchTerm(e.target.value)}
+                        />
+                        <div className={cx('statusFilter')}>
+                            <label htmlFor="refund-status-select">Trạng thái:</label>
+                            <select
+                                id="refund-status-select"
+                                value={refundStatusFilter}
+                                onChange={(e) => setRefundStatusFilter(e.target.value)}
+                            >
+                                {REFUND_STATUS_FILTERS.map((opt) => (
+                                    <option key={opt.value} value={opt.value}>
+                                        {opt.label}
+                                    </option>
                                 ))}
-                            </tbody>
-                        </table>
+                            </select>
+                        </div>
                     </div>
 
-                    {/* Refund Eligible Orders Table */}
-                    <div className={cx('refundSection')}>
-                        <h2 className={cx('refundSectionTitle')}>Danh sách đơn hoàn tiền</h2>
-                        {refundEligibleOrders.length === 0 ? (
-                            <div className={cx('stateCard')}>Không có đơn hàng hoàn tiền.</div>
-                        ) : (
+                    {loading ? (
+                        <div className={cx('stateCard')}>Đang tải danh sách đơn hoàn về...</div>
+                    ) : refundEligibleOrders.length === 0 ? (
+                        <div className={cx('stateCard')}>Không có đơn hoàn tiền.</div>
+                    ) : (
+                        <>
                             <div className={cx('tableWrapper')}>
                                 <table className={cx('table')}>
                                     <thead>
@@ -445,7 +567,7 @@ function ManageOrdersPage() {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {refundEligibleOrders.map((order) => (
+                                        {paginatedRefundOrders.map((order) => (
                                             <tr key={order.id}>
                                                 <td>{order.code}</td>
                                                 <td>{order.customerName}</td>
@@ -471,8 +593,14 @@ function ManageOrdersPage() {
                                     </tbody>
                                 </table>
                             </div>
-                        )}
-                    </div>
+                            {renderPagination(
+                                refundCurrentPage,
+                                totalRefundPages,
+                                () => setRefundCurrentPage((prev) => Math.max(1, prev - 1)),
+                                () => setRefundCurrentPage((prev) => Math.min(totalRefundPages, prev + 1)),
+                            )}
+                        </>
+                    )}
                 </>
             )}
         </div>

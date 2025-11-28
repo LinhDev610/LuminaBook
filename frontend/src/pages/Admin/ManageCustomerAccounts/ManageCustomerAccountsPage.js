@@ -386,12 +386,6 @@ function ManageCustomerAccountsPage() {
                                                     Mở khóa
                                                 </button>
                                             )}
-                                            <button
-                                                className={cx('btn', 'delete-btn')}
-                                                onClick={() => handleDelete(customer.id)}
-                                            >
-                                                Xóa
-                                            </button>
                                         </td>
                                         <td>
                                             <button

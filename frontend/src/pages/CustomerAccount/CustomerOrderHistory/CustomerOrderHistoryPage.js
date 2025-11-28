@@ -33,7 +33,9 @@ const STATUS_MAP = {
     RETURNING: { label: 'Trả hàng', key: 'returning' },
     CANCELLED: { label: 'Đã hủy', key: 'cancelled' },
     RETURN_REQUESTED: { label: 'Hoàn tiền/ trả hàng', key: 'return-requested' },
-    REFUNDED: { label: 'Đã hoàn tiền/ trả hàng', key: 'refunded' },
+    RETURN_CS_CONFIRMED: { label: 'CSKH đang xử lý', key: 'return-requested' },
+    RETURN_STAFF_CONFIRMED: { label: 'Nhân viên xác nhận hàng', key: 'return-requested' },
+    REFUNDED: { label: 'Hoàn tiền thành công', key: 'refunded' },
     RETURN_REJECTED: { label: 'Từ chối hoàn tiền/ trả hàng', key: 'return-rejected' },
 };
 
@@ -72,6 +74,10 @@ const mapOrderStatus = (statusRaw) => {
             return { mappedStatus: 'CANCELLED', ...STATUS_MAP.CANCELLED };
         case 'RETURN_REQUESTED':
             return { mappedStatus: 'RETURN_REQUESTED', ...STATUS_MAP.RETURN_REQUESTED };
+        case 'RETURN_CS_CONFIRMED':
+            return { mappedStatus: 'RETURN_CS_CONFIRMED', ...STATUS_MAP.RETURN_CS_CONFIRMED };
+        case 'RETURN_STAFF_CONFIRMED':
+            return { mappedStatus: 'RETURN_STAFF_CONFIRMED', ...STATUS_MAP.RETURN_STAFF_CONFIRMED };
         case 'REFUNDED':
             return { mappedStatus: 'REFUNDED', ...STATUS_MAP.REFUNDED };
         case 'RETURN_REJECTED':
@@ -105,6 +111,7 @@ const mapOrderFromApi = (order) => {
         phone: order.receiverPhone || shippingInfo?.phone || '',
         address: shippingInfo?.address || '',
         items: Array.isArray(order.items) ? order.items : [],
+        refundRejectionReason: order.refundRejectionReason || '',
     };
 };
 
@@ -244,6 +251,19 @@ function CustomerOrderHistoryPage() {
 
         // Tab "Hoàn tiền/ trả hàng" hiển thị cả RETURN_REQUESTED và RETURN_REJECTED
         if (activeTab === 'return-requested') {
+            list = orders.filter((order) => {
+                const status = (order.rawStatus || '').toUpperCase();
+                return (
+                    order.statusKey === 'return-requested' ||
+                    order.statusKey === 'return-rejected' ||
+                    order.statusKey === 'refunded' ||
+                    status === 'RETURN_REQUESTED' ||
+                    status === 'RETURN_CS_CONFIRMED' ||
+                    status === 'RETURN_STAFF_CONFIRMED' ||
+                    status === 'REFUNDED' ||
+                    status === 'RETURN_REJECTED'
+                );
+            });
             list = orders.filter((order) =>
                 order.statusKey === 'return-requested' || order.statusKey === 'return-rejected'
             );

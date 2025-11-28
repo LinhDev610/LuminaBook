@@ -16,6 +16,8 @@ const cxHome = classNames.bind(homeStyles);
 const cxPromo = classNames.bind(promoStyles);
 const cxCategory = classNames.bind(styles);
 
+const ITEMS_PER_PAGE = 15;
+
 export default function CategoryPage() {
     const { id } = useParams();
     const navigate = useNavigate();
@@ -24,18 +26,29 @@ export default function CategoryPage() {
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [currentPage, setCurrentPage] = useState(1);
 
     const categoryName = useMemo(() => categoryInfo?.name || '', [categoryInfo]);
 
-    const featuredProducts = useMemo(() => products.slice(0, 10), [products]);
-    const comboProducts = useMemo(
-        () => (products.length > 10 ? products.slice(10, 20) : products.slice(0, 10)),
-        [products],
+    const totalPages = useMemo(
+        () => Math.max(1, Math.ceil(products.length / ITEMS_PER_PAGE)),
+        [products.length],
     );
-    const studyProducts = useMemo(
-        () => (products.length > 20 ? products.slice(20, 30) : products.slice(0, 10)),
-        [products],
-    );
+
+    const paginatedProducts = useMemo(() => {
+        const start = (currentPage - 1) * ITEMS_PER_PAGE;
+        return products.slice(start, start + ITEMS_PER_PAGE);
+    }, [products, currentPage]);
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [id, products.length]);
+
+    useEffect(() => {
+        if (currentPage > totalPages) {
+            setCurrentPage(totalPages);
+        }
+    }, [currentPage, totalPages]);
 
     useEffect(() => {
         let ignore = false;
@@ -104,7 +117,7 @@ export default function CategoryPage() {
 
     const renderSection = (title, icon, colorClass, productList, options = {}) => {
         if (!productList || productList.length === 0) return null;
-        const { minimal = true, isGrid = false } = options;
+        const { minimal = true, isGrid = false, gridColumns = 4 } = options;
         return (
             <section className={cxHome('trending-section', cxPromo('promo-container'))}>
                 <div className={cxPromo('promo-header', cxPromo(colorClass || ''))}>
@@ -118,9 +131,72 @@ export default function CategoryPage() {
                     showHeader={false}
                     minimal={minimal}
                     isGrid={isGrid}
-                    gridColumns={4}
+                    gridColumns={gridColumns}
                 />
             </section>
+        );
+    };
+
+    const buildPaginationItems = () => {
+        if (totalPages <= 7) {
+            return Array.from({ length: totalPages }, (_, idx) => idx + 1);
+        }
+        if (currentPage <= 3) {
+            return [1, 2, 3, 4, 5, 'ellipsis', totalPages];
+        }
+        if (currentPage >= totalPages - 2) {
+            return [
+                1,
+                'ellipsis',
+                totalPages - 4,
+                totalPages - 3,
+                totalPages - 2,
+                totalPages - 1,
+                totalPages,
+            ];
+        }
+        return [1, 'ellipsis', currentPage - 1, currentPage, currentPage + 1, 'ellipsis', totalPages];
+    };
+
+    const paginationItems = useMemo(buildPaginationItems, [currentPage, totalPages]);
+
+    const renderPagination = () => {
+        if (!products.length) return null;
+        return (
+            <div className={cxCategory('pagination')}>
+                <button
+                    type="button"
+                    className={cxCategory('page-arrow')}
+                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                >
+                    ‹
+                </button>
+                {paginationItems.map((item, idx) =>
+                    item === 'ellipsis' ? (
+                        <span key={`ellipsis-${idx}`} className={cxCategory('page-ellipsis')}>
+                            ...
+                        </span>
+                    ) : (
+                        <button
+                            type="button"
+                            key={item}
+                            className={cxCategory('page-button', { active: item === currentPage })}
+                            onClick={() => setCurrentPage(item)}
+                        >
+                            {item}
+                        </button>
+                    ),
+                )}
+                <button
+                    type="button"
+                    className={cxCategory('page-arrow')}
+                    disabled={currentPage === totalPages}
+                    onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                >
+                    ›
+                </button>
+            </div>
         );
     };
 
@@ -155,9 +231,16 @@ export default function CategoryPage() {
                     renderStateCard('Danh mục này chưa có sản phẩm nào.', false, true)
                 )}
 
-                {!loading && !error && products.length > 0 && (
-                    renderSection(`Sản phẩm nổi bật - ${categoryName}`, iconFire, null, featuredProducts)
-                )}
+                {!loading &&
+                    !error &&
+                    products.length > 0 &&
+                    renderSection(`Sản phẩm - ${categoryName}`, iconFire, null, paginatedProducts, {
+                        minimal: false,
+                        isGrid: true,
+                        gridColumns: 5,
+                    })}
+
+                {renderPagination()}
             </main>
         </div>
     );

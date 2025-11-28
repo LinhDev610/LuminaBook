@@ -183,8 +183,10 @@ const formatDate = (dateString) => {
 
 const getStatusLabel = (status) => {
     const statusMap = {
-        RETURN_REQUESTED: 'Yêu cầu hoàn tiền/ trả hàng',
-        REFUNDED: 'Đã hoàn tiền/ trả hàng',
+        RETURN_REQUESTED: 'Khách hàng yêu cầu hoàn tiền/ trả hàng',
+        RETURN_CS_CONFIRMED: 'CSKH đang xử lý',
+        RETURN_STAFF_CONFIRMED: 'Nhân viên xác nhận hàng',
+        REFUNDED: 'Hoàn tiền thành công',
         RETURN_REJECTED: 'Từ chối hoàn tiền/ trả hàng',
     };
     return statusMap[status] || status || '';
@@ -297,6 +299,9 @@ export default function CustomerRefundDetailPage() {
     const orderStatus = order?.status || order?.rawStatus || '';
     const statusStr = String(orderStatus).toUpperCase();
     const isRejected = statusStr === 'RETURN_REJECTED' || statusStr.includes('REJECTED');
+    const rejectionSourceRaw = String(order?.refundRejectionSource || '').toUpperCase();
+    const rejectionSourceLabel =
+        rejectionSourceRaw === 'STAFF' ? 'Nhân viên xác nhận hàng' : 'CSKH';
 
     // Parse rejection reason từ nhiều nguồn
     let rejectionReason = order?.refundRejectionReason || 
@@ -352,7 +357,9 @@ export default function CustomerRefundDetailPage() {
                     <div className={cx('rejection-alert', 'top-alert')}>
                         <div className={cx('alert-header')}>
                             <span className={cx('alert-icon')}>⚠️</span>
-                            <h3 className={cx('alert-title')}>Lý do từ chối từ CSKH</h3>
+                            <h3 className={cx('alert-title')}>
+                                Lý do từ chối từ {rejectionSourceLabel}
+                            </h3>
                         </div>
                         <p className={cx('alert-message')}>
                             {rejectionReason || 'Không có lý do từ chối được ghi lại.'}

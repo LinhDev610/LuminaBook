@@ -453,10 +453,13 @@ export default function ManageComplaintsPage() {
                                     <span className={cx('detail-value')}>{selectedComplaint.status}</span>
                                 </div>
                                 <div className={cx('detail-row')}>
-                                    <span className={cx('detail-label')}>Ghi chú quản trị:</span>
-                                    <span className={cx('detail-value', 'content-value')}>
-                                        {selectedComplaint.handlerNote || 'Chưa có ghi chú'}
-                                    </span>
+                                    <span className={cx('detail-label')}><strong>Ghi chú của CSKH:</strong></span>
+                                    <div className={cx('cskh-note-banner')}>
+                                        <span className={cx('cskh-note-title')}>Ghi chú của CSKH</span>
+                                        <span className={cx('detail-value', 'content-value')}>
+                                            {selectedComplaint.handlerNote || 'Chưa có ghi chú từ CSKH'}
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
 

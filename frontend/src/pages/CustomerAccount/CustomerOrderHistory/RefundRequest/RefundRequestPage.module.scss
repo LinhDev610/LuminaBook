@@ -551,6 +551,28 @@
     font-size: 14px;
 }
 
+// Field Error (hiển thị dưới mỗi trường)
+.field-error {
+    margin-top: 6px;
+    color: #dc2626;
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.4;
+}
+
+// Input/Textarea/Select có lỗi
+.input.error,
+.textarea.error,
+.select.error {
+    border-color: #dc2626;
+    background-color: #fef2f2;
+    
+    &:focus {
+        border-color: #dc2626;
+        outline-color: #dc2626;
+    }
+}
+
 // Actions
 .actions {
     display: flex;

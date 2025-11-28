@@ -33,9 +33,19 @@ const STATUS_MAP = {
     RETURNING: { label: 'Trả hàng', key: 'returning' },
     CANCELLED: { label: 'Đã hủy', key: 'cancelled' },
     RETURN_REQUESTED: { label: 'Hoàn tiền/ trả hàng', key: 'return-requested' },
-    REFUNDED: { label: 'Đã hoàn tiền/ trả hàng', key: 'refunded' },
+    RETURN_CS_CONFIRMED: { label: 'CSKH đang xử lý hoàn tiền', key: 'return-requested' },
+    RETURN_STAFF_CONFIRMED: { label: 'Nhân viên xác nhận hàng', key: 'return-requested' },
+    REFUNDED: { label: 'Hoàn tiền thành công', key: 'refunded' },
     RETURN_REJECTED: { label: 'Từ chối hoàn tiền/ trả hàng', key: 'return-rejected' },
 };
+
+const RETURN_FLOW_STATUSES = [
+    'RETURN_REQUESTED',
+    'RETURN_CS_CONFIRMED',
+    'RETURN_STAFF_CONFIRMED',
+    'REFUNDED',
+    'RETURN_REJECTED',
+];
 
 const TABS = [
     { key: 'pending', label: 'Chờ xác nhận', status: 'PENDING' },
@@ -64,6 +74,10 @@ const mapOrderStatus = (statusRaw) => {
             return { mappedStatus: 'CANCELLED', ...STATUS_MAP.CANCELLED };
         case 'RETURN_REQUESTED':
             return { mappedStatus: 'RETURN_REQUESTED', ...STATUS_MAP.RETURN_REQUESTED };
+        case 'RETURN_CS_CONFIRMED':
+            return { mappedStatus: 'RETURN_CS_CONFIRMED', ...STATUS_MAP.RETURN_CS_CONFIRMED };
+        case 'RETURN_STAFF_CONFIRMED':
+            return { mappedStatus: 'RETURN_STAFF_CONFIRMED', ...STATUS_MAP.RETURN_STAFF_CONFIRMED };
         case 'REFUNDED':
             return { mappedStatus: 'REFUNDED', ...STATUS_MAP.REFUNDED };
         case 'RETURN_REJECTED':
@@ -74,11 +88,26 @@ const mapOrderStatus = (statusRaw) => {
 };
 
 const REFUND_STEPS = [
-    { key: 'requestReturn', label: 'Yêu cầu trả hàng' },
-    { key: 'shopReceived', label: 'Shop đã nhận hàng' },
-    { key: 'refunding', label: 'Đang hoàn tiền' },
-    { key: 'completed', label: 'Hoàn tất' },
+    { key: 'request', label: 'Khách hàng yêu cầu hoàn tiền/ trả hàng' },
+    { key: 'cskh', label: 'CSKH xác nhận' },
+    { key: 'staff', label: 'Nhân viên xác nhận hàng' },
+    { key: 'admin', label: 'Admin hoàn tiền' },
 ];
+
+const resolveReturnStepIndex = (status) => {
+    switch (status) {
+        case 'RETURN_REQUESTED':
+            return 0;
+        case 'RETURN_CS_CONFIRMED':
+            return 1;
+        case 'RETURN_STAFF_CONFIRMED':
+            return 2;
+        case 'REFUNDED':
+            return 3;
+        default:
+            return 0;
+    }
+};
 
 // Map dữ liệu đơn hàng từ API /orders/{id} sang dạng dùng cho UI chi tiết của khách
 const extractCancellationReason = (apiOrder) => {
@@ -182,6 +211,7 @@ const mapOrderFromApi = (apiOrder) => {
         refundMessage: '',
         // Thêm thông tin lý do từ chối
         refundRejectionReason: apiOrder.refundRejectionReason || apiOrder.refund_rejection_reason || '',
+        refundRejectionSource: apiOrder.refundRejectionSource || apiOrder.refund_rejection_source || '',
         note: apiOrder.note || '',
         cancellationReason: extractCancellationReason(apiOrder),
         cancellationSource: extractCancellationSource(apiOrder),
@@ -365,9 +395,24 @@ function OrderDetailPage() {
         );
     }
 
-    // Sử dụng statusKey từ order nếu có, nếu không thì map lại
+    const normalizedStatus = String(order?.status || order?.rawStatus || '')
+        .trim()
+        .toUpperCase();
     const statusKey = order.statusKey || mapOrderStatus(order.status || order.rawStatus).key;
     const statusInfo = STATUS_MAP[order.status] || STATUS_MAP.PENDING;
+    const isReturnFlow = normalizedStatus === 'RETURNING' || RETURN_FLOW_STATUSES.includes(normalizedStatus);
+    const isRejected = normalizedStatus === 'RETURN_REJECTED';
+    const rejectionSourceRaw = String(order?.refundRejectionSource || '').toUpperCase();
+    const rejectionSourceLabel =
+        rejectionSourceRaw === 'STAFF' ? 'Nhân viên' : 'CSKH';
+    const currentReturnStep = resolveReturnStepIndex(normalizedStatus);
+    const refundCompleted = normalizedStatus === 'REFUNDED';
+    const progressSteps = REFUND_STEPS.map((step, index) => {
+        const completed = !isRejected && index <= currentReturnStep;
+        const active = !isRejected && !refundCompleted && index === currentReturnStep;
+        return { ...step, completed, active };
+    });
+    
     const isReturning = order.status === 'RETURNING' || order.status === 'RETURN_REQUESTED' || order.rawStatus === 'RETURN_REQUESTED';
 
     // Check if order is rejected
@@ -428,7 +473,9 @@ function OrderDetailPage() {
                     <div className={cx('rejection-alert', 'top-alert')}>
                         <div className={cx('alert-header')}>
                             <span className={cx('alert-icon')}>⚠️</span>
-                            <h3 className={cx('alert-title')}>Lý do từ chối từ CSKH</h3>
+                            <h3 className={cx('alert-title')}>
+                                Lý do từ chối từ {rejectionSourceLabel}
+                            </h3>
                         </div>
                         <p className={cx('alert-message')}>
                             {rejectionReason || 'Không có lý do từ chối được ghi lại.'}
@@ -450,27 +497,31 @@ function OrderDetailPage() {
                     </div>
                 </div>
 
-                {/* Refund Progress (only for returning orders) */}
-                {isReturning && order.refundProgress && (
-                    <div className={cx('refund-progress-section')}>
+                {/* Refund Progress */}
+                {isReturnFlow && (
+                    <div className={cx('refund-progress-section', { rejected: isRejected })}>
                         <div className={cx('progress-bar')}>
-                            {REFUND_STEPS.map((step, index) => {
-                                const isCompleted = order.refundProgress[step.key];
-                                const isActive =
-                                    isCompleted ||
-                                    (index === 0 && !order.refundProgress[REFUND_STEPS[0].key]);
-                                return (
-                                    <div key={step.key} className={cx('progress-step')}>
+                            {progressSteps.map((step, index) => (
+                                <div key={step.key} className={cx('progress-step')}>
+                                    <div
+                                        className={cx('step-circle', {
+                                            completed: step.completed,
+                                            active: step.active,
+                                        })}
+                                    >
+                                        {step.completed ? '✓' : index + 1}
+                                    </div>
+                                    {index < progressSteps.length - 1 && (
                                         <div
-                                            className={cx('step-circle', {
-                                                completed: isCompleted,
-                                                active: isActive && !isCompleted,
+                                            className={cx('step-connector', {
+                                                completed:
+                                                    progressSteps[index + 1]?.completed || step.completed,
                                             })}
                                         />
-                                        <span className={cx('step-label')}>{step.label}</span>
-                                    </div>
-                                );
-                            })}
+                                    )}
+                                    <span className={cx('step-label')}>{step.label}</span>
+                                </div>
+                            ))}
                         </div>
                     </div>
                 )}
@@ -491,7 +542,7 @@ function OrderDetailPage() {
                             <span className={cx('info-label')}>Địa chỉ :</span>
                             <span className={cx('info-value')}>{order.address}</span>
                         </div>
-                        {isReturning && (
+                        {isReturnFlow && (
                             <div className={cx('info-line')}>
                                 <span className={cx('info-label')}>Hình thức thanh toán :</span>
                                 <span className={cx('info-value')}>
@@ -540,7 +591,7 @@ function OrderDetailPage() {
                             {formatCurrency(order.totalAmount)}
                         </span>
                     </div>
-                    {isReturning && (
+                    {isReturnFlow && (
                         <div className={cx('refund-total-row')}>
                             <span className={cx('refund-total-label')}>Tổng tiền hoàn:</span>
                             <span className={cx('refund-total-value')}>
@@ -551,7 +602,7 @@ function OrderDetailPage() {
                 </div>
 
                 {/* Payment Information */}
-                {!isReturning && (
+                {!isReturnFlow && (
                     <div className={cx('payment-section')}>
                         <h2 className={cx('section-title')}>Thanh toán</h2>
                         <div className={cx('payment-card')}>
@@ -568,7 +619,7 @@ function OrderDetailPage() {
                 )}
 
                 {/* Refund Status Message */}
-                {isReturning && order.refundMessage && (
+                {isReturnFlow && order.refundMessage && (
                     <div className={cx('refund-status-section')}>
                         <div className={cx('refund-message')}>{order.refundMessage}</div>
                     </div>
@@ -594,6 +645,9 @@ function OrderDetailPage() {
                         </button>
                     )}
                     {(order.status === 'RETURN_REQUESTED' || order.rawStatus === 'RETURN_REQUESTED') && (
+                        <button
+                    {(RETURN_FLOW_STATUSES.includes(order.status) ||
+                        RETURN_FLOW_STATUSES.includes(order.rawStatus)) && (
                         <button
                             className={cx('contact-btn', 'refund-detail-btn')}
                             onClick={() => navigate(`/customer-account/orders/${order.id || order.code}/refund-detail`)}

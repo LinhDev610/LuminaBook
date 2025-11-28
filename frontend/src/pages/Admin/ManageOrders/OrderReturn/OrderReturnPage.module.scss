@@ -143,6 +143,34 @@
     font-family: inherit;
 }
 
+.refund-method-card {
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.refund-method-main {
+    margin: 0;
+    font-weight: 600;
+    color: #111;
+}
+
+.refund-method-details {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    color: #374151;
+    font-size: 14px;
+
+    span {
+        line-height: 1.4;
+    }
+}
+
 .order-details {
     display: flex;
     flex-direction: column;
@@ -222,7 +250,36 @@
 .btn-confirm {
     background: #10b981;
     color: #fff;
+
+    &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        transform: none;
+    }
 }
+
+.btn-cancel:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.refund-completed-message {
+    padding: 16px 24px;
+    background: #d1fae5;
+    border: 2px solid #10b981;
+    border-radius: 8px;
+    text-align: center;
+    width: 100%;
+
+    p {
+        margin: 0;
+        color: #065f46;
+        font-size: 16px;
+        font-weight: 600;
+    }
+}
+
 
 .loading,
 .error {
@@ -248,5 +305,89 @@
     .btn {
         width: 100%;
     }
+}
+
+.returnProgressWrapper {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    background: #fff;
+    border: 1px solid #e0e7fb;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 24px;
+
+    &.rejected {
+        border-color: #c62828;
+    }
+}
+
+.returnStep {
+    flex: 1;
+    min-width: 120px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+    padding-bottom: 6px;
+}
+
+.returnStepCircle {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 2px solid #d4deef;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    color: #6f7c9c;
+    background: #fff;
+    z-index: 2;
+}
+
+.returnStepConnector {
+    position: absolute;
+    top: 16px;
+    right: -50%;
+    width: 100%;
+    height: 2px;
+    background: #d4deef;
+    z-index: 1;
+
+    &.completed {
+        background: #1a3c5a;
+    }
+}
+
+.returnStepLabel {
+    margin: 8px 0 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: #4b5675;
+    text-align: center;
+}
+
+.returnStep.completed .returnStepCircle {
+    background: #1a3c5a;
+    border-color: #1a3c5a;
+    color: #fff;
+}
+
+.returnStep.active .returnStepCircle {
+    border-color: #1a3c5a;
+    color: #1a3c5a;
+}
+
+.returnStep:last-child .returnStepConnector {
+    display: none;
+}
+
+.returnStepRejected {
+    flex-basis: 100%;
+    margin-top: 10px;
+    font-size: 13px;
+    color: #c62828;
+    font-weight: 600;
 }
 

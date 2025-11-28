@@ -125,4 +125,13 @@ public class Order {
 
     @Column(name = "refund_rejection_reason", columnDefinition = "TEXT")
     String refundRejectionReason; // Lý do từ chối hoàn tiền từ CSKH
+
+    @Column(name = "refund_rejection_source", length = 50)
+    String refundRejectionSource; // Ai đã từ chối: CSKH / STAFF
+
+    @Column(name = "staff_inspection_result", columnDefinition = "TEXT")
+    String staffInspectionResult;
+
+    @Column(name = "admin_processing_note", columnDefinition = "TEXT")
+    String adminProcessingNote;
 }

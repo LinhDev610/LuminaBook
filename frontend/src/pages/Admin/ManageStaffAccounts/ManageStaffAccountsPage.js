@@ -400,12 +400,6 @@ function ManageStaffAccountsPage() {
                                                     Mở khóa
                                                 </button>
                                             )}
-                                            <button
-                                                className={cx('btn', 'delete-btn')}
-                                                onClick={() => handleDelete(employee.id)}
-                                            >
-                                                Xóa
-                                            </button>
                                         </td>
                                         <td>
                                             <button

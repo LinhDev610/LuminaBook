@@ -58,6 +58,8 @@ public class OrderResponse {
     String refundAccountHolder;
     Double refundAmount;
     Double refundReturnFee; // Phí trả hàng
+    String refundRejectionSource;
+    String adminProcessingNote;
 
     String cancellationReason;
     String cancellationSource;

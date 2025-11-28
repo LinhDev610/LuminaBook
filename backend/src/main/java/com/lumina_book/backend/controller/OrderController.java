@@ -12,6 +12,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumina_book.backend.dto.request.ApiResponse;
 import com.lumina_book.backend.dto.request.CreateOrderRequest;
 import com.lumina_book.backend.dto.request.DirectCheckoutRequest;
+import com.lumina_book.backend.dto.request.ReturnProcessRequest;
 import com.lumina_book.backend.dto.response.CheckoutInitResponse;
 import com.lumina_book.backend.dto.response.OrderDetailResponse;
 import com.lumina_book.backend.dto.response.OrderItemResponse;
@@ -184,10 +185,36 @@ public class OrderController {
                 .build();
     }
 
+    @PostMapping("/{id}/cs-confirm-refund")
+    @PreAuthorize("hasAnyRole('CUSTOMER_SUPPORT','STAFF','ADMIN')")
+    public ApiResponse<OrderDetailResponse> csConfirmRefund(
+            @PathVariable String id,
+            @RequestBody(required = false) ReturnProcessRequest request) {
+        Order order = orderService.csConfirmReturn(id, request);
+        return ApiResponse.<OrderDetailResponse>builder()
+                .result(toDetailResponse(order))
+                .message("CSKH đã xác nhận đơn hoàn và chuyển cho bộ phận kho.")
+                .build();
+    }
+
+    @PostMapping("/{id}/staff-confirm-refund")
+    @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
+    public ApiResponse<OrderDetailResponse> staffConfirmRefund(
+            @PathVariable String id,
+            @RequestBody(required = false) ReturnProcessRequest request) {
+        Order order = orderService.staffConfirmReturn(id, request);
+        return ApiResponse.<OrderDetailResponse>builder()
+                .result(toDetailResponse(order))
+                .message("Kho đã xác nhận kiểm tra đơn hoàn và chuyển cho Admin.")
+                .build();
+    }
+
     @PostMapping("/{id}/confirm-refund")
     @PreAuthorize("hasAnyRole('CUSTOMER_SUPPORT','STAFF','ADMIN')")
-    public ApiResponse<OrderDetailResponse> confirmRefund(@PathVariable String id) {
-        Order order = orderService.confirmRefund(id);
+    public ApiResponse<OrderDetailResponse> confirmRefund(
+            @PathVariable String id,
+            @RequestBody(required = false) ReturnProcessRequest request) {
+        Order order = orderService.confirmRefund(id, request);
         return ApiResponse.<OrderDetailResponse>builder()
                 .result(toDetailResponse(order))
                 .message("Đã xác nhận yêu cầu hoàn tiền thành công.")
@@ -252,6 +279,8 @@ public class OrderController {
                 .refundAccountHolder(order.getRefundAccountHolder())
                 .refundAmount(order.getRefundAmount())
                 .refundReturnFee(order.getRefundReturnFee())
+                .refundRejectionSource(order.getRefundRejectionSource())
+                .adminProcessingNote(order.getAdminProcessingNote())
                 .build();
     }
 
@@ -330,6 +359,9 @@ public class OrderController {
                 .refundSelectedProductIds(order.getRefundSelectedProductIds())
                 .refundMediaUrls(order.getRefundMediaUrls())
                 .refundRejectionReason(order.getRefundRejectionReason())
+                .refundRejectionSource(order.getRefundRejectionSource())
+                .staffInspectionResult(order.getStaffInspectionResult())
+                .adminProcessingNote(order.getAdminProcessingNote())
                 .build();
     }
 

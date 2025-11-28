@@ -364,7 +364,7 @@ export default function ComplaintsDetailPage() {
                     </div>
                 )}
 
-                {/* Complaint ID and Warning Banner */}
+                {/* Complaint ID, CSKH Note and Warning Banner */}
                 <div className={cx('complaint-header')}>
                     <h2 className={cx('complaint-id')}>
                         Đơn khiếu nại {complaint.orderCode || `#KN${complaint.id.substring(0, 6).toUpperCase()}`}
@@ -389,6 +389,12 @@ export default function ComplaintsDetailPage() {
                                 })()}
                             </div>
                         </>
+                    )}
+                    {complaint.handlerNote && (
+                        <div className={cx('cskh-note-banner')}>
+                            <span className={cx('cskh-note-title')}>Ghi chú của CSKH:</span>
+                            <span>{complaint.handlerNote}</span>
+                        </div>
                     )}
                     <div className={cx('warning-banner')}>
                         <span className={cx('warning-icon')}>⚠️</span>
@@ -494,7 +500,7 @@ export default function ComplaintsDetailPage() {
                     </div>
 
                     <div className={cx('form-row')}>
-                        <label className={cx('form-label')}>Ghi chú xử lý:</label>
+                        <label className={cx('form-label')}><strong>Ghi chú của CSKH:</strong></label>
                         <textarea
                             className={cx('form-textarea', 'notes-textarea')}
                             placeholder="Ghi chú ngắn"

@@ -106,6 +106,7 @@ export const API_ROUTES = {
         revenueByPayment: (start, end) => `/api/financial/revenue/payment?start=${start}&end=${end}`,
         revenueSummary: (start, end) => `/api/financial/revenue/summary?start=${start}&end=${end}`,
         summary: (start, end) => `/api/financial/summary?start=${start}&end=${end}`,
+        topProducts: (start, end, limit = 10) => `/api/financial/top-products?start=${start}&end=${end}&limit=${limit}`,
     },
     orders: {
         root: '/orders',

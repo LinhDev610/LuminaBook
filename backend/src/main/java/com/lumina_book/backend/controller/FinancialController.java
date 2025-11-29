@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.*;
 
 import com.lumina_book.backend.dto.request.ApiResponse;
 import com.lumina_book.backend.dto.response.PaymentRevenue;
+import com.lumina_book.backend.dto.response.ProductRevenue;
 import com.lumina_book.backend.dto.response.RevenuePoint;
 import com.lumina_book.backend.dto.response.RevenueSummary;
 import com.lumina_book.backend.dto.response.FinancialSummary;
@@ -56,6 +57,17 @@ public class FinancialController {
     public ApiResponse<FinancialSummary> summary(@RequestParam LocalDate start, @RequestParam LocalDate end) {
         return ApiResponse.<FinancialSummary>builder()
                 .result(financialService.summary(start, end))
+                .build();
+    }
+
+    @GetMapping("/top-products")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<List<ProductRevenue>> topProductsByRevenue(
+            @RequestParam LocalDate start,
+            @RequestParam LocalDate end,
+            @RequestParam(defaultValue = "10") int limit) {
+        return ApiResponse.<List<ProductRevenue>>builder()
+                .result(financialService.topProductsByRevenue(start, end, limit))
                 .build();
     }
 }

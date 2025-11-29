@@ -17,6 +17,12 @@
     margin-bottom: 20px;
 }
 
+.dateRangeInfo {
+    font-size: 11px;
+    color: #9ca3af;
+    font-weight: normal;
+}
+
 .table {
     width: 100%;
     border-collapse: collapse;
@@ -38,5 +44,22 @@
     font-size: 12px;
     color: #9ca3af;
     margin-top: 8px;
+}
+
+.loading,
+.error {
+    padding: 20px;
+    text-align: center;
+    color: #6b7280;
+}
+
+.error {
+    color: #ef4444;
+}
+
+.noData {
+    text-align: center;
+    padding: 20px;
+    color: #9ca3af;
 }
 

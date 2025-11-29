@@ -115,7 +115,12 @@ function ReportsAnalyticsPage() {
                 />
             )}
 
-            {activeTab === 'top' && <BestSeller />}
+            {activeTab === 'top' && (
+                <BestSeller
+                    timeMode={timeMode}
+                    customDateRange={timeMode === 'custom' ? customDateRange : null}
+                />
+            )}
         </div>
     );
 }

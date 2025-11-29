@@ -14,11 +14,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.lumina_book.backend.dto.response.PaymentRevenue;
+import com.lumina_book.backend.dto.response.ProductRevenue;
 import com.lumina_book.backend.dto.response.RevenuePoint;
 import com.lumina_book.backend.dto.response.RevenueSummary;
 import com.lumina_book.backend.dto.response.FinancialSummary;
 import com.lumina_book.backend.entity.FinancialRecord;
 import com.lumina_book.backend.entity.Order;
+import com.lumina_book.backend.entity.OrderItem;
 import com.lumina_book.backend.entity.Product;
 import com.lumina_book.backend.enums.FinancialRecordType;
 import com.lumina_book.backend.enums.PaymentMethod;
@@ -29,7 +31,9 @@ import com.lumina_book.backend.repository.OrderRepository;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
@@ -326,6 +330,93 @@ public class FinancialService {
                 .totalIncome(income)
                 .totalExpense(totalExpense)
                 .profit(profit)
+                .build();
+    }
+
+    /**
+     * Lấy top sản phẩm bán chạy theo doanh thu trong khoảng thời gian.
+     * Chỉ tính các đơn hàng đã thanh toán thành công.
+     * 
+     * @param start Ngày bắt đầu
+     * @param end Ngày kết thúc
+     * @param limit Số lượng sản phẩm top (mặc định 10)
+     * @return Danh sách ProductRevenue sắp xếp theo doanh thu giảm dần
+     */
+    public List<ProductRevenue> topProductsByRevenue(LocalDate start, LocalDate end, int limit) {
+        LocalDateTime[] range = toDateTimeRange(start, end);
+        
+        // Lấy tất cả các đơn hàng trong khoảng thời gian
+        List<Order> allOrders = orderRepository.findByOrderDateTimeBetween(range[0], range[1]);
+        
+        // Lọc các đơn hàng đã thanh toán thành công
+        List<Order> paidOrders = allOrders.stream()
+                .filter(order -> {
+                    boolean isPaid = order.getPaymentStatus() == PaymentStatus.PAID
+                            && Boolean.TRUE.equals(order.getPaid())
+                            && order.getItems() != null
+                            && !order.getItems().isEmpty();
+                    return isPaid;
+                })
+                .toList();
+
+        if (paidOrders.isEmpty()) {
+            log.debug("No paid orders found in date range");
+            return List.of();
+        }
+
+        // Nhóm theo productId và tính tổng quantity và revenue
+        // Lưu ý: OrderItem.finalPrice đã là tổng giá cho quantity (finalPrice = unitPrice * quantity)
+        Map<String, ProductRevenue> productMap = paidOrders.stream()
+                .flatMap(order -> order.getItems().stream())
+                .filter(item -> isValidOrderItem(item))
+                .collect(Collectors.groupingBy(
+                        item -> item.getProduct().getId(),
+                        Collectors.collectingAndThen(
+                                Collectors.toList(),
+                                this::buildProductRevenue
+                        )
+                ));
+        
+        // Sắp xếp theo doanh thu giảm dần và lấy top limit
+        List<ProductRevenue> result = productMap.values().stream()
+                .sorted((a, b) -> Double.compare(b.getTotal(), a.getTotal()))
+                .limit(limit)
+                .collect(Collectors.toList());
+        
+        if (!result.isEmpty()) {
+            log.info("Top product: {} - quantity: {}, revenue: {}", 
+                    result.get(0).getProductName(), result.get(0).getQuantity(), result.get(0).getTotal());
+        }
+        return result;
+    }
+
+    // Kiểm tra OrderItem có hợp lệ không (có product, finalPrice > 0, quantity > 0).
+    private boolean isValidOrderItem(OrderItem item) {
+        return item.getProduct() != null
+                && item.getProduct().getId() != null
+                && item.getProduct().getName() != null
+                && item.getFinalPrice() != null
+                && item.getFinalPrice() > 0
+                && item.getQuantity() != null
+                && item.getQuantity() > 0;
+    }
+
+    // Tính tổng quantity và revenue từ danh sách OrderItem của cùng một product.
+    private ProductRevenue buildProductRevenue(List<OrderItem> items) {
+        Product product = items.get(0).getProduct();
+        long totalQuantity = items.stream()
+                .mapToLong(OrderItem::getQuantity)
+                .sum();
+        // finalPrice đã là tổng cho quantity, chỉ cần sum lại
+        double totalRevenue = items.stream()
+                .mapToDouble(OrderItem::getFinalPrice)
+                .sum();
+        
+        return ProductRevenue.builder()
+                .productId(product.getId())
+                .productName(product.getName())
+                .quantity(totalQuantity)
+                .total(totalRevenue)
                 .build();
     }
 }

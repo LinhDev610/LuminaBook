@@ -430,4 +430,223 @@ public class BrevoEmailService {
             log.error("Exception when sending order confirmation email: {}", e.getMessage(), e);
         }
     }
+
+    /**
+     * Gửi email cho khách khi CSKH đã xác nhận yêu cầu hoàn tiền / trả hàng.
+     */
+    public void sendReturnCsConfirmedEmail(Order order) {
+        if (order == null || order.getUser() == null || order.getUser().getEmail() == null) {
+            return;
+        }
+        try {
+            String toEmail = order.getUser().getEmail();
+            String customerName = order.getUser().getFullName() != null
+                    ? order.getUser().getFullName()
+                    : "Quý khách";
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.set("api-key", apiKey);
+
+            NumberFormat currencyFormat = NumberFormat.getCurrencyInstance(Locale.forLanguageTag("vi-VN"));
+
+            String orderCode = order.getCode();
+            String totalPaid = currencyFormat.format(order.getTotalAmount() != null ? order.getTotalAmount() : 0);
+            String refundAmount = currencyFormat.format(order.getRefundAmount() != null ? order.getRefundAmount() : 0);
+
+            String textContent = String.format(
+                    "Xin chào %s,%n%n"
+                            + "Yêu cầu trả hàng/hoàn tiền cho đơn hàng %s của bạn đã được bộ phận CSKH xác nhận là HỢP LỆ.%n%n"
+                            + "THÔNG TIN ĐƠN HÀNG:%n"
+                            + "- Mã đơn hàng: %s%n"
+                            + "- Tổng tiền đã thanh toán: %s%n"
+                            + "- Số tiền dự kiến hoàn lại (theo đề xuất hiện tại): %s%n%n"
+                            + "Đơn hàng hiện đang được chuyển sang bộ phận kho để kiểm tra hàng hóa. "
+                            + "Sau khi nhân viên kho xác nhận tình trạng sản phẩm, chúng tôi sẽ cập nhật kết quả hoàn tiền cho bạn.%n%n"
+                            + "Bạn có thể theo dõi trạng thái đơn tại mục 'Hoàn tiền/ trả hàng' trong tài khoản của mình.%n%n"
+                            + "Trân trọng,%nĐội ngũ LuminaBook",
+                    customerName,
+                    orderCode,
+                    orderCode,
+                    totalPaid,
+                    refundAmount);
+
+            String htmlContent = textContent.replace("\n", "<br>");
+
+            Map<String, Object> requestBody = new HashMap<>();
+            requestBody.put("sender", Map.of("email", senderEmail, "name", "LuminaBook CSKH"));
+            requestBody.put("to", new Object[] {Map.of("email", toEmail, "name", customerName)});
+            requestBody.put("subject", "CSKH đã xác nhận yêu cầu hoàn tiền cho đơn hàng " + orderCode);
+            requestBody.put("textContent", textContent);
+            requestBody.put("htmlContent", htmlContent);
+
+            HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
+            @SuppressWarnings("rawtypes")
+            ResponseEntity<Map> response = restTemplate.postForEntity(BREVO_API_URL, request, Map.class);
+
+            if (response.getStatusCode() != HttpStatus.CREATED) {
+                log.error(
+                        "Failed to send return CS confirmed email. Status: {}, Response: {}",
+                        response.getStatusCode(),
+                        response.getBody());
+            }
+        } catch (Exception e) {
+            log.error("Exception when sending return CS confirmed email: {}", e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Gửi email cho khách khi NHÂN VIÊN kho đã kiểm tra hàng và xác định lỗi bên nào.
+     */
+    public void sendReturnStaffInspectionEmail(Order order) {
+        if (order == null || order.getUser() == null || order.getUser().getEmail() == null) {
+            return;
+        }
+        try {
+            String toEmail = order.getUser().getEmail();
+            String customerName = order.getUser().getFullName() != null
+                    ? order.getUser().getFullName()
+                    : "Quý khách";
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.set("api-key", apiKey);
+
+            NumberFormat currencyFormat = NumberFormat.getCurrencyInstance(Locale.forLanguageTag("vi-VN"));
+
+            String orderCode = order.getCode();
+            String totalPaid = currencyFormat.format(order.getTotalAmount() != null ? order.getTotalAmount() : 0);
+            Double confirmed = order.getRefundConfirmedAmount() != null
+                    ? order.getRefundConfirmedAmount()
+                    : order.getRefundAmount();
+            String refundAmount = currencyFormat.format(confirmed != null ? confirmed : 0);
+
+            String staffNote = order.getStaffInspectionResult();
+            String faultSide;
+            String noteDisplay;
+            if (staffNote != null && !staffNote.isBlank()) {
+                String lower = staffNote.toLowerCase();
+                if (lower.contains("lỗi khách")) {
+                    faultSide = "Lỗi thuộc về KHÁCH HÀNG";
+                } else if (lower.contains("lỗi cửa hàng") || lower.contains("lỗi shop")) {
+                    faultSide = "Lỗi thuộc về CỬA HÀNG";
+                } else {
+                    faultSide = "Kết quả kiểm tra từ nhân viên kho";
+                }
+                noteDisplay = staffNote;
+            } else {
+                faultSide = "Kết quả kiểm tra từ nhân viên kho";
+                noteDisplay = "Không có ghi chú chi tiết.";
+            }
+
+            String textContent = String.format(
+                    "Xin chào %s,%n%n"
+                            + "Yêu cầu trả hàng/hoàn tiền cho đơn hàng %s của bạn đã được NHÂN VIÊN kho kiểm tra và xác minh.%n%n"
+                            + "KẾT QUẢ KIỂM TRA:%n"
+                            + "- %s%n"
+                            + "- Ghi chú: %s%n%n"
+                            + "THÔNG TIN HOÀN TIỀN DỰ KIẾN:%n"
+                            + "- Tổng tiền đã thanh toán: %s%n"
+                            + "- Số tiền dự kiến hoàn lại: %s%n%n"
+                            + "Admin sẽ tiến hành hoàn tiền theo kết quả trên trong thời gian sớm nhất.%n"
+                            + "Bạn có thể theo dõi trạng thái đơn tại mục 'Hoàn tiền/ trả hàng' trong tài khoản của mình.%n%n"
+                            + "Trân trọng,%nĐội ngũ LuminaBook",
+                    customerName,
+                    orderCode,
+                    faultSide,
+                    noteDisplay,
+                    totalPaid,
+                    refundAmount);
+
+            String htmlContent = textContent.replace("\n", "<br>");
+
+            Map<String, Object> requestBody = new HashMap<>();
+            requestBody.put("sender", Map.of("email", senderEmail, "name", "LuminaBook Kho hàng"));
+            requestBody.put("to", new Object[] {Map.of("email", toEmail, "name", customerName)});
+            requestBody.put("subject", "Kết quả kiểm tra hàng trả về cho đơn hàng " + orderCode);
+            requestBody.put("textContent", textContent);
+            requestBody.put("htmlContent", htmlContent);
+
+            HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
+            @SuppressWarnings("rawtypes")
+            ResponseEntity<Map> response = restTemplate.postForEntity(BREVO_API_URL, request, Map.class);
+
+            if (response.getStatusCode() != HttpStatus.CREATED) {
+                log.error(
+                        "Failed to send return staff inspection email. Status: {}, Response: {}",
+                        response.getStatusCode(),
+                        response.getBody());
+            }
+        } catch (Exception e) {
+            log.error("Exception when sending return staff inspection email: {}", e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Gửi email khi yêu cầu trả hàng/hoàn tiền bị từ chối (CSKH hoặc Nhân viên/ Admin).
+     */
+    public void sendReturnRejectedEmail(Order order) {
+        if (order == null || order.getUser() == null || order.getUser().getEmail() == null) {
+            return;
+        }
+        try {
+            String toEmail = order.getUser().getEmail();
+            String customerName = order.getUser().getFullName() != null
+                    ? order.getUser().getFullName()
+                    : "Quý khách";
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.set("api-key", apiKey);
+
+            String orderCode = order.getCode();
+            String rejectionReason = order.getRefundRejectionReason();
+            String rejectionSource = order.getRefundRejectionSource();
+
+            String sourceDisplay = "Hệ thống";
+            if (rejectionSource != null) {
+                String upper = rejectionSource.toUpperCase();
+                if (upper.contains("CS")) {
+                    sourceDisplay = "Bộ phận chăm sóc khách hàng";
+                } else if (upper.contains("STAFF")) {
+                    sourceDisplay = "Nhân viên kho";
+                } else if (upper.contains("ADMIN")) {
+                    sourceDisplay = "Admin";
+                }
+            }
+
+            String textContent = String.format(
+                    "Xin chào %s,%n%n"
+                            + "Yêu cầu trả hàng/hoàn tiền cho đơn hàng %s của bạn đã bị TỪ CHỐI bởi %s.%n%n"
+                            + "LÝ DO TỪ CHỐI:%n%s%n%n"
+                            + "Nếu bạn cần làm rõ thêm, vui lòng liên hệ lại với bộ phận hỗ trợ của LuminaBook.%n%n"
+                            + "Trân trọng,%nĐội ngũ LuminaBook",
+                    customerName,
+                    orderCode,
+                    sourceDisplay,
+                    rejectionReason != null ? rejectionReason : "Không có lý do chi tiết.");
+
+            String htmlContent = textContent.replace("\n", "<br>");
+
+            Map<String, Object> requestBody = new HashMap<>();
+            requestBody.put("sender", Map.of("email", senderEmail, "name", "LuminaBook CSKH"));
+            requestBody.put("to", new Object[] {Map.of("email", toEmail, "name", customerName)});
+            requestBody.put("subject", "Thông báo từ chối yêu cầu hoàn tiền cho đơn hàng " + orderCode);
+            requestBody.put("textContent", textContent);
+            requestBody.put("htmlContent", htmlContent);
+
+            HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
+            @SuppressWarnings("rawtypes")
+            ResponseEntity<Map> response = restTemplate.postForEntity(BREVO_API_URL, request, Map.class);
+
+            if (response.getStatusCode() != HttpStatus.CREATED) {
+                log.error(
+                        "Failed to send return rejected email. Status: {}, Response: {}",
+                        response.getStatusCode(),
+                        response.getBody());
+            }
+        } catch (Exception e) {
+            log.error("Exception when sending return rejected email: {}", e.getMessage(), e);
+        }
+    }
 }

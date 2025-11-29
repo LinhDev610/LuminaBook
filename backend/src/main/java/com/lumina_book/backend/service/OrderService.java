@@ -1339,7 +1339,16 @@ public class OrderService {
         String rejectionNote = "Yêu cầu hoàn tiền đã bị từ chối. Lý do: " + rejectionReason;
         order.setNote(rejectionNote);
 
-        return orderRepository.save(order);
+        Order saved = orderRepository.save(order);
+
+        // Gửi email thông báo cho khách khi yêu cầu hoàn tiền bị từ chối
+        try {
+            brevoEmailService.sendReturnRejectedEmail(saved);
+        } catch (Exception e) {
+            log.error("Failed to send return rejected email for order {}: {}", orderId, e.getMessage(), e);
+        }
+
+        return saved;
     }
 
     @Transactional
@@ -1356,7 +1365,16 @@ public class OrderService {
 
         appendProcessingNote(order, request);
         order.setStatus(OrderStatus.RETURN_CS_CONFIRMED);
-        return orderRepository.save(order);
+        Order saved = orderRepository.save(order);
+
+        // Gửi email thông báo cho khách hàng: CSKH đã xác nhận yêu cầu hoàn tiền/trả hàng
+        try {
+            brevoEmailService.sendReturnCsConfirmedEmail(saved);
+        } catch (Exception e) {
+            log.error("Failed to send CS-confirmed return email for order {}: {}", orderId, e.getMessage(), e);
+        }
+
+        return saved;
     }
 
     @Transactional
@@ -1376,6 +1394,8 @@ public class OrderService {
         }
         if (request != null && request.getRefundAmount() != null) {
             order.setRefundAmount(request.getRefundAmount());
+            // Coi như đây là số tiền hoàn dự kiến do nhân viên xác nhận
+            order.setRefundConfirmedAmount(request.getRefundAmount());
         }
         LocalDate requestedReturnDate = request != null ? request.getReturnCheckedDate() : null;
         if (requestedReturnDate != null) {
@@ -1384,7 +1404,16 @@ public class OrderService {
             order.setReturnCheckedDate(LocalDate.now());
         }
         order.setStatus(OrderStatus.RETURN_STAFF_CONFIRMED);
-        return orderRepository.save(order);
+        Order saved = orderRepository.save(order);
+
+        // Gửi email cho khách về kết quả kiểm tra hàng (lỗi bên nào, số tiền dự kiến hoàn)
+        try {
+            brevoEmailService.sendReturnStaffInspectionEmail(saved);
+        } catch (Exception e) {
+            log.error("Failed to send staff inspection email for order {}: {}", orderId, e.getMessage(), e);
+        }
+
+        return saved;
     }
 
     @Transactional

@@ -6,7 +6,7 @@ const cx = classNames.bind(styles);
 function ReportsAnalyticsPage() {
     return (
         <div>
-            <h1>Reports Analytics</h1>
+            <h1>Báo cáo và doanh thu</h1>
         </div>
     );
 

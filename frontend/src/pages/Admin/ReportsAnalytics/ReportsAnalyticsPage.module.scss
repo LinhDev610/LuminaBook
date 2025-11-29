@@ -29,6 +29,32 @@
     font-size: 14px;
 }
 
+.dateRangePicker {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: 8px;
+}
+
+.dateInput {
+    padding: 6px 10px;
+    border-radius: 6px;
+    border: 1px solid #d1d5db;
+    background: #fff;
+    font-size: 14px;
+    color: #111827;
+}
+
+.dateInput:focus {
+    outline: none;
+    border-color: #0f172a;
+}
+
+.dateSeparator {
+    font-size: 14px;
+    color: #6b7280;
+}
+
 .tabs {
     display: flex;
     gap: 8px;

@@ -72,6 +72,7 @@ public class OrderService {
     ShipmentService shipmentService;
     NotificationService notificationService;
     VoucherRepository voucherRepository;
+    FinancialService financialService;
 
     ObjectMapper objectMapper = new ObjectMapper();
 
@@ -360,7 +361,7 @@ public class OrderService {
                         .shippingFee(pricing.shippingFee)
                         .totalAmount(pricing.orderTotal)
                         .status(OrderStatus.CREATED)
-                        .paymentMethod(PaymentMethod.MOMO)
+                        .paymentMethod(resolvePaymentMethod(request.getPaymentMethod()))
                         .paymentStatus(PaymentStatus.PAID)
                         .paid(true)
                         .cartItemIdsSnapshot(pricing.cartItemIdsSnapshot)
@@ -376,6 +377,9 @@ public class OrderService {
                 if (savedOrder.getUser() != null && pricing.selectedCartItemIds != null && !pricing.selectedCartItemIds.isEmpty()) {
                     cartService.removeCartItemsForOrder(savedOrder.getUser(), pricing.selectedCartItemIds);
                 }
+
+                // Ghi nhận doanh thu (đơn hàng đã thanh toán thành công)
+                recordOrderRevenue(savedOrder);
 
                 return savedOrder;
             } catch (DataIntegrityViolationException e) {
@@ -459,7 +463,7 @@ public class OrderService {
                         .shippingFee(shippingFee)
                         .totalAmount(orderTotal)
                         .status(OrderStatus.CREATED)
-                        .paymentMethod(PaymentMethod.MOMO)
+                        .paymentMethod(resolvePaymentMethod(request.getPaymentMethod()))
                         .paymentStatus(PaymentStatus.PAID)
                         .paid(true)
                         .cartItemIdsSnapshot("[]")
@@ -480,6 +484,9 @@ public class OrderService {
 
         updateInventoryAndSales(product, quantity);
                 finalizeVoucherUsageForUser(user);
+
+                // Ghi nhận doanh thu (đơn hàng đã thanh toán thành công)
+                recordOrderRevenue(savedOrder);
 
                 return savedOrder;
             } catch (org.springframework.dao.DataIntegrityViolationException e) {
@@ -673,6 +680,9 @@ public class OrderService {
         orderRepository.save(order);
         orderRepository.flush();
 
+        // Ghi nhận doanh thu khi thanh toán thành công qua IPN
+        recordOrderRevenue(order);
+
         finalizePaidOrder(order, parseCartItemIds(order.getCartItemIdsSnapshot()));
     }
 
@@ -756,6 +766,9 @@ public class OrderService {
             // Không tự động chuyển sang CONFIRMED - giữ ở CREATED để admin/staff xác nhận
             orderRepository.save(order);
             orderRepository.flush();
+            
+            // Ghi nhận doanh thu khi verify payment thành công
+            recordOrderRevenue(order);
         }
 
         // Kiểm tra nếu payment đã thành công
@@ -1483,6 +1496,43 @@ public class OrderService {
         } else {
             order.setNote(current + System.lineSeparator() + note.trim());
         }
+    }
+
+    // Ghi nhận doanh thu cho đơn hàng đã thanh toán thành công
+    private void recordOrderRevenue(Order order) {
+        if (order == null || order.getItems() == null || order.getItems().isEmpty()) {
+            return;
+        }
+
+        // Chỉ ghi nhận nếu đơn hàng đã thanh toán thành công
+        if (!Boolean.TRUE.equals(order.getPaid()) || order.getPaymentStatus() != PaymentStatus.PAID) {
+            return;
+        }
+
+        // Kiểm tra xem đã ghi nhận doanh thu chưa (tránh duplicate)
+        if (financialService.hasRecordedRevenue(order.getId())) {
+            log.debug("Revenue already recorded for order {}", order.getId());
+            return;
+        }
+
+        // Ghi nhận doanh thu cho từng sản phẩm trong đơn hàng
+        for (OrderItem item : order.getItems()) {
+            if (item.getProduct() != null && item.getFinalPrice() != null && item.getFinalPrice() > 0) {
+                try {
+                    financialService.recordRevenue(
+                            order,
+                            item.getProduct(),
+                            item.getFinalPrice(),
+                            order.getPaymentMethod()
+                    );
+                } catch (Exception e) {
+                    log.error("Error recording revenue for order {} product {}", 
+                            order.getId(), item.getProduct().getId(), e);
+                }
+            }
+        }
+        
+        log.info("Recorded revenue for order {} with {} items", order.getId(), order.getItems().size());
     }
 }
 

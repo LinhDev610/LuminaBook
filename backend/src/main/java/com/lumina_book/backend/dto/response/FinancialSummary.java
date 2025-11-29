@@ -13,5 +13,3 @@ public class FinancialSummary {
     Double totalExpense; // Tổng chi (hoàn tiền, bồi thường, chi phí khác nếu có)
     Double profit;       // Lợi nhuận = totalIncome - totalExpense
 }
-
-

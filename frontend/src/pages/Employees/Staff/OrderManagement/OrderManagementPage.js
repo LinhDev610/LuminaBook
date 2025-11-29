@@ -440,6 +440,13 @@ export default function OrderManagementPage() {
         }
     };
 
+    const handleCancelOrder = (orderId) => {
+        if (!orderId || processingOrderId) return;
+        setActionError('');
+        setActionMessage('');
+        setCancelDialogOrderId(orderId);
+    };
+
     const handleOpenCancelDialog = (orderId) => {
         setCancelDialogOrderId(orderId);
     };

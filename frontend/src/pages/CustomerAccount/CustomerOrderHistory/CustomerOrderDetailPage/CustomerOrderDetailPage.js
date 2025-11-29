@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import classNames from 'classnames/bind';
 import styles from './CustomerOrderDetailPage.scss';
@@ -151,6 +151,58 @@ const getCancellationSourceLabel = (source) => {
     }
 };
 
+const sumProductValue = (items) =>
+    Array.isArray(items)
+        ? items.reduce(
+              (sum, item) =>
+                  sum + (Number(item.unitPrice || item.price || 0) * (item.quantity || 1)),
+              0,
+          )
+        : 0;
+
+const buildRefundSummary = (apiOrder, mappedItems = []) => {
+    if (!apiOrder) {
+        return {
+            productValue: 0,
+            shippingFee: 0,
+            secondShippingFee: 0,
+            returnPenalty: 0,
+            totalPaid: 0,
+            total: 0,
+        };
+    }
+
+    const productValue = sumProductValue(apiOrder.items || mappedItems);
+    const shippingFee = apiOrder.shippingFee || 0;
+    const totalPaid = apiOrder.refundTotalPaid ?? apiOrder.totalAmount ?? productValue + shippingFee;
+    const secondShippingFee = Math.max(
+        0,
+        Math.round(
+            apiOrder.refundSecondShippingFee ??
+                apiOrder.refundReturnFee ??
+                apiOrder.estimatedReturnShippingFee ??
+                apiOrder.shippingFee ??
+                0,
+        ),
+    );
+    const returnPenalty = Math.max(0, Math.round(apiOrder.refundPenaltyAmount ?? 0));
+    const total =
+        apiOrder.refundConfirmedAmount ??
+        apiOrder.refundAmount ??
+        (apiOrder.refundReasonType === 'store'
+            ? totalPaid + secondShippingFee
+            : Math.max(0, totalPaid - secondShippingFee - returnPenalty));
+
+    return {
+        productValue,
+        shippingFee,
+        secondShippingFee,
+        returnPenalty,
+        totalPaid,
+        total,
+    };
+};
+
 const mapOrderFromApi = (apiOrder) => {
     if (!apiOrder) return null;
 
@@ -186,6 +238,8 @@ const mapOrderFromApi = (apiOrder) => {
     // Map status để có key đúng cho UI
     const statusMapped = mapOrderStatus(rawStatus);
 
+    const summary = buildRefundSummary(apiOrder, apiOrder.items);
+
     return {
         id: apiOrder.id || '',
         code: apiOrder.code || apiOrder.orderCode || apiOrder.id || '',
@@ -206,6 +260,12 @@ const mapOrderFromApi = (apiOrder) => {
         paymentMethod,
         paymentMethodLabel,
         items,
+        refundReasonType: apiOrder.refundReasonType || '',
+        refundAmount: apiOrder.refundAmount ?? null,
+        refundTotalPaid: summary.totalPaid,
+        refundSecondShippingFee: summary.secondShippingFee,
+        refundPenaltyAmount: summary.returnPenalty,
+        refundConfirmedAmount: apiOrder.refundConfirmedAmount ?? null,
         refundStatus: null,
         refundProgress: null,
         refundMessage: '',
@@ -218,6 +278,26 @@ const mapOrderFromApi = (apiOrder) => {
     };
 };
 
+const REFUND_PROGRESS_FLOW = [
+    { key: 'RETURN_REQUESTED', label: 'Khách gửi yêu cầu' },
+    { key: 'RETURN_CS_CONFIRMED', label: 'CSKH xác nhận' },
+    { key: 'RETURN_STAFF_CONFIRMED', label: 'Nhân viên kiểm tra' },
+    { key: 'REFUNDED', label: 'Hoàn tiền xong' },
+];
+
+const buildRefundProgressSteps = (status) => {
+    const normalized = String(status || '').toUpperCase();
+    const currentIndex = REFUND_PROGRESS_FLOW.findIndex((step) => step.key === normalized);
+
+    return REFUND_PROGRESS_FLOW.map((step, index) => ({
+        ...step,
+        // Với trạng thái REFUNDED, bước 4 cũng phải được tick (✓),
+        // nên coi các bước từ 0..currentIndex đều completed.
+        completed: currentIndex >= index,
+        active: currentIndex === index,
+    }));
+};
+
 function OrderDetailPage() {
     const navigate = useNavigate();
     const { id } = useParams();
@@ -226,6 +306,7 @@ function OrderDetailPage() {
     const [error, setError] = useState('');
     const [cancelling, setCancelling] = useState(false);
     const [showCancelDialog, setShowCancelDialog] = useState(false);
+    const refundSummary = useMemo(() => buildRefundSummary(order), [order]);
 
     useEffect(() => {
         const fetchOrderDetail = async () => {
@@ -385,6 +466,36 @@ function OrderDetailPage() {
         }
     };
 
+    const normalizedStatus = String(order?.status || order?.rawStatus || '')
+        .trim()
+        .toUpperCase();
+    const statusKey = order
+        ? order.statusKey || mapOrderStatus(order.status || order.rawStatus).key
+        : 'pending';
+    const statusInfo = order ? STATUS_MAP[order.status] || STATUS_MAP.PENDING : STATUS_MAP.PENDING;
+    const progressSteps = useMemo(() => {
+        if (!order) return [];
+        const normalized = String(order.status || order.rawStatus || '').toUpperCase();
+        const flow = normalized === 'RETURNING' || RETURN_FLOW_STATUSES.includes(normalized);
+        return flow ? buildRefundProgressSteps(normalized) : [];
+    }, [order]);
+    const isReturnFlow =
+        normalizedStatus === 'RETURNING' || RETURN_FLOW_STATUSES.includes(normalizedStatus);
+    
+    // Check if order is rejected
+    const orderStatus = order?.status || order?.rawStatus || '';
+    const statusStr = String(orderStatus).toUpperCase();
+    const isRejected = statusStr === 'RETURN_REJECTED' || statusStr.includes('REJECTED');
+    const rejectionSourceRaw = String(order?.refundRejectionSource || '').toUpperCase();
+    const rejectionSourceLabel =
+        rejectionSourceRaw === 'STAFF'
+            ? 'Nhân viên kiểm tra'
+            : rejectionSourceRaw === 'CS'
+                ? 'CSKH'
+                : 'Hệ thống';
+    const cancellationReason = order?.cancellationReason || '';
+    const cancellationSourceLabel = order?.cancellationSource || '';
+
     if (!order) {
         return (
             <div className={cx('order-detail-wrapper')}>
@@ -394,35 +505,7 @@ function OrderDetailPage() {
             </div>
         );
     }
-
-    const normalizedStatus = String(order?.status || order?.rawStatus || '')
-        .trim()
-        .toUpperCase();
-    const statusKey = order.statusKey || mapOrderStatus(order.status || order.rawStatus).key;
-    const statusInfo = STATUS_MAP[order.status] || STATUS_MAP.PENDING;
-    const isReturnFlow = normalizedStatus === 'RETURNING' || RETURN_FLOW_STATUSES.includes(normalizedStatus);
-    const isRejected = normalizedStatus === 'RETURN_REJECTED' || normalizedStatus.includes('REJECTED');
-    const rejectionSourceRaw = String(order?.refundRejectionSource || '').toUpperCase();
-    const rejectionSourceLabel =
-        rejectionSourceRaw === 'STAFF' ? 'Nhân viên' : 'CSKH';
-    const currentReturnStep = resolveReturnStepIndex(normalizedStatus);
-    const refundCompleted = normalizedStatus === 'REFUNDED';
-    const progressSteps = REFUND_STEPS.map((step, index) => {
-        const completed = !isRejected && index <= currentReturnStep;
-        const active = !isRejected && !refundCompleted && index === currentReturnStep;
-        return { ...step, completed, active };
-    });
-
-    const isReturning = order.status === 'RETURNING' || order.status === 'RETURN_REQUESTED' || order.rawStatus === 'RETURN_REQUESTED';
-
-    // Check if order is rejected
-    const orderStatus = order?.status || order?.rawStatus || '';
-    const statusStr = String(orderStatus).toUpperCase();
-    const cancellationReason = order.cancellationReason;
-    const cancellationSourceLabel = order.cancellationSource
-        ? getCancellationSourceLabel(order.cancellationSource)
-        : '';
-
+    
     // Parse rejection reason từ nhiều nguồn
     let rejectionReason = order?.refundRejectionReason || order?.refund_rejection_reason || '';
 
@@ -444,6 +527,8 @@ function OrderDetailPage() {
             }
         }
     }
+
+    const displayedTotal = isReturnFlow && refundSummary ? refundSummary.total : order.totalAmount;
 
     return (
         <div className={cx('order-detail-wrapper')}>
@@ -587,15 +672,35 @@ function OrderDetailPage() {
                     <div className={cx('total-row')}>
                         <span className={cx('total-label')}>Tổng cộng:</span>
                         <span className={cx('total-value')}>
-                            {formatCurrency(order.totalAmount)}
+                            {formatCurrency(displayedTotal)}
                         </span>
                     </div>
-                    {isReturnFlow && (
-                        <div className={cx('refund-total-row')}>
-                            <span className={cx('refund-total-label')}>Tổng tiền hoàn:</span>
-                            <span className={cx('refund-total-value')}>
-                                {formatCurrency(order.totalAmount)}
-                            </span>
+                    {isReturnFlow && refundSummary && (
+                        <div className={cx('refund-summary')}>
+                            <div className={cx('summary-row')}>
+                                <span>Tổng đơn (đã thanh toán)</span>
+                                <span>{formatCurrency(refundSummary.totalPaid)}</span>
+                            </div>
+                            <div className={cx('summary-row')}>
+                                <span>Giá trị sản phẩm</span>
+                                <span>{formatCurrency(refundSummary.productValue)}</span>
+                            </div>
+                            <div className={cx('summary-row')}>
+                                <span>Phí vận chuyển (lần đầu)</span>
+                                <span>{formatCurrency(refundSummary.shippingFee)}</span>
+                            </div>
+                            <div className={cx('summary-row')}>
+                                <span>Phí ship (lần 2 - khách tạm ứng)</span>
+                                <span>{formatCurrency(refundSummary.secondShippingFee)}</span>
+                            </div>
+                            <div className={cx('summary-row')}>
+                                <span>Phí hoàn trả (10% khi lỗi khách hàng)</span>
+                                <span>{formatCurrency(refundSummary.returnPenalty)}</span>
+                            </div>
+                            <div className={cx('summary-row', 'total')}>
+                                <span>Tổng tiền hoàn</span>
+                                <span>{formatCurrency(refundSummary.total)}</span>
+                            </div>
                         </div>
                     )}
                 </div>
@@ -643,15 +748,14 @@ function OrderDetailPage() {
                             Hoàn tiền/ Trả hàng
                         </button>
                     )}
-                    {(RETURN_FLOW_STATUSES.includes(order.status) ||
-                        RETURN_FLOW_STATUSES.includes(order.rawStatus)) && (
-                            <button
-                                className={cx('contact-btn', 'refund-detail-btn')}
-                                onClick={() => navigate(`/customer-account/orders/${order.id || order.code}/refund-detail`)}
-                            >
-                                Xem yêu cầu hoàn tiền
-                            </button>
-                        )}
+                    {(order.status === 'RETURN_REQUESTED' || order.rawStatus === 'RETURN_REQUESTED') && (
+                        <button 
+                            className={cx('contact-btn', 'refund-detail-btn')}
+                            onClick={() => navigate(`/customer-account/orders/${order.id || order.code}/refund-detail`)}
+                        >
+                            Xem yêu cầu hoàn tiền
+                        </button>
+                    )}
                     {(order.status === 'RETURN_REJECTED' || order.rawStatus === 'RETURN_REJECTED') && (
                         <button
                             className={cx('contact-btn', 'resubmit-btn')}

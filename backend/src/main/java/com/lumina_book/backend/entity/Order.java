@@ -117,6 +117,25 @@ public class Order {
     @Column(name = "refund_return_fee")
     Double refundReturnFee; // Phí trả hàng (10% giá trị sản phẩm nếu lý do là customer, 0 nếu lý do là store)
 
+    @Column(name = "refund_second_shipping_fee")
+    Double refundSecondShippingFee;
+
+    @Column(name = "refund_penalty_amount")
+    Double refundPenaltyAmount;
+
+    @Column(name = "refund_total_paid")
+    Double refundTotalPaid;
+
+    // Staff confirmed values
+    @Column(name = "refund_confirmed_amount")
+    Double refundConfirmedAmount;
+
+    @Column(name = "refund_confirmed_penalty")
+    Double refundConfirmedPenalty;
+
+    @Column(name = "refund_confirmed_second_shipping_fee")
+    Double refundConfirmedSecondShippingFee;
+
     @Column(name = "refund_selected_product_ids", columnDefinition = "TEXT")
     String refundSelectedProductIds; // JSON array of product IDs
 
@@ -128,6 +147,9 @@ public class Order {
 
     @Column(name = "refund_rejection_source", length = 50)
     String refundRejectionSource; // Ai đã từ chối: CSKH / STAFF
+
+    @Column(name = "return_checked_date")
+    LocalDate returnCheckedDate;
 
     @Column(name = "staff_inspection_result", columnDefinition = "TEXT")
     String staffInspectionResult;

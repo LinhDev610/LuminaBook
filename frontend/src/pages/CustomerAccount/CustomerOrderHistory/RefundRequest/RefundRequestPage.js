@@ -378,20 +378,49 @@ export default function RefundRequestPage() {
     };
 
     const calculateRefund = () => {
-        if (!order) return { productValue: 0, shippingFee: 0, returnFee: 0, total: 0 };
-        
+        if (!order) {
+            return {
+                productValue: 0,
+                shippingFee: 0,
+                secondShippingFee: 0,
+                returnPenalty: 0,
+                total: 0,
+                totalPaid: 0,
+            };
+        }
+
         const selectedItems = order.items.filter(item => selectedProducts.includes(item.id));
         const productValue = selectedItems.reduce((sum, item) => sum + (item.totalPrice || 0), 0);
         const shippingFee = order.shippingFee || 0;
-        
-        // Nếu đổi trả hàng sẽ trừ 10% giá trị sản phẩm
-        const returnFee = selectedReasonType === 'store' 
-            ? 0  // Miễn phí nếu lỗi từ cửa hàng
-            : Math.round(productValue * 0.1); // Trừ 10% giá trị sản phẩm nếu lý do khách hàng
-        
-        const total = productValue + shippingFee - returnFee;
-        
-        return { productValue, shippingFee, returnFee, total };
+
+        const totalPaid = order.totalAmount || (productValue + shippingFee);
+
+        const estimatedReturnShippingFee =
+            order.refundReturnFee ??
+            order.estimatedReturnShippingFee ??
+            order.shippingFee ??
+            0;
+        const secondShippingFee = Math.max(0, Math.round(estimatedReturnShippingFee));
+
+        const reason = selectedReasonType || order.refundReasonType || 'store';
+        const isStoreReason = reason === 'store';
+
+        const returnPenalty = reason === 'customer'
+            ? Math.max(0, Math.round(productValue * 0.1))
+            : 0;
+
+        const total = isStoreReason
+            ? totalPaid + secondShippingFee
+            : Math.max(0, totalPaid - secondShippingFee - returnPenalty);
+
+        return {
+            productValue,
+            shippingFee,
+            secondShippingFee,
+            returnPenalty,
+            total,
+            totalPaid,
+        };
     };
 
     const handleSubmit = async (e) => {
@@ -1069,6 +1098,10 @@ export default function RefundRequestPage() {
                             <label className={cx('section-label')}>Tóm tắt hoàn tiền</label>
                             <div className={cx('summary-list')}>
                                 <div className={cx('summary-row')}>
+                                    <span>Tổng đơn (đã thanh toán)</span>
+                                    <span>{formatCurrency(refund.totalPaid)}</span>
+                                </div>
+                                <div className={cx('summary-row')}>
                                     <span>Giá trị sản phẩm</span>
                                     <span>{formatCurrency(refund.productValue)}</span>
                                 </div>
@@ -1077,8 +1110,12 @@ export default function RefundRequestPage() {
                                     <span>{formatCurrency(refund.shippingFee)}</span>
                                 </div>
                                 <div className={cx('summary-row')}>
-                                    <span>Phí trả hàng</span>
-                                    <span>{formatCurrency(refund.returnFee)}</span>
+                                    <span>Phí ship (lần 2 - khách tạm ứng)</span>
+                                    <span>{formatCurrency(refund.secondShippingFee)}</span>
+                                </div>
+                                <div className={cx('summary-row')}>
+                                    <span>Phí hoàn trả (10% khi lỗi khách hàng)</span>
+                                    <span>{formatCurrency(refund.returnPenalty)}</span>
                                 </div>
                                 <div className={cx('summary-row', 'total')}>
                                     <span>Tổng hoàn</span>

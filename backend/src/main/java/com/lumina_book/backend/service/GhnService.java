@@ -76,7 +76,7 @@ public class GhnService {
     public GhnFeeResponse calculateShippingFee(GhnCalculateFeeRequest request) {
         return apiUtil.callGhnApi(
                 ApiConstants.GHN_SHIPPING_ORDER_FEE,
-                HttpMethod.GET,
+                HttpMethod.POST,
                 request,
                 new ParameterizedTypeReference<GhnApiResponse<GhnFeeResponse>>() {},
                 ghnProperties.getToken(),
@@ -110,7 +110,7 @@ public class GhnService {
 
         return apiUtil.callGhnApi(
                 ApiConstants.GHN_SHIPPING_ORDER_LEADTIME,
-                HttpMethod.GET,
+                HttpMethod.POST,
                 payload,
                 new ParameterizedTypeReference<GhnApiResponse<GhnLeadtimeResponse>>() {},
                 ghnProperties.getToken(),

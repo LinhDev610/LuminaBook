@@ -453,3 +453,60 @@
     font-weight: 600;
 }
 
+.refundSummarySection {
+    margin-top: 24px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(148, 163, 184, 0.4);
+}
+
+.refundSummaryTitle {
+    margin: 0 0 10px;
+    font-size: 15px;
+    font-weight: 600;
+    color: #1a1f2c;
+}
+
+.refundSummaryGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 16px;
+}
+
+.refundSummaryBlock {
+    background: #f9fafb;
+    border-radius: 12px;
+    border: 1px solid rgba(148, 163, 184, 0.5);
+    padding: 14px 16px;
+}
+
+.refundSummaryHeading {
+    margin: 0 0 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #111827;
+}
+
+.refundSummaryRow {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13px;
+    padding: 3px 0;
+    color: #4b5563;
+
+    span:last-child {
+        font-weight: 600;
+        color: #111827;
+    }
+
+    &.total {
+        margin-top: 6px;
+        padding-top: 6px;
+        border-top: 1px dashed #cbd5e1;
+
+        span:last-child {
+            color: #047857;
+        }
+    }
+}
+

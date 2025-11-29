@@ -96,6 +96,40 @@
     }
 }
 
+.summary-block {
+    margin-top: 8px;
+    padding: 12px;
+    border-radius: 10px;
+    background: #fff;
+    border: 1px solid #f3d08f;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.summary-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #a36117;
+    margin: 0 0 4px;
+    text-transform: uppercase;
+}
+
+.summary-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    color: #4c3820;
+
+    span:last-child {
+        font-weight: 600;
+    }
+
+    &.total span:last-child {
+        color: #b91c1c;
+    }
+}
+
 .media-grid {
     display: flex;
     gap: 12px;

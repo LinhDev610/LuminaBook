@@ -48,6 +48,13 @@ public class OrderDetailResponse {
     String refundAccountHolder;
     Double refundAmount;
     Double refundReturnFee; // Phí trả hàng
+    Double refundSecondShippingFee;
+    Double refundPenaltyAmount;
+    Double refundTotalPaid;
+    Double refundConfirmedAmount;
+    Double refundConfirmedPenalty;
+    Double refundConfirmedSecondShippingFee;
+    LocalDate returnCheckedDate;
     String refundSelectedProductIds; // JSON array string
     String refundMediaUrls; // JSON array string of media URLs
     String refundRejectionReason; // Lý do từ chối hoàn tiền từ CSKH

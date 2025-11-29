@@ -1250,15 +1250,32 @@ public class OrderService {
                         .filter(item -> request.getSelectedProductIds().contains(item.getId()))
                         .mapToDouble(item -> item.getFinalPrice() != null ? item.getFinalPrice() : 0.0)
                         .sum();
-                
+
                 double shippingFee = order.getShippingFee() != null ? order.getShippingFee() : 0.0;
-                double returnFee = "store".equals(request.getReasonType()) 
-                        ? 0.0 
-                        : Math.round(productValue * 0.1);
-                
-                double refundAmount = productValue + shippingFee - returnFee;
-                order.setRefundAmount(refundAmount);
-                order.setRefundReturnFee(returnFee);
+                double totalPaid = order.getTotalAmount() != null ? order.getTotalAmount() : productValue + shippingFee;
+
+                double computedReturnFee = shipmentService.estimateReturnShippingFee(order);
+                boolean isStoreReason = "store".equalsIgnoreCase(request.getReasonType());
+                double fallbackReturnFee = isStoreReason ? shippingFee : Math.round(productValue * 0.1);
+                double secondShippingFee = computedReturnFee > 0 ? Math.round(computedReturnFee) : Math.max(0.0, fallbackReturnFee);
+
+                double penaltyAmount = !isStoreReason
+                        ? Math.max(0.0, Math.round(productValue * 0.1))
+                        : 0.0;
+
+                double customerRefundAmount = isStoreReason
+                        ? totalPaid + secondShippingFee
+                        : Math.max(0.0, totalPaid - secondShippingFee - penaltyAmount);
+
+                order.setRefundAmount(customerRefundAmount);
+                order.setRefundReturnFee(secondShippingFee);
+                order.setRefundSecondShippingFee(secondShippingFee);
+                order.setRefundPenaltyAmount(penaltyAmount);
+                order.setRefundTotalPaid(totalPaid);
+                // Initialize confirmed values to match customer request, can be adjusted by staff later
+                order.setRefundConfirmedAmount(customerRefundAmount);
+                order.setRefundConfirmedPenalty(penaltyAmount);
+                order.setRefundConfirmedSecondShippingFee(secondShippingFee);
             }
             
             // Also save to note field for backward compatibility
@@ -1359,6 +1376,12 @@ public class OrderService {
         }
         if (request != null && request.getRefundAmount() != null) {
             order.setRefundAmount(request.getRefundAmount());
+        }
+        LocalDate requestedReturnDate = request != null ? request.getReturnCheckedDate() : null;
+        if (requestedReturnDate != null) {
+            order.setReturnCheckedDate(requestedReturnDate);
+        } else if (order.getReturnCheckedDate() == null) {
+            order.setReturnCheckedDate(LocalDate.now());
         }
         order.setStatus(OrderStatus.RETURN_STAFF_CONFIRMED);
         return orderRepository.save(order);

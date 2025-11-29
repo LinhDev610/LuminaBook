@@ -53,6 +53,12 @@ export const mapProduct = (product, apiBaseUrl) => {
             description: product.description,
             author: product.author,
             publisher: product.publisher,
+            stockQuantity:
+                typeof product.stockQuantity === 'number'
+                    ? product.stockQuantity
+                    : product.inventory?.stockQuantity ??
+                    product.availableQuantity ??
+                    null,
             rejectionReason: product.rejectionReason,
         };
     } catch (err) {

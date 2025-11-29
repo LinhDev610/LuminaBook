@@ -3,7 +3,6 @@ import classNames from 'classnames/bind';
 import styles from './ProfileAdminPage.module.scss';
 import guestAvatar from '../../../assets/icons/icon_img_guest.png';
 import Notification from '../../../components/Common/Notification/Notification';
-import ConfirmDialog from '../../../components/Common/ConfirmDialog/DeleteAccountDialog';
 import {
     getMyInfo,
     updateUser,
@@ -158,9 +157,8 @@ function ProfileAdminPage() {
                 open: true,
                 type: 'error',
                 title: 'Thất bại',
-                message: `Không thể lưu thay đổi: ${
-                    e.message || 'Vui lòng thử lại sau.'
-                }`,
+                message: `Không thể lưu thay đổi: ${e.message || 'Vui lòng thử lại sau.'
+                    }`,
                 duration: 4000,
             });
         } finally {

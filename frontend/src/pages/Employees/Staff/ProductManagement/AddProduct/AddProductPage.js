@@ -10,6 +10,7 @@ import {
     getActiveCategories,
     createProduct,
     uploadProductMedia,
+    getMyProducts,
     INITIAL_FORM_STATE_PRODUCT,
 } from '../../../../../services';
 
@@ -52,6 +53,12 @@ export default function AddProductPage() {
     const [mediaFiles, setMediaFiles] = useState(INITIAL_FORM_STATE_PRODUCT.mediaFiles);
     const [errors, setErrors] = useState(INITIAL_FORM_STATE_PRODUCT.errors);
     const [categories, setCategories] = useState([]);
+    const [existingProductsMap, setExistingProductsMap] = useState({});
+
+    const normalizedProductId = useMemo(
+        () => (productId || '').trim().toUpperCase(),
+        [productId],
+    );
 
     // ========== Helper Functions ==========
     const getStoredToken = useCallback((key) => getStoredTokenUtil(key), []);
@@ -68,12 +75,94 @@ export default function AddProductPage() {
         setter(Number.isNaN(n) ? 0 : n);
     }, []);
 
+    // Kiểm tra xem mã sản phẩm đã tồn tại chưa
+    const hasDuplicateProductId = useCallback(
+        (id) => Boolean(id && existingProductsMap[id]),
+        [existingProductsMap],
+    );
+
+    // Thông báo lỗi khi mã sản phẩm đã tồn tại
+    const notifyDuplicateProductId = useCallback(
+        (id) => {
+            if (!id) return;
+            const message = `Mã sản phẩm ${id} đã tồn tại. Vui lòng chọn mã khác.`;
+            notifyError(message);
+            setErrors((prev) => ({
+                ...prev,
+                id: 'Mã sản phẩm đã tồn tại. Vui lòng chọn mã khác.',
+            }));
+        },
+        [notifyError],
+    );
+
+    // Lưu mã sản phẩm đã tồn tại vào state
+    const rememberProductId = useCallback((id, productName) => {
+        if (!id) return;
+        setExistingProductsMap((prev) => {
+            if (prev[id]) return prev;
+            return {
+                ...prev,
+                [id]: productName || id,
+            };
+        });
+    }, []);
+
+    // Kiểm tra xem token có hợp lệ không
+    const ensureAuthToken = useCallback(() => {
+        const tokenValue = getStoredToken('token');
+        if (!tokenValue) {
+            notifyError('Thiếu token xác thực. Vui lòng đăng nhập lại.');
+        }
+        return tokenValue;
+    }, [getStoredToken, notifyError]);
+
+    // Refresh token nếu cần (khi token hết hạn)
+    const refreshTokenIfNeeded = useCallback(async () => {
+        const refreshToken = getStoredToken('refreshToken');
+        if (!refreshToken) return null;
+        try {
+            const { ok, data: responseData } = await refreshTokenAPI(refreshToken);
+            if (ok && responseData?.token) {
+                localStorage.setItem('token', responseData.token);
+                localStorage.setItem('refreshToken', responseData.token);
+                return responseData.token;
+            }
+        } catch (_) { }
+        return null;
+    }, [getStoredToken]);
+
+    // Gửi sản phẩm với retry nếu token hết hạn
+    const submitProductWithRetry = useCallback(
+        async (payload, token) => {
+            let currentToken = token;
+            let response = await createProduct(payload, currentToken);
+
+            if (!response.ok && response.status === 401) {
+                const refreshed = await refreshTokenIfNeeded();
+                if (!refreshed) {
+                    return response;
+                }
+                currentToken = refreshed;
+                response = await createProduct(payload, currentToken);
+            }
+
+            return { ...response, token: currentToken };
+        },
+        [refreshTokenIfNeeded],
+    );
+
     const handleProductIdInput = useCallback((value) => {
         const cleaned = (value || '')
             .toString()
             .replace(/[^0-9a-zA-Z]/g, '')
             .toUpperCase();
         setProductId(cleaned);
+        setErrors((prev) => {
+            if (!prev?.id) return prev;
+            const next = { ...prev };
+            delete next.id;
+            return next;
+        });
     }, []);
 
     // Hàm xử lý nhập thuế (chỉ cho phép số nguyên từ 0-99)
@@ -145,6 +234,32 @@ export default function AddProductPage() {
         };
         fetchCategories();
     }, []);
+
+    useEffect(() => {
+        const fetchExistingProducts = async () => {
+            try {
+                const token = getStoredToken('token');
+                if (!token) {
+                    setExistingProductsMap({});
+                    return;
+                }
+                const products = await getMyProducts(token);
+                const normalized = {};
+                if (Array.isArray(products)) {
+                    products.forEach((product) => {
+                        const id = (product?.id || '').trim().toUpperCase();
+                        if (!id) return;
+                        normalized[id] = product?.name || '';
+                    });
+                }
+                setExistingProductsMap(normalized);
+            } catch (err) {
+                console.error('Error fetching existing products:', err);
+            }
+        };
+
+        fetchExistingProducts();
+    }, [getStoredToken]);
 
     // ========== Validation ==========
     const validate = () => {
@@ -250,22 +365,6 @@ export default function AddProductPage() {
     }, [price, taxDecimal]);
 
     // ========== API Helpers ==========
-
-    // Refresh token nếu cần (khi token hết hạn)
-    const refreshTokenIfNeeded = useCallback(async () => {
-        const refreshToken = getStoredToken('refreshToken');
-        if (!refreshToken) return null;
-        try {
-            const { ok, data: responseData } = await refreshTokenAPI(refreshToken);
-            if (ok && responseData?.token) {
-                localStorage.setItem('token', responseData.token);
-                localStorage.setItem('refreshToken', responseData.token);
-                return responseData.token;
-            }
-        } catch (_) { }
-        return null;
-    }, [getStoredToken]);
-
     // Upload media files
     const uploadMediaFiles = useCallback(async (files, token) => {
         if (!files || files.length === 0) {
@@ -416,11 +515,16 @@ export default function AddProductPage() {
             return;
         }
 
+        if (hasDuplicateProductId(normalizedProductId)) {
+            setIsLoading(false);
+            notifyDuplicateProductId(normalizedProductId);
+            return;
+        }
+
         try {
-            let token = getStoredToken('token');
+            const token = ensureAuthToken();
             if (!token) {
                 setIsLoading(false);
-                notifyError('Thiếu token xác thực. Vui lòng đăng nhập lại.');
                 return;
             }
 
@@ -433,28 +537,24 @@ export default function AddProductPage() {
             // Build payload
             const payload = buildProductPayload(imageUrls, videoUrls, defaultUrl);
 
-            // Create product
-            let { ok, data } = await createProduct(payload, token);
-
-            // Nếu hết hạn -> thử refresh và gọi lại 1 lần
-            if (!ok) {
-                const newToken = await refreshTokenIfNeeded();
-                if (newToken) {
-                    token = newToken;
-                    const retryResult = await createProduct(payload, token);
-                    ok = retryResult.ok;
-                    data = retryResult.data;
-                } else {
-                    setIsLoading(false);
-                    notifyError('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
-                    return;
-                }
-            }
+            // Create product (tự retry nếu token hết hạn)
+            const { ok, data, status } = await submitProductWithRetry(payload, token);
 
             if (ok) {
                 success('Thêm sản phẩm thành công.');
+                rememberProductId(normalizedProductId, payload.name);
                 resetForm();
             } else {
+                if (status === 401) {
+                    notifyError('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+                    return;
+                }
+
+                if (status === 400 && normalizedProductId) {
+                    notifyDuplicateProductId(normalizedProductId);
+                    return;
+                }
+
                 const errorMessage =
                     data?.message || 'Không thể thêm sản phẩm. Vui lòng thử lại.';
                 notifyError(errorMessage);

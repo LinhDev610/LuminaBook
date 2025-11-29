@@ -43,6 +43,7 @@ export const API_ROUTES = {
         approve: '/products/approve',
         defaultMedia: (productId, mediaUrl) =>
             `/products/${productId}/default-media?mediaUrl=${encodeURIComponent(mediaUrl ?? '')}`,
+        restock: (productId) => `/products/${productId}/restock`,
     },
     media: {
         uploadProfile: '/media/upload',

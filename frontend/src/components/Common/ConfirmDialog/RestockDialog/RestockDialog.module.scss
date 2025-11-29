@@ -1,0 +1,143 @@
+.overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    z-index: 2200;
+}
+
+.dialog {
+    width: min(420px, 100%);
+    border-radius: 18px;
+    background: #fff;
+    box-shadow: 0 30px 80px rgba(15, 23, 42, 0.35);
+    animation: fadeIn 0.2s ease;
+    overflow: hidden;
+}
+
+.header {
+    padding: 20px 24px 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    .title {
+        margin: 0;
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #173a55;
+    }
+}
+
+.close-btn {
+    border: none;
+    background: transparent;
+    font-size: 1.5rem;
+    color: #94a3b8;
+    cursor: pointer;
+
+    &:hover:not(:disabled) {
+        color: #475569;
+    }
+
+    &:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+}
+
+.body {
+    padding: 0 24px 24px;
+}
+
+.message {
+    margin: 0 0 16px;
+    color: #0f172a;
+    font-size: 15px;
+    line-height: 1.6;
+
+    strong {
+        color: #f97316;
+    }
+}
+
+.summary {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    padding: 12px;
+    border-radius: 12px;
+    background: #f8fafc;
+}
+
+.label {
+    display: block;
+    font-size: 12px;
+    color: #64748b;
+    margin-bottom: 4px;
+}
+
+.value {
+    font-size: 18px;
+    font-weight: 700;
+    color: #0f172a;
+
+    &.highlight {
+        color: #16a34a;
+    }
+}
+
+.footer {
+    padding: 16px 24px 24px;
+    border-top: 1px solid #f1f5f9;
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+.btn {
+    border: none;
+    border-radius: 999px;
+    padding: 10px 22px;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background-color 0.2s ease, opacity 0.2s ease;
+
+    &.cancel {
+        background: #e2e8f0;
+        color: #0f172a;
+
+        &:hover:not(:disabled) {
+            background: #cbd5f5;
+        }
+    }
+
+    &.confirm {
+        background: #16a34a;
+        color: #fff;
+
+        &:hover:not(:disabled) {
+            background: #15803d;
+        }
+    }
+
+    &:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(12px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

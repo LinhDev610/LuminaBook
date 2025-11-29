@@ -93,6 +93,36 @@ public class ShipmentService {
         return ghnService.calculateShippingFee(feeRequest);
     }
 
+    /**
+     * Ước tính chi phí GHN khi khách trả hàng về kho mặc định.
+     * Lấy địa chỉ khách (điểm đến ban đầu) làm điểm lấy hàng và kho Lumina làm điểm giao.
+     */
+    public double estimateReturnShippingFee(Order order) {
+        if (order == null) {
+            return 0D;
+        }
+
+        try {
+            GhnCreateOrderRequest forwardRequest = buildGhnCreateOrderRequest(order, null);
+            if (forwardRequest.getToDistrictId() == null || forwardRequest.getToWardCode() == null) {
+                log.warn("Cannot estimate return fee for order {} because destination ward/district is missing", order.getId());
+                return 0D;
+            }
+
+            GhnCalculateFeeRequest feeRequest = ghnMapper.toCalculateFeeRequest(forwardRequest);
+            feeRequest.setFromDistrictId(forwardRequest.getToDistrictId());
+            feeRequest.setFromWardCode(forwardRequest.getToWardCode());
+            feeRequest.setToDistrictId(GhnConstants.DEFAULT_FROM_DISTRICT_ID);
+            feeRequest.setToWardCode(GhnConstants.DEFAULT_FROM_WARD_CODE);
+
+            GhnFeeResponse response = ghnService.calculateShippingFee(feeRequest);
+            return response != null && response.getTotal() != null ? response.getTotal() : 0D;
+        } catch (Exception ex) {
+            log.warn("Failed to estimate return shipping fee for order {}: {}", order.getId(), ex.getMessage());
+            return 0D;
+        }
+    }
+
     // ==================== Leadtime Calculation ====================
 
     // Tính thời gian giao hàng dự kiến từ request trực tiếp.

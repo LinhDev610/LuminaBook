@@ -60,6 +60,7 @@ const REFUND_STATUS_FILTERS = [
     { value: 'return-requested', label: 'Khách hàng yêu cầu hoàn tiền/ trả hàng' },
     { value: 'return-cs', label: 'CSKH đã xác nhận' },
     { value: 'return-staff', label: 'Nhân viên đã xác nhận hàng' },
+    { value: 'refunded', label: 'Hoàn tiền thành công' },
     { value: 'return-rejected', label: 'Từ chối' },
 ];
 
@@ -96,6 +97,70 @@ const formatCurrencyWithDot = (amount) => {
     }).format(amount).replace(/,/g, '.');
 };
 
+const toNumber = (value, fallback = 0) => {
+    if (value == null) return fallback;
+    const num = Number(value);
+    return Number.isFinite(num) ? num : fallback;
+};
+
+const buildRefundSummary = (order) => {
+    if (!order) {
+        return {
+            totalPaid: 0,
+            productValue: 0,
+            shippingFee: 0,
+            secondShippingFee: 0,
+            returnPenalty: 0,
+            total: 0,
+            confirmedTotal: 0,
+        };
+    }
+
+    const totalPaid = toNumber(order.refundTotalPaid, toNumber(order.totalAmount));
+    const shippingFee = toNumber(order.shippingFee);
+    const productValue =
+        toNumber(order.refundProductValue) ||
+        toNumber(order.selectedItemsTotal) ||
+        Math.max(0, totalPaid - shippingFee);
+
+    const secondShippingFee = Math.max(
+        0,
+        Math.round(
+            toNumber(order.refundSecondShippingFee) ||
+                toNumber(order.refundReturnFee) ||
+                toNumber(order.estimatedReturnShippingFee) ||
+                toNumber(order.shippingFee),
+        ),
+    );
+
+    const returnPenalty = toNumber(order.refundPenaltyAmount);
+    const reason = (order.refundReasonType || '').toLowerCase();
+    const fallbackTotal =
+        reason === 'store'
+            ? totalPaid + secondShippingFee
+            : Math.max(0, totalPaid - secondShippingFee - returnPenalty);
+
+    let total = order.refundAmount != null ? Number(order.refundAmount) : fallbackTotal;
+    if (!Number.isFinite(total)) {
+        total = fallbackTotal;
+    }
+
+    const confirmedTotal =
+        order.refundConfirmedAmount != null && Number.isFinite(Number(order.refundConfirmedAmount))
+            ? Number(order.refundConfirmedAmount)
+            : total;
+
+    return {
+        totalPaid,
+        productValue,
+        shippingFee,
+        secondShippingFee,
+        returnPenalty,
+        total,
+        confirmedTotal,
+    };
+};
+
 // Format date as YYYY-MM-DD
 const formatDateOnly = (dateString) => {
     if (!dateString) return '';
@@ -126,6 +191,10 @@ const mapOrderFromApi = (order) => {
     const { label, css } = mapOrderStatus(rawStatus);
     const shippingInfo = parseShippingInfo(order.shippingAddress);
     const orderDate = getOrderDateValue(order);
+    const refundSummary = buildRefundSummary(order);
+    const totalAmount =
+        typeof order.totalAmount === 'number' ? order.totalAmount : Number(order.totalAmount) || 0;
+    const returnCheckedDate = order.returnCheckedDate || order.returnDate || null;
 
     const mapped = {
         id: order.id || '',
@@ -139,10 +208,13 @@ const mapOrderFromApi = (order) => {
         email: order.customerEmail || order.userEmail || '',
         orderDate,
         orderDateOnly: order.orderDate || null,
-        totalAmount: typeof order.totalAmount === 'number' ? order.totalAmount : Number(order.totalAmount) || 0,
+        totalAmount,
         statusLabel: label,
         statusClass: css,
         rawStatus: rawStatus || 'CREATED', // Ensure rawStatus is always set
+        refundSummary,
+        refundDisplayTotal: refundSummary.confirmedTotal ?? refundSummary.total ?? totalAmount,
+        returnCheckedDate,
     };
     
     console.log('🔍 Mapped order result:', mapped.code, 'rawStatus:', mapped.rawStatus, 'statusClass:', mapped.statusClass);
@@ -272,13 +344,10 @@ function ManageOrdersPage() {
         return filteredOrders.slice(start, start + ITEMS_PER_PAGE);
     }, [filteredOrders, currentPage]);
 
-    // Filter return/refund orders for the second table
-    // Loại bỏ các đơn đã hoàn tiền thành công (REFUNDED)
     const refundEligibleOrders = useMemo(() => {
         let list = orders.filter((order) => {
             if (!isRefundOrder(order)) return false;
-            const status = (order.rawStatus || order.status || '').toUpperCase();
-            return status !== 'REFUNDED'; // Loại bỏ đơn đã hoàn tiền thành công
+            return true;
         });
 
         // Apply search filter if needed
@@ -303,6 +372,9 @@ function ManageOrdersPage() {
                 }
                 if (refundStatusFilter === 'return-staff') {
                     return status === 'RETURN_STAFF_CONFIRMED';
+                }
+                if (refundStatusFilter === 'refunded') {
+                    return status === 'REFUNDED';
                 }
                 if (refundStatusFilter === 'return-rejected') {
                     return status === 'RETURN_REJECTED';
@@ -572,8 +644,12 @@ function ManageOrdersPage() {
                                                 <td>{order.code}</td>
                                                 <td>{order.customerName}</td>
                                                 <td>{formatCurrencyWithDot(order.totalAmount)}</td>
-                                                <td>{formatCurrencyWithDot(order.totalAmount)}</td>
-                                                <td>{formatDateOnly(order.orderDate)}</td>
+                                                <td>
+                                                    {formatCurrencyWithDot(
+                                                        order.refundDisplayTotal ?? order.totalAmount,
+                                                    )}
+                                                </td>
+                                                <td>{formatDateOnly(order.returnCheckedDate || order.orderDate)}</td>
                                                 <td>
                                                     <span className={cx('statusBadge', order.statusClass)}>
                                                         {order.statusLabel}

@@ -424,6 +424,28 @@
     color: #dc2626;
 }
 
+.refund-summary {
+    margin-top: 12px;
+    padding: 12px;
+    border-radius: 10px;
+    background: #f9fafb;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+
+    .summary-row {
+        display: flex;
+        justify-content: space-between;
+        font-size: 14px;
+        color: #111;
+
+        &.total {
+            font-weight: 700;
+            color: #dc2626;
+        }
+    }
+}
+
 // Payment
 .payment-info-box {
     background: #f9fafb;

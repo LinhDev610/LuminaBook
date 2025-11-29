@@ -88,11 +88,28 @@ const mapOrderStatus = (statusRaw) => {
 };
 
 // Chuyển dữ liệu đơn hàng từ API sang dạng dùng trong UI khách hàng
+const buildRefundSummary = (order) => {
+    if (!order) return null;
+    const productValue =
+        order.items?.reduce(
+            (sum, item) => sum + (Number(item.unitPrice || item.price || 0) * (item.quantity || 1)),
+            0,
+        ) || 0;
+    const shippingFee = order.shippingFee || 0;
+    const totalPaid = order.refundTotalPaid ?? order.totalAmount ?? productValue + shippingFee;
+    const secondShippingFee = Math.max(0, order.refundSecondShippingFee ?? 0);
+    const returnPenalty = Math.max(0, order.refundPenaltyAmount ?? 0);
+    const total = order.refundConfirmedAmount ?? order.refundAmount ?? totalPaid;
+
+    return { totalPaid, productValue, shippingFee, secondShippingFee, returnPenalty, total };
+};
+
 const mapOrderFromApi = (order) => {
     if (!order) return null;
     const { mappedStatus, key } = mapOrderStatus(order.status);
     const shippingInfo = parseShippingInfo(order.shippingAddress);
     const orderDateValue = order.orderDateTime || order.orderDate || null;
+    const refundSummary = buildRefundSummary(order);
 
     return {
         id: order.id || '',
@@ -112,6 +129,7 @@ const mapOrderFromApi = (order) => {
         address: shippingInfo?.address || '',
         items: Array.isArray(order.items) ? order.items : [],
         refundRejectionReason: order.refundRejectionReason || '',
+        refundSummary,
     };
 };
 
@@ -249,10 +267,11 @@ function CustomerOrderHistoryPage() {
     const filteredOrders = useMemo(() => {
         let list = [];
 
-        // Tab "Hoàn tiền/ trả hàng" hiển thị cả RETURN_REQUESTED và RETURN_REJECTED
+        // Tab "Hoàn tiền/ trả hàng" hiển thị toàn bộ đơn trong luồng hoàn tiền:
+        // RETURN_REQUESTED, RETURN_CS_CONFIRMED, RETURN_STAFF_CONFIRMED, REFUNDED, RETURN_REJECTED
         if (activeTab === 'return-requested') {
             list = orders.filter((order) => {
-                const status = (order.rawStatus || '').toUpperCase();
+                const status = String(order.rawStatus || order.status || '').toUpperCase();
                 return (
                     order.statusKey === 'return-requested' ||
                     order.statusKey === 'return-rejected' ||
@@ -264,9 +283,6 @@ function CustomerOrderHistoryPage() {
                     status === 'RETURN_REJECTED'
                 );
             });
-            list = orders.filter((order) =>
-                order.statusKey === 'return-requested' || order.statusKey === 'return-rejected'
-            );
         } else {
             list = orders.filter((order) => order.statusKey === activeTab);
         }
@@ -486,7 +502,10 @@ function CustomerOrderHistoryPage() {
                                                         {statusInfo.label}
                                                     </button>
                                                     <p className={cx('order-total')}>
-                                                        {formatCurrency(order.totalAmount)}
+                                                        {formatCurrency(
+                                                            order.refundSummary?.total ??
+                                                                order.totalAmount,
+                                                        )}
                                                     </p>
                                                 </div>
                                             </div>

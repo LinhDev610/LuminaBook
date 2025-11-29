@@ -3,8 +3,6 @@ import classNames from 'classnames/bind';
 import styles from './ComplaintManagementPage.module.scss';
 import { useNavigate } from 'react-router-dom';
 import { getApiBaseUrl, getStoredToken, formatDateTime } from '../../../../services/utils';
-import ConfirmDialog from '../../../../components/Common/ConfirmDialog/DeleteAccountDialog';
-import Notification from '../../../../components/Common/Notification/Notification';
 
 const cx = classNames.bind(styles);
 
@@ -22,6 +20,13 @@ const assigneeMap = {
     ADMIN: 'Admin',
 };
 
+const initialConfirmState = {
+    open: false,
+    title: '',
+    message: '',
+    onConfirm: null,
+};
+
 export default function ComplaintManagementPage() {
     const navigate = useNavigate();
     const API_BASE_URL = useMemo(() => getApiBaseUrl(), []);
@@ -34,19 +39,14 @@ export default function ComplaintManagementPage() {
     const [actionError, setActionError] = useState('');
     const [actionSuccess, setActionSuccess] = useState('');
     const [currentUserId, setCurrentUserId] = useState(null);
-    const [confirmDialog, setConfirmDialog] = useState({
+    const [, setNotif] = useState({
         open: false,
+        type: 'info',
         title: '',
         message: '',
-        onConfirm: null,
+        duration: 3000,
     });
-    const [notif, setNotif] = useState({
-        open: false,
-        type: 'success',
-        title: '',
-        message: '',
-        duration: 2500,
-    });
+    const [, setConfirmDialog] = useState(initialConfirmState);
 
     // Fetch current user ID
     useEffect(() => {
@@ -322,19 +322,12 @@ export default function ComplaintManagementPage() {
         }
     };
 
-    const handleTransferAdmin = () => {
+    const handleTransferAdmin = async () => {
         if (!selectedComplaint) return;
-        setConfirmDialog({
-            open: true,
-            title: 'Xác nhận chuyển khiếu nại',
-            message: 'Bạn có chắc chắn muốn chuyển khiếu nại này cho Admin không?',
-            onConfirm: () => performTransferAdmin(),
-        });
-    };
 
-    const performTransferAdmin = async () => {
-        setConfirmDialog(initialConfirmState);
-        if (!selectedComplaint) return;
+        if (!window.confirm('Bạn có chắc chắn muốn chuyển khiếu nại này cho Admin không?')) {
+            return;
+        }
 
         setActionLoading(true);
         setActionError('');
@@ -657,25 +650,6 @@ export default function ComplaintManagementPage() {
                     </div>
                 )}
             </div>
-            <ConfirmDialog
-                open={confirmDialog.open}
-                title={confirmDialog.title}
-                message={confirmDialog.message}
-                onConfirm={confirmDialog.onConfirm || (() => {})}
-                onCancel={() =>
-                    setConfirmDialog({ open: false, title: '', message: '', onConfirm: null })
-                }
-                confirmText="Chuyển Admin"
-                cancelText="Hủy"
-            />
-            <Notification
-                open={notif.open}
-                type={notif.type}
-                title={notif.title}
-                message={notif.message}
-                duration={notif.duration}
-                onClose={() => setNotif((prev) => ({ ...prev, open: false }))}
-            />
         </div>
     );
 }

@@ -5,8 +5,21 @@ import styles from './RefundOrderDetailPage.module.scss';
 import { getApiBaseUrl, getStoredToken, formatCurrency } from '../../../../../services';
 import { normalizeMediaUrl } from '../../../../../services/productUtils';
 import ConfirmDialog from '../../../../../components/Common/ConfirmDialog/DeleteAccountDialog';
+import { useNotification } from '../../../../../components/Common/Notification';
 
 const cx = classNames.bind(styles);
+
+const viNumberFormatter = new Intl.NumberFormat('vi-VN');
+
+const formatPlainCurrency = (value) => {
+    if (value === null || value === undefined || value === '') return '';
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric)) return '';
+    return viNumberFormatter.format(numeric);
+};
+
+const buildConfirmationMessage = () =>
+    'Xác nhận chuyển hồ sơ hoàn tiền cho Admin xử lý?';
 
 const parseShippingInfo = (raw) => {
     if (!raw || typeof raw !== 'string') return {};
@@ -66,6 +79,70 @@ const parseRefundInfo = (order) => {
     };
 };
 
+const buildRefundSummary = (order, refundInfo, selectedItems = []) => {
+    if (!order) {
+        return {
+            productValue: 0,
+            shippingFee: 0,
+            secondShippingFee: 0,
+            returnPenalty: 0,
+            total: 0,
+            totalPaid: 0,
+            confirmedTotal: 0,
+        };
+    }
+
+    const productValue = selectedItems.reduce(
+        (sum, item) => sum + Number(item.totalPrice || item.finalPrice || 0),
+        0,
+    );
+    const shippingFee = order.shippingFee || 0;
+    const totalPaid = order.refundTotalPaid ?? order.totalAmount ?? productValue + shippingFee;
+
+    const secondShippingFee = Math.max(
+        0,
+        Math.round(
+            order.refundSecondShippingFee ??
+                order.refundReturnFee ??
+                order.estimatedReturnShippingFee ??
+                order.shippingFee ??
+                0,
+        ),
+    );
+
+    const returnPenalty =
+        order.refundPenaltyAmount ??
+        (refundInfo.reasonType === 'customer'
+            ? Math.max(0, Math.round(productValue * 0.1))
+            : 0);
+
+    const reason = refundInfo.reasonType || order.refundReasonType || 'store';
+    const fallbackTotal =
+        reason === 'store'
+            ? totalPaid + secondShippingFee
+            : Math.max(0, totalPaid - secondShippingFee - returnPenalty);
+
+    let total = order.refundAmount;
+    if (
+        total == null ||
+        (reason === 'store' && total < fallbackTotal) ||
+        (reason !== 'store' && total > fallbackTotal)
+    ) {
+        total = fallbackTotal;
+    }
+    const confirmedTotal = order.refundConfirmedAmount ?? total;
+
+    return {
+        productValue,
+        shippingFee,
+        secondShippingFee,
+        returnPenalty,
+        total,
+        totalPaid,
+        confirmedTotal,
+    };
+};
+
 const formatDateInput = (value) => {
     if (!value) return '';
     const date = new Date(value);
@@ -81,7 +158,8 @@ export default function RefundOrderDetailPage() {
     const [error, setError] = useState('');
     const [inspectionStatus, setInspectionStatus] = useState('valid_customer');
     const [receivedDate, setReceivedDate] = useState(formatDateInput(new Date()));
-    const [refundAmount, setRefundAmount] = useState('');
+    const [refundAmount, setRefundAmount] = useState(null);
+    const [refundAmountDisplay, setRefundAmountDisplay] = useState('');
     const [amountTouched, setAmountTouched] = useState(false);
     const [inspectionNote, setInspectionNote] = useState('');
     const [processing, setProcessing] = useState(false);
@@ -93,6 +171,7 @@ export default function RefundOrderDetailPage() {
     });
 
     const apiBaseUrl = getApiBaseUrl();
+    const { success: notifySuccess, error: notifyError, warning: notifyWarning } = useNotification();
 
     useEffect(() => {
         const fetchOrderDetail = async () => {
@@ -122,12 +201,19 @@ export default function RefundOrderDetailPage() {
 
                 setOrder(orderData);
                 const refundInfo = parseRefundInfo(orderData);
-                setRefundAmount(
-                    refundInfo.refundAmount ||
-                        orderData.selectedItemsTotal ||
-                        orderData.totalAmount ||
-                        0,
-                );
+                const initialAmount =
+                    orderData.refundConfirmedAmount ??
+                    refundInfo.refundAmount ??
+                    orderData.selectedItemsTotal ??
+                    orderData.totalAmount ??
+                    0;
+                const normalizedInitial = Number(initialAmount) || 0;
+                setRefundAmount(normalizedInitial);
+                setRefundAmountDisplay(formatPlainCurrency(normalizedInitial));
+                const derivedReceivedDate = orderData.returnCheckedDate
+                    ? formatDateInput(orderData.returnCheckedDate)
+                    : formatDateInput(new Date());
+                setReceivedDate(derivedReceivedDate);
                 setAmountTouched(false);
             } catch (err) {
                 setError(err.message || 'Đã xảy ra lỗi khi tải thông tin.');
@@ -182,19 +268,37 @@ export default function RefundOrderDetailPage() {
         return 0;
     }, [order?.shippingFee, order?.totalAmount, productSubtotal]);
 
+    const summary = useMemo(
+        () => buildRefundSummary(order, refundInfo, selectedItems),
+        [order, refundInfo, selectedItems],
+    );
+
+    const staffSummary = useMemo(() => {
+        if (!summary) return null;
+        const isStoreReason = inspectionStatus === 'valid_store';
+        const penalty = isStoreReason ? 0 : Math.max(0, Math.round(summary.productValue * 0.1));
+        const total = isStoreReason
+            ? summary.totalPaid + summary.secondShippingFee
+            : Math.max(0, summary.totalPaid - summary.secondShippingFee - penalty);
+        return {
+            totalPaid: summary.totalPaid,
+            productValue: summary.productValue,
+            shippingFee: summary.shippingFee,
+            secondShippingFee: summary.secondShippingFee,
+            returnPenalty: penalty,
+            total,
+        };
+    }, [summary, inspectionStatus]);
+
     useEffect(() => {
-        if (amountTouched) {
+        if (!staffSummary) {
             return;
         }
-        let autoAmount = baseRefundAmount;
-        if (inspectionStatus === 'valid_store') {
-            autoAmount += shippingCompensation;
-        }
-        if (!Number.isFinite(autoAmount)) {
-            autoAmount = 0;
-        }
+        const autoAmount = Number.isFinite(staffSummary.total) ? staffSummary.total : 0;
         setRefundAmount(autoAmount);
-    }, [inspectionStatus, baseRefundAmount, shippingCompensation, amountTouched]);
+        setRefundAmountDisplay(formatPlainCurrency(autoAmount));
+        setAmountTouched(false);
+    }, [staffSummary, inspectionStatus]);
 
     const requestedRefundAmount = useMemo(() => {
         if (refundInfo.refundAmount) return Number(refundInfo.refundAmount);
@@ -216,11 +320,11 @@ export default function RefundOrderDetailPage() {
 
     const handleReject = async () => {
         if (!canProcess) {
-            alert('Đơn này chưa được CSKH chuyển hoặc đã được xử lý.');
+            notifyWarning('Đơn này chưa được CSKH chuyển hoặc đã được xử lý.');
             return;
         }
         if (!inspectionNote.trim()) {
-            alert('Vui lòng nhập ghi chú/ lý do từ chối');
+            notifyWarning('Vui lòng nhập ghi chú/ lý do từ chối.');
             return;
         }
 
@@ -244,10 +348,10 @@ export default function RefundOrderDetailPage() {
                 throw new Error(errorData.message || 'Không thể từ chối đơn này');
             }
 
-            alert('Đã từ chối đơn hoàn về.');
+            notifySuccess('Đã từ chối đơn hoàn về.');
             navigate('/staff/orders');
         } catch (err) {
-            alert(err.message || 'Có lỗi xảy ra, vui lòng thử lại.');
+            notifyError(err.message || 'Có lỗi xảy ra, vui lòng thử lại.');
         } finally {
             setProcessing(false);
         }
@@ -265,10 +369,9 @@ export default function RefundOrderDetailPage() {
     };
 
     const handleConfirmRefund = async () => {
-        const normalizedAmount =
-            typeof refundAmount === 'number' ? refundAmount : Number(refundAmount);
-        if (!Number.isFinite(normalizedAmount)) {
-            alert('Vui lòng nhập số tiền hoàn hợp lệ.');
+        const normalizedAmount = Number(refundAmount);
+        if (refundAmount === null || !Number.isFinite(normalizedAmount)) {
+            notifyWarning('Vui lòng nhập số tiền hoàn hợp lệ.');
             return;
         }
         try {
@@ -290,6 +393,7 @@ export default function RefundOrderDetailPage() {
                             .filter(Boolean)
                             .join('\n'),
                         refundAmount: normalizedAmount,
+                        returnCheckedDate: receivedDate || null,
                     }),
                 },
             );
@@ -299,27 +403,26 @@ export default function RefundOrderDetailPage() {
                 throw new Error(errorData.message || 'Không thể xác nhận đơn này');
             }
 
-            alert('Đã xác nhận và chuyển hồ sơ cho Admin xử lý hoàn tiền.');
+            notifySuccess('Đã xác nhận và chuyển hồ sơ cho Admin xử lý hoàn tiền.');
             navigate('/staff/orders');
         } catch (err) {
-            alert(err.message || 'Có lỗi xảy ra, vui lòng thử lại.');
+            notifyError(err.message || 'Có lỗi xảy ra, vui lòng thử lại.');
         } finally {
             setProcessing(false);
         }
     };
 
     const handleConfirm = () => {
-        const normalizedAmount =
-            typeof refundAmount === 'number' ? refundAmount : Number(refundAmount);
-        if (!Number.isFinite(normalizedAmount)) {
-            alert('Vui lòng nhập số tiền hoàn hợp lệ.');
+        const normalizedAmount = Number(refundAmount);
+        if (refundAmount === null || !Number.isFinite(normalizedAmount)) {
+            notifyWarning('Vui lòng nhập số tiền hoàn hợp lệ.');
             return;
         }
 
         setConfirmDialog({
             open: true,
             title: 'Xác nhận hoàn tiền',
-            message: `Bạn có chắc chắn muốn xác nhận đơn hoàn tiền này và chuyển cho Admin xử lý không?`,
+            message: buildConfirmationMessage(),
             onConfirm: async () => {
                 setConfirmDialog({ open: false, title: '', message: '', onConfirm: null });
                 await handleConfirmRefund();
@@ -412,10 +515,6 @@ export default function RefundOrderDetailPage() {
                             </span>
                         </div>
                         <div className={cx('request-row')}>
-                            <span>Yêu cầu hoàn tiền:</span>
-                            <span>{formatCurrency(requestedRefundAmount)}</span>
-                        </div>
-                        <div className={cx('request-row')}>
                             <span>Lý do:</span>
                             <span>{refundInfo.description || 'Không có mô tả'}</span>
                         </div>
@@ -482,13 +581,27 @@ export default function RefundOrderDetailPage() {
                         <div>
                             <div className={cx('labels')}>Số tiền hoàn (VND)</div>
                             <input
-                                type="number"
+                                type="text"
+                                inputMode="numeric"
                                 className={cx('input-inline')}
-                                value={refundAmount}
+                                value={refundAmountDisplay}
                                 onChange={(e) => {
+                                    const raw = e.target.value || '';
+                                    const digitsOnly = raw.replace(/\D/g, '');
                                     setAmountTouched(true);
-                                    setRefundAmount(e.target.value);
+                                    if (!digitsOnly) {
+                                        setRefundAmount(null);
+                                        setRefundAmountDisplay('');
+                                        return;
+                                    }
+                                    const numericValue = Number(digitsOnly);
+                                    if (!Number.isFinite(numericValue)) {
+                                        return;
+                                    }
+                                    setRefundAmount(numericValue);
+                                    setRefundAmountDisplay(formatPlainCurrency(numericValue));
                                 }}
+                                placeholder="Nhập số tiền"
                             />
                         </div>
                     </div>

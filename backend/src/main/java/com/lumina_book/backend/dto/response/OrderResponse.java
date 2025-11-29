@@ -58,6 +58,13 @@ public class OrderResponse {
     String refundAccountHolder;
     Double refundAmount;
     Double refundReturnFee; // Phí trả hàng
+    Double refundSecondShippingFee;
+    Double refundPenaltyAmount;
+    Double refundTotalPaid;
+    Double refundConfirmedAmount;
+    Double refundConfirmedPenalty;
+    Double refundConfirmedSecondShippingFee;
+    LocalDate returnCheckedDate;
     String refundRejectionSource;
     String adminProcessingNote;
 

@@ -161,6 +161,70 @@ const parseShippingInfo = (raw) => {
     return { address: raw };
 };
 
+const buildRefundSummary = (order, refundInfo, selectedItems = []) => {
+    if (!order) {
+        return {
+            productValue: 0,
+            shippingFee: 0,
+            secondShippingFee: 0,
+            returnPenalty: 0,
+            total: 0,
+            totalPaid: 0,
+            confirmedTotal: 0,
+            confirmedSecondShippingFee: 0,
+            confirmedPenalty: 0,
+        };
+    }
+
+    const productValue = selectedItems.reduce(
+        (sum, item) => sum + (item.totalPrice || item.finalPrice || 0),
+        0,
+    );
+    const shippingFee = order.shippingFee || 0;
+    const totalPaid = order.refundTotalPaid ?? order.totalAmount ?? productValue + shippingFee;
+
+    const secondShippingFee = Math.max(
+        0,
+        Math.round(
+            order.refundSecondShippingFee ??
+                order.refundReturnFee ??
+                order.estimatedReturnShippingFee ??
+                order.shippingFee ??
+                0,
+        ),
+    );
+
+    const returnPenalty =
+        order.refundPenaltyAmount ??
+        (refundInfo.reasonType === 'customer'
+            ? Math.max(0, Math.round(productValue * 0.1))
+            : 0);
+
+    const reason = refundInfo.reasonType || order.refundReasonType || 'store';
+    const fallbackTotal =
+        reason === 'store'
+            ? totalPaid + secondShippingFee
+            : Math.max(0, totalPaid - secondShippingFee - returnPenalty);
+
+    const customerTotal = order.refundAmount ?? fallbackTotal;
+    const confirmedTotal = order.refundConfirmedAmount ?? customerTotal;
+    const confirmedSecondShippingFee =
+        order.refundConfirmedSecondShippingFee ?? secondShippingFee;
+    const confirmedPenalty = order.refundConfirmedPenalty ?? returnPenalty;
+
+    return {
+        productValue,
+        shippingFee,
+        secondShippingFee,
+        returnPenalty,
+        total: customerTotal,
+        totalPaid,
+        confirmedTotal,
+        confirmedSecondShippingFee,
+        confirmedPenalty,
+    };
+};
+
 export default function RefundDetailPage() {
     const { id } = useParams();
     const navigate = useNavigate();
@@ -274,6 +338,10 @@ export default function RefundDetailPage() {
     const orderStatus = order?.status || '';
     const normalizedStatus = (orderStatus || '').toUpperCase();
     const canProcess = normalizedStatus === 'RETURN_REQUESTED';
+    const hasStaffConfirmed =
+        (normalizedStatus === 'RETURN_STAFF_CONFIRMED' || normalizedStatus === 'REFUNDED') &&
+        typeof order.refundConfirmedAmount === 'number' &&
+        order.refundConfirmedAmount > 0;
 
     const handleReject = async () => {
         if (!canProcess) {
@@ -394,8 +462,7 @@ export default function RefundDetailPage() {
     
     // Get selected products for refund
     const selectedItems = order.items?.filter(item => refundInfo.selectedProducts.includes(item.id)) || [];
-    const totalRefundAmount = refundInfo.refundAmount || 
-        selectedItems.reduce((sum, item) => sum + (item.totalPrice || item.finalPrice || 0), 0);
+    const summary = buildRefundSummary(order, refundInfo, selectedItems);
 
     // Normalize media URLs
     const apiBaseUrl = getApiBaseUrl();
@@ -530,11 +597,37 @@ export default function RefundDetailPage() {
                                     {selectedItems.reduce((sum, item) => sum + (item.quantity || 0), 0)}
                                 </span>
                             </div>
-                            <div className={cx('detail-row')}>
-                                <span className={cx('detail-label')}>Yêu cầu hoàn tiền:</span>
-                                <span className={cx('detail-value', 'amount')}>
-                                    {formatCurrency(totalRefundAmount)}
-                                </span>
+                            <div className={cx('summary-block')}>
+                                <div className={cx('summary-row')}>
+                                    <span>Tổng đơn (đã thanh toán)</span>
+                                    <span>{formatCurrency(summary.totalPaid)}</span>
+                                </div>
+                                <div className={cx('summary-row')}>
+                                    <span>Giá trị sản phẩm</span>
+                                    <span>{formatCurrency(summary.productValue)}</span>
+                                </div>
+                                <div className={cx('summary-row')}>
+                                    <span>Phí vận chuyển (lần đầu)</span>
+                                    <span>{formatCurrency(summary.shippingFee)}</span>
+                                </div>
+                                <div className={cx('summary-row')}>
+                                    <span>Phí ship (lần 2 - khách tạm ứng)</span>
+                                    <span>{formatCurrency(summary.secondShippingFee)}</span>
+                                </div>
+                                <div className={cx('summary-row')}>
+                                    <span>Phí hoàn trả (10% khi lỗi khách hàng)</span>
+                                    <span>{formatCurrency(summary.returnPenalty)}</span>
+                                </div>
+                                <div className={cx('summary-row', 'total')}>
+                                    <span>Tổng hoàn (theo khách đề xuất)</span>
+                                    <span>{formatCurrency(summary.total)}</span>
+                                </div>
+                                {hasStaffConfirmed && (
+                                    <div className={cx('summary-row', 'confirmed')}>
+                                        <span>Tổng hoàn (nhân viên xác nhận)</span>
+                                        <span>{formatCurrency(summary.confirmedTotal)}</span>
+                                    </div>
+                                )}
                             </div>
                             <div className={cx('detail-row')}>
                                 <span className={cx('detail-label')}>Lý do:</span>

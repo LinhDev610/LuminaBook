@@ -1,5 +1,7 @@
 package com.lumina_book.backend.dto.request;
 
+import java.time.LocalDate;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -19,5 +21,10 @@ public class ReturnProcessRequest {
      * Refund amount decided at the current processing step (e.g. staff inspection result).
      */
     private Double refundAmount;
+
+    /**
+     * Date when the warehouse/staff actually received the return package.
+     */
+    private LocalDate returnCheckedDate;
 }
 

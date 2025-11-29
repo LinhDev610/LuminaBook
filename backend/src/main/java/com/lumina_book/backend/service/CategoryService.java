@@ -96,6 +96,7 @@ public class CategoryService {
     }
 
     public List<CategoryResponse> getActiveCategories() {
+        // Chỉ lấy categories có status = true (không lấy categories bị ẩn)
         List<Category> activeCategories = categoryRepository.findByStatus(true);
 
         return activeCategories.stream().map(categoryMapper::toResponse).toList();

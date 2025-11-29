@@ -1312,7 +1312,25 @@ public class OrderService {
             }
         }
         
-        return orderRepository.save(order);
+        Order saved = orderRepository.save(order);
+
+        // Gửi thông báo in-app cho bộ phận CSKH về yêu cầu hoàn tiền / trả hàng mới
+        try {
+            String customerName = order.getUser() != null && order.getUser().getFullName() != null
+                    ? order.getUser().getFullName()
+                    : "Khách hàng";
+            String title = "Yêu cầu hoàn tiền / trả hàng mới";
+            String message = String.format(
+                    "%s đã gửi yêu cầu hoàn tiền/trả hàng cho đơn hàng %s.",
+                    customerName,
+                    order.getCode());
+            String link = "/customer-support/refund-management";
+            notificationService.sendToRole(title, message, "INFO", "CUSTOMER_SUPPORT", link);
+        } catch (Exception e) {
+            log.error("Failed to send notification to CS for return request {}: {}", orderId, e.getMessage(), e);
+        }
+
+        return saved;
     }
 
     @Transactional
@@ -1372,6 +1390,18 @@ public class OrderService {
             brevoEmailService.sendReturnCsConfirmedEmail(saved);
         } catch (Exception e) {
             log.error("Failed to send CS-confirmed return email for order {}: {}", orderId, e.getMessage(), e);
+        }
+
+        // Gửi thông báo in-app cho STAFF: có đơn hoàn đã được CS xác nhận hợp lệ
+        try {
+            String title = "Đơn hoàn đã được CSKH xác nhận";
+            String message = String.format(
+                    "Đơn hàng %s đã được CSKH xác nhận yêu cầu hoàn tiền/trả hàng. Vui lòng kiểm tra và xử lý.",
+                    order.getCode());
+            String link = "/staff/refund-orders";
+            notificationService.sendToRole(title, message, "INFO", "STAFF", link);
+        } catch (Exception e) {
+            log.error("Failed to send notification to staff for CS-confirmed return {}: {}", orderId, e.getMessage(), e);
         }
 
         return saved;

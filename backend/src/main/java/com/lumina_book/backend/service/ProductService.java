@@ -407,6 +407,7 @@ public class ProductService {
     }
 
     public List<ProductResponse> getActiveProducts() {
+        // Chỉ lấy products có status APPROVED (không lấy DISABLED)
         List<Product> products = productRepository.findByStatus(ProductStatus.APPROVED);
         return products.stream().map(productMapper::toResponse).toList();
     }

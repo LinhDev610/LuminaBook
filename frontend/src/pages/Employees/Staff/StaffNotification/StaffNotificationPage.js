@@ -268,7 +268,14 @@ export default function StaffNotificationPage() {
     return (
         <div className={cx('container')}>
             <div className={cx('header')}>
-                <h1 className={cx('title')}>Thông báo</h1>
+                <h1 className={cx('title')}>
+                    Thông báo
+                    {unreadCount > 0 && (
+                        <span className={cx('badge')}>
+                            {unreadCount > 99 ? '99+' : unreadCount}
+                        </span>
+                    )}
+                </h1>
                 <div className={cx('actions')}>
                     <button className={cx('btn', 'btn-secondary')} onClick={() => navigate('/staff')}>
                         ← Quay lại Dashboard

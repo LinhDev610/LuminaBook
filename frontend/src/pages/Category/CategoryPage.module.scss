@@ -47,6 +47,47 @@
     line-height: 1.5;
 }
 
+.filter-bar {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-bottom: 24px;
+    padding: 16px 20px;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
+}
+
+.filter-label {
+    font-size: 14px;
+    color: #4b5c6e;
+    font-weight: 500;
+}
+
+.filter-select {
+    padding: 8px 16px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    background: #fff;
+    color: #1f2933;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-width: 160px;
+
+    &:hover {
+        border-color: #ef4444;
+    }
+
+    &:focus {
+        outline: none;
+        border-color: #ef4444;
+        box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+    }
+}
+
 .state-card {
     background: #fff;
     border-radius: 16px;

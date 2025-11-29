@@ -27,22 +27,71 @@ export default function CategoryPage() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
+    const [sortBy, setSortBy] = useState('newest'); // 'newest', 'oldest', 'price-high', 'price-low', 'bestseller'
 
     const categoryName = useMemo(() => categoryInfo?.name || '', [categoryInfo]);
 
+    // Sắp xếp sản phẩm dựa trên sortBy
+    const sortedProducts = useMemo(() => {
+        if (!products.length) return [];
+        
+        const sorted = [...products];
+        
+        switch (sortBy) {
+            case 'price-high':
+                sorted.sort((a, b) => {
+                    const priceA = a.price || a.unitPrice || 0;
+                    const priceB = b.price || b.unitPrice || 0;
+                    return priceB - priceA;
+                });
+                break;
+            case 'price-low':
+                sorted.sort((a, b) => {
+                    const priceA = a.price || a.unitPrice || 0;
+                    const priceB = b.price || b.unitPrice || 0;
+                    return priceA - priceB;
+                });
+                break;
+            case 'bestseller':
+                sorted.sort((a, b) => {
+                    const soldA = a.quantitySold || 0;
+                    const soldB = b.quantitySold || 0;
+                    return soldB - soldA;
+                });
+                break;
+            case 'oldest':
+                sorted.sort((a, b) => {
+                    const dateA = new Date(a.createdAt || a.created_at || 0);
+                    const dateB = new Date(b.createdAt || b.created_at || 0);
+                    return dateA - dateB;
+                });
+                break;
+            case 'newest':
+            default:
+                sorted.sort((a, b) => {
+                    const dateA = new Date(a.createdAt || a.created_at || 0);
+                    const dateB = new Date(b.createdAt || b.created_at || 0);
+                    return dateB - dateA;
+                });
+                break;
+        }
+        
+        return sorted;
+    }, [products, sortBy]);
+
     const totalPages = useMemo(
-        () => Math.max(1, Math.ceil(products.length / ITEMS_PER_PAGE)),
-        [products.length],
+        () => Math.max(1, Math.ceil(sortedProducts.length / ITEMS_PER_PAGE)),
+        [sortedProducts.length],
     );
 
     const paginatedProducts = useMemo(() => {
         const start = (currentPage - 1) * ITEMS_PER_PAGE;
-        return products.slice(start, start + ITEMS_PER_PAGE);
-    }, [products, currentPage]);
+        return sortedProducts.slice(start, start + ITEMS_PER_PAGE);
+    }, [sortedProducts, currentPage]);
 
     useEffect(() => {
         setCurrentPage(1);
-    }, [id, products.length]);
+    }, [id, sortedProducts.length]);
 
     useEffect(() => {
         if (currentPage > totalPages) {
@@ -161,7 +210,7 @@ export default function CategoryPage() {
     const paginationItems = useMemo(buildPaginationItems, [currentPage, totalPages]);
 
     const renderPagination = () => {
-        if (!products.length) return null;
+        if (!sortedProducts.length) return null;
         return (
             <div className={cxCategory('pagination')}>
                 <button
@@ -233,12 +282,31 @@ export default function CategoryPage() {
 
                 {!loading &&
                     !error &&
-                    products.length > 0 &&
-                    renderSection(`Sản phẩm - ${categoryName}`, iconFire, null, paginatedProducts, {
-                        minimal: false,
-                        isGrid: true,
-                        gridColumns: 5,
-                    })}
+                    products.length > 0 && (
+                        <>
+                            <div className={cxCategory('filter-bar')}>
+                                <div className={cxCategory('filter-label')}>
+                                    <span>Sắp xếp theo:</span>
+                                </div>
+                                <select
+                                    className={cxCategory('filter-select')}
+                                    value={sortBy}
+                                    onChange={(e) => setSortBy(e.target.value)}
+                                >
+                                    <option value="newest">Mới nhất</option>
+                                    <option value="oldest">Cũ nhất</option>
+                                    <option value="price-high">Giá cao nhất</option>
+                                    <option value="price-low">Giá thấp nhất</option>
+                                    <option value="bestseller">Bán chạy</option>
+                                </select>
+                            </div>
+                            {renderSection(`Sản phẩm - ${categoryName}`, iconFire, null, paginatedProducts, {
+                                minimal: false,
+                                isGrid: true,
+                                gridColumns: 5,
+                            })}
+                        </>
+                    )}
 
                 {renderPagination()}
             </main>

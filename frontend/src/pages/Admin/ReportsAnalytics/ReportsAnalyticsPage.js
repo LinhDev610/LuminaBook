@@ -35,10 +35,10 @@ function ReportsAnalyticsPage() {
                         value={timeMode}
                         onChange={handleTimeModeChange}
                     >
-                        <option value="day">Theo ngày (hôm nay)</option>
-                        <option value="week">Theo tuần (tuần này)</option>
-                        <option value="month">Theo tháng (tháng này)</option>
-                        <option value="year">Theo năm (năm này)</option>
+                        <option value="day">Theo ngày</option>
+                        <option value="week">Theo tuần</option>
+                        <option value="month">Theo tháng</option>
+                        <option value="year">Theo năm</option>
                         <option value="custom">Khoảng thời gian</option>
                     </select>
                     {timeMode === 'custom' && (
@@ -101,9 +101,19 @@ function ReportsAnalyticsPage() {
                 />
             )}
 
-            {activeTab === 'orders' && <OrderReport />}
+            {activeTab === 'orders' && (
+                <OrderReport
+                    timeMode={timeMode}
+                    customDateRange={timeMode === 'custom' ? customDateRange : null}
+                />
+            )}
 
-            {activeTab === 'financial' && <FinancialReport />}
+            {activeTab === 'financial' && (
+                <FinancialReport
+                    timeMode={timeMode}
+                    customDateRange={timeMode === 'custom' ? customDateRange : null}
+                />
+            )}
 
             {activeTab === 'top' && <BestSeller />}
         </div>

@@ -1,5 +1,6 @@
 package com.lumina_book.backend.controller;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -17,6 +18,8 @@ import com.lumina_book.backend.dto.response.CheckoutInitResponse;
 import com.lumina_book.backend.dto.response.OrderDetailResponse;
 import com.lumina_book.backend.dto.response.OrderItemResponse;
 import com.lumina_book.backend.dto.response.OrderResponse;
+import com.lumina_book.backend.dto.response.OrderStatistics;
+import com.lumina_book.backend.dto.response.OrderPageResponse;
 import com.lumina_book.backend.entity.Address;
 import com.lumina_book.backend.entity.Order;
 import com.lumina_book.backend.service.OrderService;
@@ -68,6 +71,40 @@ public class OrderController {
         List<Order> orders = orderService.getAllOrders();
         return ApiResponse.<List<OrderResponse>>builder()
                 .result(orders.stream().map(this::toResponse).toList())
+                .build();
+    }
+
+    @GetMapping("/statistics")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<OrderStatistics> getOrderStatistics(
+            @RequestParam LocalDate start,
+            @RequestParam LocalDate end) {
+        return ApiResponse.<OrderStatistics>builder()
+                .result(orderService.getOrderStatistics(start, end))
+                .build();
+    }
+
+    @GetMapping("/recent")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<OrderPageResponse> getRecentOrders(
+            @RequestParam LocalDate start,
+            @RequestParam LocalDate end,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        var orderPage = orderService.getOrdersByDateRangePage(start, end, page, size);
+        
+        OrderPageResponse response = OrderPageResponse.builder()
+                .orders(orderPage.getContent().stream().map(this::toResponse).toList())
+                .totalElements(orderPage.getTotalElements())
+                .totalPages(orderPage.getTotalPages())
+                .currentPage(orderPage.getNumber())
+                .pageSize(orderPage.getSize())
+                .hasNext(orderPage.hasNext())
+                .hasPrevious(orderPage.hasPrevious())
+                .build();
+        
+        return ApiResponse.<OrderPageResponse>builder()
+                .result(response)
                 .build();
     }
 

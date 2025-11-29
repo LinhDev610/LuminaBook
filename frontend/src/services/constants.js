@@ -117,6 +117,8 @@ export const API_ROUTES = {
         cancel: (orderId) => `/orders/${orderId}/cancel`,
         resendEmail: (orderId) => `/orders/${orderId}/resend-email`,
         verifyPayment: (orderId) => `/orders/${orderId}/verify-payment`,
+        statistics: (start, end) => `/orders/statistics?start=${start}&end=${end}`,
+        recent: (start, end, page = 0, size = 20) => `/orders/recent?start=${start}&end=${end}&page=${page}&size=${size}`,
     },
 };
 

@@ -24,6 +24,7 @@ import com.lumina_book.backend.enums.FinancialRecordType;
 import com.lumina_book.backend.enums.PaymentMethod;
 import com.lumina_book.backend.enums.PaymentStatus;
 import com.lumina_book.backend.repository.FinancialRecordRepository;
+import com.lumina_book.backend.repository.OrderRepository;
 
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -35,6 +36,7 @@ import lombok.experimental.FieldDefaults;
 public class FinancialService {
 
     FinancialRecordRepository financialRecordRepository;
+    OrderRepository orderRepository;
 
     // Chuyển đổi LocalDate thành LocalDateTime range (start of day đến end of day).
     private LocalDateTime[] toDateTimeRange(LocalDate start, LocalDate end) {
@@ -234,31 +236,32 @@ public class FinancialService {
     }
 
     // Tổng hợp báo cáo doanh thu: tổng doanh thu, tổng đơn hàng, giá trị trung bình
+    // Tổng doanh thu = tổng giá trị các sách bán ra (OrderItem.finalPrice), không bao gồm shipping fee
     public RevenueSummary revenueSummary(LocalDate start, LocalDate end) {
         LocalDateTime[] range = toDateTimeRange(start, end);
-        List<FinancialRecord> records = financialRecordRepository.findByOccurredAtBetween(range[0], range[1]);
+        
+        // Lấy tất cả các đơn hàng trong khoảng thời gian (đã load items qua EntityGraph)
+        List<Order> allOrders = orderRepository.findByOrderDateTimeBetween(range[0], range[1]);
+        
+        // Lọc các đơn hàng đã thanh toán thành công
+        List<Order> paidOrders = allOrders.stream()
+                .filter(order -> order.getPaymentStatus() == PaymentStatus.PAID
+                        && Boolean.TRUE.equals(order.getPaid())
+                        && order.getItems() != null
+                        && !order.getItems().isEmpty())
+                .toList();
 
-        // Lọc các đơn hàng đã thanh toán thành công và group by order
-        Map<Order, Double> orderRevenueMap = records.stream()
-                .filter(fr -> fr.getRecordType() == FinancialRecordType.ORDER_PAYMENT
-                        && fr.getAmount() != null && fr.getAmount() > 0
-                        && fr.getOrder() != null
-                        && fr.getOrder().getPaymentStatus() == PaymentStatus.PAID
-                        && Boolean.TRUE.equals(fr.getOrder().getPaid()))
-                .collect(Collectors.groupingBy(
-                        FinancialRecord::getOrder,
-                        Collectors.summingDouble(fr -> fr.getAmount())
-                ));
-
-        // Tổng doanh thu
-        double totalRevenue = orderRevenueMap.values().stream()
-                .mapToDouble(Double::doubleValue)
+        // Tính tổng doanh thu = sum của tất cả OrderItem.finalPrice (chỉ giá sách, không có shipping fee)
+        double totalRevenue = paidOrders.stream()
+                .flatMap(order -> order.getItems().stream())
+                .filter(item -> item.getFinalPrice() != null && item.getFinalPrice() > 0)
+                .mapToDouble(item -> item.getFinalPrice())
                 .sum();
 
         // Tổng đơn hàng
-        long totalOrders = orderRevenueMap.size();
+        long totalOrders = paidOrders.size();
 
-        // Giá trị trung bình
+        // Giá trị trung bình mỗi đơn hàng (chỉ tính giá sách, không có shipping fee)
         double averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0.0;
 
         return RevenueSummary.builder()
@@ -269,35 +272,60 @@ public class FinancialService {
     }
 
     // Tổng hợp tài chính: thu, chi, lợi nhuận
+    // Tổng thu = tổng giá trị các sách bán ra (OrderItem.finalPrice), không bao gồm shipping fee
+    // Lợi nhuận = Tổng thu - Giá vốn hàng bán - Tổng chi (hoàn tiền, bồi thường)
     public FinancialSummary summary(LocalDate start, LocalDate end) {
         LocalDateTime[] range = toDateTimeRange(start, end);
-        List<FinancialRecord> records = financialRecordRepository.findByOccurredAtBetween(range[0], range[1]);
+        
+        // Lấy tất cả các đơn hàng trong khoảng thời gian 
+        List<Order> allOrders = orderRepository.findByOrderDateTimeBetween(range[0], range[1]);
+        
+        // Lọc các đơn hàng đã thanh toán thành công
+        List<Order> paidOrders = allOrders.stream()
+                .filter(order -> order.getPaymentStatus() == PaymentStatus.PAID
+                        && Boolean.TRUE.equals(order.getPaid())
+                        && order.getItems() != null
+                        && !order.getItems().isEmpty())
+                .toList();
 
-        double income = records.stream()
-                .filter(fr -> fr.getRecordType() == FinancialRecordType.ORDER_PAYMENT
-                        && fr.getAmount() != null && fr.getAmount() > 0
-                        && fr.getOrder() != null
-                        && fr.getOrder().getPaymentStatus() == PaymentStatus.PAID
-                        && Boolean.TRUE.equals(fr.getOrder().getPaid()))
-                .collect(Collectors.groupingBy(
-                        FinancialRecord::getOrder,
-                        Collectors.summingDouble(fr -> fr.getAmount())
-                ))
-                .values()
-                .stream()
-                .mapToDouble(Double::doubleValue)
+        // Tổng thu = sum của tất cả OrderItem.finalPrice (chỉ giá sách, không có shipping fee)
+        double income = paidOrders.stream()
+                .flatMap(order -> order.getItems().stream())
+                .filter(item -> item.getFinalPrice() != null && item.getFinalPrice() > 0)
+                .mapToDouble(item -> item.getFinalPrice())
                 .sum();
 
-        // Chi phí: tính theo record
+        // Giá vốn hàng bán = sum của (purchasePrice * quantity) cho tất cả OrderItem
+        double costOfGoodsSold = paidOrders.stream()
+                .flatMap(order -> order.getItems().stream())
+                .filter(item -> item.getProduct() != null 
+                        && item.getProduct().getPurchasePrice() != null
+                        && item.getQuantity() != null
+                        && item.getQuantity() > 0)
+                .mapToDouble(item -> {
+                    double purchasePrice = item.getProduct().getPurchasePrice();
+                    int quantity = item.getQuantity();
+                    return purchasePrice * quantity;
+                })
+                .sum();
+
+        // Chi phí: tính từ FinancialRecord (hoàn tiền, bồi thường, chi phí khác)
+        List<FinancialRecord> records = financialRecordRepository.findByOccurredAtBetween(range[0], range[1]);
         double expense = records.stream()
                 .filter(fr -> fr.getAmount() != null && fr.getAmount() < 0)
                 .mapToDouble(fr -> -fr.getAmount())
                 .sum();
 
+        // Tổng chi = Giá vốn hàng bán + Chi phí khác (hoàn tiền, bồi thường)
+        double totalExpense = costOfGoodsSold + expense;
+
+        // Lợi nhuận = Tổng thu - Tổng chi
+        double profit = income - totalExpense;
+
         return FinancialSummary.builder()
                 .totalIncome(income)
-                .totalExpense(expense)
-                .profit(income - expense)
+                .totalExpense(totalExpense)
+                .profit(profit)
                 .build();
     }
 }

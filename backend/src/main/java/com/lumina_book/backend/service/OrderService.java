@@ -11,6 +11,9 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,6 +23,9 @@ import com.lumina_book.backend.dto.request.CreateOrderRequest;
 import com.lumina_book.backend.dto.request.MomoIpnRequest;
 import com.lumina_book.backend.dto.request.ReturnProcessRequest;
 import com.lumina_book.backend.dto.response.CreateMomoResponse;
+import com.lumina_book.backend.dto.response.OrderStatistics;
+import com.lumina_book.backend.dto.response.OrderPageResponse;
+import com.lumina_book.backend.dto.response.OrderResponse;
 import com.lumina_book.backend.entity.Address;
 import com.lumina_book.backend.entity.Cart;
 import com.lumina_book.backend.entity.CartItem;
@@ -1124,6 +1130,35 @@ public class OrderService {
             log.error("Error fetching orders for user: {}", e.getMessage(), e);
             return new ArrayList<>();
         }
+    }
+
+    // Thống kê đơn hàng trong khoảng thời gian
+    @Transactional(readOnly = true)
+    @PreAuthorize("hasRole('ADMIN')")
+    public OrderStatistics getOrderStatistics(LocalDate start, LocalDate end) {
+        LocalDateTime startDateTime = start.atStartOfDay();
+        LocalDateTime endDateTime = end.atTime(23, 59, 59, 999999999);
+        
+        Long totalOrders = orderRepository.countByOrderDateTimeBetween(startDateTime, endDateTime);
+        Long cancelledOrders = orderRepository.countCancelledOrdersByOrderDateTimeBetween(startDateTime, endDateTime);
+        Long refundedOrders = orderRepository.countRefundedOrdersByOrderDateTimeBetween(startDateTime, endDateTime);
+        
+        return OrderStatistics.builder()
+                .totalOrders(totalOrders)
+                .cancelledOrders(cancelledOrders)
+                .refundedOrders(refundedOrders)
+                .build();
+    }
+
+    // Lấy Page<Order> để convert trong controller
+    @Transactional(readOnly = true)
+    @PreAuthorize("hasRole('ADMIN')")
+    public Page<Order> getOrdersByDateRangePage(LocalDate start, LocalDate end, int page, int size) {
+        LocalDateTime startDateTime = start.atStartOfDay();
+        LocalDateTime endDateTime = end.atTime(23, 59, 59, 999999999);
+        
+        Pageable pageable = PageRequest.of(page, size);
+        return orderRepository.findByOrderDateTimeBetween(startDateTime, endDateTime, pageable);
     }
 
     // Danh sách các yêu cầu trả hàng/hoàn tiền.

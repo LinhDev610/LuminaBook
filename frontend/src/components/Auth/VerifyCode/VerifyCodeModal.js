@@ -63,7 +63,15 @@ export default function VerifyCodeModal({ open = false, onClose }) {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (code.length !== 6) return;
+        // Frontend validation cho mã OTP
+        if (!code) {
+            setError("Vui lòng nhập mã xác nhận");
+            return;
+        }
+        if (code.length < 6) {
+            setError("Vui lòng nhập đủ 6 kí tự");
+            return;
+        }
         setIsLoading(true);
         setError("");
         try {

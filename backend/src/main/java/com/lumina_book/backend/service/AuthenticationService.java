@@ -86,7 +86,15 @@ public class AuthenticationService {
 
         boolean authenticated = passwordEncoder.matches(request.getPassword(), user.getPassword());
 
-        if (!authenticated) throw new AppException(ErrorCode.UNAUTHENTICATED);
+        // Sai mật khẩu
+        if (!authenticated) {
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
+
+        // Tài khoản đã bị khóa
+        if (!user.isActive()) {
+            throw new AppException(ErrorCode.ACCOUNT_LOCKED);
+        }
 
         var token = generateToken(user);
 
@@ -132,6 +140,16 @@ public class AuthenticationService {
         // Kiểm tra token tồn tại trong trong invalidatedRepository
         if (invalidatedRepository.existsById(signedJWT.getJWTClaimsSet().getJWTID()))
             throw new AppException(ErrorCode.UNAUTHENTICATED);
+
+        // Kiểm tra trạng thái tài khoản (isActive). Nếu user đã bị khóa
+        // thì coi như token không còn hợp lệ.
+        String email = signedJWT.getJWTClaimsSet().getSubject();
+        User user = userRepository
+                .findByEmail(email)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+        if (!user.isActive()) {
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
 
         return signedJWT;
     }

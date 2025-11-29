@@ -115,7 +115,7 @@ export default function LoginModal({ open = false, onClose }) {
             const payload = { email: email.trim(), password };
             // console.log('Login attempt with:', { email: email.trim(), password: password ? '***' : 'empty' });
 
-            const { ok, data: loginData } = await login(payload);
+            const { ok, data: loginData, status } = await login(payload);
             // console.log('Login response:', { ok, hasToken: !!loginData?.token });
 
             if (ok && loginData?.token) {
@@ -138,19 +138,28 @@ export default function LoginModal({ open = false, onClose }) {
                     // Debug: Log API response để kiểm tra cấu trúc
                     // console.log('API Response:', meData);
 
-                    // Check account active status
+                    // Check account active status (default true nếu backend không trả field)
                     const rawActive = meData?.isActive ?? meData?.active;
-                    let isActive = false;
-                    if (typeof rawActive === 'boolean') isActive = rawActive;
-                    else if (typeof rawActive === 'number') isActive = rawActive === 1;
-                    else if (typeof rawActive === 'string') isActive = ['true', '1'].includes(rawActive.toLowerCase());
+                    let isActive = true;
+                    if (rawActive !== undefined && rawActive !== null) {
+                        if (typeof rawActive === 'boolean') isActive = rawActive;
+                        else if (typeof rawActive === 'number') isActive = rawActive === 1;
+                        else if (typeof rawActive === 'string')
+                            isActive = ['true', '1', 'active'].includes(rawActive.toLowerCase());
+                    }
 
                     if (!isActive) {
                         // Locked account: do not persist token, show popup, keep modal open
                         localStorage.removeItem('token');
                         sessionStorage.removeItem('token');
                         removeRefreshToken();
-                        setNotif({ open: true, type: 'error', title: 'Tài khoản bị khóa', message: 'Tài khoản của bạn đã bị khóa. Vui lòng liên hệ hỗ trợ.', duration: 4000 });
+                        setNotif({
+                            open: true,
+                            type: 'error',
+                            title: 'Tài khoản bị khóa',
+                            message: 'Tài khoản của bạn đã bị khóa. Vui lòng liên hệ hỗ trợ.',
+                            duration: 4000,
+                        });
                         setIsLoading(false);
                         return;
                     }
@@ -213,9 +222,30 @@ export default function LoginModal({ open = false, onClose }) {
                 navigate(finalRedirect, { replace: true });
                 setAuthRedirectPath(null);
             } else {
-                setError('Tài khoản hoặc mật khẩu không đúng');
+                // Xử lý các trường hợp lỗi đăng nhập
+                const code = loginData?.code;
+                const message = loginData?.message || '';
+
+                // Tài khoản bị khóa (backend trả ACCOUNT_LOCKED)
+                if (code === 1006 || message.toLowerCase().includes('tài khoản của bạn đã bị khóa')) {
+                    setError('');
+                    setNotif({
+                        open: true,
+                        type: 'error',
+                        title: 'Tài khoản bị khóa',
+                        message: message || 'Tài khoản của bạn đã bị khóa. Vui lòng liên hệ hỗ trợ.',
+                        duration: 4000,
+                    });
+                } else if (status === 401 || code === 1005) {
+                    // Sai tài khoản / mật khẩu
+                    setError('Tài khoản hoặc mật khẩu không đúng');
+                } else {
+                    // Các lỗi khác (ví dụ server trả 400 với message riêng)
+                    setError(message || 'Không thể đăng nhập. Vui lòng thử lại.');
+                }
             }
         } catch (err) {
+            console.error('Login error:', err);
             setError('Không thể kết nối máy chủ. Vui lòng thử lại.');
         } finally {
             setIsLoading(false);

@@ -119,6 +119,11 @@ export default function RegisterModal({ open = false, onClose }) {
         e.preventDefault();
         if (!agree) return setError('Hãy đồng ý điều khoản');
 
+        // Validate password rỗng trước
+        if (!password || password.trim() === '') {
+            setError('Vui lòng nhập mật khẩu');
+            return;
+        }
         // Validate password using utility function
         const passwordValidation = validatePassword(password, confirm);
         if (!passwordValidation.isValid) {

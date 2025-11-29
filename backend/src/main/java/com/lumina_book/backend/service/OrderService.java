@@ -1250,7 +1250,7 @@ public class OrderService {
                         .filter(item -> request.getSelectedProductIds().contains(item.getId()))
                         .mapToDouble(item -> item.getFinalPrice() != null ? item.getFinalPrice() : 0.0)
                         .sum();
-
+                
                 double shippingFee = order.getShippingFee() != null ? order.getShippingFee() : 0.0;
                 double totalPaid = order.getTotalAmount() != null ? order.getTotalAmount() : productValue + shippingFee;
 

@@ -216,19 +216,29 @@ function CustomerProfilePage() {
                                 onClick={async () => {
                                     if (!user?.id) return;
                                     setProfileMsg('');
-                                    if (!isValidPhone(user.phoneNumber ?? '')) {
+                                    const trimmedPhone = (user.phoneNumber ?? '').trim();
+                                    // Cho phép để trống số điện thoại, chỉ validate khi có nhập
+                                    if (trimmedPhone && !isValidPhone(trimmedPhone)) {
                                         setProfileMsg('Số điện thoại phải gồm 10 số và bắt đầu bằng 0');
                                         return;
                                     }
                                     try {
                                         const tk = getStoredToken();
+                                        const safeFullName = (user.fullName || '').trim() || (user.email || email || '');
                                         const body = {
-                                            fullName: user.fullName ?? '',
-                                            phoneNumber: user.phoneNumber ?? '',
+                                            fullName: safeFullName,
+                                            // Nếu xóa hết SĐT thì gửi chuỗi rỗng để backend ghi đè và xóa
+                                            phoneNumber: trimmedPhone,
                                             address: user.address ?? '',
                                         };
                                         const updatedData = await updateUser(user.id, body, tk);
                                         if (updatedData) {
+                                            // Cập nhật ngay UI theo dữ liệu vừa gửi
+                                            setUser((prev) => ({
+                                                ...(prev || {}),
+                                                fullName: safeFullName,
+                                                phoneNumber: trimmedPhone,
+                                            }));
                                             // Refetch user to ensure data persisted and sync local state
                                             try {
                                                 const confirmedUser = await getMyInfo(tk);
@@ -236,7 +246,9 @@ function CustomerProfilePage() {
                                                     setUser(confirmedUser);
                                                     // Refresh original snapshot after successful save
                                                     try {
-                                                        setOriginalUser(JSON.parse(JSON.stringify(confirmedUser)));
+                                                        setOriginalUser(
+                                                            JSON.parse(JSON.stringify(confirmedUser)),
+                                                        );
                                                     } catch (_e) {
                                                         setOriginalUser(confirmedUser);
                                                     }
@@ -247,7 +259,13 @@ function CustomerProfilePage() {
                                                 setOriginalUser({ ...(originalUser || {}), ...body });
                                             }
                                             setNotif({ open: true, type: 'success', title: 'Thành công', message: 'Cập nhật thông tin thành công', duration: 2500 });
-                                            setDisplayName(body.fullName || displayName);
+                                            // Cập nhật ngay tên hiển thị trong localStorage & UI (ưu tiên fullName, fallback email)
+                                            setDisplayName(safeFullName);
+                                            try {
+                                                localStorage.setItem('displayName', JSON.stringify(safeFullName));
+                                            } catch (_e) {
+                                                // ignore
+                                            }
                                             window.dispatchEvent(new CustomEvent('displayNameUpdated'));
                                         } else {
                                             setNotif({ open: true, type: 'error', title: 'Thất bại', message: 'Cập nhật thông tin thất bại', duration: 3000 });

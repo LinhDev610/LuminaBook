@@ -17,11 +17,12 @@ public enum ErrorCode {
     INVALID_PASSWORD(1003, "INVALID_PASSWORD", HttpStatus.BAD_REQUEST),
     USER_NOT_EXISTED(1004, "User không tồn tại", HttpStatus.NOT_FOUND),
     UNAUTHENTICATED(1005, "Unauthenticated", HttpStatus.UNAUTHORIZED),
-    UNAUTHORIZED(1006, "You do not have permission", HttpStatus.FORBIDDEN),
-    INVALID_DOB(1007, "Your age must be as least {min}", HttpStatus.BAD_REQUEST),
-    EMAIL_SEND_FAILED(1008, "Failed to send email", HttpStatus.INTERNAL_SERVER_ERROR),
-    INVALID_OTP(1009, "Mã OTP không đúng, yêu cầu nhập lại", HttpStatus.BAD_REQUEST),
-    TICKET_NOT_EXISTED(1010, "Ticket không tồn tại", HttpStatus.NOT_FOUND),
+    ACCOUNT_LOCKED(1006, "Tài khoản của bạn đã bị khóa. Vui lòng liên hệ hỗ trợ.", HttpStatus.UNAUTHORIZED),
+    UNAUTHORIZED(1007, "You do not have permission", HttpStatus.FORBIDDEN),
+    INVALID_DOB(1008, "Your age must be as least {min}", HttpStatus.BAD_REQUEST),
+    EMAIL_SEND_FAILED(1009, "Failed to send email", HttpStatus.INTERNAL_SERVER_ERROR),
+    INVALID_OTP(1010, "Mã OTP không đúng, yêu cầu nhập lại", HttpStatus.BAD_REQUEST),
+    TICKET_NOT_EXISTED(1011, "Ticket không tồn tại", HttpStatus.NOT_FOUND),
 
     // Promotion
     PROMOTION_NOT_EXISTED(2001, "Khuyến mãi không tồn tại", HttpStatus.NOT_FOUND),

@@ -127,10 +127,17 @@ async function apiRequest(endpoint, options = {}) {
         if (resp.status === 401 && !skipAuthCheck && tokenToUse) {
             const errorData = await resp.json().catch(() => ({}));
             const errorMessage = errorData?.message || errorData?.error || 'Token invalid';
+            const errorCode = errorData?.code;
 
-            // Check if it's a token validation error
-            if (errorMessage.includes('Token invalid') || errorMessage.includes('expired') || errorMessage.includes('Unauthorized')) {
-                console.warn('Token expired or invalid. Auto-logging out...');
+            // Check if it's a token validation error hoặc tài khoản bị khóa
+            if (
+                errorCode === 1005 || // UNAUTHENTICATED
+                errorMessage.includes('Token invalid') ||
+                errorMessage.includes('expired') ||
+                errorMessage.includes('Unauthorized') ||
+                errorMessage.includes('Unauthenticated')
+            ) {
+                console.warn('Token expired, invalid, or account is locked. Auto-logging out...');
                 clearTokensAndLogout();
 
                 // Return error response
@@ -138,11 +145,15 @@ async function apiRequest(endpoint, options = {}) {
                     ok: false,
                     status: 401,
                     data: {
-                        message: 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.',
-                        autoLoggedOut: true
-                    }
+                        message: 'Phiên đăng nhập đã hết hạn hoặc tài khoản đã bị khóa. Vui lòng đăng nhập lại.',
+                        autoLoggedOut: true,
+                        code: errorCode,
+                    },
                 };
             }
+
+            // Nếu 401 nhưng không phải lỗi token, trả data gốc cho FE xử lý
+            return { ok: false, status: resp.status, data: errorData };
         }
 
         const data = await resp.json().catch(() => ({}));
@@ -207,8 +218,14 @@ export async function getUserRole(apiBaseUrl, token) {
 
 // ========== AUTH API ==========
 export async function login(credentials) {
-    const { data, ok } = await apiRequest(auth.login, { method: 'POST', body: credentials });
-    return { ok, data: extractResult(data) };
+    const { data, ok, status } = await apiRequest(auth.login, { method: 'POST', body: credentials });
+    // Nếu ok = true → backend trả ApiResponse<AuthenticationResponse> với field result chứa token
+    // Trả về data đã extract để FE dùng trực tiếp loginData.token
+    if (ok) {
+        return { ok, status, data: extractResult(data) };
+    }
+    // Nếu lỗi → giữ nguyên cấu trúc để FE đọc code/message
+    return { ok, status, data };
 }
 
 export async function register(userData) {
@@ -611,6 +628,15 @@ export async function replyToReview(reviewId, replyData, token = null) {
     const { data, ok, status } = await apiRequest(`/reviews/${reviewId}/reply`, {
         method: 'POST',
         body: replyData,
+        token,
+    });
+    return { ok, status, data: extractResult(data) };
+}
+
+// Xóa đánh giá theo ID (dùng cho trang Admin ReviewAndComment)
+export async function deleteReview(reviewId, token = null) {
+    const { data, ok, status } = await apiRequest(`/reviews/${reviewId}`, {
+        method: 'DELETE',
         token,
     });
     return { ok, status, data: extractResult(data) };

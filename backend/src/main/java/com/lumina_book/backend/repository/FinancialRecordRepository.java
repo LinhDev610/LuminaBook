@@ -35,4 +35,7 @@ public interface FinancialRecordRepository extends JpaRepository<FinancialRecord
             @Param("type") FinancialRecordType type,
             @Param("start") LocalDateTime start,
             @Param("end") LocalDateTime end);
+
+    // Lấy tất cả bản ghi tài chính trong khoảng thời gian để tổng hợp thu/chi/lợi nhuận ở service
+    List<FinancialRecord> findByOccurredAtBetween(LocalDateTime start, LocalDateTime end);
 }

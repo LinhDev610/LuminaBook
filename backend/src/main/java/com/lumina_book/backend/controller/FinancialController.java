@@ -10,6 +10,7 @@ import com.lumina_book.backend.dto.request.ApiResponse;
 import com.lumina_book.backend.dto.response.PaymentRevenue;
 import com.lumina_book.backend.dto.response.ProductRevenue;
 import com.lumina_book.backend.dto.response.RevenuePoint;
+import com.lumina_book.backend.dto.response.FinancialSummary;
 import com.lumina_book.backend.service.FinancialService;
 
 import lombok.RequiredArgsConstructor;
@@ -44,6 +45,14 @@ public class FinancialController {
             @RequestParam LocalDate start, @RequestParam LocalDate end) {
         return ApiResponse.<List<PaymentRevenue>>builder()
                 .result(financialService.revenueByPayment(start, end))
+                .build();
+    }
+
+    @GetMapping("/summary")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<FinancialSummary> summary(@RequestParam LocalDate start, @RequestParam LocalDate end) {
+        return ApiResponse.<FinancialSummary>builder()
+                .result(financialService.summary(start, end))
                 .build();
     }
 }

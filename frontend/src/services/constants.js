@@ -100,6 +100,12 @@ export const API_ROUTES = {
         delete: (notificationId) => `/notifications/${notificationId}`,
         deleteAllRead: '/notifications/delete-all-read',
     },
+    financial: {
+        revenueByDay: (start, end) => `/api/financial/revenue/day?start=${start}&end=${end}`,
+        revenueByProduct: (start, end) => `/api/financial/revenue/product?start=${start}&end=${end}`,
+        revenueByPayment: (start, end) => `/api/financial/revenue/payment?start=${start}&end=${end}`,
+        summary: (start, end) => `/api/financial/summary?start=${start}&end=${end}`,
+    },
     orders: {
         root: '/orders',
         checkout: '/orders/checkout',

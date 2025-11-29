@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.lumina_book.backend.dto.response.PaymentRevenue;
 import com.lumina_book.backend.dto.response.ProductRevenue;
 import com.lumina_book.backend.dto.response.RevenuePoint;
+import com.lumina_book.backend.dto.response.FinancialSummary;
 import com.lumina_book.backend.entity.FinancialRecord;
 import com.lumina_book.backend.entity.Order;
 import com.lumina_book.backend.entity.Product;
@@ -64,5 +65,27 @@ public class FinancialService {
         return financialRecordRepository.revenueByPayment(FinancialRecordType.ORDER_PAYMENT, s, e).stream()
                 .map(r -> new PaymentRevenue((PaymentMethod) r[0], ((Number) r[1]).doubleValue()))
                 .toList();
+    }
+
+    public FinancialSummary summary(LocalDate start, LocalDate end) {
+        LocalDateTime s = start.atStartOfDay();
+        LocalDateTime e = end.atTime(LocalTime.MAX);
+        List<FinancialRecord> records = financialRecordRepository.findByOccurredAtBetween(s, e);
+
+        double income = records.stream()
+                .mapToDouble(fr -> fr.getAmount() != null && fr.getAmount() > 0 ? fr.getAmount() : 0.0)
+                .sum();
+
+        double expense = records.stream()
+                .mapToDouble(fr -> fr.getAmount() != null && fr.getAmount() < 0 ? -fr.getAmount() : 0.0)
+                .sum();
+
+        double profit = income - expense;
+
+        return FinancialSummary.builder()
+                .totalIncome(income)
+                .totalExpense(expense)
+                .profit(profit)
+                .build();
     }
 }

@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import classNames from 'classnames/bind';
 import styles from './Footer.module.scss';
 import iconYtb from '../../../assets/icons/icon_ytb.png';
@@ -9,6 +9,14 @@ import iconGg from '../../../assets/icons/icon_gg.png';
 const cx = classNames.bind(styles);
 
 function Footer() {
+    const navigate = useNavigate();
+
+    const handleNavigateAndScrollTop = (to) => {
+        navigate(to);
+        // Cuộn lên đầu trang sau khi chuyển route
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
     return (
         <footer>
             <div className={cx('account-footer')}>
@@ -28,20 +36,60 @@ function Footer() {
 
                 <div className={cx('footer-col')}>
                 <h4>Danh mục sách</h4>
-                <Link to="#">Sách giáo dục</Link>
-                <Link to="#">Sách văn học</Link>
-                <Link to="#">Sách kỹ năng sống</Link>
-                <Link to="#">Sách thiếu nhi</Link>
-                <Link to="#">Sách Quản lý - Kinh doanh</Link>
+                <button type="button" className={cx('footer-link-btn')} onClick={() => handleNavigateAndScrollTop('/')}>
+                    Sách giáo dục
+                </button>
+                <button type="button" className={cx('footer-link-btn')} onClick={() => handleNavigateAndScrollTop('/')}>
+                    Sách văn học
+                </button>
+                <button type="button" className={cx('footer-link-btn')} onClick={() => handleNavigateAndScrollTop('/')}>
+                    Sách kỹ năng sống
+                </button>
+                <button type="button" className={cx('footer-link-btn')} onClick={() => handleNavigateAndScrollTop('/')}>
+                    Sách thiếu nhi
+                </button>
+                <button type="button" className={cx('footer-link-btn')} onClick={() => handleNavigateAndScrollTop('/')}>
+                    Sách Quản lý - Kinh doanh
+                </button>
                 </div>
 
                 <div className={cx('footer-col')}>
                 <h4>Hỗ trợ khách hàng</h4>
-                <Link to="/support/user">Hỗ trợ khách hàng</Link>
-                <Link to="/support/shopping-guide">Hướng dẫn mua hàng</Link>
-                <Link to="/support/payment-policy">Chính sách thanh toán</Link>
-                <Link to="/support/shipping-policy">Chính sách vận chuyển</Link>
-                <Link to="/support/return-policy">Chính sách đổi trả</Link>
+                <button
+                    type="button"
+                    className={cx('footer-link-btn')}
+                    onClick={() => handleNavigateAndScrollTop('/support/user')}
+                >
+                    Hỗ trợ khách hàng
+                </button>
+                <button
+                    type="button"
+                    className={cx('footer-link-btn')}
+                    onClick={() => handleNavigateAndScrollTop('/support/shopping-guide')}
+                >
+                    Hướng dẫn mua hàng
+                </button>
+                <button
+                    type="button"
+                    className={cx('footer-link-btn')}
+                    onClick={() => handleNavigateAndScrollTop('/support/payment-policy')}
+                >
+                    Chính sách thanh toán
+                </button>
+                <button
+                    type="button"
+                    className={cx('footer-link-btn')}
+                    onClick={() => handleNavigateAndScrollTop('/support/shipping-policy')}
+                >
+                    Chính sách vận chuyển
+                </button>
+                <button
+                    type="button"
+                    className={cx('footer-link-btn')}
+                    onClick={() => handleNavigateAndScrollTop('/support/return-policy')}
+                >
+                    Chính sách đổi trả
+                </button>
                 </div>
             </div>
             

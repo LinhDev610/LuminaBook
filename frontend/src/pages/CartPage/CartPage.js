@@ -216,6 +216,13 @@ export default function CartPage() {
                 if (status === 401) {
                     showError('Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại');
                     openLoginModal();
+                } else if (status === 400) {
+                    const errorMessage = data?.message || data?.error || '';
+                    if (errorMessage.includes('Hết hàng')) {
+                        showError('Số lượng vượt quá tồn kho hiện có');
+                    } else {
+                        showError('Không thể cập nhật số lượng');
+                    }
                 } else {
                     showError('Không thể cập nhật số lượng');
                 }

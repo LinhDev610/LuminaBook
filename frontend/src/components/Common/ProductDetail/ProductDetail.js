@@ -320,6 +320,13 @@ const ProductDetail = ({ productId }) => {
             return;
         }
 
+        // Giới hạn theo tồn kho
+        if (availableStock && quantity > availableStock) {
+            showError('Số lượng vượt quá tồn kho hiện có');
+            setQuantity(availableStock);
+            return;
+        }
+
         try {
             const token = getStoredToken('token');
 
@@ -342,7 +349,11 @@ const ProductDetail = ({ productId }) => {
                     openLoginWithRedirect();
                 } else if (status === 400 || status === 404) {
                     const errorMessage = data?.message || data?.error || 'Không thể thêm sản phẩm vào giỏ hàng';
-                    showError(errorMessage);
+                    if (errorMessage.includes('Hết hàng')) {
+                        showError('Số lượng vượt quá tồn kho hiện có');
+                    } else {
+                        showError(errorMessage);
+                    }
                 } else {
                     const errorMessage = data?.message || data?.error || `Có lỗi xảy ra khi thêm sản phẩm vào giỏ hàng (Lỗi: ${status})`;
                     console.error('Add to cart error:', { status, data });
@@ -387,6 +398,13 @@ const ProductDetail = ({ productId }) => {
         // Kiểm tra productId
         if (!productId) {
             showError('Không tìm thấy thông tin sản phẩm');
+            return;
+        }
+
+        // Giới hạn theo tồn kho
+        if (availableStock && quantity > availableStock) {
+            showError('Số lượng vượt quá tồn kho hiện có');
+            setQuantity(availableStock);
             return;
         }
 

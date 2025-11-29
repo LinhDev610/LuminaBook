@@ -77,6 +77,12 @@ public class CartService {
                 .findById(productId)
                 .orElseThrow(() -> new AppException(ErrorCode.PRODUCT_NOT_EXISTED));
 
+        // Kiểm tra tồn kho thực tế
+        Integer stockQuantity = product.getInventory() != null ? product.getInventory().getStockQuantity() : null;
+        if (stockQuantity != null && stockQuantity <= 0) {
+            throw new AppException(ErrorCode.OUT_OF_STOCK);
+        }
+
         CartItem cartItem = cartItemRepository
                 .findByCartIdAndProductId(cart.getId(), productId)
                 .orElse(CartItem.builder()
@@ -86,7 +92,15 @@ public class CartService {
                         .quantity(0)
                         .build());
 
-        cartItem.setQuantity(cartItem.getQuantity() + quantity);
+        int currentQty = cartItem.getQuantity() == null ? 0 : cartItem.getQuantity();
+        int newQty = currentQty + quantity;
+
+        // Nếu có tồn kho thì giới hạn số lượng không vượt quá stock
+        if (stockQuantity != null && newQty > stockQuantity) {
+            throw new AppException(ErrorCode.OUT_OF_STOCK);
+        }
+
+        cartItem.setQuantity(newQty);
         double finalPrice = cartItem.getQuantity() * cartItem.getUnitPrice();
         cartItem.setFinalPrice(finalPrice);
 
@@ -280,6 +294,15 @@ public class CartService {
         // Kiểm tra cartItem thuộc về cart của user hiện tại
         if (!cartItem.getCart().getId().equals(cart.getId())) {
             throw new AppException(ErrorCode.CART_ITEM_NOT_EXISTED);
+        }
+
+        // Kiểm tra tồn kho: không cho vượt quá stockQuantity nếu có
+        Product product = cartItem.getProduct();
+        if (product != null && product.getInventory() != null) {
+            Integer stockQuantity = product.getInventory().getStockQuantity();
+            if (stockQuantity != null && quantity > stockQuantity) {
+                throw new AppException(ErrorCode.OUT_OF_STOCK);
+            }
         }
 
         cartItem.setQuantity(quantity);

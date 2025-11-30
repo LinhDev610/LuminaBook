@@ -567,19 +567,21 @@ function OrderDetailPage() {
                     </div>
                 )}
 
-                {/* Tabs */}
-                <div className={cx('tabs-section')}>
-                    <div className={cx('tabs')}>
-                        {TABS.map((tab) => (
-                            <button
-                                key={tab.key}
-                                className={cx('tab', { active: statusKey === tab.key })}
-                            >
-                                {tab.label}
-                            </button>
-                        ))}
+                {/* Tabs - Ẩn khi đơn hàng ở trạng thái hoàn tiền/trả hàng */}
+                {!isReturnFlow && (
+                    <div className={cx('tabs-section')}>
+                        <div className={cx('tabs')}>
+                            {TABS.map((tab) => (
+                                <button
+                                    key={tab.key}
+                                    className={cx('tab', { active: statusKey === tab.key })}
+                                >
+                                    {tab.label}
+                                </button>
+                            ))}
+                        </div>
                     </div>
-                </div>
+                )}
 
                 {/* Refund Progress */}
                 {isReturnFlow && (

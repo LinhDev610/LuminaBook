@@ -359,8 +359,14 @@ export async function login(credentials) {
 }
 
 export async function register(userData) {
-    const { data, ok } = await apiRequest(auth.register, { method: 'POST', body: userData });
-    return { ok, data: extractResult(data) };
+    const { data, ok, status } = await apiRequest(auth.register, { method: 'POST', body: userData });
+    // Nếu ok = true → backend trả ApiResponse<UserResponse> với field result chứa user data
+    // Trả về data đã extract để FE dùng trực tiếp
+    if (ok) {
+        return { ok, status, data: extractResult(data) };
+    }
+    // Nếu lỗi → giữ nguyên cấu trúc để FE đọc code/message
+    return { ok, status, data };
 }
 
 export async function refreshToken(token = null) {

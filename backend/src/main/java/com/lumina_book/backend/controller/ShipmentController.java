@@ -129,4 +129,14 @@ public class ShipmentController {
                 .result(shipmentService.getShipmentByOrderCode(orderCode))
                 .build();
     }
+
+    // Đồng bộ trạng thái đơn hàng từ GHN API (manual sync).
+    @PostMapping("/sync-status/{orderId}")
+    public ApiResponse<String> syncOrderStatusFromGhn(@PathVariable String orderId) {
+        shipmentService.syncOrderStatusFromGhn(orderId);
+        return ApiResponse.<String>builder()
+                .result("Đã đồng bộ trạng thái từ GHN thành công")
+                .message("Đã cập nhật trạng thái đơn hàng từ GHN")
+                .build();
+    }
 }

@@ -1,6 +1,8 @@
 import { Link, useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 import classNames from 'classnames/bind';
 import styles from './Footer.module.scss';
+import { getRootCategories } from '../../../services';
 import iconYtb from '../../../assets/icons/icon_ytb.png';
 import iconIns from '../../../assets/icons/icon_ins.png';
 import iconFb from '../../../assets/icons/icon_fb.png';
@@ -10,11 +12,50 @@ const cx = classNames.bind(styles);
 
 function Footer() {
     const navigate = useNavigate();
+    const [categories, setCategories] = useState([]);
+    const [categoriesLoading, setCategoriesLoading] = useState(false);
+
+    // Fetch root categories từ API (chỉ danh mục chính, không có danh mục con)
+    useEffect(() => {
+        let ignore = false;
+        const fetchCategories = async () => {
+            try {
+                setCategoriesLoading(true);
+                const data = await getRootCategories().catch(() => []);
+                if (!ignore) {
+                    const normalized = Array.isArray(data)
+                        ? data.filter((item) => item && item.name && item.id)
+                        : [];
+                    // Giới hạn số lượng categories hiển thị (tối đa 10)
+                    setCategories(normalized.slice(0, 10));
+                }
+            } catch (error) {
+                if (!ignore) {
+                    setCategories([]);
+                }
+            } finally {
+                if (!ignore) {
+                    setCategoriesLoading(false);
+                }
+            }
+        };
+
+        fetchCategories();
+        return () => {
+            ignore = true;
+        };
+    }, []);
 
     const handleNavigateAndScrollTop = (to) => {
         navigate(to);
         // Cuộn lên đầu trang sau khi chuyển route
         window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    const handleCategoryClick = (categoryId) => {
+        if (categoryId) {
+            handleNavigateAndScrollTop(`/category/${categoryId}`);
+        }
     };
 
     return (
@@ -36,21 +77,22 @@ function Footer() {
 
                 <div className={cx('footer-col')}>
                 <h4>Danh mục sách</h4>
-                <button type="button" className={cx('footer-link-btn')} onClick={() => handleNavigateAndScrollTop('/')}>
-                    Sách giáo dục
-                </button>
-                <button type="button" className={cx('footer-link-btn')} onClick={() => handleNavigateAndScrollTop('/')}>
-                    Sách văn học
-                </button>
-                <button type="button" className={cx('footer-link-btn')} onClick={() => handleNavigateAndScrollTop('/')}>
-                    Sách kỹ năng sống
-                </button>
-                <button type="button" className={cx('footer-link-btn')} onClick={() => handleNavigateAndScrollTop('/')}>
-                    Sách thiếu nhi
-                </button>
-                <button type="button" className={cx('footer-link-btn')} onClick={() => handleNavigateAndScrollTop('/')}>
-                    Sách Quản lý - Kinh doanh
-                </button>
+                {categoriesLoading ? (
+                    <div>Đang tải...</div>
+                ) : categories.length > 0 ? (
+                    categories.map((category) => (
+                        <button
+                            key={category.id}
+                            type="button"
+                            className={cx('footer-link-btn')}
+                            onClick={() => handleCategoryClick(category.id)}
+                        >
+                            {category.name}
+                        </button>
+                    ))
+                ) : (
+                    <div>Không có danh mục</div>
+                )}
                 </div>
 
                 <div className={cx('footer-col')}>

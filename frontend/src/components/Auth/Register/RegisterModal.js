@@ -135,18 +135,37 @@ export default function RegisterModal({ open = false, onClose }) {
                 password,
                 fullName: (fullName || '').trim(),
             };
-            const { ok, data: registerData } = await register(payload);
-            if (ok && (registerData || registerData?.code === 1000)) {
+            const { ok, data: registerData, status } = await register(payload);
+            // Backend trả về ApiResponse<UserResponse> với code 1000 (default) khi thành công
+            // Nếu ok = true: extractResult() đã lấy result (UserResponse object), code không còn
+            // Nếu ok = false: giữ nguyên cấu trúc ApiResponse với code/message
+            // Kiểm tra: ok = true và có registerData (UserResponse object có id/email/fullName/username)
+            const hasSuccessCode = registerData?.code === 1000 || registerData?.code === 200;
+            const hasValidUserData = registerData && (registerData.id || registerData.email || registerData.fullName || registerData.username);
+            // Nếu ok = true và có user data hợp lệ thì thành công
+            const isSuccess = ok && hasValidUserData;
+            
+            if (isSuccess) {
                 // Đăng ký thành công: không tự đăng nhập
-                // Đóng modal/ trang đăng ký và chuyển sang màn đăng nhập
-                onClose?.();
-                // Nếu đang ở dạng modal (dùng trong AuthModals) → mở modal đăng nhập
-                if (open !== undefined) {
-                    switchToLogin();
-                } else {
-                    // Standalone page → điều hướng sang trang đăng nhập
-                    navigate('/login', { replace: true });
-                }
+                // Clear verification data (giống ForgotPasswordModal)
+                localStorage.removeItem('verifiedEmail');
+                localStorage.removeItem('emailVerified');
+                localStorage.removeItem('verifiedOtp');
+                
+                // Reset form state (giống ForgotPasswordModal)
+                setRegisterStep(1);
+                setEmail('');
+                setFullName('');
+                setPassword('');
+                setConfirm('');
+                setAgree(false);
+                setShow1(false);
+                setShow2(false);
+                
+                // Chuyển về modal đăng nhập (giống ForgotPasswordModal)
+                // switchToLogin() chỉ chuyển step, modal vẫn mở
+                switchToLogin();
+                // KHÔNG gọi onClose() - để modal vẫn mở và hiển thị form đăng nhập
             } else {
                 // Handle backend validation errors
                 const code = registerData?.code;

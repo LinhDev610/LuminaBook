@@ -211,17 +211,26 @@ public class ShipmentService {
             }
 
             OrderStatus currentStatus = order.getStatus();
-            if (currentStatus == OrderStatus.DELIVERED || 
-                currentStatus == OrderStatus.CANCELLED ||
+            // Cho phép sync từ GHN ngay cả khi đã DELIVERED để cập nhật trạng thái mới nhất từ GHN
+            // Chỉ skip nếu đã ở các trạng thái cuối cùng không thể thay đổi
+            if (currentStatus == OrderStatus.CANCELLED ||
                 currentStatus == OrderStatus.RETURN_REQUESTED ||
                 currentStatus == OrderStatus.REFUNDED) {
                 return;
             }
 
             // Gọi GHN API để lấy trạng thái mới nhất
-            GhnOrderDetailResponse ghnDetail = ghnService.getOrderDetail(shipment.getOrderCode());
+            GhnOrderDetailResponse ghnDetail;
+            try {
+                ghnDetail = ghnService.getOrderDetail(shipment.getOrderCode());
+            } catch (Exception e) {
+                // Nếu GHN API lỗi, chỉ log warning và return (không throw exception để không ảnh hưởng đến các thao tác khác)
+                log.warn("Không thể lấy trạng thái từ GHN cho order: {} - Error: {}", orderId, e.getMessage());
+                return;
+            }
+            
             if (ghnDetail == null || ghnDetail.getStatus() == null) {
-                log.warn("Không thể lấy trạng thái từ GHN cho order: {}", orderId);
+                log.warn("Không thể lấy trạng thái từ GHN cho order: {} - Response null hoặc không có status", orderId);
                 return;
             }
 

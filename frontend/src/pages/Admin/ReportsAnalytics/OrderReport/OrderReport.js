@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import classNames from 'classnames/bind';
 import styles from './OrderReport.module.scss';
-import { getApiBaseUrl, getStoredToken, API_ROUTES, formatCurrency } from '../../../../services';
+import { getApiBaseUrl, getStoredToken, API_ROUTES, formatCurrency, getDateRange, formatNumber } from '../../../../services';
 
 const cx = classNames.bind(styles);
 const { orders } = API_ROUTES;
@@ -13,68 +13,6 @@ function OrderReport({ timeMode = 'day', customDateRange = null }) {
     const [pageSize] = useState(20); // Số đơn hàng mỗi trang
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-
-    // Tính date range dựa trên timeMode
-    const getDateRange = () => {
-        // Nếu là custom, sử dụng date range từ props
-        if (timeMode === 'custom' && customDateRange) {
-            if (!customDateRange.start || !customDateRange.end) {
-                // Nếu chưa chọn đủ, trả về hôm nay
-                const today = new Date();
-                const todayStr = today.toISOString().split('T')[0];
-                return { start: todayStr, end: todayStr };
-            }
-            return {
-                start: customDateRange.start,
-                end: customDateRange.end,
-            };
-        }
-
-        const today = new Date();
-        const end = new Date(today);
-        const start = new Date(today);
-
-        switch (timeMode) {
-            case 'day':
-                // Chỉ hôm nay
-                start.setHours(0, 0, 0, 0);
-                end.setHours(23, 59, 59, 999);
-                break;
-            case 'week':
-                // Tuần này (từ thứ 2 đến Chủ nhật)
-                const dayOfWeek = today.getDay(); // 0 = Chủ nhật, 1 = Thứ 2, ...
-                const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-                start.setDate(today.getDate() + mondayOffset);
-                start.setHours(0, 0, 0, 0);
-                end.setDate(start.getDate() + 6);
-                end.setHours(23, 59, 59, 999);
-                break;
-            case 'month':
-                // Cả tháng hiện tại (từ ngày 1 đến ngày cuối tháng)
-                start.setDate(1);
-                start.setHours(0, 0, 0, 0);
-                end.setMonth(today.getMonth() + 1, 0);
-                end.setHours(23, 59, 59, 999);
-                break;
-            case 'year':
-                // Cả năm hiện tại (từ 1/1 đến 31/12)
-                start.setMonth(0, 1);
-                start.setHours(0, 0, 0, 0);
-                end.setMonth(11, 31);
-                end.setHours(23, 59, 59, 999);
-                break;
-            default:
-                // Mặc định: hôm nay
-                start.setHours(0, 0, 0, 0);
-                end.setHours(23, 59, 59, 999);
-                break;
-        }
-
-        return {
-            start: start.toISOString().split('T')[0],
-            end: end.toISOString().split('T')[0],
-        };
-    };
 
     useEffect(() => {
         // Reset về trang đầu khi timeMode hoặc customDateRange thay đổi
@@ -89,7 +27,7 @@ function OrderReport({ timeMode = 'day', customDateRange = null }) {
             try {
                 const apiBaseUrl = getApiBaseUrl();
                 const token = getStoredToken();
-                const { start, end } = getDateRange();
+                const { start, end } = getDateRange(timeMode, customDateRange);
 
                 // Fetch order statistics
                 const statisticsResponse = await fetch(
@@ -168,12 +106,6 @@ function OrderReport({ timeMode = 'day', customDateRange = null }) {
             month: '2-digit',
             year: 'numeric',
         });
-    };
-
-    // Format number
-    const formatNumber = (num) => {
-        if (num === null || num === undefined) return '0';
-        return new Intl.NumberFormat('vi-VN').format(num);
     };
 
     // Pagination handlers

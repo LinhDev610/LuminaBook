@@ -102,7 +102,6 @@ export const API_ROUTES = {
     },
     financial: {
         revenueByDay: (start, end, timeMode = 'day') => `/api/financial/revenue/day?start=${start}&end=${end}&timeMode=${timeMode}`,
-        revenueByProduct: (start, end) => `/api/financial/revenue/product?start=${start}&end=${end}`,
         revenueByPayment: (start, end) => `/api/financial/revenue/payment?start=${start}&end=${end}`,
         revenueSummary: (start, end) => `/api/financial/revenue/summary?start=${start}&end=${end}`,
         summary: (start, end) => `/api/financial/summary?start=${start}&end=${end}`,

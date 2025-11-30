@@ -50,6 +50,26 @@ public class FinancialService {
         };
     }
 
+    // Lọc các đơn hàng đã thanh toán thành công trong khoảng thời gian
+    private List<Order> getPaidOrdersInRange(LocalDateTime start, LocalDateTime end) {
+        List<Order> allOrders = orderRepository.findByOrderDateTimeBetween(start, end);
+        return allOrders.stream()
+                .filter(order -> order.getPaymentStatus() == PaymentStatus.PAID
+                        && Boolean.TRUE.equals(order.getPaid())
+                        && order.getItems() != null
+                        && !order.getItems().isEmpty())
+                .toList();
+    }
+
+    // Tính tổng doanh thu từ danh sách đơn hàng đã thanh toán
+    private double calculateTotalRevenue(List<Order> paidOrders) {
+        return paidOrders.stream()
+                .flatMap(order -> order.getItems().stream())
+                .filter(item -> item.getFinalPrice() != null && item.getFinalPrice() > 0)
+                .mapToDouble(item -> item.getFinalPrice())
+                .sum();
+    }
+
     // Kiểm tra xem đã ghi nhận doanh thu cho order này chưa
     public boolean hasRecordedRevenue(String orderId) {
         return financialRecordRepository.existsByOrderIdAndRecordType(
@@ -239,28 +259,15 @@ public class FinancialService {
                 .toList();
     }
 
-    // Tổng hợp báo cáo doanh thu: tổng doanh thu, tổng đơn hàng, giá trị trung bình
     // Tổng doanh thu = tổng giá trị các sách bán ra (OrderItem.finalPrice), không bao gồm shipping fee
     public RevenueSummary revenueSummary(LocalDate start, LocalDate end) {
         LocalDateTime[] range = toDateTimeRange(start, end);
         
-        // Lấy tất cả các đơn hàng trong khoảng thời gian (đã load items qua EntityGraph)
-        List<Order> allOrders = orderRepository.findByOrderDateTimeBetween(range[0], range[1]);
-        
         // Lọc các đơn hàng đã thanh toán thành công
-        List<Order> paidOrders = allOrders.stream()
-                .filter(order -> order.getPaymentStatus() == PaymentStatus.PAID
-                        && Boolean.TRUE.equals(order.getPaid())
-                        && order.getItems() != null
-                        && !order.getItems().isEmpty())
-                .toList();
+        List<Order> paidOrders = getPaidOrdersInRange(range[0], range[1]);
 
         // Tính tổng doanh thu = sum của tất cả OrderItem.finalPrice (chỉ giá sách, không có shipping fee)
-        double totalRevenue = paidOrders.stream()
-                .flatMap(order -> order.getItems().stream())
-                .filter(item -> item.getFinalPrice() != null && item.getFinalPrice() > 0)
-                .mapToDouble(item -> item.getFinalPrice())
-                .sum();
+        double totalRevenue = calculateTotalRevenue(paidOrders);
 
         // Tổng đơn hàng
         long totalOrders = paidOrders.size();
@@ -275,29 +282,14 @@ public class FinancialService {
                 .build();
     }
 
-    // Tổng hợp tài chính: thu, chi, lợi nhuận
-    // Tổng thu = tổng giá trị các sách bán ra (OrderItem.finalPrice), không bao gồm shipping fee
-    // Lợi nhuận = Tổng thu - Giá vốn hàng bán - Tổng chi (hoàn tiền, bồi thường)
     public FinancialSummary summary(LocalDate start, LocalDate end) {
         LocalDateTime[] range = toDateTimeRange(start, end);
         
-        // Lấy tất cả các đơn hàng trong khoảng thời gian 
-        List<Order> allOrders = orderRepository.findByOrderDateTimeBetween(range[0], range[1]);
-        
         // Lọc các đơn hàng đã thanh toán thành công
-        List<Order> paidOrders = allOrders.stream()
-                .filter(order -> order.getPaymentStatus() == PaymentStatus.PAID
-                        && Boolean.TRUE.equals(order.getPaid())
-                        && order.getItems() != null
-                        && !order.getItems().isEmpty())
-                .toList();
+        List<Order> paidOrders = getPaidOrdersInRange(range[0], range[1]);
 
         // Tổng thu = sum của tất cả OrderItem.finalPrice (chỉ giá sách, không có shipping fee)
-        double income = paidOrders.stream()
-                .flatMap(order -> order.getItems().stream())
-                .filter(item -> item.getFinalPrice() != null && item.getFinalPrice() > 0)
-                .mapToDouble(item -> item.getFinalPrice())
-                .sum();
+        double income = calculateTotalRevenue(paidOrders);
 
         // Giá vốn hàng bán = sum của (purchasePrice * quantity) cho tất cả OrderItem
         double costOfGoodsSold = paidOrders.stream()
@@ -335,7 +327,6 @@ public class FinancialService {
 
     /**
      * Lấy top sản phẩm bán chạy theo doanh thu trong khoảng thời gian.
-     * Chỉ tính các đơn hàng đã thanh toán thành công.
      * 
      * @param start Ngày bắt đầu
      * @param end Ngày kết thúc
@@ -345,19 +336,8 @@ public class FinancialService {
     public List<ProductRevenue> topProductsByRevenue(LocalDate start, LocalDate end, int limit) {
         LocalDateTime[] range = toDateTimeRange(start, end);
         
-        // Lấy tất cả các đơn hàng trong khoảng thời gian
-        List<Order> allOrders = orderRepository.findByOrderDateTimeBetween(range[0], range[1]);
-        
         // Lọc các đơn hàng đã thanh toán thành công
-        List<Order> paidOrders = allOrders.stream()
-                .filter(order -> {
-                    boolean isPaid = order.getPaymentStatus() == PaymentStatus.PAID
-                            && Boolean.TRUE.equals(order.getPaid())
-                            && order.getItems() != null
-                            && !order.getItems().isEmpty();
-                    return isPaid;
-                })
-                .toList();
+        List<Order> paidOrders = getPaidOrdersInRange(range[0], range[1]);
 
         if (paidOrders.isEmpty()) {
             log.debug("No paid orders found in date range");

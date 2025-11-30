@@ -1175,18 +1175,8 @@ public class OrderService {
     @Transactional(readOnly = true)
     @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
     public List<Order> getAllOrders() {
-        List<Order> orders = orderRepository.findAll();
-        // Đồng bộ trạng thái từ GHN cho các đơn có shipment
-        for (Order order : orders) {
-            if (order.getShipment() != null && order.getShipment().getOrderCode() != null) {
-                try {
-                    shipmentService.syncOrderStatusFromGhn(order.getId());
-                } catch (Exception e) {
-                    log.warn("Không thể đồng bộ trạng thái từ GHN cho order: {}", order.getId(), e);
-                }
-            }
-        }
-        // Reload để lấy status mới nhất
+        // Không sync GHN trong getAllOrders vì sẽ gây ra nhiều lần gọi không cần thiết
+        // Sync GHN chỉ nên được gọi khi cần thiết (ví dụ: khi xem chi tiết đơn hàng hoặc khi có webhook từ GHN)
         return orderRepository.findAll();
     }
 
@@ -1197,18 +1187,10 @@ public class OrderService {
         try {
             String email = SecurityUtil.getAuthentication().getName();
             List<Order> orders = orderRepository.findByUserEmail(email);
-            // Đồng bộ trạng thái từ GHN cho các đơn có shipment
-            for (Order order : orders) {
-                if (order.getShipment() != null && order.getShipment().getOrderCode() != null) {
-                    try {
-                        shipmentService.syncOrderStatusFromGhn(order.getId());
-                    } catch (Exception e) {
-                        log.warn("Không thể đồng bộ trạng thái từ GHN cho order: {}", order.getId(), e);
-                    }
-                }
-            }
-            // Reload để lấy status mới nhất
-            return orderRepository.findByUserEmail(email);
+            // Không sync GHN trong getMyOrders vì sẽ gây ra override status không mong muốn
+            // (ví dụ: đơn RETURN_CS_CONFIRMED có thể bị override thành DELIVERED từ GHN)
+            // Sync GHN chỉ nên được gọi khi cần thiết (ví dụ: khi xem chi tiết đơn hàng hoặc khi có webhook từ GHN)
+            return orders;
         } catch (Exception e) {
             log.error("Error fetching orders for user: {}", e.getMessage(), e);
             return new ArrayList<>();

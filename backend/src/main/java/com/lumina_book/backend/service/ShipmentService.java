@@ -211,11 +211,15 @@ public class ShipmentService {
             }
 
             OrderStatus currentStatus = order.getStatus();
-            // Cho phép sync từ GHN ngay cả khi đã DELIVERED để cập nhật trạng thái mới nhất từ GHN
-            // Chỉ skip nếu đã ở các trạng thái cuối cùng không thể thay đổi
+            // Không sync GHN nếu đơn đang trong luồng hoàn tiền/trả hàng
+            // (RETURN_REQUESTED, RETURN_CS_CONFIRMED, RETURN_STAFF_CONFIRMED, REFUNDED, RETURN_REJECTED)
+            // để tránh override status từ GHN (ví dụ: GHN có thể trả về DELIVERED nhưng đơn đang ở RETURN_CS_CONFIRMED)
             if (currentStatus == OrderStatus.CANCELLED ||
                 currentStatus == OrderStatus.RETURN_REQUESTED ||
-                currentStatus == OrderStatus.REFUNDED) {
+                currentStatus == OrderStatus.RETURN_CS_CONFIRMED ||
+                currentStatus == OrderStatus.RETURN_STAFF_CONFIRMED ||
+                currentStatus == OrderStatus.REFUNDED ||
+                currentStatus == OrderStatus.RETURN_REJECTED) {
                 return;
             }
 

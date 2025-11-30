@@ -77,16 +77,45 @@ public class ApiUtil {
                 ? requestSpec.bodyValue(payload)
                 : requestSpec;
 
-        GhnApiResponse<T> response = headersSpec
-                .retrieve()
-                .onStatus(HttpStatusCode::isError, clientResponse -> clientResponse.bodyToMono(String.class)
-                        .flatMap(body -> {
-                            return Mono.error(new AppException(ErrorCode.EXTERNAL_SERVICE_ERROR));
-                        }))
-                .bodyToMono(responseType)
-                .block();
+        try {
+            GhnApiResponse<T> response = headersSpec
+                    .retrieve()
+                    .onStatus(HttpStatusCode::isError, clientResponse -> {
+                        return clientResponse.bodyToMono(String.class)
+                                .flatMap(body -> {
+                                    // Log chi tiết lỗi từ GHN API
+                                    log.error("GHN API HTTP error {} - Response body: {}", clientResponse.statusCode(), body);
+                                    
+                                    // Thử parse response body để lấy error message từ GHN
+                                    String errorMessage = "Lỗi kết nối dịch vụ vận chuyển";
+                                    try {
+                                        GhnApiResponse<?> errorResponse = objectMapper.readValue(body, 
+                                                new com.fasterxml.jackson.core.type.TypeReference<GhnApiResponse<Object>>() {});
+                                        if (errorResponse != null && errorResponse.getMessage() != null && !errorResponse.getMessage().isEmpty()) {
+                                            errorMessage = errorResponse.getMessage();
+                                        }
+                                    } catch (Exception e) {
+                                        log.warn("Could not parse GHN error response: {}", e.getMessage());
+                                        // Nếu không parse được, dùng body trực tiếp nếu có (giới hạn độ dài)
+                                        if (body != null && !body.isEmpty() && body.length() < 500) {
+                                            errorMessage = "Lỗi từ GHN: " + body;
+                                        }
+                                    }
+                                    
+                                    return Mono.error(new AppException(ErrorCode.EXTERNAL_SERVICE_ERROR, errorMessage));
+                                });
+                    })
+                    .bodyToMono(responseType)
+                    .block();
 
-        return response;
+            return response;
+        } catch (AppException e) {
+            // Re-throw AppException để giữ nguyên error message
+            throw e;
+        } catch (Exception e) {
+            log.error("Unexpected error calling GHN API [{} {}]: {}", method, path, e.getMessage(), e);
+            throw new AppException(ErrorCode.EXTERNAL_SERVICE_ERROR, "Lỗi kết nối dịch vụ vận chuyển: " + e.getMessage());
+        }
     }
 
     private void configureGhnHeaders(HttpHeaders headers, String token, Integer shopId) {

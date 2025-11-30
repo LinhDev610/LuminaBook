@@ -44,6 +44,8 @@ export const AuthProvider = ({ children }) => {
 
     const switchToLogin = () => {
         setAuthStep('login');
+        // Đảm bảo modal vẫn mở khi chuyển sang login
+        setAuthModalOpen(true);
     };
 
     const switchToRegister = () => {

@@ -200,23 +200,15 @@ function RevenueReport({ timeMode = 'day', customDateRange = null }) {
                 revenueByHour.set(hour, 0);
             }
 
-            // Lấy ngày hôm nay (0:00:00)
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            const todayEnd = new Date(today);
-            todayEnd.setHours(23, 59, 59, 999);
-
-            // Map data từ API vào các giờ tương ứng, chỉ lấy dữ liệu của ngày hôm nay
+            // Map data từ API vào các giờ tương ứng
+            // Backend đã filter theo date range, nên chỉ cần map vào giờ
             revenueByDay.forEach(point => {
                 const dateStr = point.dateTime || point.date;
                 if (dateStr) {
                     const date = new Date(dateStr);
-                    // Chỉ xử lý dữ liệu của ngày hôm nay (từ 0:00 đến 23:59:59)
-                    if (date >= today && date <= todayEnd) {
-                        const hour = date.getHours();
-                        const currentRevenue = revenueByHour.get(hour) || 0;
-                        revenueByHour.set(hour, currentRevenue + (point.total || 0));
-                    }
+                    const hour = date.getHours();
+                    const currentRevenue = revenueByHour.get(hour) || 0;
+                    revenueByHour.set(hour, currentRevenue + (point.total || 0));
                 }
             });
 
@@ -312,29 +304,22 @@ function RevenueReport({ timeMode = 'day', customDateRange = null }) {
     const maxRevenue = useMemo(() => {
         if (!revenueByDay || revenueByDay.length === 0) return 0;
 
-        // Với day mode, tính max từ tất cả các giờ của ngày hôm nay
+        // Với day mode, tính max từ tất cả các giờ trong date range
         if (timeMode === 'day') {
             const revenueByHour = new Map();
             for (let hour = 0; hour < 24; hour++) {
                 revenueByHour.set(hour, 0);
             }
 
-            // Lấy ngày hôm nay (0:00:00)
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            const todayEnd = new Date(today);
-            todayEnd.setHours(23, 59, 59, 999);
-
+            // Map data từ API vào các giờ tương ứng
+            // Backend đã filter theo date range, nên chỉ cần map vào giờ
             revenueByDay.forEach(point => {
                 const dateStr = point.dateTime || point.date;
                 if (dateStr) {
                     const date = new Date(dateStr);
-                    // Chỉ xử lý dữ liệu của ngày hôm nay
-                    if (date >= today && date <= todayEnd) {
-                        const hour = date.getHours();
-                        const currentRevenue = revenueByHour.get(hour) || 0;
-                        revenueByHour.set(hour, currentRevenue + (point.total || 0));
-                    }
+                    const hour = date.getHours();
+                    const currentRevenue = revenueByHour.get(hour) || 0;
+                    revenueByHour.set(hour, currentRevenue + (point.total || 0));
                 }
             });
 

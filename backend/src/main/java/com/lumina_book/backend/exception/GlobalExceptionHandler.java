@@ -51,20 +51,25 @@ public class GlobalExceptionHandler {
             || exception instanceof NoHandlerFoundException) {
             return handleResourceNotFoundException(exception);
         }
-        log.error("Exception", exception);
+        log.error("Unhandled exception in request-return: {}", exception.getMessage(), exception);
         ApiResponse<?> apiResponse = ApiResponse.builder()
                 .code(ErrorCode.UNCATEGORIZED_EXCEPTION.getCode())
                 .message(ErrorCode.UNCATEGORIZED_EXCEPTION.getMessage())
                 .build();
-        return ResponseEntity.badRequest().body(apiResponse);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(apiResponse);
     }
 
     @ExceptionHandler(value = AppException.class)
     ResponseEntity<ApiResponse<?>> handlingAppException(AppException exception) {
         ErrorCode errorCode = exception.getErrorCode();
+        // Sử dụng custom message nếu có, nếu không thì dùng message từ ErrorCode
+        String message = exception.getMessage() != null && !exception.getMessage().isEmpty() 
+                ? exception.getMessage() 
+                : errorCode.getMessage();
+        log.error("AppException: code={}, message={}", errorCode.getCode(), message, exception);
         ApiResponse<?> apiResponse = ApiResponse.builder()
                 .code(errorCode.getCode())
-                .message(errorCode.getMessage())
+                .message(message)
                 .build();
         return ResponseEntity.status(errorCode.getStatusCode()).body(apiResponse);
     }

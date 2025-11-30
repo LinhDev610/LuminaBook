@@ -1,8 +1,11 @@
 package com.lumina_book.backend.repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -58,4 +61,36 @@ public interface OrderRepository extends JpaRepository<Order, String> {
     List<Order> findPendingMomoOrdersByUserSince(
             @Param("email") String email,
             @Param("sinceTime") java.time.LocalDateTime sinceTime);
+    // Tìm các đơn hàng trong khoảng thời gian, sắp xếp theo orderDateTime DESC
+    @EntityGraph(attributePaths = {"items", "items.product", "items.product.defaultMedia", "items.product.mediaList", "user"})
+    @Query("SELECT o FROM Order o WHERE o.orderDateTime BETWEEN :start AND :end ORDER BY o.orderDateTime DESC")
+    List<Order> findByOrderDateTimeBetween(
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end);
+
+    // Tìm các đơn hàng trong khoảng thời gian với pagination, sắp xếp theo orderDateTime DESC
+    @EntityGraph(attributePaths = {"items", "items.product", "items.product.defaultMedia", "items.product.mediaList", "user"})
+    @Query("SELECT o FROM Order o WHERE o.orderDateTime BETWEEN :start AND :end ORDER BY o.orderDateTime DESC")
+    Page<Order> findByOrderDateTimeBetween(
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end,
+            Pageable pageable);
+
+    // Đếm số đơn hàng trong khoảng thời gian
+    @Query("SELECT COUNT(o) FROM Order o WHERE o.orderDateTime BETWEEN :start AND :end")
+    Long countByOrderDateTimeBetween(
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end);
+
+    // Đếm số đơn hàng bị hủy trong khoảng thời gian
+    @Query("SELECT COUNT(o) FROM Order o WHERE o.orderDateTime BETWEEN :start AND :end AND o.status = 'CANCELLED'")
+    Long countCancelledOrdersByOrderDateTimeBetween(
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end);
+
+    // Đếm số đơn hàng đã hoàn tiền trong khoảng thời gian
+    @Query("SELECT COUNT(o) FROM Order o WHERE o.orderDateTime BETWEEN :start AND :end AND o.status = 'REFUNDED'")
+    Long countRefundedOrdersByOrderDateTimeBetween(
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end);
 }

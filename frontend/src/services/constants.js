@@ -100,6 +100,13 @@ export const API_ROUTES = {
         delete: (notificationId) => `/notifications/${notificationId}`,
         deleteAllRead: '/notifications/delete-all-read',
     },
+    financial: {
+        revenueByDay: (start, end, timeMode = 'day') => `/api/financial/revenue/day?start=${start}&end=${end}&timeMode=${timeMode}`,
+        revenueByPayment: (start, end) => `/api/financial/revenue/payment?start=${start}&end=${end}`,
+        revenueSummary: (start, end) => `/api/financial/revenue/summary?start=${start}&end=${end}`,
+        summary: (start, end) => `/api/financial/summary?start=${start}&end=${end}`,
+        topProducts: (start, end, limit = 10) => `/api/financial/top-products?start=${start}&end=${end}&limit=${limit}`,
+    },
     orders: {
         root: '/orders',
         checkout: '/orders/checkout',
@@ -110,6 +117,8 @@ export const API_ROUTES = {
         cancel: (orderId) => `/orders/${orderId}/cancel`,
         resendEmail: (orderId) => `/orders/${orderId}/resend-email`,
         verifyPayment: (orderId) => `/orders/${orderId}/verify-payment`,
+        statistics: (start, end) => `/orders/statistics?start=${start}&end=${end}`,
+        recent: (start, end, page = 0, size = 20) => `/orders/recent?start=${start}&end=${end}&page=${page}&size=${size}`,
     },
     chat: {
         send: '/chat/send',

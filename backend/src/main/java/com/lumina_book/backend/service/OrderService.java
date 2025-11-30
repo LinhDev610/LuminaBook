@@ -11,6 +11,9 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,6 +23,9 @@ import com.lumina_book.backend.dto.request.CreateOrderRequest;
 import com.lumina_book.backend.dto.request.MomoIpnRequest;
 import com.lumina_book.backend.dto.request.ReturnProcessRequest;
 import com.lumina_book.backend.dto.response.CreateMomoResponse;
+import com.lumina_book.backend.dto.response.OrderStatistics;
+import com.lumina_book.backend.dto.response.OrderPageResponse;
+import com.lumina_book.backend.dto.response.OrderResponse;
 import com.lumina_book.backend.entity.Address;
 import com.lumina_book.backend.entity.Cart;
 import com.lumina_book.backend.entity.CartItem;
@@ -72,6 +78,7 @@ public class OrderService {
     ShipmentService shipmentService;
     NotificationService notificationService;
     VoucherRepository voucherRepository;
+    FinancialService financialService;
 
     ObjectMapper objectMapper = new ObjectMapper();
 
@@ -360,7 +367,7 @@ public class OrderService {
                         .shippingFee(pricing.shippingFee)
                         .totalAmount(pricing.orderTotal)
                         .status(OrderStatus.CREATED)
-                        .paymentMethod(PaymentMethod.MOMO)
+                        .paymentMethod(resolvePaymentMethod(request.getPaymentMethod()))
                         .paymentStatus(PaymentStatus.PAID)
                         .paid(true)
                         .cartItemIdsSnapshot(pricing.cartItemIdsSnapshot)
@@ -376,6 +383,9 @@ public class OrderService {
                 if (savedOrder.getUser() != null && pricing.selectedCartItemIds != null && !pricing.selectedCartItemIds.isEmpty()) {
                     cartService.removeCartItemsForOrder(savedOrder.getUser(), pricing.selectedCartItemIds);
                 }
+
+                // Ghi nhận doanh thu (đơn hàng đã thanh toán thành công)
+                recordOrderRevenue(savedOrder);
 
                 return savedOrder;
             } catch (DataIntegrityViolationException e) {
@@ -459,7 +469,7 @@ public class OrderService {
                         .shippingFee(shippingFee)
                         .totalAmount(orderTotal)
                         .status(OrderStatus.CREATED)
-                        .paymentMethod(PaymentMethod.MOMO)
+                        .paymentMethod(resolvePaymentMethod(request.getPaymentMethod()))
                         .paymentStatus(PaymentStatus.PAID)
                         .paid(true)
                         .cartItemIdsSnapshot("[]")
@@ -480,6 +490,9 @@ public class OrderService {
 
         updateInventoryAndSales(product, quantity);
                 finalizeVoucherUsageForUser(user);
+
+                // Ghi nhận doanh thu (đơn hàng đã thanh toán thành công)
+                recordOrderRevenue(savedOrder);
 
                 return savedOrder;
             } catch (org.springframework.dao.DataIntegrityViolationException e) {
@@ -673,6 +686,9 @@ public class OrderService {
         orderRepository.save(order);
         orderRepository.flush();
 
+        // Ghi nhận doanh thu khi thanh toán thành công qua IPN
+        recordOrderRevenue(order);
+
         finalizePaidOrder(order, parseCartItemIds(order.getCartItemIdsSnapshot()));
     }
 
@@ -756,6 +772,9 @@ public class OrderService {
             // Không tự động chuyển sang CONFIRMED - giữ ở CREATED để admin/staff xác nhận
             orderRepository.save(order);
             orderRepository.flush();
+            
+            // Ghi nhận doanh thu khi verify payment thành công
+            recordOrderRevenue(order);
         }
 
         // Kiểm tra nếu payment đã thành công
@@ -1111,6 +1130,35 @@ public class OrderService {
             log.error("Error fetching orders for user: {}", e.getMessage(), e);
             return new ArrayList<>();
         }
+    }
+
+    // Thống kê đơn hàng trong khoảng thời gian
+    @Transactional(readOnly = true)
+    @PreAuthorize("hasRole('ADMIN')")
+    public OrderStatistics getOrderStatistics(LocalDate start, LocalDate end) {
+        LocalDateTime startDateTime = start.atStartOfDay();
+        LocalDateTime endDateTime = end.atTime(23, 59, 59, 999999999);
+        
+        Long totalOrders = orderRepository.countByOrderDateTimeBetween(startDateTime, endDateTime);
+        Long cancelledOrders = orderRepository.countCancelledOrdersByOrderDateTimeBetween(startDateTime, endDateTime);
+        Long refundedOrders = orderRepository.countRefundedOrdersByOrderDateTimeBetween(startDateTime, endDateTime);
+        
+        return OrderStatistics.builder()
+                .totalOrders(totalOrders)
+                .cancelledOrders(cancelledOrders)
+                .refundedOrders(refundedOrders)
+                .build();
+    }
+
+    // Lấy Page<Order> để convert trong controller
+    @Transactional(readOnly = true)
+    @PreAuthorize("hasRole('ADMIN')")
+    public Page<Order> getOrdersByDateRangePage(LocalDate start, LocalDate end, int page, int size) {
+        LocalDateTime startDateTime = start.atStartOfDay();
+        LocalDateTime endDateTime = end.atTime(23, 59, 59, 999999999);
+        
+        Pageable pageable = PageRequest.of(page, size);
+        return orderRepository.findByOrderDateTimeBetween(startDateTime, endDateTime, pageable);
     }
 
     // Danh sách các yêu cầu trả hàng/hoàn tiền.
@@ -1542,6 +1590,43 @@ public class OrderService {
         } else {
             order.setNote(current + System.lineSeparator() + note.trim());
         }
+    }
+
+    // Ghi nhận doanh thu cho đơn hàng đã thanh toán thành công
+    private void recordOrderRevenue(Order order) {
+        if (order == null || order.getItems() == null || order.getItems().isEmpty()) {
+            return;
+        }
+
+        // Chỉ ghi nhận nếu đơn hàng đã thanh toán thành công
+        if (!Boolean.TRUE.equals(order.getPaid()) || order.getPaymentStatus() != PaymentStatus.PAID) {
+            return;
+        }
+
+        // Kiểm tra xem đã ghi nhận doanh thu chưa (tránh duplicate)
+        if (financialService.hasRecordedRevenue(order.getId())) {
+            log.debug("Revenue already recorded for order {}", order.getId());
+            return;
+        }
+
+        // Ghi nhận doanh thu cho từng sản phẩm trong đơn hàng
+        for (OrderItem item : order.getItems()) {
+            if (item.getProduct() != null && item.getFinalPrice() != null && item.getFinalPrice() > 0) {
+                try {
+                    financialService.recordRevenue(
+                            order,
+                            item.getProduct(),
+                            item.getFinalPrice(),
+                            order.getPaymentMethod()
+                    );
+                } catch (Exception e) {
+                    log.error("Error recording revenue for order {} product {}", 
+                            order.getId(), item.getProduct().getId(), e);
+                }
+            }
+        }
+        
+        log.info("Recorded revenue for order {} with {} items", order.getId(), order.getItems().size());
     }
 }
 

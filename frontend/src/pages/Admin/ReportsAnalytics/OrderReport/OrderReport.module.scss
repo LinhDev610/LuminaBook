@@ -1,82 +1,3 @@
- .wrapper {
-    padding: 24px 32px;
- }
-
-.headerRow {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 16px;
-}
-
-.title {
-    font-size: 24px;
-    font-weight: 700;
-    color: #111827;
-}
-
-.filters {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-}
-
-.select {
-    padding: 6px 10px;
-    border-radius: 999px;
-    border: 1px solid #d1d5db;
-    background: #fff;
-    font-size: 14px;
-}
-
-.dateRangePicker {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-left: 8px;
-}
-
-.dateInput {
-    padding: 6px 10px;
-    border-radius: 6px;
-    border: 1px solid #d1d5db;
-    background: #fff;
-    font-size: 14px;
-    color: #111827;
-}
-
-.dateInput:focus {
-    outline: none;
-    border-color: #0f172a;
-}
-
-.dateSeparator {
-    font-size: 14px;
-    color: #6b7280;
-}
-
-.tabs {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 16px;
-}
-
-.tab {
-    padding: 8px 16px;
-    border-radius: 999px;
-    border: 1px solid #e5e7eb;
-    background: #f9fafb;
-    font-size: 14px;
-    cursor: pointer;
-    color: #111827;
-}
-
-.tabActive {
-    background: #0f172a;
-    color: #fff;
-    border-color: #0f172a;
-}
-
 .card {
     background: #ffffff;
     border-radius: 16px;
@@ -119,14 +40,6 @@
     font-size: 20px;
     font-weight: 700;
     color: #111827;
-}
-
-.statValueAccent {
-    color: #0f766e;
-}
-
-.chartContainer {
-    height: 260px;
 }
 
 .table {
@@ -180,3 +93,64 @@
     color: #9ca3af;
     margin-top: 8px;
 }
+
+.paginationInfo {
+    font-size: 13px;
+    color: #6b7280;
+    margin-bottom: 16px;
+    text-align: right;
+}
+
+.pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 4px;
+    margin-top: 24px;
+    flex-wrap: wrap;
+}
+
+.paginationButton {
+    min-width: 36px;
+    height: 36px;
+    padding: 0 12px;
+    border: 1px solid #e5e7eb;
+    background: #ffffff;
+    color: #374151;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.paginationButton:hover:not(:disabled) {
+    background: #f9fafb;
+    border-color: #d1d5db;
+}
+
+.paginationButton:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.paginationButtonActive {
+    background: #2563eb;
+    color: #ffffff;
+    border-color: #2563eb;
+}
+
+.paginationButtonActive:hover {
+    background: #1d4ed8;
+    border-color: #1d4ed8;
+}
+
+.paginationEllipsis {
+    padding: 0 8px;
+    color: #6b7280;
+    font-size: 14px;
+}
+

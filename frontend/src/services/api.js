@@ -12,6 +12,7 @@ const {
     addresses,
     ghn,
     notifications,
+    financial,
     orders,
     shipments,
     chat,
@@ -269,6 +270,12 @@ export async function verifyOTP(email, otp, mode) {
 export async function confirmOrder(orderId, token = null) {
     const { data, ok, status } = await apiRequest(orders.confirm(orderId), { method: 'POST', token });
     return { ok, status, data: extractResult(data) };
+}
+
+// ========== ORDERS QUERY (ADMIN/STAFF) ==========
+export async function getAllOrders(token = null) {
+    const { data } = await apiRequest(orders.root, { token });
+    return extractResult(data, true);
 }
 
 export async function cancelOrder(orderId, reason = '', token = null) {

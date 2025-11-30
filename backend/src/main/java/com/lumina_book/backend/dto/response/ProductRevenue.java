@@ -11,5 +11,6 @@ import lombok.experimental.FieldDefaults;
 public class ProductRevenue {
     String productId;
     String productName;
-    Double total;
+    Long quantity;  // Tổng số lượng sản phẩm đã bán
+    Double total;    // Tổng doanh thu từ sản phẩm này
 }

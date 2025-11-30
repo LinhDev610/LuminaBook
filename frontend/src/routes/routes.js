@@ -48,7 +48,7 @@ import ManageComplaintsPage from '../pages/Admin/ManageComplaints';
 import ComplaintsDetailPage from '../pages/Admin/ManageComplaints/ComplaintsDetail';
 import ManageContentPage from '../pages/Admin/ManageContent';
 import ContentDetailPage from '../pages/Admin/ManageContent/ContentDetail';
-
+import ReportAnalyticsPage from '../pages/Admin/ReportsAnalytics';
 import StaffMainPage from '../pages/Employees/Staff/StaffMain';
 import ProfileStaffPage from '../pages/Employees/Staff/ProfileStaff';
 import StaffNotificationPage from '../pages/Employees/Staff/StaffNotification';
@@ -181,7 +181,7 @@ const privateRoutes = [
         layout: AdminLayout,
     },
     { path: '/admin/content', component: ManageStaffAccountsPage, layout: AdminLayout },
-    { path: '/admin/reports', component: ManageStaffAccountsPage, layout: AdminLayout },
+    { path: '/admin/reports', component: ReportAnalyticsPage, layout: AdminLayout },
     { path: '/admin/profile', component: ProfileAdminPage, layout: AdminLayout },
 
     // Staff routes

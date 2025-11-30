@@ -1,0 +1,65 @@
+.card {
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 20px 24px;
+    box-shadow: 0 10px 25px rgba(15, 23, 42, 0.06);
+}
+
+.cardTitle {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.cardSubtitle {
+    font-size: 13px;
+    color: #6b7280;
+    margin-bottom: 20px;
+}
+
+.dateRangeInfo {
+    font-size: 11px;
+    color: #9ca3af;
+    font-weight: normal;
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.table thead {
+    background: #f9fafb;
+}
+
+.table th,
+.table td {
+    text-align: left;
+    padding: 10px 12px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.helper {
+    font-size: 12px;
+    color: #9ca3af;
+    margin-top: 8px;
+}
+
+.loading,
+.error {
+    padding: 20px;
+    text-align: center;
+    color: #6b7280;
+}
+
+.error {
+    color: #ef4444;
+}
+
+.noData {
+    text-align: center;
+    padding: 20px;
+    color: #9ca3af;
+}
+

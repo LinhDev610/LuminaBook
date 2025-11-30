@@ -12,6 +12,8 @@ export {
     formatCurrency,
     formatDate,
     formatDateTime,
+    formatNumber,
+    getDateRange,
     isValidEmail,
     validatePassword,
     calculateDiscount,

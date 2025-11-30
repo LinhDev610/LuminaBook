@@ -230,8 +230,6 @@ public class ShipmentService {
             if (newStatus != null && newStatus != currentStatus) {
                 order.setStatus(newStatus);
                 orderRepository.save(order);
-                log.info("Đã đồng bộ trạng thái đơn hàng {} từ GHN: {} → {}", 
-                        orderId, currentStatus, newStatus);
             }
         } catch (Exception e) {
             log.error("Lỗi khi đồng bộ trạng thái từ GHN cho order: {}", orderId, e);

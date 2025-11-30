@@ -1,0 +1,74 @@
+.card {
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 20px 24px;
+    box-shadow: 0 10px 25px rgba(15, 23, 42, 0.06);
+}
+
+.cardTitle {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.cardSubtitle {
+    font-size: 13px;
+    color: #6b7280;
+    margin-bottom: 20px;
+}
+
+.statsRow {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.statBox {
+    background: #f9fafb;
+    border-radius: 12px;
+    padding: 14px 16px;
+}
+
+.statLabel {
+    font-size: 13px;
+    color: #6b7280;
+    margin-bottom: 6px;
+}
+
+.statValue {
+    font-size: 20px;
+    font-weight: 700;
+    color: #111827;
+}
+
+.statValueAccent {
+    color: #2563eb;
+}
+
+.chartContainer {
+    min-height: 400px;
+    margin-top: 8px;
+}
+
+.chartWrapper {
+    width: 100%;
+    height: 400px;
+    position: relative;
+}
+
+.chartTitle {
+    font-size: 14px;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 16px;
+}
+
+.helper {
+    font-size: 12px;
+    color: #9ca3af;
+    margin-top: 8px;
+    text-align: center;
+    padding: 40px 0;
+}
+

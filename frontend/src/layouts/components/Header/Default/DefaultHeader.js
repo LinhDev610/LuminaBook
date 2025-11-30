@@ -8,7 +8,6 @@ import classNames from 'classnames/bind';
 
 import logoIcon from '../../../../assets/icons/logo_luminabook.png';
 import guestIcon from '../../../../assets/icons/icon_guest.png';
-import ringIcon from '../../../../assets/icons/icon_ring.png';
 import useLocalStorage from '../../../../hooks/useLocalStorage';
 import { useAuth } from '../../../../contexts/AuthContext';
 
@@ -396,8 +395,8 @@ function DefaultHeader() {
                         </div>
                     ) : (
                         <div className={cx('auth-buttons')}>
-                            <button 
-                                onClick={openLoginModal} 
+                            <button
+                                onClick={openLoginModal}
                                 className={cx('login-link')}
                             >
                                 <span className={cx('login-text')}>Đăng nhập</span>
@@ -409,13 +408,6 @@ function DefaultHeader() {
                             </button>
                         </div>
                     )}
-                    <span className={cx('notifications')}>
-                        <img
-                            src={ringIcon}
-                            alt="Notifications"
-                            className={cx('ring-icon')}
-                        />
-                    </span>
                     <span className={cx('cart')} onClick={() => navigate('/cart')}>
                         <img
                             src="https://cdn0.iconfinder.com/data/icons/mobile-basic-vol-1/32/Tote_Bag-1024.png"

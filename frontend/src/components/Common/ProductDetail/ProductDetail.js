@@ -723,7 +723,7 @@ const ProductDetail = ({ productId }) => {
                                 <div>
                                     <strong>Tồn kho:</strong>{' '}
                                     {availableStock > 0
-                                        ? `${availableStock} quyển`
+                                        ? `${availableStock}`
                                         : availableStock === 0
                                             ? 'Hết hàng'
                                             : '-'}

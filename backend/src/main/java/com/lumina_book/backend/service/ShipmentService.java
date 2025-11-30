@@ -211,11 +211,15 @@ public class ShipmentService {
             }
 
             OrderStatus currentStatus = order.getStatus();
-            // Cho phép sync từ GHN ngay cả khi đã DELIVERED để cập nhật trạng thái mới nhất từ GHN
-            // Chỉ skip nếu đã ở các trạng thái cuối cùng không thể thay đổi
+            // Không sync GHN nếu đơn đang trong luồng hoàn tiền/trả hàng
+            // (RETURN_REQUESTED, RETURN_CS_CONFIRMED, RETURN_STAFF_CONFIRMED, REFUNDED, RETURN_REJECTED)
+            // để tránh override status từ GHN (ví dụ: GHN có thể trả về DELIVERED nhưng đơn đang ở RETURN_CS_CONFIRMED)
             if (currentStatus == OrderStatus.CANCELLED ||
                 currentStatus == OrderStatus.RETURN_REQUESTED ||
-                currentStatus == OrderStatus.REFUNDED) {
+                currentStatus == OrderStatus.RETURN_CS_CONFIRMED ||
+                currentStatus == OrderStatus.RETURN_STAFF_CONFIRMED ||
+                currentStatus == OrderStatus.REFUNDED ||
+                currentStatus == OrderStatus.RETURN_REJECTED) {
                 return;
             }
 
@@ -242,7 +246,7 @@ public class ShipmentService {
                 orderRepository.save(order);
                 
                 // Đảm bảo doanh thu được ghi nhận cho đơn COD khi chuyển sang DELIVERED
-                // (đơn COD được tạo với paymentStatus = PAID nhưng có thể chưa được ghi nhận doanh thu)
+                // Đối với COD: xóa FinancialRecord cũ (nếu có) và ghi nhận lại với occurredAt = thời điểm DELIVERED
                 if (newStatus == OrderStatus.DELIVERED 
                         && order.getPaymentMethod() == PaymentMethod.COD
                         && order.getPaymentStatus() == PaymentStatus.PAID
@@ -250,29 +254,8 @@ public class ShipmentService {
                     try {
                         // Reload order với items để đảm bảo có đầy đủ dữ liệu
                         Order reloadedOrder = orderRepository.findById(order.getId()).orElse(order);
-                        if (reloadedOrder.getItems() != null && !reloadedOrder.getItems().isEmpty()) {
-                            // Kiểm tra xem đã ghi nhận doanh thu chưa (tránh duplicate)
-                            if (!financialService.hasRecordedRevenue(reloadedOrder.getId())) {
-                                // Ghi nhận doanh thu cho từng sản phẩm trong đơn hàng
-                                for (OrderItem item : reloadedOrder.getItems()) {
-                                    if (item.getProduct() != null && item.getFinalPrice() != null && item.getFinalPrice() > 0) {
-                                        try {
-                                            financialService.recordRevenue(
-                                                    reloadedOrder,
-                                                    item.getProduct(),
-                                                    item.getFinalPrice(),
-                                                    reloadedOrder.getPaymentMethod()
-                                            );
-                                        } catch (Exception e) {
-                                            log.error("Error recording revenue for order {} product {}", 
-                                                    reloadedOrder.getId(), item.getProduct().getId(), e);
-                                        }
-                                    }
-                                }
-                                log.info("Recorded revenue for COD order {} when delivered with {} items", 
-                                        reloadedOrder.getId(), reloadedOrder.getItems().size());
-                            }
-                        }
+                        // Sử dụng method trong FinancialService để đảm bảo logic nhất quán
+                        financialService.ensureCodOrderRevenueRecorded(reloadedOrder);
                     } catch (Exception e) {
                         log.error("Error ensuring revenue recorded for COD order {} when delivered", order.getId(), e);
                     }

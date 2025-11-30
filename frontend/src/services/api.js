@@ -194,7 +194,18 @@ async function apiRequest(endpoint, options = {}) {
 
         // Auto-handle 401 Unauthorized (token expired/invalid)
         if (resp.status === 401 && !skipAuthCheck && tokenToUse && !isRetry) {
-            const errorData = await resp.json().catch(() => ({}));
+            let errorData = {};
+            try {
+                const contentType = resp.headers.get('content-type');
+                if (contentType && contentType.includes('application/json')) {
+                    const text = await resp.text();
+                    if (text && text.trim()) {
+                        errorData = JSON.parse(text);
+                    }
+                }
+            } catch (e) {
+                // Ignore parsing errors
+            }
             const errorMessage = errorData?.message || errorData?.error || 'Token invalid';
             const errorCode = errorData?.code;
 
@@ -245,7 +256,37 @@ async function apiRequest(endpoint, options = {}) {
             return { ok: false, status: resp.status, data: errorData };
         }
 
-        const data = await resp.json().catch(() => ({}));
+        // Parse response body safely
+        let data = {};
+        try {
+            // Check if response has a body (status 204 No Content doesn't have body)
+            if (resp.status !== 204 && resp.body) {
+                const contentType = resp.headers.get('content-type') || '';
+                const text = await resp.text().catch(() => '');
+
+                if (text && text.trim()) {
+                    // Try to parse as JSON if content-type suggests JSON or if text looks like JSON
+                    if (contentType.includes('application/json') ||
+                        (text.trim().startsWith('{') || text.trim().startsWith('['))) {
+                        try {
+                            data = JSON.parse(text);
+                        } catch (parseError) {
+                            // If JSON parsing fails, return as plain text message
+                            console.warn(`Failed to parse JSON response for ${endpoint}:`, parseError);
+                            data = { message: text, raw: text };
+                        }
+                    } else {
+                        // Not JSON, return as plain text message
+                        data = { message: text, raw: text };
+                    }
+                }
+            }
+        } catch (error) {
+            // If anything fails, return empty object
+            console.warn(`Failed to read response for ${endpoint}:`, error);
+            data = {};
+        }
+
         return { ok: resp.ok, status: resp.status, data };
     } catch (error) {
         console.error(`API Error [${method} ${endpoint}]:`, error);

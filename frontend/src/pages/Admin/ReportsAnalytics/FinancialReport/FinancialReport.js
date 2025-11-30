@@ -39,7 +39,10 @@ function FinancialReport({ timeMode = 'day', customDateRange = null }) {
 
                 const summaryData = await summaryResponse.json();
                 if (summaryData.result) {
+                    console.log('Financial Summary Data:', summaryData.result);
                     setFinancialSummary(summaryData.result);
+                } else {
+                    console.warn('Financial Summary: No result data received', summaryData);
                 }
 
                 // Fetch payment revenues
@@ -102,8 +105,20 @@ function FinancialReport({ timeMode = 'day', customDateRange = null }) {
         );
     }
 
-    const profit = financialSummary?.profit || 0;
+    // Tính lợi nhuận = Tổng thu - Tổng chi (tự tính để đảm bảo chính xác)
+    const totalIncome = financialSummary?.totalIncome || 0;
+    const totalExpense = financialSummary?.totalExpense || 0;
+    const profit = totalIncome - totalExpense;
     const profitColor = profit >= 0 ? '#166534' : '#b91c1c';
+
+    // Debug logging
+    console.log('Financial Report Calculation:', {
+        totalIncome,
+        totalExpense,
+        profit,
+        backendProfit: financialSummary?.profit,
+        calculatedProfit: totalIncome - totalExpense
+    });
 
     return (
         <div className={cx('card')}>
@@ -114,13 +129,13 @@ function FinancialReport({ timeMode = 'day', customDateRange = null }) {
                 <div className={cx('statBox')}>
                     <div className={cx('statLabel')}>Tổng thu</div>
                     <div className={cx('statValue', 'statValueAccent')}>
-                        {formatCurrency(financialSummary?.totalIncome || 0)}
+                        {formatCurrency(totalIncome)}
                     </div>
                 </div>
                 <div className={cx('statBox')}>
                     <div className={cx('statLabel')}>Tổng chi</div>
                     <div className={cx('statValue')} style={{ color: '#b91c1c' }}>
-                        {formatCurrency(financialSummary?.totalExpense || 0)}
+                        {formatCurrency(totalExpense)}
                     </div>
                 </div>
                 <div className={cx('statBox')}>
@@ -158,7 +173,9 @@ function FinancialReport({ timeMode = 'day', customDateRange = null }) {
                 </tbody>
             </table>
             <div className={cx('helper')}>
-                Tổng thu dựa trên doanh thu bán hàng (không bao gồm phí ship), tổng chi bao gồm các khoản hoàn tiền/hoàn trả.
+                Tổng thu dựa trên doanh thu bán hàng (không bao gồm phí ship).
+                COD: chỉ tính khi đơn hàng đã giao thành công. MoMo: chỉ tính khi đã thanh toán và nhân viên xác nhận.
+                Tổng chi bao gồm giá gốc sản phẩm và các khoản hoàn tiền/hoàn trả.
             </div>
         </div>
     );

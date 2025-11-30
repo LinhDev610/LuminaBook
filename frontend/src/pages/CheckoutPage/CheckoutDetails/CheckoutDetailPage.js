@@ -181,10 +181,9 @@ export default function CheckoutDetailPage() {
                     }
                 }
 
-                // Ưu tiên địa chỉ mặc định của user làm địa chỉ giao hàng ban đầu
+                // Chỉ tự động chọn địa chỉ mặc định của user làm địa chỉ giao hàng ban đầu
                 if (Array.isArray(addresses) && addresses.length > 0) {
-                    const defaultAddress =
-                        addresses.find((addr) => addr?.defaultAddress) || addresses[0];
+                    const defaultAddress = addresses.find((addr) => addr?.defaultAddress);
                     if (defaultAddress) {
                         setSelectedAddress(defaultAddress);
                         setShouldRefreshShippingFee(true);

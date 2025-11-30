@@ -83,8 +83,6 @@ public class ApiUtil {
                     .onStatus(HttpStatusCode::isError, clientResponse -> {
                         return clientResponse.bodyToMono(String.class)
                                 .flatMap(body -> {
-                                    // Log chi tiết lỗi từ GHN API
-                                    log.error("GHN API HTTP error {} - Response body: {}", clientResponse.statusCode(), body);
                                     
                                     // Thử parse response body để lấy error message từ GHN
                                     String errorMessage = "Lỗi kết nối dịch vụ vận chuyển";

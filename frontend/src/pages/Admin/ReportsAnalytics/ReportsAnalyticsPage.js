@@ -47,7 +47,16 @@ function ReportsAnalyticsPage() {
                                 type="date"
                                 className={cx('dateInput')}
                                 value={customDateRange.start}
-                                onChange={(e) => setCustomDateRange({ ...customDateRange, start: e.target.value })}
+                                max={customDateRange.end || undefined}
+                                onChange={(e) => {
+                                    const newStart = e.target.value;
+                                    // Nếu ngày bắt đầu > ngày kết thúc, tự động điều chỉnh ngày kết thúc
+                                    if (customDateRange.end && newStart > customDateRange.end) {
+                                        setCustomDateRange({ start: newStart, end: newStart });
+                                    } else {
+                                        setCustomDateRange({ ...customDateRange, start: newStart });
+                                    }
+                                }}
                                 placeholder="Từ ngày"
                             />
                             <span className={cx('dateSeparator')}>đến</span>
@@ -55,7 +64,16 @@ function ReportsAnalyticsPage() {
                                 type="date"
                                 className={cx('dateInput')}
                                 value={customDateRange.end}
-                                onChange={(e) => setCustomDateRange({ ...customDateRange, end: e.target.value })}
+                                min={customDateRange.start || undefined}
+                                onChange={(e) => {
+                                    const newEnd = e.target.value;
+                                    // Nếu ngày kết thúc < ngày bắt đầu, tự động điều chỉnh ngày bắt đầu
+                                    if (customDateRange.start && newEnd < customDateRange.start) {
+                                        setCustomDateRange({ start: newEnd, end: newEnd });
+                                    } else {
+                                        setCustomDateRange({ ...customDateRange, end: newEnd });
+                                    }
+                                }}
                                 placeholder="Đến ngày"
                             />
                         </div>

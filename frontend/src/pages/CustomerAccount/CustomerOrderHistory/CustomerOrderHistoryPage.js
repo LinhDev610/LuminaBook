@@ -173,15 +173,9 @@ function CustomerOrderHistoryPage() {
                 const data = await resp.json().catch(() => ({}));
                 const raw = data?.result || data || [];
                 const list = Array.isArray(raw) ? raw : [];
-                console.log('CustomerOrderHistory: Total orders from API:', list.length);
-                console.log('CustomerOrderHistory: Orders with RETURN_CS_CONFIRMED:', 
-                    list.filter(o => (o.status || '').toUpperCase() === 'RETURN_CS_CONFIRMED'));
                 const mapped = list
                     .map(mapOrderFromApi)
                     .filter(Boolean);
-                console.log('CustomerOrderHistory: Mapped orders:', mapped.length);
-                console.log('CustomerOrderHistory: Mapped orders with RETURN_CS_CONFIRMED:', 
-                    mapped.filter(o => (o.rawStatus || o.status || '').toUpperCase() === 'RETURN_CS_CONFIRMED'));
                 setOrders(mapped);
             } catch (err) {
                 console.error('CustomerOrderHistory: Lỗi khi tải lịch sử đơn hàng:', err);
@@ -298,7 +292,6 @@ function CustomerOrderHistoryPage() {
                 }
                 return matches;
             });
-            console.log('CustomerOrderHistory: Filtered return-requested orders:', list.length);
         } else {
             list = orders.filter((order) => order.statusKey === activeTab);
         }

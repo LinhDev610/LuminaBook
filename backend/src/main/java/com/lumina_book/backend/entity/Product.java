@@ -31,9 +31,6 @@ public class Product {
     @Column(name = "description", columnDefinition = "TEXT")
     String description;
 
-    @Column(name = "size")
-    String size;
-
     @Column(name = "author")
     String author;
 

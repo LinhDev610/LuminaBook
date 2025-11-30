@@ -19,7 +19,6 @@ public class ProductResponse {
     String id;
     String name;
     String description;
-    String size;
     String author;
     String publisher;
     Double weight;

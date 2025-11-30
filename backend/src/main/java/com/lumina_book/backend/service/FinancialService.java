@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.ArrayList;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,6 +24,7 @@ import com.lumina_book.backend.entity.Order;
 import com.lumina_book.backend.entity.OrderItem;
 import com.lumina_book.backend.entity.Product;
 import com.lumina_book.backend.enums.FinancialRecordType;
+import com.lumina_book.backend.enums.OrderStatus;
 import com.lumina_book.backend.enums.PaymentMethod;
 import com.lumina_book.backend.enums.PaymentStatus;
 import com.lumina_book.backend.repository.FinancialRecordRepository;
@@ -282,6 +284,17 @@ public class FinancialService {
                 .build();
     }
 
+    /**
+     * Tính toán báo cáo tài chính tổng hợp
+     * 
+     * Công thức:
+     * - Tổng thu = Tổng doanh thu từ các đơn hàng đã thanh toán (OrderItem.finalPrice) - bỏ giá ship của đơn
+     * - Tổng chi = Giá gốc sản phẩm + Chi phí phát sinh do hoàn hàng/hoàn tiền + Tiền ship đơn hoàn từ khách về (nếu lỗi do cửa hàng)
+     *   - Giá gốc sản phẩm = sum của (purchasePrice × quantity) cho tất cả OrderItem
+     *   - Chi phí phát sinh = sum của FinancialRecord có type là REFUND hoặc COMPENSATION
+     *   - Tiền ship đơn hoàn = sum của refundSecondShippingFee/refundReturnFee của các đơn đã hoàn với lý do 'store'
+     * - Lợi nhuận = Tổng thu - Tổng chi
+     */
     public FinancialSummary summary(LocalDate start, LocalDate end) {
         LocalDateTime[] range = toDateTimeRange(start, end);
         
@@ -291,29 +304,70 @@ public class FinancialService {
         // Tổng thu = sum của tất cả OrderItem.finalPrice (chỉ giá sách, không có shipping fee)
         double income = calculateTotalRevenue(paidOrders);
 
-        // Giá vốn hàng bán = sum của (purchasePrice * quantity) cho tất cả OrderItem
+        AtomicInteger itemsWithoutPurchasePrice = new AtomicInteger(0);
+        AtomicInteger totalItemsProcessed = new AtomicInteger(0);
         double costOfGoodsSold = paidOrders.stream()
                 .flatMap(order -> order.getItems().stream())
-                .filter(item -> item.getProduct() != null 
-                        && item.getProduct().getPurchasePrice() != null
-                        && item.getQuantity() != null
-                        && item.getQuantity() > 0)
+                .filter(item -> {
+                    totalItemsProcessed.incrementAndGet();
+                    return item.getProduct() != null 
+                            && item.getQuantity() != null
+                            && item.getQuantity() > 0;
+                })
                 .mapToDouble(item -> {
-                    double purchasePrice = item.getProduct().getPurchasePrice();
+                    // Nếu purchasePrice là null hoặc <= 0, tính = 0
+                    Product product = item.getProduct();
+                    if (product == null) {
+                        log.warn("OrderItem has null product - Item ID: {}", item.getId());
+                        return 0.0;
+                    }
+                    
+                    Double purchasePrice = product.getPurchasePrice();
+                    double price = (purchasePrice != null && purchasePrice > 0) ? purchasePrice : 0.0;
                     int quantity = item.getQuantity();
-                    return purchasePrice * quantity;
+                    double cost = price * quantity;
+                    
+                    // Đếm số item không có purchasePrice để log warning sau
+                    if (purchasePrice == null || purchasePrice <= 0) {
+                        itemsWithoutPurchasePrice.incrementAndGet();
+                        log.warn("Product {} (ID: {}) has no purchase price. Product fields - unitPrice: {}, price: {}, purchasePrice: {}", 
+                                product.getName(), product.getId(), 
+                                product.getUnitPrice(), product.getPrice(), product.getPurchasePrice());
+                    }
+                    
+                    return cost;
                 })
                 .sum();
 
-        // Chi phí: tính từ FinancialRecord (hoàn tiền, bồi thường, chi phí khác)
+        // Chi phí phát sinh = sum của FinancialRecord có type là REFUND hoặc COMPENSATION
         List<FinancialRecord> records = financialRecordRepository.findByOccurredAtBetween(range[0], range[1]);
         double expense = records.stream()
-                .filter(fr -> fr.getAmount() != null && fr.getAmount() < 0)
-                .mapToDouble(fr -> -fr.getAmount())
+                .filter(fr -> fr.getAmount() != null 
+                        && (fr.getRecordType() == FinancialRecordType.REFUND 
+                            || fr.getRecordType() == FinancialRecordType.COMPENSATION))
+                .mapToDouble(fr -> Math.abs(fr.getAmount())) // Lấy giá trị tuyệt đối vì đây là chi phí
                 .sum();
 
-        // Tổng chi = Giá vốn hàng bán + Chi phí khác (hoàn tiền, bồi thường)
-        double totalExpense = costOfGoodsSold + expense;
+        // Tiền ship đơn hoàn từ khách về 
+        List<Order> refundedOrders = orderRepository.findByOrderDateTimeBetween(range[0], range[1])
+                .stream()
+                .filter(order -> order.getStatus() == OrderStatus.REFUNDED
+                        && "store".equalsIgnoreCase(order.getRefundReasonType())
+                        && (order.getRefundSecondShippingFee() != null || order.getRefundReturnFee() != null))
+                .toList();
+        
+        double returnShippingFee = refundedOrders.stream()
+                .mapToDouble(order -> {
+                    // Ưu tiên refundSecondShippingFee, nếu không có thì dùng refundReturnFee
+                    if (order.getRefundSecondShippingFee() != null && order.getRefundSecondShippingFee() > 0) {
+                        return order.getRefundSecondShippingFee();
+                    }
+                    return order.getRefundReturnFee() != null ? order.getRefundReturnFee() : 0.0;
+                })
+                .sum();
+
+        // Tổng chi = Giá gốc sản phẩm + Chi phí phát sinh do hoàn hàng/hoàn tiền + Tiền ship đơn hoàn (nếu lỗi do cửa hàng)
+        double totalExpense = costOfGoodsSold + expense + returnShippingFee;
 
         // Lợi nhuận = Tổng thu - Tổng chi
         double profit = income - totalExpense;

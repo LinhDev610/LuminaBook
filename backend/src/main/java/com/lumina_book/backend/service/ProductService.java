@@ -101,6 +101,11 @@ public class ProductService {
                 : computeFinalPrice(request.getUnitPrice(), request.getTax(), request.getDiscountValue());
         product.setPrice(finalPrice);
 
+        // Set purchasePrice nếu có trong request
+        if (request.getPurchasePrice() != null && request.getPurchasePrice() >= 0) {
+            product.setPurchasePrice(request.getPurchasePrice());
+        }
+
         // Khởi tạo tồn kho nếu có số lượng ban đầu
         if (request.getStockQuantity() != null) {
             Inventory inventory = Inventory.builder()
@@ -170,6 +175,11 @@ public class ProductService {
             if (unitPrice != null && unitPrice >= 0) {
                 product.setPrice(computeFinalPrice(unitPrice, tax, discountValue));
             }
+        }
+
+        // Cập nhật purchasePrice nếu có trong request
+        if (request.getPurchasePrice() != null && request.getPurchasePrice() >= 0) {
+            product.setPurchasePrice(request.getPurchasePrice());
         }
 
         // Cập nhật category nếu có

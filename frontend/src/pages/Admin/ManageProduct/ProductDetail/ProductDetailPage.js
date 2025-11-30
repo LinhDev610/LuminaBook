@@ -56,14 +56,7 @@ function ProductDetailPage() {
                 }
 
                 setProduct(productData);
-                // Debug: Log promotion info
-                console.log('Product data:', productData);
-                console.log('Promotion info:', {
-                    promotionId: productData.promotionId,
-                    promotionName: productData.promotionName,
-                    promotionStartDate: productData.promotionStartDate,
-                    promotionExpiryDate: productData.promotionExpiryDate
-                });
+
             } catch (e) {
                 if (!isMounted || abortController.signal.aborted) return;
                 setError(e?.message || 'Không thể tải thông tin sản phẩm');
@@ -108,7 +101,7 @@ function ProductDetailPage() {
             setProduct(data?.result || data);
             setShowApproveModal(false);
             success('Sản phẩm đã được duyệt thành công!');
-            
+
             // Gửi thông báo cho nhân viên
             const productName = data?.result?.name || data?.name || 'Sản phẩm';
             await notifyStaffOnApproval('product', productName, token);
@@ -152,7 +145,7 @@ function ProductDetailPage() {
             const reason = rejectReason;
             setRejectReason('');
             success('Sản phẩm đã bị từ chối!');
-            
+
             // Gửi thông báo cho nhân viên
             const productName = data?.result?.name || data?.name || 'Sản phẩm';
             await notifyStaffOnRejection('product', productName, reason, token);
@@ -182,11 +175,11 @@ function ProductDetailPage() {
 
             setShowDeleteModal(false);
             success('Sản phẩm đã được xóa thành công!');
-            
+
             // Gửi thông báo cho nhân viên
             const productName = product?.name || 'Sản phẩm';
             await notifyStaffOnDelete('product', productName, token);
-            
+
             navigate('/admin/products');
         } catch (e) {
             notifyError('Lỗi: ' + (e?.message || 'Không thể xóa sản phẩm'));
@@ -467,11 +460,14 @@ function ProductDetailPage() {
                                     {product.publisher || '-'}
                                 </span>
                             </div>
-                            {product.size && (
+                            {(product.length || product.width || product.height) && (
                                 <div className={cx('info-row')}>
                                     <span className={cx('info-label')}>Kích thước sách:</span>
                                     <span className={cx('info-value')}>
-                                        {product.size}
+                                        {[product.length, product.width, product.height]
+                                            .filter(Boolean)
+                                            .join(' × ') || '-'}
+                                        {product.length && product.width && product.height ? ' cm' : ''}
                                     </span>
                                 </div>
                             )}
@@ -480,6 +476,14 @@ function ProductDetailPage() {
                                     <span className={cx('info-label')}>Giá niêm yết:</span>
                                     <span className={cx('info-value')}>
                                         {formatPrice(product.unitPrice)}
+                                    </span>
+                                </div>
+                            )}
+                            {product.purchasePrice !== undefined && product.purchasePrice !== null && (
+                                <div className={cx('info-row')}>
+                                    <span className={cx('info-label')}>Giá nhập:</span>
+                                    <span className={cx('info-value')}>
+                                        {formatPrice(product.purchasePrice)}
                                     </span>
                                 </div>
                             )}
@@ -516,18 +520,6 @@ function ProductDetailPage() {
                                         {new Date(
                                             product.publicationDate,
                                         ).toLocaleDateString('vi-VN')}
-                                    </span>
-                                </div>
-                            )}
-                            {(product.length || product.width || product.height) && (
-                                <div className={cx('info-row')}>
-                                    <span className={cx('info-label')}>
-                                        Kích thước (cm):
-                                    </span>
-                                    <span className={cx('info-value')}>
-                                        {[product.length, product.width, product.height]
-                                            .filter(Boolean)
-                                            .join(' × ') || '-'}
                                     </span>
                                 </div>
                             )}

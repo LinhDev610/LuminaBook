@@ -157,9 +157,6 @@ function FinancialReport({ timeMode = 'day', customDateRange = null }) {
                     )}
                 </tbody>
             </table>
-            <div className={cx('helper')}>
-                Tổng thu dựa trên doanh thu bán hàng (không bao gồm phí ship), tổng chi bao gồm các khoản hoàn tiền/hoàn trả.
-            </div>
         </div>
     );
 }

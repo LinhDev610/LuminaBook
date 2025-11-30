@@ -339,11 +339,14 @@ function ProductDetailPage() {
                                         {product.publisher || '-'}
                                     </span>
                                 </div>
-                                {product.size && (
+                                {(product.length || product.width || product.height) && (
                                     <div className={cx('info-row')}>
                                         <span className={cx('info-label')}>Kích thước sách:</span>
                                         <span className={cx('info-value')}>
-                                            {product.size}
+                                            {[product.length, product.width, product.height]
+                                                .filter(Boolean)
+                                                .join(' × ') || '-'}
+                                            {product.length && product.width && product.height ? ' cm' : ''}
                                         </span>
                                     </div>
                                 )}
@@ -352,6 +355,14 @@ function ProductDetailPage() {
                                         <span className={cx('info-label')}>Giá niêm yết:</span>
                                         <span className={cx('info-value')}>
                                             {formatPrice(product.unitPrice)}
+                                        </span>
+                                    </div>
+                                )}
+                                {product.purchasePrice !== undefined && product.purchasePrice !== null && (
+                                    <div className={cx('info-row')}>
+                                        <span className={cx('info-label')}>Giá nhập:</span>
+                                        <span className={cx('info-value')}>
+                                            {formatPrice(product.purchasePrice)}
                                         </span>
                                     </div>
                                 )}

@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.ArrayList;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,6 +24,7 @@ import com.lumina_book.backend.entity.Order;
 import com.lumina_book.backend.entity.OrderItem;
 import com.lumina_book.backend.entity.Product;
 import com.lumina_book.backend.enums.FinancialRecordType;
+import com.lumina_book.backend.enums.OrderStatus;
 import com.lumina_book.backend.enums.PaymentMethod;
 import com.lumina_book.backend.enums.PaymentStatus;
 import com.lumina_book.backend.repository.FinancialRecordRepository;
@@ -51,13 +53,33 @@ public class FinancialService {
     }
 
     // Lọc các đơn hàng đã thanh toán thành công trong khoảng thời gian
+    // - COD: chỉ tính khi đơn hàng đã được giao thành công (status = DELIVERED)
+    // - MoMo: chỉ tính khi khách hàng đã thanh toán thành công và nhân viên xác nhận đơn (status = CONFIRMED)
     private List<Order> getPaidOrdersInRange(LocalDateTime start, LocalDateTime end) {
         List<Order> allOrders = orderRepository.findByOrderDateTimeBetween(start, end);
         return allOrders.stream()
-                .filter(order -> order.getPaymentStatus() == PaymentStatus.PAID
-                        && Boolean.TRUE.equals(order.getPaid())
-                        && order.getItems() != null
-                        && !order.getItems().isEmpty())
+                .filter(order -> {
+                    // Kiểm tra điều kiện cơ bản: đã thanh toán và có items
+                    if (order.getPaymentStatus() != PaymentStatus.PAID
+                            || !Boolean.TRUE.equals(order.getPaid())
+                            || order.getItems() == null
+                            || order.getItems().isEmpty()) {
+                        return false;
+                    }
+                    
+                    // Kiểm tra điều kiện theo phương thức thanh toán
+                    PaymentMethod paymentMethod = order.getPaymentMethod();
+                    if (paymentMethod == PaymentMethod.COD) {
+                        // COD: chỉ tính khi đơn hàng đã được giao thành công (khách hàng đã trả tiền)
+                        return order.getStatus() == OrderStatus.DELIVERED;
+                    } else if (paymentMethod == PaymentMethod.MOMO) {
+                        // MoMo: chỉ tính khi khách hàng đã thanh toán thành công và nhân viên xác nhận đơn
+                        return order.getStatus() == OrderStatus.CONFIRMED;
+                    }
+                    
+                    // Các phương thức thanh toán khác: giữ nguyên logic cũ
+                    return true;
+                })
                 .toList();
     }
 
@@ -76,6 +98,17 @@ public class FinancialService {
                 orderId, FinancialRecordType.ORDER_PAYMENT);
     }
 
+    // Xóa các FinancialRecord cũ của đơn COD (để ghi nhận lại với occurredAt = thời điểm DELIVERED)
+    @Transactional
+    public void deleteOrderRevenueRecords(String orderId) {
+        List<FinancialRecord> records = financialRecordRepository.findByOrderIdAndRecordType(
+                orderId, FinancialRecordType.ORDER_PAYMENT);
+        if (!records.isEmpty()) {
+            financialRecordRepository.deleteAll(records);
+            log.info("Deleted {} old revenue records for COD order {}", records.size(), orderId);
+        }
+    }
+
     @Transactional
     public void recordRevenue(Order order, Product product, double amount, PaymentMethod method) {
         FinancialRecord rec = FinancialRecord.builder()
@@ -87,6 +120,42 @@ public class FinancialService {
                 .occurredAt(LocalDateTime.now())
                 .build();
         financialRecordRepository.save(rec);
+    }
+
+    // Xử lý lại doanh thu cho đơn COD đã DELIVERED (đảm bảo có FinancialRecord với occurredAt = thời điểm DELIVERED)
+    @Transactional
+    public void ensureCodOrderRevenueRecorded(Order order) {
+        if (order == null 
+                || order.getPaymentMethod() != PaymentMethod.COD
+                || order.getStatus() != OrderStatus.DELIVERED
+                || order.getPaymentStatus() != PaymentStatus.PAID
+                || !Boolean.TRUE.equals(order.getPaid())
+                || order.getItems() == null
+                || order.getItems().isEmpty()) {
+            return;
+        }
+
+        // Xóa FinancialRecord cũ (nếu có) để ghi nhận lại với occurredAt = thời điểm hiện tại
+        deleteOrderRevenueRecords(order.getId());
+
+        // Ghi nhận doanh thu cho từng sản phẩm trong đơn hàng
+        for (OrderItem item : order.getItems()) {
+            if (item.getProduct() != null && item.getFinalPrice() != null && item.getFinalPrice() > 0) {
+                try {
+                    recordRevenue(
+                            order,
+                            item.getProduct(),
+                            item.getFinalPrice(),
+                            order.getPaymentMethod()
+                    );
+                } catch (Exception e) {
+                    log.error("Error recording revenue for COD order {} product {}", 
+                            order.getId(), item.getProduct().getId(), e);
+                }
+            }
+        }
+        log.info("Ensured revenue recorded for COD order {} when delivered with {} items", 
+                order.getId(), order.getItems().size());
     }
 
         // r[0] = year
@@ -282,41 +351,86 @@ public class FinancialService {
                 .build();
     }
 
+    /**
+     * Tính toán báo cáo tài chính tổng hợp
+     * 
+     * Công thức:
+     * - Tổng thu = Tổng doanh thu từ các đơn hàng đã thanh toán (OrderItem.finalPrice) - bỏ giá ship của đơn
+     * - Tổng chi = Giá gốc sản phẩm + Chi phí phát sinh do hoàn hàng và lỗi do cửa hàng
+     *   - Giá gốc sản phẩm = sum của (purchasePrice × quantity) cho tất cả OrderItem
+     *   - Chi phí phát sinh = sum của FinancialRecord có type là REFUND hoặc COMPENSATION
+     * - Lợi nhuận = Tổng thu - Tổng chi
+     */
     public FinancialSummary summary(LocalDate start, LocalDate end) {
         LocalDateTime[] range = toDateTimeRange(start, end);
         
         // Lọc các đơn hàng đã thanh toán thành công
         List<Order> paidOrders = getPaidOrdersInRange(range[0], range[1]);
 
-        // Tổng thu = sum của tất cả OrderItem.finalPrice (chỉ giá sách, không có shipping fee)
+        // Tổng thu = Tổng doanh thu từ các đơn hàng đã thanh toán (OrderItem.finalPrice) - bỏ giá ship của đơn
+        // OrderItem.finalPrice chỉ chứa giá sản phẩm, không bao gồm shipping fee
         double income = calculateTotalRevenue(paidOrders);
+        log.debug("Financial report - Total income (revenue): {}", income);
+        log.debug("Financial report - Number of paid orders: {}", paidOrders.size());
 
-        // Giá vốn hàng bán = sum của (purchasePrice * quantity) cho tất cả OrderItem
+        // Giá gốc sản phẩm = sum của (purchasePrice × quantity) cho tất cả OrderItem
+        // Lưu ý: Nếu purchasePrice là null hoặc <= 0, sẽ tính = 0 (không có giá gốc)
+        // Điều này có thể dẫn đến lợi nhuận không chính xác nếu sản phẩm chưa được set purchasePrice
+        AtomicInteger itemsWithoutPurchasePrice = new AtomicInteger(0);
+        AtomicInteger totalItemsCount = new AtomicInteger(0);
         double costOfGoodsSold = paidOrders.stream()
                 .flatMap(order -> order.getItems().stream())
-                .filter(item -> item.getProduct() != null 
-                        && item.getProduct().getPurchasePrice() != null
-                        && item.getQuantity() != null
-                        && item.getQuantity() > 0)
+                .filter(item -> {
+                    totalItemsCount.incrementAndGet();
+                    return item.getProduct() != null 
+                            && item.getQuantity() != null
+                            && item.getQuantity() > 0;
+                })
                 .mapToDouble(item -> {
-                    double purchasePrice = item.getProduct().getPurchasePrice();
+                    // Nếu purchasePrice là null hoặc <= 0, tính = 0
+                    Double purchasePrice = item.getProduct().getPurchasePrice();
+                    double price = (purchasePrice != null && purchasePrice > 0) ? purchasePrice : 0.0;
                     int quantity = item.getQuantity();
-                    return purchasePrice * quantity;
+                    double cost = price * quantity;
+                    
+                    // Đếm số item không có purchasePrice để log warning sau
+                    if (purchasePrice == null || purchasePrice <= 0) {
+                        itemsWithoutPurchasePrice.incrementAndGet();
+                    }
+                    
+                    return cost;
                 })
                 .sum();
+        
+        log.debug("Financial report - Cost of goods sold: {}", costOfGoodsSold);
+        log.debug("Financial report - Total items processed: {}", totalItemsCount.get());
+        
+        // Log warning nếu có sản phẩm không có purchasePrice
+        if (itemsWithoutPurchasePrice.get() > 0) {
+            log.warn("Financial report: {} out of {} order items have no purchase price set. Cost calculated as 0 for these items. " +
+                    "Please update purchase price for products to get accurate profit calculation.", 
+                    itemsWithoutPurchasePrice.get(), totalItemsCount.get());
+        }
 
-        // Chi phí: tính từ FinancialRecord (hoàn tiền, bồi thường, chi phí khác)
+        // Chi phí phát sinh = sum của FinancialRecord có type là REFUND hoặc COMPENSATION
+        // (hoàn hàng và lỗi do cửa hàng)
         List<FinancialRecord> records = financialRecordRepository.findByOccurredAtBetween(range[0], range[1]);
         double expense = records.stream()
-                .filter(fr -> fr.getAmount() != null && fr.getAmount() < 0)
-                .mapToDouble(fr -> -fr.getAmount())
+                .filter(fr -> fr.getAmount() != null 
+                        && (fr.getRecordType() == FinancialRecordType.REFUND 
+                            || fr.getRecordType() == FinancialRecordType.COMPENSATION))
+                .mapToDouble(fr -> Math.abs(fr.getAmount())) // Lấy giá trị tuyệt đối vì đây là chi phí
                 .sum();
+        log.debug("Financial report - Other expenses (refunds/compensations): {}", expense);
 
-        // Tổng chi = Giá vốn hàng bán + Chi phí khác (hoàn tiền, bồi thường)
+        // Tổng chi = Giá gốc sản phẩm + Chi phí phát sinh do hoàn hàng và lỗi do cửa hàng
         double totalExpense = costOfGoodsSold + expense;
+        log.debug("Financial report - Total expense: {} (cost of goods: {} + other expenses: {})", 
+                totalExpense, costOfGoodsSold, expense);
 
         // Lợi nhuận = Tổng thu - Tổng chi
         double profit = income - totalExpense;
+        log.info("Financial report summary - Income: {}, Expense: {}, Profit: {}", income, totalExpense, profit);
 
         return FinancialSummary.builder()
                 .totalIncome(income)

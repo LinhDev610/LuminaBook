@@ -176,8 +176,11 @@ public class OrderService {
                     cartService.removeCartItemsForOrder(savedOrder.getUser(), pricing.selectedCartItemIds);
                 }
 
-                // Ghi nhận doanh thu cho đơn COD (đã thanh toán khi tạo đơn)
-                recordOrderRevenue(savedOrder);
+                // Ghi nhận doanh thu: COD chỉ ghi nhận khi DELIVERED, các phương thức khác ghi nhận ngay
+                if (paymentMethod != PaymentMethod.COD) {
+                    recordOrderRevenue(savedOrder);
+                }
+                // COD: Doanh thu sẽ được ghi nhận khi status chuyển sang DELIVERED (trong ShipmentService)
 
                 // Thành công, break khỏi loop
                 break;
@@ -333,10 +336,12 @@ public class OrderService {
                 updateInventoryAndSales(product, quantity);
                 finalizeVoucherUsageForUser(user);
 
-                // Ghi nhận doanh thu cho đơn COD (đã thanh toán khi tạo đơn)
-                recordOrderRevenue(savedOrder);
-
+                // Ghi nhận doanh thu: COD chỉ ghi nhận khi DELIVERED, các phương thức khác ghi nhận ngay
+                if (paymentMethod != PaymentMethod.COD) {
+                    recordOrderRevenue(savedOrder);
+                }
                 // COD: Tạo đơn hàng ngay và giữ status CREATED, chờ admin/staff xác nhận
+                // Doanh thu COD sẽ được ghi nhận khi status chuyển sang DELIVERED (trong ShipmentService)
                 return new CheckoutResult(savedOrder, null);
             } catch (DataIntegrityViolationException e) {
                 // Nếu duplicate order code, generate lại và retry
@@ -437,8 +442,12 @@ public class OrderService {
                     cartService.removeCartItemsForOrder(savedOrder.getUser(), pricing.selectedCartItemIds);
                 }
 
-                // Ghi nhận doanh thu (đơn hàng đã thanh toán thành công)
-                recordOrderRevenue(savedOrder);
+                // Ghi nhận doanh thu: COD chỉ ghi nhận khi DELIVERED, các phương thức khác ghi nhận ngay
+                PaymentMethod orderPaymentMethod = savedOrder.getPaymentMethod();
+                if (orderPaymentMethod != PaymentMethod.COD) {
+                    recordOrderRevenue(savedOrder);
+                }
+                // COD: Doanh thu sẽ được ghi nhận khi status chuyển sang DELIVERED (trong ShipmentService)
 
                 return savedOrder;
             } catch (DataIntegrityViolationException e) {
@@ -552,8 +561,12 @@ public class OrderService {
                 updateInventoryAndSales(product, quantity);
                 finalizeVoucherUsageForUser(user);
 
-                // Ghi nhận doanh thu (đơn hàng đã thanh toán thành công)
-                recordOrderRevenue(savedOrder);
+                // Ghi nhận doanh thu: COD chỉ ghi nhận khi DELIVERED, các phương thức khác ghi nhận ngay
+                PaymentMethod orderPaymentMethod = savedOrder.getPaymentMethod();
+                if (orderPaymentMethod != PaymentMethod.COD) {
+                    recordOrderRevenue(savedOrder);
+                }
+                // COD: Doanh thu sẽ được ghi nhận khi status chuyển sang DELIVERED (trong ShipmentService)
 
                 return savedOrder;
             } catch (DataIntegrityViolationException e) {

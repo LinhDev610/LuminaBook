@@ -27,7 +27,6 @@ import iconThanhToan from '../../assets/icons/icon_thanhtoanantoan.png';
 import iconHoTro from '../../assets/icons/icon_hotro247.png';
 import iconKhuyenMai from '../../assets/icons/icon_khuyenmaihapdan.png';
 
-
 const cx = classNames.bind(styles);
 
 const PRODUCT_IMAGE_FALLBACK = imgsach_test;
@@ -101,7 +100,7 @@ function Home() {
     const [token] = useLocalStorage('token', null);
     const sessionToken = sessionStorage.getItem('token');
     const hasToken = token || sessionToken;
-    
+
     // Luôn bắt đầu với checking nếu có token để tránh flash
     const [isChecking, setIsChecking] = useState(() => {
         const tokenCheck = token || sessionStorage.getItem('token');
@@ -139,7 +138,7 @@ function Home() {
         let mounted = true;
         const checkInterval = setInterval(() => {
             if (!mounted) return;
-            
+
             // Kiểm tra lại token mỗi lần (để phát hiện logout)
             const currentToken = token || sessionStorage.getItem('token');
             if (!currentToken) {
@@ -149,7 +148,7 @@ function Home() {
                 clearInterval(checkInterval);
                 return;
             }
-            
+
             const checking = sessionStorage.getItem('_checking_role') === '1';
             if (checking) {
                 setIsChecking(true);
@@ -260,6 +259,13 @@ function Home() {
             .slice(0, Math.min(limit, products.length));
     };
 
+    // Sản phẩm khuyến mãi: chỉ lấy những sản phẩm có discount > 0
+    const promotionalProducts = sortAndSlice(
+        allProducts.filter((p) => (p.discount ?? 0) > 0),
+        (p) => p.discount || 0,
+        10,
+    );
+
     // Sách yêu thích: chỉ lấy những sách có đánh giá trung bình ~ 5*
     const favoriteProducts = sortAndSlice(
         allProducts.filter((p) => (p.averageRating ?? 0) >= 4.9),
@@ -278,149 +284,149 @@ function Home() {
             <AdminRedirectHandler />
             {!isChecking && (
                 <main className={cx('home-content')}>
-                {/* Main Content Area - 2 columns layout */}
-                <Banner1
-                    heroImages={activeBannerImages.length ? activeBannerImages : [heroImage]}
-                    promos={[
-                        { image: imgsach_test, alt: 'Sách kĩ năng sống' },
-                        { image: promoImage2, alt: 'Sách tài chính' },
-                        { image: promoImage3, alt: 'Sách gia đình' },
-                    ]}
-                />
+                    {/* Main Content Area - 2 columns layout */}
+                    <Banner1
+                        heroImages={activeBannerImages.length ? activeBannerImages : [heroImage]}
+                        promos={[
+                            { image: imgsach_test, alt: 'Sách kĩ năng sống' },
+                            { image: promoImage2, alt: 'Sách tài chính' },
+                            { image: promoImage3, alt: 'Sách gia đình' },
+                        ]}
+                    />
 
-                
-                {/* Bottom Promotional Banners */}
-                <Banner2
-                    items={[
-                        { image: bannerImage1, alt: 'Banner image 1', variant: 1 },
-                        { image: bannerImage2, alt: 'Banner image 2', variant: 2 },
-                        { image: bannerImage3, alt: 'Banner image 3', variant: 3 },
-                    ]}
-                />
 
-                {productLoading && (
-                    <div className={cx('api-notice')}>Đang tải sản phẩm thực tế...</div>
-                )}
-                {!productLoading && productError && (
-                    <div className={cx('api-notice', 'error')}>{productError}</div>
-                )}
+                    {/* Bottom Promotional Banners */}
+                    <Banner2
+                        items={[
+                            { image: bannerImage1, alt: 'Banner image 1', variant: 1 },
+                            { image: bannerImage2, alt: 'Banner image 2', variant: 2 },
+                            { image: bannerImage3, alt: 'Banner image 3', variant: 3 },
+                        ]}
+                    />
 
-                {/* Hot Promotions Section */}
-                <ProductList 
-                    products={allProducts} 
-                    title="KHUYẾN MÃI HOT" 
-                    showNavigation={true}
-                />
+                    {productLoading && (
+                        <div className={cx('api-notice')}>Đang tải sản phẩm thực tế...</div>
+                    )}
+                    {!productLoading && productError && (
+                        <div className={cx('api-notice', 'error')}>{productError}</div>
+                    )}
 
-                {/* Mid-Autumn Promo Section (new) */}
-                <section
-                    className={cx('mid-autumn-section')}
-                    style={{ backgroundImage: `url(${bgTetOngTrang})` }}
-                >
-                    <div className={cx('mid-autumn-overlay')} />
-                    <div className={cx('mid-autumn-products')}>
-                        <div className={cx('mid-autumn-header')}>
-                            
+                    {/* Hot Promotions Section */}
+                    <ProductList
+                        products={promotionalProducts}
+                        title="KHUYẾN MÃI HOT"
+                        showNavigation={true}
+                    />
+
+                    {/* Mid-Autumn Promo Section (new) */}
+                    <section
+                        className={cx('mid-autumn-section')}
+                        style={{ backgroundImage: `url(${bgTetOngTrang})` }}
+                    >
+                        <div className={cx('mid-autumn-overlay')} />
+                        <div className={cx('mid-autumn-products')}>
+                            <div className={cx('mid-autumn-header')}>
+
+                            </div>
+                            <ProductList
+                                products={allProducts}
+                                title="Tết ông trăng"
+                                showNavigation={true}
+                                showHeader={false}
+                                minimal={true}
+                            />
                         </div>
-                        <ProductList 
-                            products={allProducts}
-                            title="Tết ông trăng"
+                    </section>
+
+                    {/* Trending Section */}
+                    <section className={cx('trending-section')}>
+                        <div className={cx('trending-header')}>
+                            <h3 className={cx('trending-title')}>SÁCH YÊU THÍCH</h3>
+                        </div>
+                        <ProductList
+                            products={favoriteProducts}
+                            title="SÁCH YÊU THÍCH"
                             showNavigation={true}
                             showHeader={false}
                             minimal={true}
                         />
-                    </div>
-                </section>
-
-                {/* Trending Section */}
-                <section className={cx('trending-section')}>
-                    <div className={cx('trending-header')}>
-                        <h3 className={cx('trending-title')}>SÁCH YÊU THÍCH</h3>
-                    </div>
-                    <ProductList
-                        products={favoriteProducts}
-                        title="SÁCH YÊU THÍCH"
-                        showNavigation={true}
-                        showHeader={false}
-                        minimal={true}
-                    />
-                </section>
-
-                
-
-                {/* Trending Section */}
-                <section className={cx('trending-section')}>
-                    <div className={cx('trending-header')}>
-                        <h3 className={cx('trending-title')}>SÁCH BÁN CHẠY</h3>
-                    </div>
-                    <ProductList
-                        products={bestSellerProducts}
-                        title="SÁCH BÁN CHẠY"
-                        showNavigation={true}
-                        showHeader={false}
-                        minimal={true}
-                    />
-                </section>
-
-
-                <section className={cx('trending-section')}>
-                    <div className={cx('trending-header')}>
-                        <h3 className={cx('trending-title')}>SÁCH MỚI</h3>
-                    </div>
-                    <ProductList
-                        products={newestProducts}
-                        title="SÁCH MỚI"
-                        showNavigation={true}
-                        showHeader={false}
-                        minimal={true}
-                    />
-                </section>
+                    </section>
 
 
 
-                {/* Service Highlights Row */}
-                <section className={cx('service-row')}>
-                    <div className={cx('service-grid')}>
-                        <div className={cx('service-item')}>
-                            <img className={cx('service-icon')} src={iconGiaoHang} alt="Giao hàng tận nơi" />
-                            <div className={cx('service-text')}>
-                                <div className={cx('service-title')}>Giao hàng tận nơi</div>
-                                <div className={cx('service-desc')}>Dành cho tất cả đơn hàng</div>
+                    {/* Trending Section */}
+                    <section className={cx('trending-section')}>
+                        <div className={cx('trending-header')}>
+                            <h3 className={cx('trending-title')}>SÁCH BÁN CHẠY</h3>
+                        </div>
+                        <ProductList
+                            products={bestSellerProducts}
+                            title="SÁCH BÁN CHẠY"
+                            showNavigation={true}
+                            showHeader={false}
+                            minimal={true}
+                        />
+                    </section>
+
+
+                    <section className={cx('trending-section')}>
+                        <div className={cx('trending-header')}>
+                            <h3 className={cx('trending-title')}>SÁCH MỚI</h3>
+                        </div>
+                        <ProductList
+                            products={newestProducts}
+                            title="SÁCH MỚI"
+                            showNavigation={true}
+                            showHeader={false}
+                            minimal={true}
+                        />
+                    </section>
+
+
+
+                    {/* Service Highlights Row */}
+                    <section className={cx('service-row')}>
+                        <div className={cx('service-grid')}>
+                            <div className={cx('service-item')}>
+                                <img className={cx('service-icon')} src={iconGiaoHang} alt="Giao hàng tận nơi" />
+                                <div className={cx('service-text')}>
+                                    <div className={cx('service-title')}>Giao hàng tận nơi</div>
+                                    <div className={cx('service-desc')}>Dành cho tất cả đơn hàng</div>
+                                </div>
+                            </div>
+                            <div className={cx('service-item')}>
+                                <img className={cx('service-icon')} src={iconDoiTra} alt="Đổi trả hàng 90 ngày trở lại" />
+                                <div className={cx('service-text')}>
+                                    <div className={cx('service-title')}>Đổi trả hàng 90 ngày trở lại</div>
+                                    <div className={cx('service-desc')}>Nếu hàng hóa có vấn đề</div>
+                                </div>
+                            </div>
+                            <div className={cx('service-item')}>
+                                <img className={cx('service-icon')} src={iconThanhToan} alt="Thanh toán an toàn" />
+                                <div className={cx('service-text')}>
+                                    <div className={cx('service-title')}>Thanh toán an toàn</div>
+                                    <div className={cx('service-desc')}>100% thanh toán an toàn</div>
+                                </div>
+                            </div>
+                            <div className={cx('service-item')}>
+                                <img className={cx('service-icon')} src={iconHoTro} alt="Hỗ trợ 24/7" />
+                                <div className={cx('service-text')}>
+                                    <div className={cx('service-title')}>Hỗ trợ 24/7</div>
+                                    <div className={cx('service-desc')}>Hỗ trợ khách hàng 24/7</div>
+                                </div>
+                            </div>
+                            <div className={cx('service-item')}>
+                                <img className={cx('service-icon')} src={iconKhuyenMai} alt="Khuyến mãi hấp dẫn" />
+                                <div className={cx('service-text')}>
+                                    <div className={cx('service-title')}>Khuyến mãi hấp dẫn</div>
+                                    <div className={cx('service-desc')}>Chương trình khuyến mãi hấp dẫn</div>
+                                </div>
                             </div>
                         </div>
-                        <div className={cx('service-item')}>
-                            <img className={cx('service-icon')} src={iconDoiTra} alt="Đổi trả hàng 90 ngày trở lại" />
-                            <div className={cx('service-text')}>
-                                <div className={cx('service-title')}>Đổi trả hàng 90 ngày trở lại</div>
-                                <div className={cx('service-desc')}>Nếu hàng hóa có vấn đề</div>
-                            </div>
-                        </div>
-                        <div className={cx('service-item')}>
-                            <img className={cx('service-icon')} src={iconThanhToan} alt="Thanh toán an toàn" />
-                            <div className={cx('service-text')}>
-                                <div className={cx('service-title')}>Thanh toán an toàn</div>
-                                <div className={cx('service-desc')}>100% thanh toán an toàn</div>
-                            </div>
-                        </div>
-                        <div className={cx('service-item')}>
-                            <img className={cx('service-icon')} src={iconHoTro} alt="Hỗ trợ 24/7" />
-                            <div className={cx('service-text')}>
-                                <div className={cx('service-title')}>Hỗ trợ 24/7</div>
-                                <div className={cx('service-desc')}>Hỗ trợ khách hàng 24/7</div>
-                            </div>
-                        </div>
-                        <div className={cx('service-item')}>
-                            <img className={cx('service-icon')} src={iconKhuyenMai} alt="Khuyến mãi hấp dẫn" />
-                            <div className={cx('service-text')}>
-                                <div className={cx('service-title')}>Khuyến mãi hấp dẫn</div>
-                                <div className={cx('service-desc')}>Chương trình khuyến mãi hấp dẫn</div>
-                            </div>
-                        </div>
-                    </div>
-                </section>
+                    </section>
 
-                {/* Solid blue bar like header (no content) */}
-                <div className={cx('home-bottom-bar')}></div>
+                    {/* Solid blue bar like header (no content) */}
+                    <div className={cx('home-bottom-bar')}></div>
                 </main>
             )}
         </div>

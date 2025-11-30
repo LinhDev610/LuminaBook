@@ -4,12 +4,15 @@ import java.util.Map;
 import java.util.Objects;
 
 import jakarta.validation.ConstraintViolation;
-
+import org.apache.catalina.connector.ClientAbortException;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.servlet.NoHandlerFoundException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import com.lumina_book.backend.dto.request.ApiResponse;
 
@@ -21,8 +24,33 @@ public class GlobalExceptionHandler {
 
     private static final String MIN_ATTRIBUTE = "min";
 
+    // Xử lý lỗi khi không tìm thấy static resource (404)
+    @ExceptionHandler(value = {NoResourceFoundException.class, NoHandlerFoundException.class})
+    ResponseEntity<?> handleResourceNotFoundException(Exception exception) {
+        // Chỉ log ở mức debug để tránh spam log
+        log.debug("Resource not found: {}", exception.getMessage());
+        // Trả về 404 không có body để tránh conflict với Content-Type đã được set
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+    }
+
+    // Xử lý lỗi khi client ngắt kết nối (thường xảy ra khi load video/media)
+    @ExceptionHandler(value = ClientAbortException.class)
+    ResponseEntity<?> handleClientAbortException(ClientAbortException exception) {
+        // Chỉ log ở mức debug vì đây là hành vi bình thường khi client cancel request
+        log.debug("Client aborted connection: {}", exception.getMessage());
+        // Trả về empty response để tránh conflict với Content-Type đã được set
+        return ResponseEntity.status(HttpStatus.OK).build();
+    }
+
     @ExceptionHandler(value = Exception.class)
-    ResponseEntity<ApiResponse<?>> handleException(Exception exception) {
+    ResponseEntity<?> handleException(Exception exception) {
+        if (exception instanceof ClientAbortException) {
+            return handleClientAbortException((ClientAbortException) exception);
+        }
+        if (exception instanceof NoResourceFoundException 
+            || exception instanceof NoHandlerFoundException) {
+            return handleResourceNotFoundException(exception);
+        }
         log.error("Exception", exception);
         ApiResponse<?> apiResponse = ApiResponse.builder()
                 .code(ErrorCode.UNCATEGORIZED_EXCEPTION.getCode())

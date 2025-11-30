@@ -8,6 +8,10 @@ import iconShip from '../../../assets/icons/icon_ship.png';
 import iconPay from '../../../assets/icons/icon_pay.png';
 import iconRefund from '../../../assets/icons/icon_refund.png';
 import iconShoppingCart from '../../../assets/icons/icon_shopping_cart.png';
+import imgSach from '../../../assets/images/img_sach.png';
+import imgTaiChinh from '../../../assets/images/img_taichinh.png';
+import imgSachGiaDinh from '../../../assets/images/img_sachgiadinh.png';
+import imgQc from '../../../assets/images/img_qc.png';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useNotification } from '../Notification';
 import Lightbox from '../Lightbox';
@@ -121,10 +125,10 @@ const ProductDetail = ({ productId }) => {
         longDescription:
             'Nếu phát huy được những khả năng còn tiềm ẩn ở bán cầu não phải bấy lâu, thì con sẽ trở thành những đứa trẻ sở hữu tư duy sáng tạo và nguồn cảm hứng dồi dào. Và chính cha mẹ sẽ là người khai phá tài năng của trẻ.',
         images: [
-            '/assets/images/img_sach.png',
-            '/assets/images/img_taichinh.png',
-            '/assets/images/img_sachgiadinh.png',
-            '/assets/images/img_qc.png',
+            imgSach,
+            imgTaiChinh,
+            imgSachGiaDinh,
+            imgQc,
         ],
         category: 'Sách Giáo Dục',
         stock: 50,

@@ -41,6 +41,24 @@
     color: #1A3C5A;
 }
 
+/* Button style dùng chung cho link footer (để bắt onClick scroll-to-top) */
+.footer-link-btn {
+    background: none;
+    border: none;
+    padding: 0;
+    margin: 0;
+    color: #666;
+    font-size: 16px;
+    line-height: 1.6;
+    cursor: pointer;
+    text-align: left;
+    transition: color 0.2s;
+}
+
+.footer-link-btn:hover {
+    color: #1A3C5A;
+}
+
 /* Social icons row under contact column */
 .social-row {
     display: flex;

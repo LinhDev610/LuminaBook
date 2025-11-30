@@ -30,7 +30,7 @@ export default function CustomerSideBar() {
     const [user, setUser] = useState(null);
     const { success: notifySuccess, error: notifyError } = useNotification();
 
-    // Fetch user info for sidebar display
+    // Fetch user info for sidebar display & keep in sync when profile changes
     useEffect(() => {
         const fetchUser = async () => {
             try {
@@ -47,7 +47,19 @@ export default function CustomerSideBar() {
                 // ignore
             }
         };
+
         fetchUser();
+
+        // Lắng nghe sự kiện displayNameUpdated để refetch khi user cập nhật thông tin cá nhân
+        const handleProfileUpdated = () => {
+            fetchUser();
+        };
+
+        window.addEventListener('displayNameUpdated', handleProfileUpdated);
+
+        return () => {
+            window.removeEventListener('displayNameUpdated', handleProfileUpdated);
+        };
     }, []);
 
     const handleAvatarClick = () => {
@@ -179,7 +191,8 @@ export default function CustomerSideBar() {
                         />
                     </div>
                     <div className={cx('side-name')}>
-                        {displayName || user?.fullName || 'Khách'}
+                        {/* Ưu tiên tên thật từ API, sau đó mới tới displayName local */}
+                        {user?.fullName || displayName || user?.email || 'Khách'}
                     </div>
                 </div>
                 <ul className={cx('menu')}>

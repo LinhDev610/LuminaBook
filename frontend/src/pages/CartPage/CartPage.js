@@ -10,6 +10,7 @@ import {
     removeCartItem,
     applyVoucherToCart,
     clearVoucherFromCart,
+    getActiveVouchers,
 } from '../../services';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNotification } from '../../components/Common/Notification';
@@ -31,6 +32,7 @@ export default function CartPage() {
     const [updatingItems, setUpdatingItems] = useState(new Set());
     // Lưu thông tin meta của sản phẩm: ảnh + giá gốc
     const [productMeta, setProductMeta] = useState({});
+    const [availableVouchers, setAvailableVouchers] = useState([]);
 
     const isLoggedIn = !!getStoredToken('token');
 
@@ -154,6 +156,7 @@ export default function CartPage() {
                                     imageUrl: normalizedImage,
                                     currentPrice,
                                     originalUnitPrice,
+                                    categoryId: product?.categoryId || product?.category?.id || null,
                                 };
                                 setProductMeta((prev) => ({ ...prev, ...metaMap }));
                             })
@@ -162,6 +165,7 @@ export default function CartPage() {
                                     imageUrl: defaultProductImage,
                                     currentPrice: item.unitPrice || 0,
                                     originalUnitPrice: item.unitPrice || 0,
+                                    categoryId: null,
                                 };
                                 setProductMeta((prev) => ({ ...prev, ...metaMap }));
                             });
@@ -177,6 +181,42 @@ export default function CartPage() {
 
         fetchCart();
     }, [isLoggedIn, API_BASE_URL, openLoginModal, showError]);
+
+    // Fetch available vouchers
+    useEffect(() => {
+        if (!isLoggedIn) {
+            setAvailableVouchers([]);
+            return;
+        }
+
+        const fetchVouchers = async () => {
+            try {
+                const token = getStoredToken('token');
+                if (!token) {
+                    console.log('No token, skipping voucher fetch');
+                    return;
+                }
+
+                console.log('Fetching vouchers with token...');
+                const vouchers = await getActiveVouchers(token);
+                console.log('Voucher API result:', vouchers);
+                
+                // getActiveVouchers đã dùng extractResult(data, true), nên trả về array trực tiếp
+                if (Array.isArray(vouchers)) {
+                    console.log('Parsed vouchers:', vouchers.length, vouchers);
+                    setAvailableVouchers(vouchers);
+                } else {
+                    console.warn('Voucher API did not return array:', vouchers);
+                    setAvailableVouchers([]);
+                }
+            } catch (err) {
+                console.error('Error fetching vouchers:', err);
+                setAvailableVouchers([]);
+            }
+        };
+
+        fetchVouchers();
+    }, [isLoggedIn]);
 
     // Select all items
     const handleSelectAll = () => {
@@ -216,6 +256,13 @@ export default function CartPage() {
                 if (status === 401) {
                     showError('Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại');
                     openLoginModal();
+                } else if (status === 400) {
+                    const errorMessage = data?.message || data?.error || '';
+                    if (errorMessage.includes('Hết hàng')) {
+                        showError('Số lượng vượt quá tồn kho hiện có');
+                    } else {
+                        showError('Không thể cập nhật số lượng');
+                    }
                 } else {
                     showError('Không thể cập nhật số lượng');
                 }
@@ -288,6 +335,31 @@ export default function CartPage() {
         if (!code) {
             showError('Vui lòng nhập mã giảm giá');
             return;
+        }
+
+        // Validate voucher trước khi apply: kiểm tra xem voucher có trong danh sách hợp lệ không
+        const selectedItemsForCheck = items.filter((item) => selectedItems.has(item.id));
+        const subtotalForCheck = selectedItemsForCheck.reduce((sum, item) => {
+            const meta = productMeta[item.productId] || {};
+            const quantity = item.quantity || 1;
+            const unitPriceFromMeta = typeof meta.currentPrice === 'number' ? meta.currentPrice : undefined;
+            const unitPrice = unitPriceFromMeta ?? item.unitPrice ?? 0;
+            return sum + (unitPrice * quantity);
+        }, 0);
+
+        // Tìm voucher trong danh sách available
+        const voucherToApply = availableVouchers.find((v) => v.code === code);
+        if (voucherToApply) {
+            // Kiểm tra minOrderValue
+            if (voucherToApply.minOrderValue && subtotalForCheck < voucherToApply.minOrderValue) {
+                showError(`Voucher này chỉ áp dụng cho đơn hàng từ ${formatPrice(voucherToApply.minOrderValue)}`);
+                return;
+            }
+            // Kiểm tra maxOrderValue
+            if (voucherToApply.maxOrderValue && subtotalForCheck > voucherToApply.maxOrderValue) {
+                showError(`Voucher này chỉ áp dụng cho đơn hàng đến ${formatPrice(voucherToApply.maxOrderValue)}`);
+                return;
+            }
         }
 
         try {
@@ -389,6 +461,98 @@ export default function CartPage() {
 
     const voucherDiscount = cart?.voucherDiscount || 0;
     const totalAmount = selectedItemsData.subtotal - voucherDiscount;
+
+    // Lọc các voucher phù hợp với đơn hàng
+    // Sử dụng toàn bộ giỏ hàng nếu chưa chọn sản phẩm nào, hoặc các sản phẩm đã chọn
+    const applicableVouchers = useMemo(() => {
+        if (!availableVouchers.length) {
+            return [];
+        }
+
+        // Nếu không có giỏ hàng hoặc giỏ hàng trống, không hiển thị voucher nào
+        if (!cart?.items || cart.items.length === 0) {
+            return [];
+        }
+        
+        // Nếu chưa chọn sản phẩm nào, không hiển thị voucher
+        if (selectedItemsData.items.length === 0) {
+            return [];
+        }
+
+        // Chỉ sử dụng các sản phẩm đã chọn (bắt buộc phải chọn sản phẩm)
+        const itemsToCheck = selectedItemsData.items;
+        
+        // Tính subtotal dựa trên items đang kiểm tra
+        const subtotal = itemsToCheck.reduce((sum, item) => {
+            const meta = productMeta[item.productId] || {};
+            const quantity = item.quantity || 1;
+            const unitPriceFromMeta = typeof meta.currentPrice === 'number' ? meta.currentPrice : undefined;
+            const unitPrice = unitPriceFromMeta ?? item.unitPrice ?? 0;
+            return sum + (unitPrice * quantity);
+        }, 0);
+
+        const selectedProductIds = new Set(itemsToCheck.map((item) => item.productId));
+        const selectedCategoryIds = new Set();
+        
+        // Lấy categoryIds từ productMeta
+        itemsToCheck.forEach((item) => {
+            const meta = productMeta[item.productId];
+            if (meta?.categoryId) {
+                selectedCategoryIds.add(meta.categoryId);
+            }
+        });
+
+        return availableVouchers.filter((voucher) => {
+            // Kiểm tra minOrderValue
+            if (voucher.minOrderValue && subtotal < voucher.minOrderValue) {
+                return false;
+            }
+
+            // Kiểm tra maxOrderValue
+            if (voucher.maxOrderValue && subtotal > voucher.maxOrderValue) {
+                return false;
+            }
+
+            // Kiểm tra applyScope
+            const applyScope = voucher.applyScope || 'ORDER';
+            
+            if (applyScope === 'ORDER') {
+                // Áp dụng cho toàn bộ đơn hàng
+                return true;
+            } else if (applyScope === 'PRODUCT') {
+                // Kiểm tra xem có sản phẩm nào trong giỏ nằm trong productApply không
+                const productApply = voucher.productApply || [];
+                if (productApply.length === 0) return false;
+                
+                const productApplyIds = new Set(
+                    productApply.map((p) => (typeof p === 'string' ? p : p.id))
+                );
+                return Array.from(selectedProductIds).some((id) => productApplyIds.has(id));
+            } else if (applyScope === 'CATEGORY') {
+                // Kiểm tra xem có sản phẩm nào trong giỏ thuộc categoryApply không
+                const categoryApply = voucher.categoryApply || [];
+                if (categoryApply.length === 0) return false;
+                
+                const categoryApplyIds = new Set(
+                    categoryApply.map((c) => (typeof c === 'string' ? c : c.id))
+                );
+                return Array.from(selectedCategoryIds).some((id) => categoryApplyIds.has(id));
+            }
+
+            return false;
+        });
+    }, [availableVouchers, cart, selectedItemsData, productMeta]);
+
+    // Debug log
+    useEffect(() => {
+        console.log('=== VOUCHER DEBUG ===');
+        console.log('Available vouchers:', availableVouchers.length, availableVouchers);
+        console.log('Applicable vouchers:', applicableVouchers.length, applicableVouchers);
+        console.log('Cart items:', cart?.items?.length || 0);
+        console.log('Selected items:', selectedItemsData.items.length);
+        console.log('Is logged in:', isLoggedIn);
+        console.log('===================');
+    }, [availableVouchers, applicableVouchers, cart, selectedItemsData, isLoggedIn]);
 
     // Handle buy now
     const handleBuyNow = () => {
@@ -607,6 +771,69 @@ export default function CartPage() {
                                     )}
                                 </div>
                             </div>
+
+                            {/* Hiển thị các voucher phù hợp - CHỈ hiển thị voucher phù hợp với đơn hàng */}
+                            {selectedItems.size > 0 && applicableVouchers.length > 0 && (
+                                <div className={cx('applicable-vouchers')}>
+                                    <h4 className={cx('applicable-vouchers-title')}>
+                                        Voucher phù hợp với đơn hàng
+                                    </h4>
+                                    <div className={cx('voucher-list')}>
+                                        {applicableVouchers.map((voucher) => {
+                                            const isSelected = selectedVoucherCode === voucher.code;
+                                            const discountText =
+                                                voucher.discountValueType === 'PERCENTAGE'
+                                                    ? `Giảm ${voucher.discountValue}%`
+                                                    : `Giảm ${formatPrice(voucher.discountValue || 0)}`;
+                                            
+                                            return (
+                                                <div
+                                                    key={voucher.id}
+                                                    className={cx('voucher-item', {
+                                                        selected: isSelected,
+                                                    })}
+                                                >
+                                                    <div className={cx('voucher-text')}>
+                                                        <div className={cx('voucher-code-row')}>
+                                                            <span className={cx('voucher-code')}>
+                                                                {voucher.code}
+                                                            </span>
+                                                            <span className={cx('voucher-name')}>
+                                                                {voucher.name || discountText}
+                                                            </span>
+                                                        </div>
+                                                        {voucher.description && (
+                                                            <p className={cx('voucher-desc')}>
+                                                                {voucher.description}
+                                                            </p>
+                                                        )}
+                                                        {voucher.minOrderValue && (
+                                                            <p className={cx('voucher-desc')}>
+                                                                Áp dụng cho đơn từ {formatPrice(voucher.minOrderValue)}
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                    <button
+                                                        className={cx('select-voucher-btn', {
+                                                            applied: isSelected,
+                                                        })}
+                                                        onClick={() => {
+                                                            if (isSelected) {
+                                                                handleClearVoucher();
+                                                            } else {
+                                                                handleApplyVoucher(voucher.code);
+                                                            }
+                                                        }}
+                                                        disabled={isSelected}
+                                                    >
+                                                        {isSelected ? 'Đã chọn' : 'Chọn'}
+                                                    </button>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         <div className={cx('order-summary')}>

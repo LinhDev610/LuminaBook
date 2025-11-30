@@ -4,6 +4,7 @@ import styles from './ReviewAndCommentPage.module.scss';
 import SearchAndSort from '../../../../components/Common/SearchAndSort';
 import { formatDateTime } from '../../../../services/utils';
 import { useNotification } from '../../../../components/Common/Notification';
+import { getStoredToken, getAllReviews, deleteReview } from '../../../../services';
 
 const cx = classNames.bind(styles);
 
@@ -11,31 +12,6 @@ const STATUS_FILTERS = [
     { value: 'all', label: 'Tất cả trạng thái' },
     { value: 'with-reply', label: 'Đã phản hồi' },
     { value: 'no-reply', label: 'Chưa phản hồi' },
-];
-
-const MOCK_REVIEWS = [
-    {
-        id: 'review-1',
-        productName: 'Đắc Nhân Tâm',
-        productId: 'prod-001',
-        customerName: 'nguyenvana01',
-        rating: 5,
-        comment: 'Sách rất hay, giúp mình thay đổi tư duy giao tiếp.',
-        reply: 'Cảm ơn bạn đã tin tưởng và ủng hộ nhà sách!',
-        createdAt: '2025-10-10T08:00:00',
-        replyAt: '2025-10-10T09:15:00',
-    },
-    {
-        id: 'review-2',
-        productName: 'Tư Duy Nhanh Và Chậm',
-        productId: 'prod-002',
-        customerName: 'lethithao',
-        rating: 4,
-        comment: 'Sách giao hơi chậm 1 ngày nhưng chất lượng rất tốt.',
-        reply: 'Cửa hàng sẽ cải thiện thời gian giao hàng nhé!',
-        createdAt: '2025-10-09T10:30:00',
-        replyAt: '2025-10-09T12:05:00',
-    },
 ];
 
 function formatDateOnly(dateTime) {
@@ -67,19 +43,9 @@ function renderStarsText(rating = 0) {
 export default function ReviewAndCommentPage() {
     const { success: notifySuccess, error: notifyError } = useNotification();
 
-    const [reviews, setReviews] = useState(() =>
-        MOCK_REVIEWS.map((item) => ({
-            ...item,
-            createdDate: formatDateOnly(item.createdAt),
-        })),
-    );
-    const [filteredReviews, setFilteredReviews] = useState(() =>
-        MOCK_REVIEWS.map((item) => ({
-            ...item,
-            createdDate: formatDateOnly(item.createdAt),
-        })),
-    );
-    const [loading, setLoading] = useState(false);
+    const [reviews, setReviews] = useState([]);
+    const [filteredReviews, setFilteredReviews] = useState([]);
+    const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [dateFilter, setDateFilter] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
@@ -88,6 +54,48 @@ export default function ReviewAndCommentPage() {
     const [reviewPendingDeletion, setReviewPendingDeletion] = useState(null);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
+
+    // Fetch real reviews from backend
+    useEffect(() => {
+        const fetchReviews = async () => {
+            setLoading(true);
+            try {
+                const token = getStoredToken();
+                if (!token) {
+                    setReviews([]);
+                    setFilteredReviews([]);
+                    setLoading(false);
+                    return;
+                }
+
+                const all = await getAllReviews(token);
+                const mapped = (all || []).map((item) => ({
+                    id: item.id,
+                    productName: item.productName,
+                    productId: item.productId,
+                    customerName: item.userName || item.nameDisplay || 'Khách hàng',
+                    rating: item.rating || 0,
+                    comment: item.comment || '',
+                    reply: item.reply || '',
+                    createdAt: item.createdAt,
+                    replyAt: item.replyAt,
+                    createdDate: formatDateOnly(item.createdAt),
+                }));
+
+                setReviews(mapped);
+                setFilteredReviews(mapped);
+            } catch (err) {
+                console.error('Error loading reviews:', err);
+                notifyError('Không thể tải danh sách đánh giá. Vui lòng thử lại sau.');
+                setReviews([]);
+                setFilteredReviews([]);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchReviews();
+    }, [notifyError]);
 
     useEffect(() => {
         let filtered = [...reviews];
@@ -143,13 +151,24 @@ export default function ReviewAndCommentPage() {
         if (!reviewPendingDeletion) return;
         setIsDeleting(true);
         try {
+            const token = getStoredToken();
+            if (!token) {
+                notifyError('Vui lòng đăng nhập lại để xóa đánh giá.');
+                setIsDeleting(false);
+                return;
+            }
+
+            // Gọi API xóa review thật
+            await deleteReview(reviewPendingDeletion.id, token);
+
+            // Cập nhật lại danh sách trên FE
             setReviews((prev) => prev.filter((review) => review.id !== reviewPendingDeletion.id));
             setShowDeleteModal(false);
             setReviewPendingDeletion(null);
-            notifySuccess('Đã xóa đánh giá mẫu.');
+            notifySuccess('Đã xóa đánh giá thành công.');
         } catch (err) {
-            console.error('Error deleting mock review:', err);
-            notifyError('Không thể xóa đánh giá mẫu. Vui lòng thử lại.');
+            console.error('Error deleting review:', err);
+            notifyError('Không thể xóa đánh giá. Vui lòng thử lại.');
         } finally {
             setIsDeleting(false);
         }

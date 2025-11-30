@@ -15,6 +15,7 @@ const {
     financial,
     orders,
     shipments,
+    chat,
 } = API_ROUTES;
 
 // Get API base URL
@@ -195,6 +196,7 @@ async function apiRequest(endpoint, options = {}) {
         if (resp.status === 401 && !skipAuthCheck && tokenToUse && !isRetry) {
             const errorData = await resp.json().catch(() => ({}));
             const errorMessage = errorData?.message || errorData?.error || 'Token invalid';
+            const errorCode = errorData?.code;
 
             // Check if it's a token validation error
             if (errorMessage.includes('Token invalid') || errorMessage.includes('expired') || errorMessage.includes('Unauthorized') || errorMessage.includes('UNAUTHENTICATED')) {
@@ -238,6 +240,9 @@ async function apiRequest(endpoint, options = {}) {
                     };
                 }
             }
+
+            // Nếu 401 nhưng không phải lỗi token, trả data gốc cho FE xử lý
+            return { ok: false, status: resp.status, data: errorData };
         }
 
         const data = await resp.json().catch(() => ({}));
@@ -302,8 +307,14 @@ export async function getUserRole(apiBaseUrl, token) {
 
 // ========== AUTH API ==========
 export async function login(credentials) {
-    const { data, ok } = await apiRequest(auth.login, { method: 'POST', body: credentials });
-    return { ok, data: extractResult(data) };
+    const { data, ok, status } = await apiRequest(auth.login, { method: 'POST', body: credentials });
+    // Nếu ok = true → backend trả ApiResponse<AuthenticationResponse> với field result chứa token
+    // Trả về data đã extract để FE dùng trực tiếp loginData.token
+    if (ok) {
+        return { ok, status, data: extractResult(data) };
+    }
+    // Nếu lỗi → giữ nguyên cấu trúc để FE đọc code/message
+    return { ok, status, data };
 }
 
 export async function register(userData) {
@@ -724,6 +735,15 @@ export async function replyToReview(reviewId, replyData, token = null) {
     return { ok, status, data: extractResult(data) };
 }
 
+// Xóa đánh giá theo ID (dùng cho trang Admin ReviewAndComment)
+export async function deleteReview(reviewId, token = null) {
+    const { data, ok, status } = await apiRequest(`/reviews/${reviewId}`, {
+        method: 'DELETE',
+        token,
+    });
+    return { ok, status, data: extractResult(data) };
+}
+
 // ========== CART API ==========
 export async function addCartItem(productId, quantity, token = null) {
     const { data, ok, status } = await apiRequest(
@@ -1019,6 +1039,90 @@ export async function deleteAllReadNotifications(token = null) {
 export async function verifyPaymentAndSendEmail(orderId, token = null) {
     const { data, ok, status } = await apiRequest(orders.verifyPayment(orderId), {
         method: 'POST',
+        token,
+    });
+    return { ok, status, data: extractResult(data) };
+}
+
+// ========== CHAT API ==========
+/**
+ * Gửi tin nhắn
+ * @param {string} message - Nội dung tin nhắn
+ * @param {string} receiverId - ID người nhận
+ * @param {string} token - Authentication token
+ * @returns {Promise<{ok: boolean, data: any}>}
+ */
+export async function sendChatMessage(message, receiverId, token = null) {
+    const { data, ok, status } = await apiRequest(chat.send, {
+        method: 'POST',
+        body: { message, receiverId },
+        token,
+    });
+    return { ok, status, data: extractResult(data) };
+}
+
+/**
+ * Lấy danh sách cuộc trò chuyện
+ * @param {string} token - Authentication token
+ * @returns {Promise<{ok: boolean, data: any}>}
+ */
+export async function getChatConversations(token = null) {
+    const { data, ok, status } = await apiRequest(chat.conversations, {
+        method: 'GET',
+        token,
+    });
+    return { ok, status, data: extractResult(data) };
+}
+
+/**
+ * Lấy tin nhắn trong một cuộc trò chuyện
+ * @param {string} partnerId - ID người chat
+ * @param {string} token - Authentication token
+ * @returns {Promise<{ok: boolean, data: any}>}
+ */
+export async function getChatConversation(partnerId, token = null) {
+    const { data, ok, status } = await apiRequest(chat.conversation(partnerId), {
+        method: 'GET',
+        token,
+    });
+    return { ok, status, data: extractResult(data) };
+}
+
+/**
+ * Đánh dấu tin nhắn đã đọc
+ * @param {string} partnerId - ID người chat
+ * @param {string} token - Authentication token
+ * @returns {Promise<{ok: boolean, data: any}>}
+ */
+export async function markChatAsRead(partnerId, token = null) {
+    const { data, ok, status } = await apiRequest(chat.markAsRead(partnerId), {
+        method: 'POST',
+        token,
+    });
+    return { ok, status, data: extractResult(data) };
+}
+
+/**
+ * Lấy số tin nhắn chưa đọc
+ * @param {string} token - Authentication token
+ * @returns {Promise<{ok: boolean, data: any}>}
+ */
+export async function getChatUnreadCount(token = null) {
+    const { data, ok, status } = await apiRequest(chat.unreadCount, {
+        method: 'GET',
+        token,
+    });
+    return { ok, status, data: extractResult(data) };
+}
+
+/**
+ * Lấy CSKH đầu tiên (cho customer)
+ * @param {string} token - Authentication token
+ * @returns {Promise<{ok: boolean, data: any}>}
+ */
+export async function getFirstCustomerSupport(token = null) {
+    const { data, ok, status } = await apiRequest(chat.customerSupport, {
+        method: 'GET',
         token,
     });
     return { ok, status, data: extractResult(data) };

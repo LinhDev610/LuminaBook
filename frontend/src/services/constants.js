@@ -120,6 +120,14 @@ export const API_ROUTES = {
         statistics: (start, end) => `/orders/statistics?start=${start}&end=${end}`,
         recent: (start, end, page = 0, size = 20) => `/orders/recent?start=${start}&end=${end}&page=${page}&size=${size}`,
     },
+    chat: {
+        send: '/chat/send',
+        conversations: '/chat/conversations',
+        conversation: (partnerId) => `/chat/conversation/${partnerId}`,
+        markAsRead: (partnerId) => `/chat/conversation/${partnerId}/read`,
+        unreadCount: '/chat/unread-count',
+        customerSupport: '/chat/customer-support',
+    },
 };
 
 // =========== GHN Constants ===========

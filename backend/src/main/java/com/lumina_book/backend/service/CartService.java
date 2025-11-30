@@ -77,6 +77,12 @@ public class CartService {
                 .findById(productId)
                 .orElseThrow(() -> new AppException(ErrorCode.PRODUCT_NOT_EXISTED));
 
+        // Kiểm tra tồn kho thực tế
+        Integer stockQuantity = product.getInventory() != null ? product.getInventory().getStockQuantity() : null;
+        if (stockQuantity != null && stockQuantity <= 0) {
+            throw new AppException(ErrorCode.OUT_OF_STOCK);
+        }
+
         CartItem cartItem = cartItemRepository
                 .findByCartIdAndProductId(cart.getId(), productId)
                 .orElse(CartItem.builder()
@@ -86,7 +92,15 @@ public class CartService {
                         .quantity(0)
                         .build());
 
-        cartItem.setQuantity(cartItem.getQuantity() + quantity);
+        int currentQty = cartItem.getQuantity() == null ? 0 : cartItem.getQuantity();
+        int newQty = currentQty + quantity;
+
+        // Nếu có tồn kho thì giới hạn số lượng không vượt quá stock
+        if (stockQuantity != null && newQty > stockQuantity) {
+            throw new AppException(ErrorCode.OUT_OF_STOCK);
+        }
+
+        cartItem.setQuantity(newQty);
         double finalPrice = cartItem.getQuantity() * cartItem.getUnitPrice();
         cartItem.setFinalPrice(finalPrice);
 
@@ -128,7 +142,10 @@ public class CartService {
         double subtotal = cart.getCartItems() == null
                 ? 0.0
                 : cart.getCartItems().stream()
-                        .mapToDouble(CartItem::getFinalPrice)
+                        .mapToDouble(item -> {
+                            Double finalPrice = item.getFinalPrice();
+                            return finalPrice != null ? finalPrice : 0.0;
+                        })
                         .sum();
         // Làm tròn subtotal về đơn vị đồng
         subtotal = Math.round(subtotal);
@@ -139,6 +156,53 @@ public class CartService {
         double voucherDiscount = rawVoucherDiscount == null ? 0.0 : rawVoucherDiscount;
         // Làm tròn tiền giảm giá về đơn vị đồng
         voucherDiscount = Math.round(voucherDiscount);
+
+        // Validate lại voucher nếu có voucher đã được áp dụng
+        if (cart.getAppliedVoucherCode() != null && !cart.getAppliedVoucherCode().isEmpty()) {
+            try {
+                var voucher = voucherRepository.findByCode(cart.getAppliedVoucherCode()).orElse(null);
+                if (voucher != null && voucher.getIsActive() && voucher.getStatus() == com.lumina_book.backend.enums.VoucherStatus.APPROVED) {
+                    double applicableSubtotal = calculateApplicableSubtotal(cart, voucher);
+                    
+                    // Kiểm tra lại minOrderValue
+                    if (voucher.getMinOrderValue() != null && voucher.getMinOrderValue() > 0 
+                            && applicableSubtotal < voucher.getMinOrderValue()) {
+                        // Voucher không còn hợp lệ, xóa voucher
+                        cart.setAppliedVoucherCode(null);
+                        voucherDiscount = 0.0;
+                    } else if (voucher.getMaxOrderValue() != null && voucher.getMaxOrderValue() > 0 
+                            && applicableSubtotal > voucher.getMaxOrderValue()) {
+                        // Voucher không còn hợp lệ, xóa voucher
+                        cart.setAppliedVoucherCode(null);
+                        voucherDiscount = 0.0;
+                    } else {
+                        // Tính lại discount dựa trên applicableSubtotal
+                        double discountValue = voucher.getDiscountValue();
+                        double discount;
+                        if (voucher.getDiscountValueType() == DiscountValueType.PERCENTAGE) {
+                            discount = applicableSubtotal * (discountValue / 100.0);
+                        } else {
+                            discount = discountValue;
+                        }
+                        
+                        if (voucher.getMaxDiscountValue() != null && voucher.getMaxDiscountValue() > 0) {
+                            discount = Math.min(discount, voucher.getMaxDiscountValue());
+                        }
+                        discount = Math.min(discount, applicableSubtotal);
+                        discount = Math.round(discount);
+                        voucherDiscount = discount;
+                    }
+                } else {
+                    // Voucher không còn active hoặc không tồn tại, xóa voucher
+                    cart.setAppliedVoucherCode(null);
+                    voucherDiscount = 0.0;
+                }
+            } catch (Exception e) {
+                // Nếu có lỗi khi validate, xóa voucher để tránh lỗi
+                cart.setAppliedVoucherCode(null);
+                voucherDiscount = 0.0;
+            }
+        }
 
         if (subtotal <= 0) {
             cart.setAppliedVoucherCode(null);
@@ -196,10 +260,30 @@ public class CartService {
         // Tính tổng giá trị đơn hàng có thể áp dụng voucher
         double applicableSubtotal = calculateApplicableSubtotal(cart, voucher);
         
-        // Nếu giá trị đơn hàng có thể áp dụng voucher nhỏ hơn giá trị tối thiểu của voucher, throw error
-        if (voucher.getMinOrderValue() != null && voucher.getMinOrderValue() > 0 
-                && applicableSubtotal < voucher.getMinOrderValue()) {
-            throw new AppException(ErrorCode.INVALID_VOUCHER_MINIUM);
+        // Kiểm tra minOrderValue: giá trị đơn hàng phải >= minOrderValue (nếu có)
+        if (voucher.getMinOrderValue() != null && voucher.getMinOrderValue() > 0) {
+            double minValue = voucher.getMinOrderValue();
+            if (applicableSubtotal < minValue) {
+                throw new AppException(ErrorCode.INVALID_VOUCHER_MINIUM, 
+                        String.format("Voucher yêu cầu đơn hàng tối thiểu %.0f VND, nhưng đơn hàng hiện tại chỉ có %.0f VND", 
+                                minValue, applicableSubtotal));
+            }
+        }
+        
+        // Kiểm tra maxOrderValue: giá trị đơn hàng phải <= maxOrderValue (nếu có)
+        if (voucher.getMaxOrderValue() != null && voucher.getMaxOrderValue() > 0 
+                && applicableSubtotal > voucher.getMaxOrderValue()) {
+            throw new AppException(ErrorCode.INVALID_VOUCHER_MINIUM, 
+                    "Giá trị đơn hàng vượt quá giá trị tối đa cho phép của voucher");
+        }
+        
+        // Kiểm tra applyScope: đảm bảo có ít nhất một sản phẩm phù hợp với scope
+        if (voucher.getApplyScope() != null && voucher.getApplyScope() != DiscountApplyScope.ORDER) {
+            double scopeSubtotal = calculateApplicableSubtotal(cart, voucher);
+            if (scopeSubtotal <= 0) {
+                throw new AppException(ErrorCode.INVALID_VOUCHER_SCOPE, 
+                        "Không có sản phẩm nào trong giỏ hàng phù hợp với phạm vi áp dụng của voucher");
+            }
         }
 
         // Tính giá trị giảm giá dựa trên loại giảm giá của voucher
@@ -236,11 +320,20 @@ public class CartService {
     private double calculateApplicableSubtotal(Cart cart, Voucher voucher) {
         if (voucher.getApplyScope() == null || voucher.getApplyScope() == DiscountApplyScope.ORDER) {
             // Áp dụng cho toàn bộ đơn hàng
-            return cart.getSubtotal();
+            double subtotal = cart.getSubtotal() != null ? cart.getSubtotal() : 0.0;
+            return Math.round(subtotal);
         }
 
-        return cart.getCartItems().stream()
+        if (cart.getCartItems() == null || cart.getCartItems().isEmpty()) {
+            return 0.0;
+        }
+
+        double applicableSubtotal = cart.getCartItems().stream()
                 .filter(item -> {
+                    if (item == null) {
+                        return false;
+                    }
+                    
                     Product product = item.getProduct();
                     if (product == null) {
                         return false;
@@ -249,21 +342,30 @@ public class CartService {
                     DiscountApplyScope scope = voucher.getApplyScope();
                     if (scope == DiscountApplyScope.PRODUCT) {
                         // Nếu sản phẩm có nằm trong danh sách sản phẩm của voucher, return true
-                        return voucher.getProductApply() != null
-                                && voucher.getProductApply().stream()
-                                        .anyMatch(vp -> vp.getId().equals(product.getId()));
+                        if (voucher.getProductApply() == null || voucher.getProductApply().isEmpty()) {
+                            return false;
+                        }
+                        return voucher.getProductApply().stream()
+                                .anyMatch(vp -> vp != null && vp.getId() != null && vp.getId().equals(product.getId()));
                     } else if (scope == DiscountApplyScope.CATEGORY) {
                         // Nếu danh mục sản phẩm có nằm trong danh sách danh mục của voucher, return true
                         Category productCategory = product.getCategory();
-                        return productCategory != null
-                                && voucher.getCategoryApply() != null
-                                && voucher.getCategoryApply().stream()
-                                        .anyMatch(vc -> vc.getId().equals(productCategory.getId()));
+                        if (productCategory == null || voucher.getCategoryApply() == null || voucher.getCategoryApply().isEmpty()) {
+                            return false;
+                        }
+                        return voucher.getCategoryApply().stream()
+                                .anyMatch(vc -> vc != null && vc.getId() != null && vc.getId().equals(productCategory.getId()));
                     }
                     return false;
                 })
-                .mapToDouble(CartItem::getFinalPrice)
+                .mapToDouble(item -> {
+                    Double finalPrice = item.getFinalPrice();
+                    return finalPrice != null ? finalPrice : 0.0;
+                })
                 .sum();
+        
+        // Làm tròn về đơn vị đồng
+        return Math.round(applicableSubtotal);
     }
 
     @Transactional
@@ -280,6 +382,15 @@ public class CartService {
         // Kiểm tra cartItem thuộc về cart của user hiện tại
         if (!cartItem.getCart().getId().equals(cart.getId())) {
             throw new AppException(ErrorCode.CART_ITEM_NOT_EXISTED);
+        }
+
+        // Kiểm tra tồn kho: không cho vượt quá stockQuantity nếu có
+        Product product = cartItem.getProduct();
+        if (product != null && product.getInventory() != null) {
+            Integer stockQuantity = product.getInventory().getStockQuantity();
+            if (stockQuantity != null && quantity > stockQuantity) {
+                throw new AppException(ErrorCode.OUT_OF_STOCK);
+            }
         }
 
         cartItem.setQuantity(quantity);

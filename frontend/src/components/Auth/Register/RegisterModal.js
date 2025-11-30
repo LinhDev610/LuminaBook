@@ -3,10 +3,9 @@
 
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import useLocalStorage from '../../../hooks/useLocalStorage';
 import { useAuth } from '../../../contexts/AuthContext';
 import { isValidEmail, validatePassword } from '../../../services/utils';
-import { register, login, sendOTP } from '../../../services';
+import { register, sendOTP } from '../../../services';
 import '../Auth.module.scss';
 import visibleIcon from '../../../assets/icons/icon-visible.png';
 import invisibleIcon from '../../../assets/icons/icon-invisible.png';
@@ -19,8 +18,6 @@ const cx = classNames.bind(styles);
 export default function RegisterModal({ open = false, onClose }) {
     const navigate = useNavigate();
     const { switchToLogin, switchToVerifyCode, registerStep, setRegisterStep } = useAuth();
-    const [token, setToken] = useLocalStorage('token', null);
-    const [displayName, setDisplayName] = useLocalStorage('displayName', null);
     const [email, setEmail] = useState('');
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -119,6 +116,11 @@ export default function RegisterModal({ open = false, onClose }) {
         e.preventDefault();
         if (!agree) return setError('Hãy đồng ý điều khoản');
 
+        // Validate password rỗng trước
+        if (!password || password.trim() === '') {
+            setError('Vui lòng nhập mật khẩu');
+            return;
+        }
         // Validate password using utility function
         const passwordValidation = validatePassword(password, confirm);
         if (!passwordValidation.isValid) {
@@ -135,25 +137,15 @@ export default function RegisterModal({ open = false, onClose }) {
             };
             const { ok, data: registerData } = await register(payload);
             if (ok && (registerData || registerData?.code === 1000)) {
-                try {
-                    const { ok: loginOk, data: loginData } = await login({
-                        email: (email || '').trim(),
-                        password,
-                    });
-                    if (loginOk && loginData?.token) {
-                        setToken(loginData.token);
-                        setDisplayName(
-                            (fullName || '').trim() || (email || '').trim(),
-                        );
-                        onClose?.();
-                        navigate(0);
-                    } else {
-                        onClose?.();
-                        navigate('/login');
-                    }
-                } catch (_) {
-                    onClose?.();
-                    navigate('/login');
+                // Đăng ký thành công: không tự đăng nhập
+                // Đóng modal/ trang đăng ký và chuyển sang màn đăng nhập
+                onClose?.();
+                // Nếu đang ở dạng modal (dùng trong AuthModals) → mở modal đăng nhập
+                if (open !== undefined) {
+                    switchToLogin();
+                } else {
+                    // Standalone page → điều hướng sang trang đăng nhập
+                    navigate('/login', { replace: true });
                 }
             } else {
                 // Handle backend validation errors

@@ -184,7 +184,8 @@ public class UserService {
         }
 
         // PhoneNumber
-        if (request.getPhoneNumber() != null && !request.getPhoneNumber().isEmpty()) {
+        // Cho phép xóa số điện thoại: nếu field có trong request (kể cả chuỗi rỗng) thì ghi đè lên.
+        if (request.getPhoneNumber() != null) {
             user.setPhoneNumber(request.getPhoneNumber());
         }
 

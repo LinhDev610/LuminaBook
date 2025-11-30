@@ -67,19 +67,27 @@ export default function StaffNotificationPage() {
                 // Kiểm tra nếu result.data là mảng
                 if (Array.isArray(result.data)) {
                     if (result.data.length > 0) {
-                        // Filter chỉ lấy thông báo về khiếu nại
+                        // Filter chỉ lấy thông báo về khiếu nại / hoàn tiền / trả hàng
                         const complaintNotifications = result.data.filter((notification) => {
                             const title = (notification.title || '').toLowerCase();
                             const message = (notification.message || notification.content || '').toLowerCase();
 
-                            // Kiểm tra nếu title hoặc message chứa từ khóa liên quan đến khiếu nại
+                            // Kiểm tra nếu title hoặc message chứa từ khóa liên quan đến khiếu nại hoặc hoàn tiền/trả hàng
                             return (
                                 title.includes('khiếu nại') ||
                                 title.includes('complaint') ||
                                 title.includes('ticket') ||
+                                title.includes('hoàn tiền') ||
+                                title.includes('trả hàng') ||
+                                title.includes('refund') ||
+                                title.includes('return') ||
                                 message.includes('khiếu nại') ||
                                 message.includes('complaint') ||
-                                message.includes('ticket')
+                                message.includes('ticket') ||
+                                message.includes('hoàn tiền') ||
+                                message.includes('trả hàng') ||
+                                message.includes('refund') ||
+                                message.includes('return')
                             );
                         });
 
@@ -248,7 +256,14 @@ export default function StaffNotificationPage() {
     return (
         <div className={cx('container')}>
             <div className={cx('header')}>
-                <h1 className={cx('title')}>Thông báo</h1>
+                <h1 className={cx('title')}>
+                    Thông báo
+                    {unreadCount > 0 && (
+                        <span className={cx('badge')}>
+                            {unreadCount > 99 ? '99+' : unreadCount}
+                        </span>
+                    )}
+                </h1>
                 <div className={cx('actions')}>
                     <button
                         className={cx('btn', 'btn-primary')}

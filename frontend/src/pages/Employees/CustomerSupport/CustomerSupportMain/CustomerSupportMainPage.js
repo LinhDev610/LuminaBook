@@ -28,6 +28,13 @@ export default function CustomerSupportMainPage() {
                     </div>
                 </div>
 
+                <div className={cx('card')} onClick={() => navigate('/customer-support/chat')}>
+                    <div className={cx('card-title')}>Quản lý Chat</div>
+                    <div className={cx('card-desc')}>
+                        Trò chuyện và hỗ trợ khách hàng trực tuyến
+                    </div>
+                </div>
+
                 <div className={cx('card', 'quick-actions')}>
                     <div className={cx('card-title')}>Tác vụ nhanh</div>
                     <div className={cx('actions')}>
@@ -36,6 +43,9 @@ export default function CustomerSupportMainPage() {
                         </button>
                         <button className={cx('btn')} onClick={() => navigate('/customer-support/reviews')}>
                             Bình luận
+                        </button>
+                        <button className={cx('btn')} onClick={() => navigate('/customer-support/chat')}>
+                            Chat
                         </button>
                     </div>
                 </div>

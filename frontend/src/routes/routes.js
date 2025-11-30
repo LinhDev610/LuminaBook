@@ -79,6 +79,7 @@ import RefundManagementPage from '../pages/Employees/CustomerSupport/RefundManag
 import RefundDetailPage from '../pages/Employees/CustomerSupport/RefundManagement/RefundDetail';
 import ProfileCustomerSupportPage from '../pages/Employees/CustomerSupport/ProfileCustomerSupport';
 import CustomerSupportNotificationPage from '../pages/Employees/CustomerSupport/CustomerSupportNotification';
+import ChatManagementPage from '../pages/Employees/CustomerSupport/ChatManagement';
 import SupportUserPage from '../pages/SupportUser';
 import ShoppingGuidePage from '../pages/SupportUser/ShoppingGuide';
 import PaymentPolicyPage from '../pages/SupportUser/PaymentPolicy';
@@ -248,6 +249,11 @@ const privateRoutes = [
     {
         path: '/customer-support/profile',
         component: ProfileCustomerSupportPage,
+        layout: CustomerSupportLayout,
+    },
+    {
+        path: '/customer-support/chat',
+        component: ChatManagementPage,
         layout: CustomerSupportLayout,
     },
 ];

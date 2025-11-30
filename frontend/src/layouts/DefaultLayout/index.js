@@ -2,6 +2,7 @@ import { DefaultHeader } from '../components/Header';
 import AuthModals from '../../components/AuthModals';
 import Footer from '../components/Footer';
 import NavBar from '../components/NavBar';
+import Chat from '../../components/Common/Chat';
 
 function DefaultLayout({ children }) {
     return (
@@ -13,6 +14,7 @@ function DefaultLayout({ children }) {
             </div>
             <Footer />
             <AuthModals />
+            <Chat />
         </div>
     );
 }

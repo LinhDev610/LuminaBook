@@ -111,6 +111,14 @@ export const API_ROUTES = {
         resendEmail: (orderId) => `/orders/${orderId}/resend-email`,
         verifyPayment: (orderId) => `/orders/${orderId}/verify-payment`,
     },
+    chat: {
+        send: '/chat/send',
+        conversations: '/chat/conversations',
+        conversation: (partnerId) => `/chat/conversation/${partnerId}`,
+        markAsRead: (partnerId) => `/chat/conversation/${partnerId}/read`,
+        unreadCount: '/chat/unread-count',
+        customerSupport: '/chat/customer-support',
+    },
 };
 
 // =========== GHN Constants ===========

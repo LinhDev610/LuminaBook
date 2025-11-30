@@ -14,6 +14,7 @@ const {
     notifications,
     orders,
     shipments,
+    chat,
 } = API_ROUTES;
 
 // Get API base URL
@@ -937,6 +938,90 @@ export async function deleteAllReadNotifications(token = null) {
 export async function verifyPaymentAndSendEmail(orderId, token = null) {
     const { data, ok, status } = await apiRequest(orders.verifyPayment(orderId), {
         method: 'POST',
+        token,
+    });
+    return { ok, status, data: extractResult(data) };
+}
+
+// ========== CHAT API ==========
+/**
+ * Gửi tin nhắn
+ * @param {string} message - Nội dung tin nhắn
+ * @param {string} receiverId - ID người nhận
+ * @param {string} token - Authentication token
+ * @returns {Promise<{ok: boolean, data: any}>}
+ */
+export async function sendChatMessage(message, receiverId, token = null) {
+    const { data, ok, status } = await apiRequest(chat.send, {
+        method: 'POST',
+        body: { message, receiverId },
+        token,
+    });
+    return { ok, status, data: extractResult(data) };
+}
+
+/**
+ * Lấy danh sách cuộc trò chuyện
+ * @param {string} token - Authentication token
+ * @returns {Promise<{ok: boolean, data: any}>}
+ */
+export async function getChatConversations(token = null) {
+    const { data, ok, status } = await apiRequest(chat.conversations, {
+        method: 'GET',
+        token,
+    });
+    return { ok, status, data: extractResult(data) };
+}
+
+/**
+ * Lấy tin nhắn trong một cuộc trò chuyện
+ * @param {string} partnerId - ID người chat
+ * @param {string} token - Authentication token
+ * @returns {Promise<{ok: boolean, data: any}>}
+ */
+export async function getChatConversation(partnerId, token = null) {
+    const { data, ok, status } = await apiRequest(chat.conversation(partnerId), {
+        method: 'GET',
+        token,
+    });
+    return { ok, status, data: extractResult(data) };
+}
+
+/**
+ * Đánh dấu tin nhắn đã đọc
+ * @param {string} partnerId - ID người chat
+ * @param {string} token - Authentication token
+ * @returns {Promise<{ok: boolean, data: any}>}
+ */
+export async function markChatAsRead(partnerId, token = null) {
+    const { data, ok, status } = await apiRequest(chat.markAsRead(partnerId), {
+        method: 'POST',
+        token,
+    });
+    return { ok, status, data: extractResult(data) };
+}
+
+/**
+ * Lấy số tin nhắn chưa đọc
+ * @param {string} token - Authentication token
+ * @returns {Promise<{ok: boolean, data: any}>}
+ */
+export async function getChatUnreadCount(token = null) {
+    const { data, ok, status } = await apiRequest(chat.unreadCount, {
+        method: 'GET',
+        token,
+    });
+    return { ok, status, data: extractResult(data) };
+}
+
+/**
+ * Lấy CSKH đầu tiên (cho customer)
+ * @param {string} token - Authentication token
+ * @returns {Promise<{ok: boolean, data: any}>}
+ */
+export async function getFirstCustomerSupport(token = null) {
+    const { data, ok, status } = await apiRequest(chat.customerSupport, {
+        method: 'GET',
         token,
     });
     return { ok, status, data: extractResult(data) };

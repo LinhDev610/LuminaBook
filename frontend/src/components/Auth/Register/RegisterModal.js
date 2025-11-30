@@ -138,15 +138,14 @@ export default function RegisterModal({ open = false, onClose }) {
             const { ok, data: registerData } = await register(payload);
             if (ok && (registerData || registerData?.code === 1000)) {
                 // Đăng ký thành công: không tự đăng nhập
-                // Đóng modal/ trang đăng ký và chuyển sang màn đăng nhập
+                // Luôn chuyển về trang đăng nhập, không về home
                 onClose?.();
                 // Nếu đang ở dạng modal (dùng trong AuthModals) → mở modal đăng nhập
                 if (open !== undefined) {
                     switchToLogin();
-                } else {
-                    // Standalone page → điều hướng sang trang đăng nhập
-                    navigate('/login', { replace: true });
                 }
+                // Luôn điều hướng sang trang đăng nhập (cả modal và standalone)
+                navigate('/login', { replace: true });
             } else {
                 // Handle backend validation errors
                 const code = registerData?.code;

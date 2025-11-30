@@ -281,6 +281,7 @@ export default function AddProductPage() {
             newErrors.price = 'Giá không hợp lệ. Vui lòng nhập số lớn hơn hoặc bằng 0.';
         }
 
+        // Validate purchasePrice - must be < unitPrice (giá niêm yết)
         if (
             purchasePrice !== undefined &&
             purchasePrice !== null &&
@@ -289,7 +290,14 @@ export default function AddProductPage() {
             const purchaseNum = Number(purchasePrice);
             if (Number.isNaN(purchaseNum) || purchaseNum < 0) {
                 newErrors.purchasePrice = 'Giá nhập phải lớn hơn hoặc bằng 0.';
+            } else if (priceNum > 0 && purchaseNum >= priceNum) {
+                newErrors.purchasePrice = 'Giá nhập phải nhỏ hơn giá niêm yết.';
             }
+        }
+
+        // Validate mediaFiles - must have at least 1 image/video
+        if (!mediaFiles || mediaFiles.length === 0) {
+            newErrors.mediaFiles = 'Vui lòng chọn ít nhất một ảnh hoặc video cho sản phẩm.';
         }
 
         // Validate dimensions - only if provided, must be >= 1
@@ -501,6 +509,14 @@ export default function AddProductPage() {
                 }
                 return next;
             });
+
+            // Xóa lỗi mediaFiles khi đã chọn file
+            setErrors((prev) => {
+                if (!prev?.mediaFiles) return prev;
+                const next = { ...prev };
+                delete next.mediaFiles;
+                return next;
+            });
         },
         [mediaFiles, notifyError],
     );
@@ -693,11 +709,18 @@ export default function AddProductPage() {
                                     placeholder="VD: 150000"
                                     inputMode="numeric"
                                     value={price}
-                                    onChange={(e) =>
+                                    onChange={(e) => {
                                         setPrice(
                                             Number(e.target.value.replace(/[^0-9]/g, '')) || 0,
-                                        )
-                                    }
+                                        );
+                                        // Xóa lỗi purchasePrice khi thay đổi giá niêm yết
+                                        setErrors((prev) => {
+                                            if (!prev?.purchasePrice) return prev;
+                                            const next = { ...prev };
+                                            delete next.purchasePrice;
+                                            return next;
+                                        });
+                                    }}
                                 />
                                 {errors.price && (
                                     <div className={cx('errorText')}>{errors.price}</div>
@@ -729,6 +752,13 @@ export default function AddProductPage() {
                                     onChange={(e) => {
                                         const raw = e.target.value.replace(/[^0-9]/g, '');
                                         setPurchasePrice(raw === '' ? '' : Number(raw));
+                                        // Xóa lỗi purchasePrice khi thay đổi giá nhập
+                                        setErrors((prev) => {
+                                            if (!prev?.purchasePrice) return prev;
+                                            const next = { ...prev };
+                                            delete next.purchasePrice;
+                                            return next;
+                                        });
                                     }}
                                 />
                                 {errors.purchasePrice && (
@@ -873,6 +903,9 @@ export default function AddProductPage() {
                                 multiple
                                 onChange={handleMediaSelection}
                             />
+                            {errors.mediaFiles && (
+                                <div className={cx('errorText')}>{errors.mediaFiles}</div>
+                            )}
                             {mediaFiles.length > 0 && (
                                 <div className={cx('mediaList')}>
                                     {mediaFiles.map((m, idx) => (
@@ -921,6 +954,13 @@ export default function AddProductPage() {
                                                             ) {
                                                                 next[0].isDefault = true;
                                                             }
+                                                            return next;
+                                                        });
+                                                        // Xóa lỗi mediaFiles khi đã có file
+                                                        setErrors((prev) => {
+                                                            if (!prev?.mediaFiles) return prev;
+                                                            const next = { ...prev };
+                                                            delete next.mediaFiles;
                                                             return next;
                                                         });
                                                     }}

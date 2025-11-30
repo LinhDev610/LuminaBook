@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
 import classNames from 'classnames/bind';
 import styles from './Chat.module.scss';
 import { getStoredToken } from '../../../services/utils';
@@ -21,6 +21,11 @@ export default function Chat() {
     const messagesContainerRef = useRef(null);
     const inputRef = useRef(null);
     const pollingIntervalRef = useRef(null);
+    const shouldAutoScrollRef = useRef(true); // Flag để kiểm tra có nên auto scroll không
+    const messagesRef = useRef([]); // Ref để lưu messages hiện tại
+    const isLoadingMessagesRef = useRef(false); // Ref để lưu loading state
+    const isOpenRef = useRef(false); // Ref để lưu trạng thái isOpen
+    const currentPartnerIdRef = useRef(null); // Ref để lưu currentPartnerId
     const { error: showError, success } = useNotification();
 
     // Load user info
@@ -56,14 +61,60 @@ export default function Chat() {
         return () => window.removeEventListener('tokenUpdated', handleTokenUpdate);
     }, []);
 
-    const scrollToBottom = (force = false) => {
+    // Kiểm tra xem người dùng có đang ở gần cuối không (trong vòng 200px)
+    const isNearBottom = () => {
+        const container = messagesContainerRef.current;
+        if (!container) return true;
+        
+        const scrollTop = container.scrollTop;
+        const scrollHeight = container.scrollHeight;
+        const clientHeight = container.clientHeight;
+        const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+        
+        // Nếu cách cuối dưới 200px thì coi như đang ở gần cuối
+        return distanceFromBottom < 200;
+    };
+
+    const scrollToBottom = (force = false, instant = false) => {
+        // Chỉ scroll nếu được force hoặc người dùng đang ở gần cuối
+        if (!force && !isNearBottom()) {
+            return;
+        }
+        
+        const scrollBehavior = instant ? 'auto' : 'smooth';
+        const delay = instant ? 0 : 100;
+        
         setTimeout(() => {
-            messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-        }, 100);
+            const container = messagesContainerRef.current;
+            if (container) {
+                // Scroll trực tiếp vào container để tránh bị reset
+                container.scrollTop = container.scrollHeight;
+            } else {
+                // Fallback nếu không có container
+                messagesEndRef.current?.scrollIntoView({ behavior: scrollBehavior });
+            }
+        }, delay);
+    };
+
+    // Kiểm tra xem có tin nhắn mới không (so sánh ID của tin nhắn cuối cùng)
+    const hasNewMessages = (oldMessages, newMessages) => {
+        if (!oldMessages || oldMessages.length === 0) return true; // Lần đầu load
+        if (!newMessages || newMessages.length === 0) return false;
+        
+        const oldLastId = oldMessages[oldMessages.length - 1]?.id;
+        const newLastId = newMessages[newMessages.length - 1]?.id;
+        
+        // Có tin nhắn mới nếu ID cuối cùng khác hoặc số lượng tăng
+        return newLastId !== oldLastId || newMessages.length > oldMessages.length;
     };
 
     const loadMessages = useCallback(async (partnerId) => {
         if (!partnerId) return;
+        
+        // Tránh concurrent requests - nếu đang loading thì skip
+        if (isLoadingMessagesRef.current) {
+            return;
+        }
         
         try {
             const token = getStoredToken('token');
@@ -76,7 +127,7 @@ export default function Chat() {
                 return;
             }
             
-            // Không block polling - luôn cho phép load tin nhắn mới
+            isLoadingMessagesRef.current = true;
             setIsLoadingMessages(true);
             const { ok, data, status } = await getChatConversation(partnerId, token);
             
@@ -87,19 +138,57 @@ export default function Chat() {
                     pollingIntervalRef.current = null;
                 }
                 setIsOpen(false);
+                isLoadingMessagesRef.current = false;
                 setIsLoadingMessages(false);
                 return;
             }
             
             if (ok && Array.isArray(data)) {
+                // Lưu messages cũ và vị trí scroll trước khi update
+                const oldMessages = messagesRef.current;
+                const container = messagesContainerRef.current;
+                const wasNearBottom = isNearBottom();
+                const hasNew = hasNewMessages(oldMessages, data);
+                
+                // Lưu scroll position hiện tại (chỉ khi không cần auto scroll và không có tin nhắn mới ở cuối)
+                const shouldAutoScroll = shouldAutoScrollRef.current;
+                // Nếu có tin nhắn mới và đang ở cuối, không lưu scroll position để tránh nhảy lên
+                const shouldPreserveScroll = !shouldAutoScroll && !(hasNew && wasNearBottom);
+                const previousScrollTop = shouldPreserveScroll ? (container?.scrollTop || 0) : null;
+                
+                // Cập nhật ref và state
+                messagesRef.current = data;
                 setMessages(data);
-                scrollToBottom();
+                
+                // Sử dụng requestAnimationFrame để scroll đồng bộ với DOM update
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        const newContainer = messagesContainerRef.current;
+                        if (!newContainer) return;
+                        
+                        // Chỉ scroll nếu shouldAutoScrollRef.current = true
+                        // (khi mở conversation mới hoặc gửi tin nhắn)
+                        if (shouldAutoScroll) {
+                            // Lần đầu load hoặc được yêu cầu scroll
+                            newContainer.scrollTop = newContainer.scrollHeight;
+                            shouldAutoScrollRef.current = false; // Reset flag sau khi scroll
+                        } else if (hasNew && wasNearBottom) {
+                            // Có tin nhắn mới và người dùng đang ở cuối - scroll xuống ngay lập tức
+                            newContainer.scrollTop = newContainer.scrollHeight;
+                        } else if (previousScrollTop !== null) {
+                            // Không có tin nhắn mới hoặc người dùng đang xem tin nhắn cũ
+                            // Giữ nguyên vị trí scroll
+                            newContainer.scrollTop = previousScrollTop;
+                        }
+                    });
+                });
             }
         } catch (err) {
             // Log error để debug nhưng không block polling
             console.error('Error loading messages:', err);
         } finally {
             // Luôn reset loading state để polling tiếp tục
+            isLoadingMessagesRef.current = false;
             setIsLoadingMessages(false);
         }
     }, []);
@@ -133,46 +222,95 @@ export default function Chat() {
     useEffect(() => {
         if (isOpen && currentPartnerId) {
             // Clear messages trước khi load mới để tránh hiển thị tin nhắn cũ
+            messagesRef.current = [];
             setMessages([]);
+            shouldAutoScrollRef.current = true; // Cho phép scroll khi chọn conversation mới
             // Load ngay lập tức khi có partnerId
             loadMessages(currentPartnerId);
         } else if (!currentPartnerId) {
             // Clear messages nếu không có partner
+            messagesRef.current = [];
             setMessages([]);
         }
     }, [isOpen, currentPartnerId, loadMessages]);
+
+    // Detect khi người dùng scroll để tắt auto-scroll
+    useEffect(() => {
+        const container = messagesContainerRef.current;
+        if (!container || !isOpen || !currentPartnerId) return;
+
+        const handleScroll = () => {
+            // Nếu người dùng scroll lên (không phải ở cuối), tắt auto-scroll
+            const isAtBottom = isNearBottom();
+            if (!isAtBottom) {
+                shouldAutoScrollRef.current = false;
+            }
+        };
+
+        container.addEventListener('scroll', handleScroll);
+        return () => {
+            container.removeEventListener('scroll', handleScroll);
+        };
+    }, [isOpen, currentPartnerId]);
 
     // Clear messages khi user thay đổi
     useEffect(() => {
         if (user && user.id) {
             // Clear messages khi user thay đổi để đảm bảo mỗi user có chat riêng
+            messagesRef.current = [];
             setMessages([]);
             setCurrentPartnerId(null);
         }
     }, [user?.id]);
 
+    // Cập nhật refs khi state thay đổi
+    useEffect(() => {
+        isOpenRef.current = isOpen;
+    }, [isOpen]);
+
+    useEffect(() => {
+        currentPartnerIdRef.current = currentPartnerId;
+    }, [currentPartnerId]);
+
     // Polling để lấy tin nhắn mới
     useEffect(() => {
-        if (isOpen && currentPartnerId) {
-            // Poll mỗi 1.5 giây để nhận tin nhắn nhanh hơn
-            pollingIntervalRef.current = setInterval(() => {
-                loadMessages(currentPartnerId);
-            }, 1500);
+        // Luôn clear interval trước khi tạo mới để tránh duplicate
+        if (pollingIntervalRef.current) {
+            clearInterval(pollingIntervalRef.current);
+            pollingIntervalRef.current = null;
+        }
 
-            return () => {
-                if (pollingIntervalRef.current) {
-                    clearInterval(pollingIntervalRef.current);
-                    pollingIntervalRef.current = null;
+        if (isOpen && currentPartnerId) {
+            // Poll mỗi 3 giây để giảm số lượng request (tăng từ 1.5s lên 3s)
+            pollingIntervalRef.current = setInterval(() => {
+                // Chỉ poll nếu tab/window đang active và không đang loading
+                if (document.visibilityState === 'visible' && 
+                    !isLoadingMessagesRef.current && 
+                    isOpenRef.current && 
+                    currentPartnerIdRef.current) {
+                    loadMessages(currentPartnerIdRef.current);
                 }
-            };
-        } else {
-            // Clear interval khi đóng chat
+            }, 3000);
+        }
+
+        // Cleanup function - luôn clear interval khi dependencies thay đổi hoặc component unmount
+        return () => {
             if (pollingIntervalRef.current) {
                 clearInterval(pollingIntervalRef.current);
                 pollingIntervalRef.current = null;
             }
-        }
+        };
     }, [isOpen, currentPartnerId, loadMessages]);
+
+    // Cleanup khi component unmount
+    useEffect(() => {
+        return () => {
+            if (pollingIntervalRef.current) {
+                clearInterval(pollingIntervalRef.current);
+                pollingIntervalRef.current = null;
+            }
+        };
+    }, []);
 
     // Load unread count
     useEffect(() => {
@@ -186,6 +324,7 @@ export default function Chat() {
 
     const handleOpenChat = async () => {
         // Clear messages và partner khi mở chat mới
+        messagesRef.current = [];
         setMessages([]);
         setCurrentPartnerId(null);
         setIsOpen(true);
@@ -233,6 +372,7 @@ export default function Chat() {
 
     const handleSelectChat = async () => {
         // Clear messages trước khi chuyển sang chat
+        messagesRef.current = [];
         setMessages([]);
         setViewMode('chat');
         
@@ -296,7 +436,11 @@ Bạn có câu hỏi gì về chính sách không? Nhân viên sẽ hỗ trợ b
         };
         
         // Thêm tin nhắn vào danh sách
-        setMessages((prev) => [...prev, policyMessage]);
+        setMessages((prev) => {
+            const newMessages = [...prev, policyMessage];
+            messagesRef.current = newMessages;
+            return newMessages;
+        });
         setTimeout(() => {
             scrollToBottom(true);
         }, 100);
@@ -331,7 +475,11 @@ Bạn cần hỗ trợ thêm về vấn đề nào? Hãy chat với nhân viên 
             isSystemMessage: true
         };
         
-        setMessages((prev) => [...prev, faqMessage]);
+        setMessages((prev) => {
+            const newMessages = [...prev, faqMessage];
+            messagesRef.current = newMessages;
+            return newMessages;
+        });
         setTimeout(() => {
             scrollToBottom(true);
         }, 100);
@@ -364,13 +512,28 @@ Bạn cần hỗ trợ thêm về vấn đề nào? Hãy chat với nhân viên 
             
             if (ok) {
                 // Thêm tin nhắn vào danh sách ngay lập tức
-                setMessages((prev) => [...prev, data]);
-                scrollToBottom();
+                setMessages((prev) => {
+                    const newMessages = [...prev, data];
+                    messagesRef.current = newMessages;
+                    return newMessages;
+                });
+                
+                // Luôn scroll khi gửi tin nhắn của chính mình
+                shouldAutoScrollRef.current = true; // Cho phép scroll
+                
+                // Sử dụng requestAnimationFrame để scroll ngay sau khi DOM update
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        const container = messagesContainerRef.current;
+                        if (container) {
+                            // Scroll trực tiếp vào container để tránh bị reset
+                            container.scrollTop = container.scrollHeight;
+                        }
+                    });
+                });
                 loadUnreadCount();
-                // Load lại tin nhắn sau 0.5 giây để đảm bảo đồng bộ
-                setTimeout(() => {
-                    loadMessages(currentPartnerId);
-                }, 500);
+                // Không cần load lại tin nhắn ngay vì đã thêm vào state rồi
+                // Polling sẽ tự động cập nhật tin nhắn mới từ server
             } else {
                 showError('Không thể gửi tin nhắn. Vui lòng thử lại.');
             }
@@ -382,11 +545,7 @@ Bạn cần hỗ trợ thêm về vấn đề nào? Hãy chat với nhân viên 
         }
     };
 
-    useEffect(() => {
-        if (isOpen && messages.length > 0) {
-            scrollToBottom();
-        }
-    }, [messages, isOpen]);
+    // Xóa useEffect tự động scroll - không cần nữa vì đã xử lý trong loadMessages
 
     useEffect(() => {
         if (isOpen) {
@@ -439,7 +598,13 @@ Bạn cần hỗ trợ thêm về vấn đề nào? Hãy chat với nhân viên 
                         handleOpenChat();
                     } else {
                         // Clear messages và partner khi đóng chat
+                        messagesRef.current = [];
                         setMessages([]);
+                        // Clear interval trước khi đóng
+                        if (pollingIntervalRef.current) {
+                            clearInterval(pollingIntervalRef.current);
+                            pollingIntervalRef.current = null;
+                        }
                         setCurrentPartnerId(null);
                         setIsOpen(false);
                     }

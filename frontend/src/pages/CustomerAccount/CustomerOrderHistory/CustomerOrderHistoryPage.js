@@ -173,9 +173,15 @@ function CustomerOrderHistoryPage() {
                 const data = await resp.json().catch(() => ({}));
                 const raw = data?.result || data || [];
                 const list = Array.isArray(raw) ? raw : [];
+                console.log('CustomerOrderHistory: Total orders from API:', list.length);
+                console.log('CustomerOrderHistory: Orders with RETURN_CS_CONFIRMED:', 
+                    list.filter(o => (o.status || '').toUpperCase() === 'RETURN_CS_CONFIRMED'));
                 const mapped = list
                     .map(mapOrderFromApi)
                     .filter(Boolean);
+                console.log('CustomerOrderHistory: Mapped orders:', mapped.length);
+                console.log('CustomerOrderHistory: Mapped orders with RETURN_CS_CONFIRMED:', 
+                    mapped.filter(o => (o.rawStatus || o.status || '').toUpperCase() === 'RETURN_CS_CONFIRMED'));
                 setOrders(mapped);
             } catch (err) {
                 console.error('CustomerOrderHistory: Lỗi khi tải lịch sử đơn hàng:', err);
@@ -271,8 +277,8 @@ function CustomerOrderHistoryPage() {
         // RETURN_REQUESTED, RETURN_CS_CONFIRMED, RETURN_STAFF_CONFIRMED, REFUNDED, RETURN_REJECTED
         if (activeTab === 'return-requested') {
             list = orders.filter((order) => {
-                const status = String(order.rawStatus || order.status || '').toUpperCase();
-                return (
+                const status = String(order.rawStatus || order.status || '').trim().toUpperCase();
+                const matches = (
                     order.statusKey === 'return-requested' ||
                     order.statusKey === 'return-rejected' ||
                     order.statusKey === 'refunded' ||
@@ -282,7 +288,17 @@ function CustomerOrderHistoryPage() {
                     status === 'REFUNDED' ||
                     status === 'RETURN_REJECTED'
                 );
+                if (!matches && (status === 'RETURN_CS_CONFIRMED' || status === 'RETURN_STAFF_CONFIRMED')) {
+                    console.log('CustomerOrderHistory: Order not matched in return-requested tab:', {
+                        code: order.code,
+                        status,
+                        statusKey: order.statusKey,
+                        rawStatus: order.rawStatus
+                    });
+                }
+                return matches;
             });
+            console.log('CustomerOrderHistory: Filtered return-requested orders:', list.length);
         } else {
             list = orders.filter((order) => order.statusKey === activeTab);
         }

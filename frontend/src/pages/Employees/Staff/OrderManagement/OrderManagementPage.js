@@ -199,9 +199,15 @@ export default function OrderManagementPage() {
                 const data = await resp.json().catch(() => ({}));
                 const raw = data?.result || data || [];
                 const list = Array.isArray(raw) ? raw : [];
+                console.log('OrderManagement: Total orders from API:', list.length);
+                console.log('OrderManagement: Orders with RETURN_CS_CONFIRMED:', 
+                    list.filter(o => (o.status || o.rawStatus || '').toUpperCase() === 'RETURN_CS_CONFIRMED'));
                 const mapped = list
                     .map(mapOrderFromApi)
                     .filter(Boolean);
+                console.log('OrderManagement: Mapped orders:', mapped.length);
+                console.log('OrderManagement: Mapped refund orders:', 
+                    mapped.filter(o => isRefundOrder(o) && (o.rawStatus || o.status || '').toUpperCase() === 'RETURN_CS_CONFIRMED'));
                 setOrders(mapped.length > 0 ? mapped : []);
             } catch (err) {
                 console.error('OrderManagement: Lỗi khi tải đơn hàng:', err);
@@ -216,23 +222,31 @@ export default function OrderManagementPage() {
     }, [apiBaseUrl]);
 
     // Tách orders thành 2 nhóm: normal orders và refund orders
-    // Loại bỏ các đơn đã hoàn tiền thành công (REFUNDED)
+    // Loại bỏ các đơn đã hoàn tiền thành công (REFUNDED) và các đơn đang chờ khách yêu cầu (RETURN_REQUESTED)
     const { normalOrders, refundOrders } = useMemo(() => {
         const normal = [];
         const refund = [];
 
         orders.forEach((order) => {
             if (isRefundOrder(order)) {
-                const status = String(order?.rawStatus || order?.status || '').toUpperCase();
-                // Chỉ thêm vào refundOrders nếu không phải RETURN_REQUESTED và không phải REFUNDED
-                if (status !== 'RETURN_REQUESTED' && status !== 'REFUNDED') {
+                const status = String(order?.rawStatus || order?.status || '').trim().toUpperCase();
+                // Thêm vào refundOrders nếu là RETURN_CS_CONFIRMED hoặc RETURN_STAFF_CONFIRMED hoặc RETURN_REJECTED
+                // Loại bỏ RETURN_REQUESTED (CSKH chưa xác nhận) và REFUNDED (đã hoàn tiền thành công)
+                if (status === 'RETURN_CS_CONFIRMED' || 
+                    status === 'RETURN_STAFF_CONFIRMED' || 
+                    status === 'RETURN_REJECTED') {
                     refund.push(order);
+                } else {
+                    // Debug: log các đơn refund không được thêm vào
+                    console.log('OrderManagement: Refund order not added - status:', status, 'order:', order.code, 'rawStatus:', order.rawStatus, 'status prop:', order.status);
                 }
             } else {
                 normal.push(order);
             }
         });
 
+        console.log('OrderManagement: Final refundOrders count:', refund.length);
+        console.log('OrderManagement: Refund orders:', refund.map(o => ({ code: o.code, status: o.rawStatus || o.status })));
         return { normalOrders: normal, refundOrders: refund };
     }, [orders]);
 

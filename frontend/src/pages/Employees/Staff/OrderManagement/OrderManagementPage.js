@@ -90,9 +90,9 @@ const mapOrderFromApi = (order) => {
 
     // Tính refund amount (nếu có)
     const refundAmount = order.refundAmount ||
-                        (order.totalAmount && order.refundReturnFee
-                            ? order.totalAmount - (order.refundReturnFee || 0)
-                            : order.totalAmount || 0);
+        (order.totalAmount && order.refundReturnFee
+            ? order.totalAmount - (order.refundReturnFee || 0)
+            : order.totalAmount || 0);
 
     return {
         id: order.id || '',
@@ -199,15 +199,9 @@ export default function OrderManagementPage() {
                 const data = await resp.json().catch(() => ({}));
                 const raw = data?.result || data || [];
                 const list = Array.isArray(raw) ? raw : [];
-                console.log('OrderManagement: Total orders from API:', list.length);
-                console.log('OrderManagement: Orders with RETURN_CS_CONFIRMED:', 
-                    list.filter(o => (o.status || o.rawStatus || '').toUpperCase() === 'RETURN_CS_CONFIRMED'));
                 const mapped = list
                     .map(mapOrderFromApi)
                     .filter(Boolean);
-                console.log('OrderManagement: Mapped orders:', mapped.length);
-                console.log('OrderManagement: Mapped refund orders:', 
-                    mapped.filter(o => isRefundOrder(o) && (o.rawStatus || o.status || '').toUpperCase() === 'RETURN_CS_CONFIRMED'));
                 setOrders(mapped.length > 0 ? mapped : []);
             } catch (err) {
                 console.error('OrderManagement: Lỗi khi tải đơn hàng:', err);
@@ -217,7 +211,6 @@ export default function OrderManagementPage() {
                 setLoading(false);
             }
         };
-
         fetchOrders();
     }, [apiBaseUrl]);
 
@@ -232,8 +225,8 @@ export default function OrderManagementPage() {
                 const status = String(order?.rawStatus || order?.status || '').trim().toUpperCase();
                 // Thêm vào refundOrders nếu là RETURN_CS_CONFIRMED hoặc RETURN_STAFF_CONFIRMED hoặc RETURN_REJECTED
                 // Loại bỏ RETURN_REQUESTED (CSKH chưa xác nhận) và REFUNDED (đã hoàn tiền thành công)
-                if (status === 'RETURN_CS_CONFIRMED' || 
-                    status === 'RETURN_STAFF_CONFIRMED' || 
+                if (status === 'RETURN_CS_CONFIRMED' ||
+                    status === 'RETURN_STAFF_CONFIRMED' ||
                     status === 'RETURN_REJECTED') {
                     refund.push(order);
                 } else {
@@ -244,9 +237,6 @@ export default function OrderManagementPage() {
                 normal.push(order);
             }
         });
-
-        console.log('OrderManagement: Final refundOrders count:', refund.length);
-        console.log('OrderManagement: Refund orders:', refund.map(o => ({ code: o.code, status: o.rawStatus || o.status })));
         return { normalOrders: normal, refundOrders: refund };
     }, [orders]);
 
@@ -505,26 +495,26 @@ export default function OrderManagementPage() {
         <div className={cx('section')}>
             <h2 className={cx('section-title')}>Danh sách đơn hàng</h2>
             <div className={cx('wrap')}>
-                    <SearchAndSort
-                        searchPlaceholder="Tìm kiếm theo mã đơn, tên sản phẩm,...."
-                        searchValue={keyword}
-                        onSearchChange={(e) => setKeyword(e.target.value)}
-                        onSearchClick={() => {}}
-                        dateFilter={dateFilter}
-                        onDateChange={(value) => setDateFilter(value)}
-                        dateLabel="dd/mm/yyyy"
-                        sortLabel="Sắp xếp:"
-                        sortOptions={[
-                            { value: 'all', label: 'Tất cả trạng thái' },
-                            { value: 'pending', label: 'Chờ xác nhận' },
-                            { value: 'processing', label: 'Đang xử lý' },
-                            { value: 'shipping', label: 'Đang giao' },
-                            { value: 'completed', label: 'Hoàn thành' },
-                            { value: 'cancelled', label: 'Đã hủy' },
-                        ]}
-                        sortValue={statusFilter}
-                        onSortChange={(e) => setStatusFilter(e.target.value)}
-                    />
+                <SearchAndSort
+                    searchPlaceholder="Tìm kiếm theo mã đơn, tên sản phẩm,...."
+                    searchValue={keyword}
+                    onSearchChange={(e) => setKeyword(e.target.value)}
+                    onSearchClick={() => { }}
+                    dateFilter={dateFilter}
+                    onDateChange={(value) => setDateFilter(value)}
+                    dateLabel="dd/mm/yyyy"
+                    sortLabel="Sắp xếp:"
+                    sortOptions={[
+                        { value: 'all', label: 'Tất cả trạng thái' },
+                        { value: 'pending', label: 'Chờ xác nhận' },
+                        { value: 'processing', label: 'Đang xử lý' },
+                        { value: 'shipping', label: 'Đang giao' },
+                        { value: 'completed', label: 'Hoàn thành' },
+                        { value: 'cancelled', label: 'Đã hủy' },
+                    ]}
+                    sortValue={statusFilter}
+                    onSortChange={(e) => setStatusFilter(e.target.value)}
+                />
 
                 {loading && (
                     <div className={cx('info-row')}>Đang tải danh sách đơn hàng...</div>
@@ -539,91 +529,91 @@ export default function OrderManagementPage() {
                     <div className={cx('info-row', 'error')}>{actionError}</div>
                 )}
 
-                    <div className={cx('card')}>
-                        <div className={cx('card-header')}>Danh sách đơn hàng</div>
-                        <table className={cx('table')}>
-                            <thead>
-                                <tr>
-                                    <th>Mã đơn</th>
-                                    <th>Username</th>
-                                    <th>Ngày</th>
-                                    <th>Tổng</th>
-                                    <th>Trạng thái</th>
-                                    <th>Thao tác</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {paginatedOrders.map((order) => {
-                                    const { label, css } = mapOrderStatus(
-                                        order.rawStatus || order.status,
-                                    );
-                                    const isPending = css === 'pending';
+                <div className={cx('card')}>
+                    <div className={cx('card-header')}>Danh sách đơn hàng</div>
+                    <table className={cx('table')}>
+                        <thead>
+                            <tr>
+                                <th>Mã đơn</th>
+                                <th>Username</th>
+                                <th>Ngày</th>
+                                <th>Tổng</th>
+                                <th>Trạng thái</th>
+                                <th>Thao tác</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {paginatedOrders.map((order) => {
+                                const { label, css } = mapOrderStatus(
+                                    order.rawStatus || order.status,
+                                );
+                                const isPending = css === 'pending';
 
-                                    return (
-                                        <tr key={order.id}>
-                                            <td className={cx('code-cell')}>#{order.code}</td>
-                                            <td className={cx('user-cell')}>
-                                                <div className={cx('username')}>{order.username}</div>
-                                                {order.email && (
-                                                    <div className={cx('email')}>{order.email}</div>
-                                                )}
-                                                {order.phoneDisplay && (
-                                                    <div className={cx('email')}>{order.phoneDisplay}</div>
-                                                )}
-                                            </td>
-                                            <td>
-                                                {formatOrderDateTime(order.orderDate)}
-                                            </td>
-                                            <td>
-                                                {new Intl.NumberFormat('vi-VN', {
-                                                    style: 'currency',
-                                                    currency: 'VND',
-                                                }).format(order.totalAmount || 0)}
-                                            </td>
-                                            <td className={cx('status-cell')}>
-                                                <span className={cx('status-pill', css)}>{label}</span>
-                                            </td>
-                                            <td className={cx('actions-cell')}>
+                                return (
+                                    <tr key={order.id}>
+                                        <td className={cx('code-cell')}>#{order.code}</td>
+                                        <td className={cx('user-cell')}>
+                                            <div className={cx('username')}>{order.username}</div>
+                                            {order.email && (
+                                                <div className={cx('email')}>{order.email}</div>
+                                            )}
+                                            {order.phoneDisplay && (
+                                                <div className={cx('email')}>{order.phoneDisplay}</div>
+                                            )}
+                                        </td>
+                                        <td>
+                                            {formatOrderDateTime(order.orderDate)}
+                                        </td>
+                                        <td>
+                                            {new Intl.NumberFormat('vi-VN', {
+                                                style: 'currency',
+                                                currency: 'VND',
+                                            }).format(order.totalAmount || 0)}
+                                        </td>
+                                        <td className={cx('status-cell')}>
+                                            <span className={cx('status-pill', css)}>{label}</span>
+                                        </td>
+                                        <td className={cx('actions-cell')}>
+                                            <button
+                                                className={cx('btn', 'view')}
+                                                onClick={() => navigate(`/staff/orders/${order.id}`)}
+                                            >
+                                                Xem chi tiết
+                                            </button>
+                                            <div
+                                                className={cx('action-buttons')}
+                                                style={{
+                                                    visibility: isPending ? 'visible' : 'hidden',
+                                                }}
+                                            >
                                                 <button
-                                                    className={cx('btn', 'view')}
-                                                    onClick={() => navigate(`/staff/orders/${order.id}`)}
+                                                    className={cx('btn', 'confirm')}
+                                                    onClick={() => handleConfirmOrder(order.id)}
+                                                    disabled={processingOrderId === order.id}
                                                 >
-                                                    Xem chi tiết
+                                                    Xác nhận
                                                 </button>
-                                                <div
-                                                    className={cx('action-buttons')}
-                                                    style={{
-                                                        visibility: isPending ? 'visible' : 'hidden',
-                                                    }}
+                                                <button
+                                                    className={cx('btn', 'cancel')}
+                                                    onClick={() => handleCancelOrder(order.id)}
                                                 >
-                                                    <button
-                                                        className={cx('btn', 'confirm')}
-                                                        onClick={() => handleConfirmOrder(order.id)}
-                                                        disabled={processingOrderId === order.id}
-                                                    >
-                                                        Xác nhận
-                                                    </button>
-                                                    <button
-                                                        className={cx('btn', 'cancel')}
-                                                        onClick={() => handleCancelOrder(order.id)}
-                                                    >
-                                                        Hủy
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
-                                {paginatedOrders.length === 0 && !loading && (
-                                    <tr>
-                                        <td colSpan={6} className={cx('empty')}>
-                                            Không có đơn hàng nào phù hợp.
+                                                    Hủy
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
+                                );
+                            })}
+                            {paginatedOrders.length === 0 && !loading && (
+                                <tr>
+                                    <td colSpan={6} className={cx('empty')}>
+                                        Không có đơn hàng nào phù hợp.
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
 
                 {renderPaginationControls(
                     currentPage,
@@ -650,98 +640,98 @@ export default function OrderManagementPage() {
             <h2 className={cx('section-title')}>Quản lý đơn hoàn về</h2>
             <div className={cx('wrap')}>
                 <SearchAndSort
-                        searchPlaceholder="Tìm kiếm theo mã đơn, tên khách hàng,...."
-                        searchValue={refundKeyword}
-                        onSearchChange={(e) => setRefundKeyword(e.target.value)}
-                        onSearchClick={() => {}}
-                        dateFilter={refundDateFilter}
-                        onDateChange={(value) => setRefundDateFilter(value)}
-                        dateLabel="dd/mm/yyyy"
-                        sortLabel="Sắp xếp:"
-                        sortOptions={[
-                            { value: 'all', label: 'Tất cả trạng thái' },
-                            { value: 'return-cs', label: 'Chờ nhân viên xác nhận hàng' },
-                            { value: 'return-staff', label: 'Chờ Admin' },
-                            { value: 'return-rejected', label: 'Từ chối' },
-                        ]}
-                        sortValue={refundStatusFilter}
-                        onSortChange={(e) => setRefundStatusFilter(e.target.value)}
-                    />
+                    searchPlaceholder="Tìm kiếm theo mã đơn, tên khách hàng,...."
+                    searchValue={refundKeyword}
+                    onSearchChange={(e) => setRefundKeyword(e.target.value)}
+                    onSearchClick={() => { }}
+                    dateFilter={refundDateFilter}
+                    onDateChange={(value) => setRefundDateFilter(value)}
+                    dateLabel="dd/mm/yyyy"
+                    sortLabel="Sắp xếp:"
+                    sortOptions={[
+                        { value: 'all', label: 'Tất cả trạng thái' },
+                        { value: 'return-cs', label: 'Chờ nhân viên xác nhận hàng' },
+                        { value: 'return-staff', label: 'Chờ Admin' },
+                        { value: 'return-rejected', label: 'Từ chối' },
+                    ]}
+                    sortValue={refundStatusFilter}
+                    onSortChange={(e) => setRefundStatusFilter(e.target.value)}
+                />
 
-                    {loading && (
-                        <div className={cx('info-row')}>Đang tải danh sách đơn hoàn về...</div>
-                    )}
+                {loading && (
+                    <div className={cx('info-row')}>Đang tải danh sách đơn hoàn về...</div>
+                )}
 
-                    <div className={cx('card', 'refund-card')}>
-                        <div className={cx('card-header')}>Danh sách đơn hoàn về</div>
-                        <table className={cx('table', 'refund-table')}>
-                            <thead>
-                                <tr>
-                                    <th>Mã đơn</th>
-                                    <th>Khách hàng</th>
-                                    <th>Tổng tiền</th>
-                                    <th>Tiền hoàn</th>
-                                    <th>Ngày nhận hàng</th>
-                                    <th>Trạng thái</th>
-                                    <th>Thao tác</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {paginatedRefundOrders.map((order) => {
-                                    const { label, css } = mapOrderStatus(
-                                        order.rawStatus || order.status,
-                                    );
+                <div className={cx('card', 'refund-card')}>
+                    <div className={cx('card-header')}>Danh sách đơn hoàn về</div>
+                    <table className={cx('table', 'refund-table')}>
+                        <thead>
+                            <tr>
+                                <th>Mã đơn</th>
+                                <th>Khách hàng</th>
+                                <th>Tổng tiền</th>
+                                <th>Tiền hoàn</th>
+                                <th>Ngày nhận hàng</th>
+                                <th>Trạng thái</th>
+                                <th>Thao tác</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {paginatedRefundOrders.map((order) => {
+                                const { label, css } = mapOrderStatus(
+                                    order.rawStatus || order.status,
+                                );
 
-                                    return (
-                                        <tr key={order.id}>
-                                            <td className={cx('code-cell')}>#{order.code}</td>
-                                            <td className={cx('user-cell')}>
-                                                <div className={cx('username')}>{order.username}</div>
-                                                {order.email && (
-                                                    <div className={cx('email')}>{order.email}</div>
-                                                )}
-                                            </td>
-                                            <td>
-                                                {new Intl.NumberFormat('vi-VN', {
-                                                    style: 'currency',
-                                                    currency: 'VND',
-                                                }).format(order.totalAmount || 0)}
-                                            </td>
-                                            <td>
-                                                {new Intl.NumberFormat('vi-VN', {
-                                                    style: 'currency',
-                                                    currency: 'VND',
-                                                }).format(order.refundAmount || 0)}
-                                            </td>
-                                            <td>
-                                                {order.receivedDate
-                                                    ? formatOrderDateTime(order.receivedDate).split(' ')[1] || formatOrderDateTime(order.receivedDate)
-                                                    : '--'}
-                                            </td>
-                                            <td className={cx('status-cell')}>
-                                                <span className={cx('status-pill', css)}>{label}</span>
-                                            </td>
-                                            <td className={cx('actions-cell')}>
-                                                <button
-                                                    className={cx('btn', 'view')}
-                                                    onClick={() => handleViewRefundDetail(order.id)}
-                                                >
-                                                    Xem chi tiết
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
-                                {paginatedRefundOrders.length === 0 && !loading && (
-                                    <tr>
-                                        <td colSpan={7} className={cx('empty')}>
-                                            Không có đơn hoàn về nào phù hợp.
+                                return (
+                                    <tr key={order.id}>
+                                        <td className={cx('code-cell')}>#{order.code}</td>
+                                        <td className={cx('user-cell')}>
+                                            <div className={cx('username')}>{order.username}</div>
+                                            {order.email && (
+                                                <div className={cx('email')}>{order.email}</div>
+                                            )}
+                                        </td>
+                                        <td>
+                                            {new Intl.NumberFormat('vi-VN', {
+                                                style: 'currency',
+                                                currency: 'VND',
+                                            }).format(order.totalAmount || 0)}
+                                        </td>
+                                        <td>
+                                            {new Intl.NumberFormat('vi-VN', {
+                                                style: 'currency',
+                                                currency: 'VND',
+                                            }).format(order.refundAmount || 0)}
+                                        </td>
+                                        <td>
+                                            {order.receivedDate
+                                                ? formatOrderDateTime(order.receivedDate).split(' ')[1] || formatOrderDateTime(order.receivedDate)
+                                                : '--'}
+                                        </td>
+                                        <td className={cx('status-cell')}>
+                                            <span className={cx('status-pill', css)}>{label}</span>
+                                        </td>
+                                        <td className={cx('actions-cell')}>
+                                            <button
+                                                className={cx('btn', 'view')}
+                                                onClick={() => handleViewRefundDetail(order.id)}
+                                            >
+                                                Xem chi tiết
+                                            </button>
                                         </td>
                                     </tr>
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
+                                );
+                            })}
+                            {paginatedRefundOrders.length === 0 && !loading && (
+                                <tr>
+                                    <td colSpan={7} className={cx('empty')}>
+                                        Không có đơn hoàn về nào phù hợp.
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
 
                 {renderPaginationControls(
                     refundCurrentPage,

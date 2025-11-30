@@ -135,12 +135,8 @@ public class FinancialService {
             return;
         }
 
-        // Kiểm tra xem đã có FinancialRecord với occurredAt = thời điểm DELIVERED chưa
-        // Nếu đã có thì không cần ghi nhận lại (tránh duplicate)
-        if (hasRecordedRevenue(order.getId())) {
-            log.debug("Revenue already recorded for COD order {}, skipping", order.getId());
-            return;
-        }
+        // Xóa FinancialRecord cũ (nếu có) để ghi nhận lại với occurredAt = thời điểm hiện tại
+        deleteOrderRevenueRecords(order.getId());
 
         // Ghi nhận doanh thu cho từng sản phẩm trong đơn hàng
         for (OrderItem item : order.getItems()) {

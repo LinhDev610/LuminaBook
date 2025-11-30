@@ -46,6 +46,7 @@ public class SecurityConfig {
         "/products/**",
         "/uploads/**",
         "/assets/**",
+        "/static/**",
         "/banners/active",
         "/ghn/provinces",
         "/ghn/districts",

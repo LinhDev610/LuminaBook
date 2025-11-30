@@ -152,9 +152,117 @@ function RevenueReport({ timeMode = 'day', customDateRange = null }) {
     // Chuẩn bị data cho chart
     const chartData = useMemo(() => {
         if (!revenueByDay || revenueByDay.length === 0) {
+            // Nếu là day mode, vẫn hiển thị 24 giờ với giá trị 0
+            if (timeMode === 'day') {
+                const labels = Array.from({ length: 24 }, (_, i) => {
+                    return `${i.toString().padStart(2, '0')}:00`;
+                });
+                const data = Array(24).fill(0);
+                return {
+                    labels,
+                    datasets: [
+                        {
+                            label: 'Doanh thu',
+                            data: data,
+                            borderColor: 'rgb(37, 99, 235)',
+                            backgroundColor: (context) => {
+                                const ctx = context.chart.ctx;
+                                const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+                                gradient.addColorStop(0, 'rgba(37, 99, 235, 0.3)');
+                                gradient.addColorStop(1, 'rgba(37, 99, 235, 0.01)');
+                                return gradient;
+                            },
+                            borderWidth: 3,
+                            fill: true,
+                            tension: 0.4,
+                            pointRadius: 3,
+                            pointHoverRadius: 5,
+                            pointBackgroundColor: '#fff',
+                            pointBorderColor: 'rgb(37, 99, 235)',
+                            pointBorderWidth: 2,
+                            pointHoverBackgroundColor: 'rgb(37, 99, 235)',
+                            pointHoverBorderColor: '#fff',
+                            pointHoverBorderWidth: 2,
+                        },
+                    ],
+                };
+            }
             return null;
         }
 
+        // Nếu là day mode, tạo mảng 24 giờ (0-23)
+        if (timeMode === 'day') {
+            // Tạo map để lưu revenue theo giờ
+            const revenueByHour = new Map();
+
+            // Khởi tạo tất cả 24 giờ với giá trị 0
+            for (let hour = 0; hour < 24; hour++) {
+                revenueByHour.set(hour, 0);
+            }
+
+            // Lấy ngày hôm nay (0:00:00)
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const todayEnd = new Date(today);
+            todayEnd.setHours(23, 59, 59, 999);
+
+            // Map data từ API vào các giờ tương ứng, chỉ lấy dữ liệu của ngày hôm nay
+            revenueByDay.forEach(point => {
+                const dateStr = point.dateTime || point.date;
+                if (dateStr) {
+                    const date = new Date(dateStr);
+                    // Chỉ xử lý dữ liệu của ngày hôm nay (từ 0:00 đến 23:59:59)
+                    if (date >= today && date <= todayEnd) {
+                        const hour = date.getHours();
+                        const currentRevenue = revenueByHour.get(hour) || 0;
+                        revenueByHour.set(hour, currentRevenue + (point.total || 0));
+                    }
+                }
+            });
+
+            // Tạo labels và data cho 24 giờ
+            const labels = Array.from({ length: 24 }, (_, i) => {
+                return `${i.toString().padStart(2, '0')}:00`;
+            });
+            const data = Array.from({ length: 24 }, (_, i) => {
+                return revenueByHour.get(i) || 0;
+            });
+
+            return {
+                labels,
+                datasets: [
+                    {
+                        label: 'Doanh thu',
+                        data: data,
+                        borderColor: 'rgb(37, 99, 235)',
+                        backgroundColor: (context) => {
+                            const ctx = context.chart.ctx;
+                            const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+                            gradient.addColorStop(0, 'rgba(37, 99, 235, 0.3)');
+                            gradient.addColorStop(1, 'rgba(37, 99, 235, 0.01)');
+                            return gradient;
+                        },
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: function (context) {
+                            return context.parsed.y === 0 ? 3 : 5;
+                        },
+                        pointHoverRadius: function (context) {
+                            return context.parsed.y === 0 ? 5 : 7;
+                        },
+                        pointBackgroundColor: '#fff',
+                        pointBorderColor: 'rgb(37, 99, 235)',
+                        pointBorderWidth: 2,
+                        pointHoverBackgroundColor: 'rgb(37, 99, 235)',
+                        pointHoverBorderColor: '#fff',
+                        pointHoverBorderWidth: 2,
+                    },
+                ],
+            };
+        }
+
+        // Các mode khác giữ nguyên logic cũ
         // Sắp xếp theo date hoặc dateTime
         const sortedData = [...revenueByDay].sort((a, b) => {
             const dateA = a.dateTime ? new Date(a.dateTime) : new Date(a.date);
@@ -203,8 +311,38 @@ function RevenueReport({ timeMode = 'day', customDateRange = null }) {
     // Tính max value từ data để set trục Y
     const maxRevenue = useMemo(() => {
         if (!revenueByDay || revenueByDay.length === 0) return 0;
+
+        // Với day mode, tính max từ tất cả các giờ của ngày hôm nay
+        if (timeMode === 'day') {
+            const revenueByHour = new Map();
+            for (let hour = 0; hour < 24; hour++) {
+                revenueByHour.set(hour, 0);
+            }
+
+            // Lấy ngày hôm nay (0:00:00)
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const todayEnd = new Date(today);
+            todayEnd.setHours(23, 59, 59, 999);
+
+            revenueByDay.forEach(point => {
+                const dateStr = point.dateTime || point.date;
+                if (dateStr) {
+                    const date = new Date(dateStr);
+                    // Chỉ xử lý dữ liệu của ngày hôm nay
+                    if (date >= today && date <= todayEnd) {
+                        const hour = date.getHours();
+                        const currentRevenue = revenueByHour.get(hour) || 0;
+                        revenueByHour.set(hour, currentRevenue + (point.total || 0));
+                    }
+                }
+            });
+
+            return Math.max(...Array.from(revenueByHour.values()));
+        }
+
         return Math.max(...revenueByDay.map(point => point.total || 0));
-    }, [revenueByDay]);
+    }, [revenueByDay, timeMode]);
 
     // Tính max value cho trục Y với padding
     const calculateYAxisMax = (maxValue) => {
@@ -307,13 +445,18 @@ function RevenueReport({ timeMode = 'day', customDateRange = null }) {
                 x: {
                     ticks: {
                         font: {
-                            size: 11,
+                            size: 10,
                             family: 'Inter, system-ui, sans-serif',
                         },
                         color: '#6b7280',
-                        maxRotation: timeMode === 'year' ? 0 : 45,
-                        minRotation: timeMode === 'year' ? 0 : 45,
-                        padding: 8,
+                        maxRotation: timeMode === 'year' ? 0 : timeMode === 'day' ? 0 : 45,
+                        minRotation: timeMode === 'year' ? 0 : timeMode === 'day' ? 0 : 45,
+                        padding: 6,
+                        // Với day mode, hiển thị tất cả 24 giờ
+                        // Chart.js sẽ tự động điều chỉnh số lượng ticks hiển thị dựa trên không gian
+                        // Nhưng chúng ta vẫn có đầy đủ 24 data points
+                        autoSkip: timeMode === 'day' ? true : false,
+                        maxTicksLimit: timeMode === 'day' ? 24 : undefined,
                     },
                     grid: {
                         display: false,

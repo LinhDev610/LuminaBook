@@ -55,6 +55,7 @@ public class ShipmentService {
     GhnService ghnService;
     ShipmentMapper shipmentMapper;
     GhnMapper ghnMapper;
+    FinancialService financialService;
 
     // ==================== GHN Master Data APIs ====================
 
@@ -230,6 +231,43 @@ public class ShipmentService {
             if (newStatus != null && newStatus != currentStatus) {
                 order.setStatus(newStatus);
                 orderRepository.save(order);
+                
+                // Đảm bảo doanh thu được ghi nhận cho đơn COD khi chuyển sang DELIVERED
+                // (đơn COD được tạo với paymentStatus = PAID nhưng có thể chưa được ghi nhận doanh thu)
+                if (newStatus == OrderStatus.DELIVERED 
+                        && order.getPaymentMethod() == PaymentMethod.COD
+                        && order.getPaymentStatus() == PaymentStatus.PAID
+                        && Boolean.TRUE.equals(order.getPaid())) {
+                    try {
+                        // Reload order với items để đảm bảo có đầy đủ dữ liệu
+                        Order reloadedOrder = orderRepository.findById(order.getId()).orElse(order);
+                        if (reloadedOrder.getItems() != null && !reloadedOrder.getItems().isEmpty()) {
+                            // Kiểm tra xem đã ghi nhận doanh thu chưa (tránh duplicate)
+                            if (!financialService.hasRecordedRevenue(reloadedOrder.getId())) {
+                                // Ghi nhận doanh thu cho từng sản phẩm trong đơn hàng
+                                for (OrderItem item : reloadedOrder.getItems()) {
+                                    if (item.getProduct() != null && item.getFinalPrice() != null && item.getFinalPrice() > 0) {
+                                        try {
+                                            financialService.recordRevenue(
+                                                    reloadedOrder,
+                                                    item.getProduct(),
+                                                    item.getFinalPrice(),
+                                                    reloadedOrder.getPaymentMethod()
+                                            );
+                                        } catch (Exception e) {
+                                            log.error("Error recording revenue for order {} product {}", 
+                                                    reloadedOrder.getId(), item.getProduct().getId(), e);
+                                        }
+                                    }
+                                }
+                                log.info("Recorded revenue for COD order {} when delivered with {} items", 
+                                        reloadedOrder.getId(), reloadedOrder.getItems().size());
+                            }
+                        }
+                    } catch (Exception e) {
+                        log.error("Error ensuring revenue recorded for COD order {} when delivered", order.getId(), e);
+                    }
+                }
             }
         } catch (Exception e) {
             log.error("Lỗi khi đồng bộ trạng thái từ GHN cho order: {}", orderId, e);

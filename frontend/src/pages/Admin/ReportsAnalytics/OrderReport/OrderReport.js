@@ -66,7 +66,16 @@ function OrderReport({ timeMode = 'day', customDateRange = null }) {
 
                 const ordersData = await ordersResponse.json();
                 if (ordersData.result) {
-                    setOrderPageData(ordersData.result);
+                    // Sắp xếp các đơn hàng theo độ mới (mới nhất trước)
+                    const sortedOrders = [...(ordersData.result.orders || [])].sort((a, b) => {
+                        const dateA = new Date(a.orderDateTime || a.orderDate || 0);
+                        const dateB = new Date(b.orderDateTime || b.orderDate || 0);
+                        return dateB - dateA; // Sắp xếp giảm dần (mới nhất trước)
+                    });
+                    setOrderPageData({
+                        ...ordersData.result,
+                        orders: sortedOrders
+                    });
                 }
             } catch (err) {
                 console.error('Error fetching order data:', err);

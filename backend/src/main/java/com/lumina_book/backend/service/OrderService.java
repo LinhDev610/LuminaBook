@@ -14,6 +14,7 @@ import java.util.stream.Collectors;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -75,7 +76,7 @@ public class OrderService {
     BrevoEmailService brevoEmailService;
     ProductRepository productRepository;
     UserRepository userRepository;
-    ShipmentService shipmentService;
+    @Lazy ShipmentService shipmentService;
     NotificationService notificationService;
     VoucherRepository voucherRepository;
     FinancialService financialService;
@@ -139,33 +140,74 @@ public class OrderService {
                 request.getShippingAddress(),
                 cart.getUser());
 
-        Order order = Order.builder()
-                .user(cart.getUser())
-                .code(generateOrderCode())
-                .note(request.getNote())
-                .shippingAddress(shippingAddressSnapshot)
-                .address(shippingAddressEntity)
-                .orderDate(LocalDate.now())
-                .orderDateTime(LocalDateTime.now())
-                .shippingFee(pricing.shippingFee)
-                .totalAmount(pricing.orderTotal)
-                .status(OrderStatus.CREATED)
-                .paymentMethod(paymentMethod)
-                .paymentStatus(PaymentStatus.PAID)
-                .paid(true)
-                .cartItemIdsSnapshot(pricing.cartItemIdsSnapshot)
-                .build();
+        // Retry logic để xử lý race condition (nếu có duplicate order code)
+        String finalOrderCode = generateOrderCode();
+        int maxRetries = 3;
+        Order savedOrder = null;
+        
+        for (int attempt = 0; attempt < maxRetries; attempt++) {
+            try {
+                Order order = Order.builder()
+                        .user(cart.getUser())
+                        .code(finalOrderCode)
+                        .note(request.getNote())
+                        .shippingAddress(shippingAddressSnapshot)
+                        .address(shippingAddressEntity)
+                        .orderDate(LocalDate.now())
+                        .orderDateTime(LocalDateTime.now())
+                        .shippingFee(pricing.shippingFee)
+                        .totalAmount(pricing.orderTotal)
+                        .status(OrderStatus.CREATED)
+                        .paymentMethod(paymentMethod)
+                        .paymentStatus(PaymentStatus.PAID)
+                        .paid(true)
+                        .cartItemIdsSnapshot(pricing.cartItemIdsSnapshot)
+                        .build();
 
-        Order savedOrder = orderRepository.save(order);
-        persistOrderItems(savedOrder, selectedItems);
-        orderRepository.flush();
+                savedOrder = orderRepository.save(order);
+                persistOrderItems(savedOrder, selectedItems);
+                orderRepository.flush();
 
-        registerVoucherUsage(cart.getUser(), appliedVoucherCode);
-        cartService.clearVoucherForUser(cart.getUser());
+                registerVoucherUsage(cart.getUser(), appliedVoucherCode);
+                cartService.clearVoucherForUser(cart.getUser());
 
-        // Xóa cart items sau khi tạo đơn hàng
-        if (savedOrder.getUser() != null && pricing.selectedCartItemIds != null && !pricing.selectedCartItemIds.isEmpty()) {
-            cartService.removeCartItemsForOrder(savedOrder.getUser(), pricing.selectedCartItemIds);
+                // Xóa cart items sau khi tạo đơn hàng
+                if (savedOrder.getUser() != null && pricing.selectedCartItemIds != null && !pricing.selectedCartItemIds.isEmpty()) {
+                    cartService.removeCartItemsForOrder(savedOrder.getUser(), pricing.selectedCartItemIds);
+                }
+
+                // Ghi nhận doanh thu cho đơn COD (đã thanh toán khi tạo đơn)
+                recordOrderRevenue(savedOrder);
+
+                // Thành công, break khỏi loop
+                break;
+            } catch (DataIntegrityViolationException e) {
+                // Nếu duplicate order code, generate lại và retry
+                if (e.getCause() instanceof ConstraintViolationException) {
+                    ConstraintViolationException cve = (ConstraintViolationException) e.getCause();
+                    String constraintName = cve.getConstraintName();
+                    String sqlState = cve.getSQLState();
+                    String message = e.getMessage();
+                    
+                    // Kiểm tra xem có phải duplicate order code không
+                    if ((constraintName != null && constraintName.contains("order_code")) ||
+                        (message != null && message.contains("order_code")) ||
+                        (message != null && message.contains("UK_dhk2umg8ijjkg4njg6891trit"))) {
+                        log.warn("Duplicate order code detected: {}, generating new code (attempt {}/{})",
+                                finalOrderCode, attempt + 1, maxRetries);
+                        finalOrderCode = generateOrderCode();
+                        if (attempt < maxRetries - 1) {
+                            continue; // Retry với order code mới
+                        }
+                    }
+                }
+                throw e; // Nếu không phải duplicate order code hoặc đã hết retry, throw exception
+            }
+        }
+
+        if (savedOrder == null) {
+            throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION,
+                    "Không thể tạo đơn hàng sau nhiều lần thử. Vui lòng thử lại.");
         }
 
         // COD: Trả về đơn hàng đã tạo
@@ -275,37 +317,48 @@ public class OrderService {
 
                 Order savedOrder = orderRepository.save(order);
 
-        // Tạo OrderItem trực tiếp từ product
-        OrderItem orderItem = OrderItem.builder()
-                .order(savedOrder)
-                .product(product)
-                .quantity(quantity)
-                .unitPrice(unitPrice)
-                .finalPrice(finalPrice)
-                .build();
-        orderItemRepository.save(orderItem);
-        orderItemRepository.flush();
-        // Sử dụng ArrayList thay vì List.of() để tránh UnsupportedOperationException
-        savedOrder.setItems(new ArrayList<>(List.of(orderItem)));
+                // Tạo OrderItem trực tiếp từ product
+                OrderItem orderItem = OrderItem.builder()
+                        .order(savedOrder)
+                        .product(product)
+                        .quantity(quantity)
+                        .unitPrice(unitPrice)
+                        .finalPrice(finalPrice)
+                        .build();
+                orderItemRepository.save(orderItem);
+                orderItemRepository.flush();
+                // Sử dụng ArrayList thay vì List.of() để tránh UnsupportedOperationException
+                savedOrder.setItems(new ArrayList<>(List.of(orderItem)));
 
-        updateInventoryAndSales(product, quantity);
+                updateInventoryAndSales(product, quantity);
                 finalizeVoucherUsageForUser(user);
+
+                // Ghi nhận doanh thu cho đơn COD (đã thanh toán khi tạo đơn)
+                recordOrderRevenue(savedOrder);
 
                 // COD: Tạo đơn hàng ngay và giữ status CREATED, chờ admin/staff xác nhận
                 return new CheckoutResult(savedOrder, null);
             } catch (DataIntegrityViolationException e) {
                 // Nếu duplicate order code, generate lại và retry
                 if (e.getCause() instanceof ConstraintViolationException) {
-                    ConstraintViolationException cve =
-                            (ConstraintViolationException) e.getCause();
-                    if (cve.getConstraintName() != null && cve.getConstraintName().contains("order_code")) {
+                    ConstraintViolationException cve = (ConstraintViolationException) e.getCause();
+                    String constraintName = cve.getConstraintName();
+                    String message = e.getMessage();
+                    
+                    // Kiểm tra xem có phải duplicate order code không
+                    if ((constraintName != null && constraintName.contains("order_code")) ||
+                        (message != null && message.contains("order_code")) ||
+                        (message != null && message.contains("UK_dhk2umg8ijjkg4njg6891trit")) ||
+                        (message != null && message.contains("Duplicate entry"))) {
                         log.warn("Duplicate order code detected: {}, generating new code (attempt {}/{})",
                                 finalOrderCode, attempt + 1, maxRetries);
                         finalOrderCode = generateOrderCode();
-                        continue; // Retry với order code mới
+                        if (attempt < maxRetries - 1) {
+                            continue; // Retry với order code mới
+                        }
                     }
                 }
-                throw e; // Nếu không phải duplicate order code, throw exception
+                throw e; // Nếu không phải duplicate order code hoặc đã hết retry, throw exception
             }
         }
 
@@ -391,16 +444,24 @@ public class OrderService {
             } catch (DataIntegrityViolationException e) {
                 // Nếu duplicate order code, generate lại và retry
                 if (e.getCause() instanceof ConstraintViolationException) {
-                    ConstraintViolationException cve =
-                            (ConstraintViolationException) e.getCause();
-                    if (cve.getConstraintName() != null && cve.getConstraintName().contains("order_code")) {
+                    ConstraintViolationException cve = (ConstraintViolationException) e.getCause();
+                    String constraintName = cve.getConstraintName();
+                    String message = e.getMessage();
+                    
+                    // Kiểm tra xem có phải duplicate order code không
+                    if ((constraintName != null && constraintName.contains("order_code")) ||
+                        (message != null && message.contains("order_code")) ||
+                        (message != null && message.contains("UK_dhk2umg8ijjkg4njg6891trit")) ||
+                        (message != null && message.contains("Duplicate entry"))) {
                         log.warn("Duplicate order code detected: {}, generating new code (attempt {}/{})",
                                 finalOrderCode, attempt + 1, maxRetries);
                         finalOrderCode = generateOrderCode();
-                        continue; // Retry với order code mới
+                        if (attempt < maxRetries - 1) {
+                            continue; // Retry với order code mới
+                        }
                     }
                 }
-                throw e; // Nếu không phải duplicate order code, throw exception
+                throw e; // Nếu không phải duplicate order code hoặc đã hết retry, throw exception
             }
         }
 
@@ -477,37 +538,45 @@ public class OrderService {
 
                 Order savedOrder = orderRepository.save(order);
 
-        OrderItem orderItem = OrderItem.builder()
-                .order(savedOrder)
-                .product(product)
-                .quantity(quantity)
-                .unitPrice(unitPrice)
-                .finalPrice(finalPrice)
-                .build();
-        orderItemRepository.save(orderItem);
-        orderItemRepository.flush();
-        savedOrder.setItems(new ArrayList<>(List.of(orderItem)));
+                OrderItem orderItem = OrderItem.builder()
+                        .order(savedOrder)
+                        .product(product)
+                        .quantity(quantity)
+                        .unitPrice(unitPrice)
+                        .finalPrice(finalPrice)
+                        .build();
+                orderItemRepository.save(orderItem);
+                orderItemRepository.flush();
+                savedOrder.setItems(new ArrayList<>(List.of(orderItem)));
 
-        updateInventoryAndSales(product, quantity);
+                updateInventoryAndSales(product, quantity);
                 finalizeVoucherUsageForUser(user);
 
                 // Ghi nhận doanh thu (đơn hàng đã thanh toán thành công)
                 recordOrderRevenue(savedOrder);
 
                 return savedOrder;
-            } catch (org.springframework.dao.DataIntegrityViolationException e) {
+            } catch (DataIntegrityViolationException e) {
                 // Nếu duplicate order code, generate lại và retry
-                if (e.getCause() instanceof org.hibernate.exception.ConstraintViolationException) {
-                    org.hibernate.exception.ConstraintViolationException cve =
-                            (org.hibernate.exception.ConstraintViolationException) e.getCause();
-                    if (cve.getConstraintName() != null && cve.getConstraintName().contains("order_code")) {
+                if (e.getCause() instanceof ConstraintViolationException) {
+                    ConstraintViolationException cve = (ConstraintViolationException) e.getCause();
+                    String constraintName = cve.getConstraintName();
+                    String message = e.getMessage();
+                    
+                    // Kiểm tra xem có phải duplicate order code không
+                    if ((constraintName != null && constraintName.contains("order_code")) ||
+                        (message != null && message.contains("order_code")) ||
+                        (message != null && message.contains("UK_dhk2umg8ijjkg4njg6891trit")) ||
+                        (message != null && message.contains("Duplicate entry"))) {
                         log.warn("Duplicate order code detected: {}, generating new code (attempt {}/{})",
                                 finalOrderCode, attempt + 1, maxRetries);
                         finalOrderCode = generateOrderCode();
-                        continue; // Retry với order code mới
+                        if (attempt < maxRetries - 1) {
+                            continue; // Retry với order code mới
+                        }
                     }
                 }
-                throw e; // Nếu không phải duplicate order code, throw exception
+                throw e; // Nếu không phải duplicate order code hoặc đã hết retry, throw exception
             }
         }
 
@@ -629,6 +698,7 @@ public class OrderService {
         }
     }
 
+    // Lưu các item vào đơn hàng
     private void persistOrderItems(Order order, List<CartItem> selectedItems) {
         if (selectedItems == null || selectedItems.isEmpty()) {
             return;
@@ -1594,6 +1664,11 @@ public class OrderService {
 
     // Ghi nhận doanh thu cho đơn hàng đã thanh toán thành công
     private void recordOrderRevenue(Order order) {
+        ensureOrderRevenueRecorded(order);
+    }
+
+    // Đảm bảo doanh thu được ghi nhận cho đơn hàng
+    public void ensureOrderRevenueRecorded(Order order) {
         if (order == null || order.getItems() == null || order.getItems().isEmpty()) {
             return;
         }
@@ -1625,8 +1700,6 @@ public class OrderService {
                 }
             }
         }
-        
-        log.info("Recorded revenue for order {} with {} items", order.getId(), order.getItems().size());
     }
 }
 

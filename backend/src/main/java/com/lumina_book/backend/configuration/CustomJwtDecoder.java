@@ -28,7 +28,7 @@ public class CustomJwtDecoder implements JwtDecoder {
     @Autowired
     private AuthenticationService authenticationService;
 
-    private NimbusJwtDecoder nimbusJwtDecoder = null;
+    private volatile NimbusJwtDecoder nimbusJwtDecoder = null;
 
     @Override
     public Jwt decode(String token) throws JwtException {
@@ -69,11 +69,17 @@ public class CustomJwtDecoder implements JwtDecoder {
 
         // Nếu token còn hiệu lực
         try {
+            // Thread-safe lazy initialization using double-checked locking pattern
             if (Objects.isNull(nimbusJwtDecoder)) {
-                SecretKeySpec secretKeySpec = new SecretKeySpec(getSignerKeyBytes(), "HS512");
-                nimbusJwtDecoder = NimbusJwtDecoder.withSecretKey(secretKeySpec)
-                        .macAlgorithm(MacAlgorithm.HS512)
-                        .build();
+                synchronized (this) {
+                    // Double-check after acquiring lock
+                    if (Objects.isNull(nimbusJwtDecoder)) {
+                        SecretKeySpec secretKeySpec = new SecretKeySpec(getSignerKeyBytes(), "HS512");
+                        nimbusJwtDecoder = NimbusJwtDecoder.withSecretKey(secretKeySpec)
+                                .macAlgorithm(MacAlgorithm.HS512)
+                                .build();
+                    }
+                }
             }
 
             return nimbusJwtDecoder.decode(token);

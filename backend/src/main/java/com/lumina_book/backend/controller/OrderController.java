@@ -40,6 +40,7 @@ public class OrderController {
     ObjectMapper objectMapper = new ObjectMapper();
 
     @PostMapping("/checkout")
+    @PreAuthorize("hasRole('CUSTOMER')")
     public ApiResponse<CheckoutInitResponse> createOrder(@RequestBody CreateOrderRequest request) {
         OrderService.CheckoutResult result = orderService.createOrderFromCurrentCart(request);
         CheckoutInitResponse response = CheckoutInitResponse.builder()
@@ -53,6 +54,7 @@ public class OrderController {
     }
 
     @PostMapping("/checkout-direct")
+    @PreAuthorize("hasRole('CUSTOMER')")
     public ApiResponse<CheckoutInitResponse> createOrderDirectly(@RequestBody DirectCheckoutRequest request) {
         OrderService.CheckoutResult result = orderService.createOrderDirectly(request);
         CheckoutInitResponse response = CheckoutInitResponse.builder()
@@ -433,7 +435,8 @@ public class OrderController {
         if (snapshot.phone != null && !snapshot.phone.isBlank()) {
             return snapshot.phone;
         }
-        if (order.getAddress() != null) {
+        if (order.getAddress() != null && order.getAddress().getRecipientPhoneNumber() != null
+                && !order.getAddress().getRecipientPhoneNumber().isBlank()) {
             return order.getAddress().getRecipientPhoneNumber();
         }
         return "";

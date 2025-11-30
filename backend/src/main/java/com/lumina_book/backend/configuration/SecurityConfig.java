@@ -30,9 +30,8 @@ public class SecurityConfig {
         "/auth/send-otp",
         "/auth/verify-otp",
         "/auth/reset-password",
-        "/ghn/shipping-fees",
-        "/auth/reset-password"
-
+        "/shipments/ghn/fees",
+        "/api/momo/ipn-handler"
     };
 
     private static final String[] PUBLIC_GET_ENDPOINTS = {

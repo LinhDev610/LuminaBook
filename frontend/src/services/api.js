@@ -61,6 +61,73 @@ export function getStoredToken(key = 'token') {
 // Flag to prevent multiple simultaneous logout attempts
 let isLoggingOut = false;
 
+// Flag to prevent multiple simultaneous refresh attempts
+let isRefreshing = false;
+let refreshPromise = null;
+
+// Helper function to save token to storage (both localStorage and sessionStorage)
+function saveTokenToStorage(token) {
+    try {
+        // Check if token exists in localStorage (remember me) or sessionStorage
+        const hasLocalToken = localStorage.getItem('token');
+        const hasSessionToken = sessionStorage.getItem('token');
+
+        if (hasLocalToken) {
+            localStorage.setItem('token', token);
+            localStorage.setItem('refreshToken', token);
+        }
+        if (hasSessionToken) {
+            sessionStorage.setItem('token', token);
+        }
+
+        // Dispatch event to notify other components
+        window.dispatchEvent(new Event('tokenUpdated'));
+    } catch (error) {
+        console.error('Error saving token:', error);
+    }
+}
+
+// Helper function to attempt token refresh
+async function attemptTokenRefresh(currentToken) {
+    // Prevent multiple simultaneous refresh attempts
+    if (isRefreshing && refreshPromise) {
+        return refreshPromise;
+    }
+
+    isRefreshing = true;
+    refreshPromise = (async () => {
+        try {
+            const apiBaseUrl = getApiBaseUrl();
+            const refreshResponse = await fetch(`${apiBaseUrl}${auth.refresh}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ token: currentToken }),
+            });
+
+            const refreshData = await refreshResponse.json().catch(() => ({}));
+
+            if (refreshResponse.ok && refreshData?.result?.token) {
+                const newToken = refreshData.result.token;
+                saveTokenToStorage(newToken);
+                return { success: true, token: newToken };
+            } else {
+                // Refresh failed - token is beyond refreshable duration
+                return { success: false, error: refreshData?.message || 'Token refresh failed' };
+            }
+        } catch (error) {
+            console.error('Error refreshing token:', error);
+            return { success: false, error: error.message };
+        } finally {
+            isRefreshing = false;
+            refreshPromise = null;
+        }
+    })();
+
+    return refreshPromise;
+}
+
 // Helper function to clear all tokens and logout
 function clearTokensAndLogout() {
     // Prevent multiple simultaneous logout attempts
@@ -104,9 +171,9 @@ function clearTokensAndLogout() {
 
 // Hàm helper để tạo request API
 async function apiRequest(endpoint, options = {}) {
-    const { method = 'GET', body = null, token = null, isFormData = false, skipAuthCheck = false } = options;
+    const { method = 'GET', body = null, token = null, isFormData = false, skipAuthCheck = false, isRetry = false } = options;
     const apiBaseUrl = getApiBaseUrl();
-    const tokenToUse = token || getStoredToken('token');
+    let tokenToUse = token || getStoredToken('token');
 
     const headers = {};
     // Nếu không phải FormData, đặt Content-Type là application/json
@@ -125,24 +192,51 @@ async function apiRequest(endpoint, options = {}) {
         });
 
         // Auto-handle 401 Unauthorized (token expired/invalid)
-        if (resp.status === 401 && !skipAuthCheck && tokenToUse) {
+        if (resp.status === 401 && !skipAuthCheck && tokenToUse && !isRetry) {
             const errorData = await resp.json().catch(() => ({}));
             const errorMessage = errorData?.message || errorData?.error || 'Token invalid';
 
             // Check if it's a token validation error
-            if (errorMessage.includes('Token invalid') || errorMessage.includes('expired') || errorMessage.includes('Unauthorized')) {
-                console.warn('Token expired or invalid. Auto-logging out...');
-                clearTokensAndLogout();
+            if (errorMessage.includes('Token invalid') || errorMessage.includes('expired') || errorMessage.includes('Unauthorized') || errorMessage.includes('UNAUTHENTICATED')) {
+                // Don't try to refresh if we're already calling the refresh endpoint
+                if (endpoint === auth.refresh) {
+                    console.warn('Refresh token endpoint returned 401. Token is beyond refreshable duration.');
+                    clearTokensAndLogout();
+                    return {
+                        ok: false,
+                        status: 401,
+                        data: {
+                            message: 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.',
+                            autoLoggedOut: true
+                        }
+                    };
+                }
 
-                // Return error response
-                return {
-                    ok: false,
-                    status: 401,
-                    data: {
-                        message: 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.',
-                        autoLoggedOut: true
-                    }
-                };
+                // Try to refresh token automatically
+                console.log('Token expired. Attempting to refresh...');
+                const refreshResult = await attemptTokenRefresh(tokenToUse);
+
+                if (refreshResult.success && refreshResult.token) {
+                    // Retry the original request with new token
+                    console.log('Token refreshed successfully. Retrying request...');
+                    return apiRequest(endpoint, {
+                        ...options,
+                        token: refreshResult.token,
+                        isRetry: true,
+                    });
+                } else {
+                    // Refresh failed - token is beyond refreshable duration
+                    console.warn('Token refresh failed. Auto-logging out...');
+                    clearTokensAndLogout();
+                    return {
+                        ok: false,
+                        status: 401,
+                        data: {
+                            message: 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.',
+                            autoLoggedOut: true
+                        }
+                    };
+                }
             }
         }
 
@@ -220,9 +314,16 @@ export async function register(userData) {
 export async function refreshToken(token = null) {
     // Backend expects JSON body: { token: "<token>" }
     // Endpoint /auth/refresh đã được phép PUBLIC, nên không cần Authorization header riêng.
-    const tokenToUse = token || getStoredToken('token');
+    // Use skipAuthCheck to prevent infinite loop when refresh endpoint returns 401
+    const tokenToUse = token || getStoredToken('token') || getStoredToken('refreshToken');
+    if (!tokenToUse) {
+        return { ok: false, data: { message: 'No token available to refresh' } };
+    }
     const body = { token: tokenToUse };
-    const { data, ok } = await apiRequest(auth.refresh, { method: 'POST', body });
+    const { data, ok } = await apiRequest(auth.refresh, { method: 'POST', body, skipAuthCheck: true });
+    if (ok && data?.result?.token) {
+        saveTokenToStorage(data.result.token);
+    }
     return { ok, data: extractResult(data) };
 }
 

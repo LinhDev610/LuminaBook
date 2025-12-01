@@ -231,12 +231,6 @@ export default function CustomerService() {
             link: '/support/payment-policy'
         },
         {
-            icon: iconCall,
-            question: 'Tôi có thể liên hệ với nhân viên hỗ trợ qua Zalo không?',
-            answer: 'Có, bạn có thể liên hệ qua hotline: 0123 456 789 hoặc gửi yêu cầu hỗ trợ qua form bên dưới để được hỗ trợ nhanh chóng.',
-            link: '#support-form'
-        },
-        {
             icon: iconClock,
             question: 'Thời gian giao hàng dự kiến là bao lâu?',
             answer: 'Từ 2-5 ngày làm việc tùy khu vực. Bạn sẽ nhận được thông báo khi đơn hàng được vận chuyển. Xem chi tiết chính sách vận chuyển.',

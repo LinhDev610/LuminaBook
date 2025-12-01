@@ -456,6 +456,33 @@ export default function CartPage() {
         return { subtotal, items: selected };
     }, [cart, selectedItems, productMeta]);
 
+    // Tự động hủy voucher nếu tổng tiền các sản phẩm được chọn không còn đủ điều kiện minOrderValue
+    useEffect(() => {
+        if (!cart) return;
+
+        const hasVoucher = !!selectedVoucherCode || !!cart.appliedVoucherCode;
+        if (!hasVoucher) return;
+
+        const currentCode = selectedVoucherCode || cart.appliedVoucherCode;
+        if (!currentCode) return;
+
+        // Tìm voucher hiện đang áp dụng trong danh sách vouchers đã load
+        const currentVoucher = availableVouchers.find((v) => v.code === currentCode);
+        if (!currentVoucher || !currentVoucher.minOrderValue) return;
+
+        const subtotal = selectedItemsData.subtotal || 0;
+
+        // Nếu subtotal nhỏ hơn minOrderValue thì tự động gỡ voucher
+        if (subtotal > 0 && subtotal < currentVoucher.minOrderValue) {
+            showError(
+                `Mã giảm giá ${currentCode} chỉ áp dụng cho đơn hàng từ ${formatPrice(
+                    currentVoucher.minOrderValue,
+                )}. Hệ thống đã tự động gỡ mã giảm giá vì không còn đủ điều kiện.`,
+            );
+            handleClearVoucher();
+        }
+    }, [cart, selectedItemsData, selectedVoucherCode, availableVouchers]);
+
     const formatPrice = (price) =>
         new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price || 0);
 

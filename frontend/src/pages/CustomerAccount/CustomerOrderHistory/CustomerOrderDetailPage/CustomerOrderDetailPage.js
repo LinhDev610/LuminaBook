@@ -3,10 +3,14 @@ import { useNavigate, useParams } from 'react-router-dom';
 import classNames from 'classnames/bind';
 import styles from './CustomerOrderDetailPage.scss';
 import CancelOrderDialog from '../../../../components/Common/ConfirmDialog/CancelOrderDialog';
-import { formatCurrency, getApiBaseUrl, getStoredToken, cancelOrder } from '../../../../services';
+import {
+    formatCurrency,
+    getApiBaseUrl,
+    getStoredToken,
+    cancelOrder,
+} from '../../../../services';
 
 const cx = classNames.bind(styles);
-
 
 const parseShippingInfo = (raw) => {
     if (!raw || typeof raw !== 'string') return null;
@@ -32,11 +36,11 @@ const STATUS_MAP = {
     DELIVERED: { label: 'Đã giao', key: 'delivered' },
     RETURNING: { label: 'Trả hàng', key: 'returning' },
     CANCELLED: { label: 'Đã hủy', key: 'cancelled' },
-    RETURN_REQUESTED: { label: 'Hoàn tiền/ trả hàng', key: 'return-requested' },
+    RETURN_REQUESTED: { label: 'Trả hàng/hoàn tiền', key: 'return-requested' },
     RETURN_CS_CONFIRMED: { label: 'CSKH đang xử lý hoàn tiền', key: 'return-requested' },
     RETURN_STAFF_CONFIRMED: { label: 'Nhân viên xác nhận hàng', key: 'return-requested' },
     REFUNDED: { label: 'Hoàn tiền thành công', key: 'refunded' },
-    RETURN_REJECTED: { label: 'Từ chối hoàn tiền/ trả hàng', key: 'return-rejected' },
+    RETURN_REJECTED: { label: 'Từ chối Trả hàng/hoàn tiền', key: 'return-rejected' },
 };
 
 const RETURN_FLOW_STATUSES = [
@@ -52,7 +56,7 @@ const TABS = [
     { key: 'confirmed', label: 'Chờ lấy hàng', status: 'CONFIRMED' },
     { key: 'shipping', label: 'Chờ giao hàng', status: 'SHIPPING' },
     { key: 'delivered', label: 'Đã giao', status: 'DELIVERED' },
-    { key: 'return-requested', label: 'Hoàn tiền/ trả hàng', status: 'RETURN_REQUESTED' },
+    { key: 'return-requested', label: 'Trả hàng/hoàn tiền', status: 'RETURN_REQUESTED' },
     { key: 'cancelled', label: 'Đã hủy', status: 'CANCELLED' },
 ];
 
@@ -75,9 +79,15 @@ const mapOrderStatus = (statusRaw) => {
         case 'RETURN_REQUESTED':
             return { mappedStatus: 'RETURN_REQUESTED', ...STATUS_MAP.RETURN_REQUESTED };
         case 'RETURN_CS_CONFIRMED':
-            return { mappedStatus: 'RETURN_CS_CONFIRMED', ...STATUS_MAP.RETURN_CS_CONFIRMED };
+            return {
+                mappedStatus: 'RETURN_CS_CONFIRMED',
+                ...STATUS_MAP.RETURN_CS_CONFIRMED,
+            };
         case 'RETURN_STAFF_CONFIRMED':
-            return { mappedStatus: 'RETURN_STAFF_CONFIRMED', ...STATUS_MAP.RETURN_STAFF_CONFIRMED };
+            return {
+                mappedStatus: 'RETURN_STAFF_CONFIRMED',
+                ...STATUS_MAP.RETURN_STAFF_CONFIRMED,
+            };
         case 'REFUNDED':
             return { mappedStatus: 'REFUNDED', ...STATUS_MAP.REFUNDED };
         case 'RETURN_REJECTED':
@@ -88,7 +98,7 @@ const mapOrderStatus = (statusRaw) => {
 };
 
 const REFUND_STEPS = [
-    { key: 'request', label: 'Khách hàng yêu cầu hoàn tiền/ trả hàng' },
+    { key: 'request', label: 'Khách hàng yêu cầu trả hàng/hoàn tiền' },
     { key: 'cskh', label: 'CSKH xác nhận' },
     { key: 'staff', label: 'Nhân viên xác nhận hàng' },
     { key: 'admin', label: 'Admin hoàn tiền' },
@@ -115,7 +125,9 @@ const extractCancellationReason = (apiOrder) => {
     const direct =
         apiOrder.cancellationReason ||
         apiOrder.cancellation_reason ||
-        (typeof apiOrder.cancellation_reason === 'string' ? apiOrder.cancellation_reason : '');
+        (typeof apiOrder.cancellation_reason === 'string'
+            ? apiOrder.cancellation_reason
+            : '');
     if (typeof direct === 'string' && direct.trim()) {
         return direct.trim();
     }
@@ -155,7 +167,7 @@ const sumProductValue = (items) =>
     Array.isArray(items)
         ? items.reduce(
               (sum, item) =>
-                  sum + (Number(item.unitPrice || item.price || 0) * (item.quantity || 1)),
+                  sum + Number(item.unitPrice || item.price || 0) * (item.quantity || 1),
               0,
           )
         : 0;
@@ -174,7 +186,8 @@ const buildRefundSummary = (apiOrder, mappedItems = []) => {
 
     const productValue = sumProductValue(apiOrder.items || mappedItems);
     const shippingFee = apiOrder.shippingFee || 0;
-    const totalPaid = apiOrder.refundTotalPaid ?? apiOrder.totalAmount ?? productValue + shippingFee;
+    const totalPaid =
+        apiOrder.refundTotalPaid ?? apiOrder.totalAmount ?? productValue + shippingFee;
     const secondShippingFee = Math.max(
         0,
         Math.round(
@@ -212,12 +225,12 @@ const mapOrderFromApi = (apiOrder) => {
     // Map items từ API response
     const items = Array.isArray(apiOrder.items)
         ? apiOrder.items.map((item, index) => ({
-            id: item.id || String(index),
-            name: item.name || 'Sản phẩm',
-            quantity: item.quantity || 1,
-            price: item.unitPrice || 0,
-            image: item.imageUrl || 'https://via.placeholder.com/80x100',
-        }))
+              id: item.id || String(index),
+              name: item.name || 'Sản phẩm',
+              quantity: item.quantity || 1,
+              price: item.unitPrice || 0,
+              image: item.imageUrl || 'https://via.placeholder.com/80x100',
+          }))
         : [];
 
     const orderDateValue = apiOrder.orderDateTime || apiOrder.orderDate || null;
@@ -255,7 +268,8 @@ const mapOrderFromApi = (apiOrder) => {
             apiOrder.customerName ||
             apiOrder.customerEmail ||
             'Khách hàng',
-        phone: apiOrder.receiverPhone || shippingInfo?.phone || apiOrder.customerEmail || '',
+        phone:
+            apiOrder.receiverPhone || shippingInfo?.phone || apiOrder.customerEmail || '',
         address: shippingInfo?.address || apiOrder.shippingAddress || '',
         paymentMethod,
         paymentMethodLabel,
@@ -270,8 +284,10 @@ const mapOrderFromApi = (apiOrder) => {
         refundProgress: null,
         refundMessage: '',
         // Thêm thông tin lý do từ chối
-        refundRejectionReason: apiOrder.refundRejectionReason || apiOrder.refund_rejection_reason || '',
-        refundRejectionSource: apiOrder.refundRejectionSource || apiOrder.refund_rejection_source || '',
+        refundRejectionReason:
+            apiOrder.refundRejectionReason || apiOrder.refund_rejection_reason || '',
+        refundRejectionSource:
+            apiOrder.refundRejectionSource || apiOrder.refund_rejection_source || '',
         note: apiOrder.note || '',
         cancellationReason: extractCancellationReason(apiOrder),
         cancellationSource: extractCancellationSource(apiOrder),
@@ -287,7 +303,9 @@ const REFUND_PROGRESS_FLOW = [
 
 const buildRefundProgressSteps = (status) => {
     const normalized = String(status || '').toUpperCase();
-    const currentIndex = REFUND_PROGRESS_FLOW.findIndex((step) => step.key === normalized);
+    const currentIndex = REFUND_PROGRESS_FLOW.findIndex(
+        (step) => step.key === normalized,
+    );
 
     return REFUND_PROGRESS_FLOW.map((step, index) => ({
         ...step,
@@ -388,7 +406,9 @@ function OrderDetailPage() {
             } catch (err) {
                 console.error('CustomerOrderDetail: Lỗi khi tải chi tiết đơn hàng:', err);
                 setError(
-                    `Không thể tải chi tiết đơn hàng từ server: ${err.message || 'Lỗi không xác định'}.`,
+                    `Không thể tải chi tiết đơn hàng từ server: ${
+                        err.message || 'Lỗi không xác định'
+                    }.`,
                 );
             } finally {
                 setLoading(false);
@@ -428,7 +448,9 @@ function OrderDetailPage() {
 
     const canCancel =
         order &&
-        ['PENDING', 'CONFIRMED'].includes(String(order.status || order.rawStatus).toUpperCase());
+        ['PENDING', 'CONFIRMED'].includes(
+            String(order.status || order.rawStatus).toUpperCase(),
+        );
 
     const handleCancelOrder = () => {
         if (!order?.id) return;
@@ -450,10 +472,10 @@ function OrderDetailPage() {
             setOrder((prev) =>
                 prev
                     ? {
-                        ...prev,
-                        status: 'CANCELLED',
-                        rawStatus: 'CANCELLED',
-                    }
+                          ...prev,
+                          status: 'CANCELLED',
+                          rawStatus: 'CANCELLED',
+                      }
                     : prev,
             );
             navigate('/customer-account/orders?tab=cancelled');
@@ -472,16 +494,20 @@ function OrderDetailPage() {
     const statusKey = order
         ? order.statusKey || mapOrderStatus(order.status || order.rawStatus).key
         : 'pending';
-    const statusInfo = order ? STATUS_MAP[order.status] || STATUS_MAP.PENDING : STATUS_MAP.PENDING;
+    const statusInfo = order
+        ? STATUS_MAP[order.status] || STATUS_MAP.PENDING
+        : STATUS_MAP.PENDING;
     const progressSteps = useMemo(() => {
         if (!order) return [];
         const normalized = String(order.status || order.rawStatus || '').toUpperCase();
-        const flow = normalized === 'RETURNING' || RETURN_FLOW_STATUSES.includes(normalized);
+        const flow =
+            normalized === 'RETURNING' || RETURN_FLOW_STATUSES.includes(normalized);
         return flow ? buildRefundProgressSteps(normalized) : [];
     }, [order]);
     const isReturnFlow =
-        normalizedStatus === 'RETURNING' || RETURN_FLOW_STATUSES.includes(normalizedStatus);
-    
+        normalizedStatus === 'RETURNING' ||
+        RETURN_FLOW_STATUSES.includes(normalizedStatus);
+
     // Check if order is rejected
     const orderStatus = order?.status || order?.rawStatus || '';
     const statusStr = String(orderStatus).toUpperCase();
@@ -491,8 +517,8 @@ function OrderDetailPage() {
         rejectionSourceRaw === 'STAFF'
             ? 'Nhân viên kiểm tra'
             : rejectionSourceRaw === 'CS'
-                ? 'CSKH'
-                : 'Hệ thống';
+            ? 'CSKH'
+            : 'Hệ thống';
     const cancellationReason = order?.cancellationReason || '';
     const cancellationSourceLabel = order?.cancellationSource || '';
 
@@ -505,9 +531,10 @@ function OrderDetailPage() {
             </div>
         );
     }
-    
+
     // Parse rejection reason từ nhiều nguồn
-    let rejectionReason = order?.refundRejectionReason || order?.refund_rejection_reason || '';
+    let rejectionReason =
+        order?.refundRejectionReason || order?.refund_rejection_reason || '';
 
     // Nếu không có refundRejectionReason, parse từ note
     if (!rejectionReason && order?.note) {
@@ -528,7 +555,8 @@ function OrderDetailPage() {
         }
     }
 
-    const displayedTotal = isReturnFlow && refundSummary ? refundSummary.total : order.totalAmount;
+    const displayedTotal =
+        isReturnFlow && refundSummary ? refundSummary.total : order.totalAmount;
 
     return (
         <div className={cx('order-detail-wrapper')}>
@@ -574,7 +602,9 @@ function OrderDetailPage() {
                             {TABS.map((tab) => (
                                 <button
                                     key={tab.key}
-                                    className={cx('tab', { active: statusKey === tab.key })}
+                                    className={cx('tab', {
+                                        active: statusKey === tab.key,
+                                    })}
                                 >
                                     {tab.label}
                                 </button>
@@ -585,7 +615,11 @@ function OrderDetailPage() {
 
                 {/* Refund Progress */}
                 {isReturnFlow && (
-                    <div className={cx('refund-progress-section', { rejected: isRejected })}>
+                    <div
+                        className={cx('refund-progress-section', {
+                            rejected: isRejected,
+                        })}
+                    >
                         <div className={cx('progress-bar')}>
                             {progressSteps.map((step, index) => (
                                 <div key={step.key} className={cx('progress-step')}>
@@ -601,7 +635,8 @@ function OrderDetailPage() {
                                         <div
                                             className={cx('step-connector', {
                                                 completed:
-                                                    progressSteps[index + 1]?.completed || step.completed,
+                                                    progressSteps[index + 1]?.completed ||
+                                                    step.completed,
                                             })}
                                         />
                                     )}
@@ -630,10 +665,13 @@ function OrderDetailPage() {
                         </div>
                         {isReturnFlow && (
                             <div className={cx('info-line')}>
-                                <span className={cx('info-label')}>Hình thức thanh toán :</span>
+                                <span className={cx('info-label')}>
+                                    Hình thức thanh toán :
+                                </span>
                                 <span className={cx('info-value')}>
                                     {order.paymentMethodLabel}
-                                    {order.refundStatus === 'REFUNDING' && ' (đang hoàn tiền)'}
+                                    {order.refundStatus === 'REFUNDING' &&
+                                        ' (đang hoàn tiền)'}
                                 </span>
                             </div>
                         )}
@@ -666,7 +704,8 @@ function OrderDetailPage() {
                             <p>{cancellationReason}</p>
                             {cancellationSourceLabel && (
                                 <p className={cx('cancel-meta')}>
-                                    Đơn được hủy bởi: <span>{cancellationSourceLabel}</span>
+                                    Đơn được hủy bởi:{' '}
+                                    <span>{cancellationSourceLabel}</span>
                                 </p>
                             )}
                         </div>
@@ -693,7 +732,9 @@ function OrderDetailPage() {
                             </div>
                             <div className={cx('summary-row')}>
                                 <span>Phí ship (lần 2 - khách tạm ứng)</span>
-                                <span>{formatCurrency(refundSummary.secondShippingFee)}</span>
+                                <span>
+                                    {formatCurrency(refundSummary.secondShippingFee)}
+                                </span>
                             </div>
                             <div className={cx('summary-row')}>
                                 <span>Phí hoàn trả (10% khi lỗi khách hàng)</span>
@@ -714,11 +755,15 @@ function OrderDetailPage() {
                         <div className={cx('payment-card')}>
                             <div className={cx('info-line')}>
                                 <span className={cx('info-label')}>Phương thức :</span>
-                                <span className={cx('info-value')}>{order.paymentMethodLabel}</span>
+                                <span className={cx('info-value')}>
+                                    {order.paymentMethodLabel}
+                                </span>
                             </div>
                             <div className={cx('info-line')}>
                                 <span className={cx('info-label')}>Ngày đặt hàng :</span>
-                                <span className={cx('info-value')}>{formatOrderDate(order.orderDate)}</span>
+                                <span className={cx('info-value')}>
+                                    {formatOrderDate(order.orderDate)}
+                                </span>
                             </div>
                         </div>
                     </div>
@@ -745,32 +790,71 @@ function OrderDetailPage() {
                     {order.status === 'DELIVERED' && (
                         <button
                             className={cx('contact-btn')}
-                            onClick={() => navigate(`/customer-account/orders/${order.id || order.code}/refund`, { state: { orderCode: order.code, orderId: order.id } })}
+                            onClick={() =>
+                                navigate(
+                                    `/customer-account/orders/${
+                                        order.id || order.code
+                                    }/refund`,
+                                    {
+                                        state: {
+                                            orderCode: order.code,
+                                            orderId: order.id,
+                                        },
+                                    },
+                                )
+                            }
                         >
-                            Hoàn tiền/ Trả hàng
+                            Trả hàng/ Hoàn tiền
                         </button>
                     )}
-                    {(order.status === 'RETURN_REQUESTED' || order.rawStatus === 'RETURN_REQUESTED') && (
-                        <button 
+                    {(order.status === 'RETURN_REQUESTED' ||
+                        order.rawStatus === 'RETURN_REQUESTED') && (
+                        <button
                             className={cx('contact-btn', 'refund-detail-btn')}
-                            onClick={() => navigate(`/customer-account/orders/${order.id || order.code}/refund-detail`)}
+                            onClick={() =>
+                                navigate(
+                                    `/customer-account/orders/${
+                                        order.id || order.code
+                                    }/refund-detail`,
+                                )
+                            }
                         >
                             Xem yêu cầu hoàn tiền
                         </button>
                     )}
-                    {(order.status === 'RETURN_REJECTED' || order.rawStatus === 'RETURN_REJECTED') && (
-                        <button
-                            className={cx('contact-btn', 'resubmit-btn')}
-                            onClick={() => navigate(`/customer-account/orders/${order.id || order.code}/refund`, {
-                                state: {
-                                    orderCode: order.code,
-                                    orderId: order.id,
-                                    isResubmit: true
+                    {(order.status === 'RETURN_REJECTED' ||
+                        order.rawStatus === 'RETURN_REJECTED') && (
+                        <>
+
+                            <button
+                                className={cx('contact-btn', 'cancel-btn')}
+                                disabled={cancelling}
+                                onClick={handleCancelOrder}
+                            >
+                                {cancelling ? 'Đang hủy...' : 'Hủy đơn hàng'}
+                            </button>
+                            
+                            <button
+                                className={cx('contact-btn', 'resubmit-btn')}
+                                onClick={() =>
+                                    navigate(
+                                        `/customer-account/orders/${
+                                            order.id || order.code
+                                        }/refund`,
+                                        {
+                                            state: {
+                                                orderCode: order.code,
+                                                orderId: order.id,
+                                                isResubmit: true,
+                                            },
+                                        },
+                                    )
                                 }
-                            })}
-                        >
-                            Sửa lại và gửi lại yêu cầu
-                        </button>
+                            >
+                                Sửa lại và gửi lại yêu cầu
+                            </button>
+                            
+                        </>
                     )}
                 </div>
                 <CancelOrderDialog
@@ -785,4 +869,3 @@ function OrderDetailPage() {
 }
 
 export default OrderDetailPage;
-

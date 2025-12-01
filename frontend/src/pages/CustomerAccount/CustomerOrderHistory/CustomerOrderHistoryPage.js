@@ -32,11 +32,11 @@ const STATUS_MAP = {
     DELIVERED: { label: 'Đã giao', key: 'delivered' },
     RETURNING: { label: 'Trả hàng', key: 'returning' },
     CANCELLED: { label: 'Đã hủy', key: 'cancelled' },
-    RETURN_REQUESTED: { label: 'Hoàn tiền/ trả hàng', key: 'return-requested' },
+    RETURN_REQUESTED: { label: 'Trả hàng/hoàn tiền', key: 'return-requested' },
     RETURN_CS_CONFIRMED: { label: 'CSKH đang xử lý', key: 'return-requested' },
     RETURN_STAFF_CONFIRMED: { label: 'Nhân viên xác nhận hàng', key: 'return-requested' },
     REFUNDED: { label: 'Hoàn tiền thành công', key: 'refunded' },
-    RETURN_REJECTED: { label: 'Từ chối hoàn tiền/ trả hàng', key: 'return-rejected' },
+    RETURN_REJECTED: { label: 'Từ chối Trả hàng/hoàn tiền', key: 'return-rejected' },
 };
 
 const TABS = [
@@ -44,7 +44,7 @@ const TABS = [
     { key: 'confirmed', label: 'Chờ lấy hàng', status: 'CONFIRMED' },
     { key: 'shipping', label: 'Chờ giao hàng', status: 'SHIPPING' },
     { key: 'delivered', label: 'Đã giao', status: 'DELIVERED' },
-    { key: 'return-requested', label: 'Hoàn tiền/ trả hàng', status: 'RETURN_REQUESTED' },
+    { key: 'return-requested', label: 'Trả hàng/hoàn tiền', status: 'RETURN_REQUESTED' },
     { key: 'cancelled', label: 'Đã hủy', status: 'CANCELLED' },
 ];
 

@@ -433,11 +433,6 @@ export default function RefundRequestPage() {
             errors.reasonType = 'Vui lòng chọn lý do trả hàng';
         }
 
-        // Validate sản phẩm
-        if (selectedProducts.length === 0) {
-            errors.products = 'Vui lòng chọn ít nhất một sản phẩm';
-        }
-
         // Validate ảnh/video
         if (imagePreviews.length === 0) {
             errors.media = 'Vui lòng đính kèm ít nhất một ảnh hoặc video làm bằng chứng';
@@ -742,27 +737,12 @@ export default function RefundRequestPage() {
                             </>
                         )}
 
-                        {/* Products in Order */}
-                        <div className={cx('form-section')} data-field="products">
+                        {/* Products in Order - chỉ hiển thị, không cần tích chọn */}
+                        <div className={cx('form-section')}>
                             <label className={cx('section-label')}>Sản phẩm trong đơn</label>
                             <div className={cx('products-list')}>
                                 {order?.items?.map((item) => (
                                     <div key={item.id} className={cx('product-item')}>
-                                        <input
-                                            type="checkbox"
-                                            checked={selectedProducts.includes(item.id)}
-                                            onChange={() => {
-                                                handleProductToggle(item.id);
-                                                if (fieldErrors.products) {
-                                                    setFieldErrors(prev => {
-                                                        const newErrors = { ...prev };
-                                                        delete newErrors.products;
-                                                        return newErrors;
-                                                    });
-                                                }
-                                            }}
-                                            className={cx('product-checkbox')}
-                                        />
                                         <img src={item.image} alt={item.name} className={cx('product-image')} />
                                         <div className={cx('product-info')}>
                                             <h4 className={cx('product-name')}>{item.name}</h4>
@@ -774,9 +754,6 @@ export default function RefundRequestPage() {
                                     </div>
                                 ))}
                             </div>
-                            {fieldErrors.products && (
-                                <p className={cx('field-error')}>{fieldErrors.products}</p>
-                            )}
                         </div>
 
                         {/* Attached Files */}
@@ -1113,10 +1090,12 @@ export default function RefundRequestPage() {
                                     <span>Phí ship (lần 2 - khách tạm ứng)</span>
                                     <span>{formatCurrency(refund.secondShippingFee)}</span>
                                 </div>
-                                <div className={cx('summary-row')}>
-                                    <span>Phí hoàn trả (10% khi lỗi khách hàng)</span>
-                                    <span>{formatCurrency(refund.returnPenalty)}</span>
-                                </div>
+                                {selectedReasonType === 'customer' && (
+                                    <div className={cx('summary-row')}>
+                                        <span>Phí hoàn trả (10% khi lỗi khách hàng)</span>
+                                        <span>{formatCurrency(refund.returnPenalty)}</span>
+                                    </div>
+                                )}
                                 <div className={cx('summary-row', 'total')}>
                                     <span>Tổng hoàn</span>
                                     <span>{formatCurrency(refund.total)}</span>

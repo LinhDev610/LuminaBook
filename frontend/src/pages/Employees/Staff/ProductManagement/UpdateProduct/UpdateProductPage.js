@@ -54,6 +54,7 @@ function UpdateProductPage() {
     const [mediaFiles, setMediaFiles] = useState([]); // [{file, type, preview, isDefault, uploadedUrl?}]
     const [defaultMediaUrl, setDefaultMediaUrl] = useState('');
     const [existingMediaUrls, setExistingMediaUrls] = useState([]); // Existing media URLs from product
+    const [removedExistingMediaUrls, setRemovedExistingMediaUrls] = useState([]); // URLs đã bị xóa bởi user
 
     // ========== Helper Functions ==========
     const getStoredToken = (key) => getStoredTokenUtil(key);
@@ -358,43 +359,53 @@ function UpdateProductPage() {
                     });
                 }
 
-                // Add existing media URLs from product (always keep old media)
-                existingMediaUrls.forEach((url) => {
-                    const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(url);
-                    if (isImage) {
-                        imageUrls.push(url);
-                    } else {
-                        videoUrls.push(url);
-                    }
-                });
+                // Add existing media URLs from product (chỉ những URL chưa bị xóa)
+                existingMediaUrls
+                    .filter((url) => !removedExistingMediaUrls.includes(url))
+                    .forEach((url) => {
+                        const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(url);
+                        if (isImage) {
+                            imageUrls.push(url);
+                        } else {
+                            videoUrls.push(url);
+                        }
+                    });
 
                 // Set default media URL - prioritize new default, then existing default, then first available
                 const defaultMedia = mediaFiles.find((m) => m.isDefault);
+                const remainingExistingUrls = existingMediaUrls.filter(
+                    (url) => !removedExistingMediaUrls.includes(url)
+                );
                 if (defaultMedia && defaultMedia.uploadedUrl) {
                     // New media file marked as default and already uploaded
                     finalDefaultMediaUrl = defaultMedia.uploadedUrl;
-                } else if (defaultMediaUrl && existingMediaUrls.includes(defaultMediaUrl)) {
-                    // Keep existing default if it's still in the list
+                } else if (defaultMediaUrl && remainingExistingUrls.includes(defaultMediaUrl)) {
+                    // Giữ nguyên default media URL nếu nó vẫn còn trong danh sách và không bị xóa
                     finalDefaultMediaUrl = defaultMediaUrl;
                 } else if (imageUrls.length > 0) {
-                    // Use first image as default
+                    // Lấy ảnh đầu tiên làm default
                     finalDefaultMediaUrl = imageUrls[0];
                 } else if (videoUrls.length > 0) {
-                    // Use first video as default
+                    // Lấy video đầu tiên làm default
                     finalDefaultMediaUrl = videoUrls[0];
                 }
             } else {
-                // Keep existing media
-                existingMediaUrls.forEach((url) => {
-                    const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(url);
-                    if (isImage) {
-                        imageUrls.push(url);
-                    } else {
-                        videoUrls.push(url);
-                    }
-                });
+                // Keep existing media (chỉ những URL chưa bị xóa)
+                existingMediaUrls
+                    .filter((url) => !removedExistingMediaUrls.includes(url))
+                    .forEach((url) => {
+                        const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(url);
+                        if (isImage) {
+                            imageUrls.push(url);
+                        } else {
+                            videoUrls.push(url);
+                        }
+                    });
                 // Keep existing default if no new media
-                if (defaultMediaUrl && existingMediaUrls.includes(defaultMediaUrl)) {
+                const remainingExistingUrls = existingMediaUrls.filter(
+                    (url) => !removedExistingMediaUrls.includes(url)
+                );
+                if (defaultMediaUrl && remainingExistingUrls.includes(defaultMediaUrl)) {
                     finalDefaultMediaUrl = defaultMediaUrl;
                 } else if (imageUrls.length > 0) {
                     finalDefaultMediaUrl = imageUrls[0];
@@ -847,77 +858,106 @@ function UpdateProductPage() {
                             }}
                         />
                         {/* Show existing media */}
-                        {existingMediaUrls.length > 0 && (
+                        {existingMediaUrls.filter((url) => !removedExistingMediaUrls.includes(url)).length > 0 && (
                             <div className={cx('existingMedia')}>
                                 <div className={cx('existingMediaLabel')}>
                                     Ảnh/video hiện tại:
                                 </div>
                                 <div className={cx('mediaList')}>
-                                    {existingMediaUrls.map((url, idx) => {
-                                        const normalizedUrl = normalizeMediaUrl(
-                                            url,
-                                            API_BASE_URL,
-                                        );
-                                        const isImage =
-                                            /\.(jpg|jpeg|png|gif|webp)$/i.test(url);
-                                        return (
-                                            <div key={idx} className={cx('mediaItem')}>
-                                                {isImage ? (
-                                                    <img
-                                                        src={normalizedUrl}
-                                                        alt="existing"
-                                                        className={cx('mediaPreview')}
-                                                    />
-                                                ) : (
-                                                    <video
-                                                        src={normalizedUrl}
-                                                        className={cx('mediaPreview')}
-                                                        controls
-                                                    />
-                                                )}
-                                                <div className={cx('mediaActions')}>
-                                                    <label
-                                                        className={cx('defaultToggle')}
-                                                    >
-                                                        <input
-                                                            type="radio"
-                                                            name="defaultMedia"
-                                                            checked={
-                                                                defaultMediaUrl === url
-                                                            }
-                                                            onChange={async () => {
-                                                                try {
-                                                                    setDefaultMediaUrl(
-                                                                        url,
-                                                                    );
-                                                                    const token =
-                                                                        getStoredToken(
-                                                                            'token',
-                                                                        );
-                                                                    await fetch(
-                                                                        `${API_BASE_URL}/products/${id}/default-media?mediaUrl=${encodeURIComponent(
-                                                                            url,
-                                                                        )}`,
-                                                                        {
-                                                                            method: 'POST',
-                                                                            headers: {
-                                                                                ...(token
-                                                                                    ? {
-                                                                                        Authorization: `Bearer ${token}`,
-                                                                                    }
-                                                                                    : {}),
-                                                                            },
-                                                                        },
-                                                                    );
-                                                                } catch (_) { }
-                                                            }}
+                                    {existingMediaUrls
+                                        .filter((url) => !removedExistingMediaUrls.includes(url))
+                                        .map((url, idx) => {
+                                            const normalizedUrl = normalizeMediaUrl(
+                                                url,
+                                                API_BASE_URL,
+                                            );
+                                            const isImage =
+                                                /\.(jpg|jpeg|png|gif|webp)$/i.test(url);
+                                            return (
+                                                <div key={idx} className={cx('mediaItem')}>
+                                                    {isImage ? (
+                                                        <img
+                                                            src={normalizedUrl}
+                                                            alt="existing"
+                                                            className={cx('mediaPreview')}
                                                         />
-                                                        Mặc định
-                                                    </label>
+                                                    ) : (
+                                                        <video
+                                                            src={normalizedUrl}
+                                                            className={cx('mediaPreview')}
+                                                            controls
+                                                        />
+                                                    )}
+                                                    <div className={cx('mediaActions')}>
+                                                        <label
+                                                            className={cx('defaultToggle')}
+                                                        >
+                                                            <input
+                                                                type="radio"
+                                                                name="defaultMedia"
+                                                                checked={
+                                                                    defaultMediaUrl === url
+                                                                }
+                                                                onChange={async () => {
+                                                                    try {
+                                                                        setDefaultMediaUrl(
+                                                                            url,
+                                                                        );
+                                                                        const token =
+                                                                            getStoredToken(
+                                                                                'token',
+                                                                            );
+                                                                        await fetch(
+                                                                            `${API_BASE_URL}/products/${id}/default-media?mediaUrl=${encodeURIComponent(
+                                                                                url,
+                                                                            )}`,
+                                                                            {
+                                                                                method: 'POST',
+                                                                                headers: {
+                                                                                    ...(token
+                                                                                        ? {
+                                                                                            Authorization: `Bearer ${token}`,
+                                                                                        }
+                                                                                        : {}),
+                                                                                },
+                                                                            },
+                                                                        );
+                                                                    } catch (_) { }
+                                                                }}
+                                                            />
+                                                            Mặc định
+                                                        </label>
+                                                        <button
+                                                            type="button"
+                                                            className={cx('btn', 'muted')}
+                                                            onClick={() => {
+                                                                // Thêm vào danh sách đã xóa
+                                                                setRemovedExistingMediaUrls((prev) => [...prev, url]);
+                                                                // Nếu đây là default media, set default về media đầu tiên còn lại
+                                                                if (defaultMediaUrl === url) {
+                                                                    const remaining = existingMediaUrls.filter(
+                                                                        (u) => u !== url && !removedExistingMediaUrls.includes(u)
+                                                                    );
+                                                                    if (remaining.length > 0) {
+                                                                        setDefaultMediaUrl(remaining[0]);
+                                                                    } else if (mediaFiles.length > 0) {
+                                                                        // Nếu không còn existing media, dùng media file đầu tiên
+                                                                        const firstMedia = mediaFiles.find((m) => m.isDefault) || mediaFiles[0];
+                                                                        if (firstMedia) {
+                                                                            setDefaultMediaUrl(firstMedia.uploadedUrl || firstMedia.preview || '');
+                                                                        }
+                                                                    } else {
+                                                                        setDefaultMediaUrl('');
+                                                                    }
+                                                                }
+                                                            }}
+                                                        >
+                                                            Xóa
+                                                        </button>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        );
-                                    })}
+                                            );
+                                        })}
                                 </div>
                             </div>
                         )}

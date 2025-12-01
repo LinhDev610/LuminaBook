@@ -221,21 +221,33 @@ public class ProductService {
                 newMediaUrls.addAll(request.getVideoUrls());
             }
             
-            // Xóa media cũ và file vật lý (chỉ xóa những media KHÔNG có trong request mới)
+            // Xóa media cũ và file vật lý
+            // Logic: Nếu existing media bị user xóa trong frontend, URL đó sẽ không có trong request
+            // → Backend sẽ xóa file vật lý của những media không có trong request mới
             if (product.getMediaList() != null && !product.getMediaList().isEmpty()) {
+                int deletedFileCount = 0;
                 // Chỉ xóa file vật lý của những media không có trong request mới
+                // (bao gồm cả existing media bị user xóa và media thực sự bị thay thế)
                 for (ProductMedia oldMedia : product.getMediaList()) {
                     String oldUrl = oldMedia.getMediaUrl();
                     // Chỉ xóa file nếu URL không có trong request mới
                     if (oldUrl != null && !newMediaUrls.contains(oldUrl)) {
                         deletePhysicalFileByUrl(oldUrl);
+                        deletedFileCount++;
+                        log.info("Deleted physical file for removed media: {}", oldUrl);
                     }
+                }
+                if (deletedFileCount > 0) {
+                    log.info("Deleted {} physical media files for product {} (removed by user or replaced)", 
+                            deletedFileCount, productId);
                 }
                 // Clear collection trước khi xóa để tránh lỗi Hibernate orphan removal
                 List<ProductMedia> oldMediaList = new ArrayList<>(product.getMediaList());
                 product.getMediaList().clear();
                 // Xóa media khỏi database
                 productMediaRepository.deleteAll(oldMediaList);
+                log.info("Deleted {} ProductMedia records from database for product {}", 
+                        oldMediaList.size(), productId);
             }
             // Gắn media mới từ request (bao gồm cả media cũ và mới)
             attachMediaFromUpdateRequest(product, request);

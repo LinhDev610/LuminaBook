@@ -650,7 +650,7 @@ function ProductDetailPage() {
                                     </button>
                                 </>
                             )}
-                            {isAdmin && (
+                            {isAdmin && product.status === 'Đã duyệt' && (
                                 <button
                                     className={cx('btn', 'btn-edit')}
                                     onClick={() => navigate(`/admin/products/${id}/update`)}

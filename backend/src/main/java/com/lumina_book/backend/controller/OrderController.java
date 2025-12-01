@@ -87,7 +87,7 @@ public class OrderController {
     }
 
     @GetMapping("/recent")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','STAFF')")
     public ApiResponse<OrderPageResponse> getRecentOrders(
             @RequestParam LocalDate start,
             @RequestParam LocalDate end,

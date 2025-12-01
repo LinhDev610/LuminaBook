@@ -1,3 +1,5 @@
+import { validatePhoneNumberField } from './phoneNumberValidation';
+
 export const validateAddressForm = (form) => {
     const errors = {};
 
@@ -5,11 +7,8 @@ export const validateAddressForm = (form) => {
         errors.recipientName = 'Vui lòng nhập tên người nhận';
     }
 
-    if (!form.recipientPhoneNumber?.trim()) {
-        errors.recipientPhoneNumber = 'Vui lòng nhập số điện thoại';
-    } else if (!/^0\d{9}$/.test(form.recipientPhoneNumber.trim())) {
-        errors.recipientPhoneNumber = 'Số điện thoại phải gồm 10 số và bắt đầu bằng 0';
-    }
+    const phoneErrors = validatePhoneNumberField(form.recipientPhoneNumber, 'recipientPhoneNumber');
+    Object.assign(errors, phoneErrors);
 
     if (!form.provinceID) {
         errors.provinceID = 'Vui lòng chọn tỉnh/thành';

@@ -6,6 +6,7 @@ import supportStyles from './CustomerService.module.scss';
 import { useAuth } from '../../contexts/AuthContext';
 import { getApiBaseUrl, getStoredToken } from '../../services/utils';
 import { getMyInfo } from '../../services';
+import { isValidVietnamPhoneNumber } from '../../utils/phoneNumberValidation';
 
 // Import icons
 import iconBox from '../../assets/icons/icon_box.png';
@@ -144,6 +145,10 @@ export default function CustomerService() {
             setSubmitError('Vui lòng nhập số điện thoại');
             return;
         }
+        if (!isValidVietnamPhoneNumber(formData.phone)) {
+            setSubmitError('Số điện thoại phải gồm 10 số và bắt đầu bằng 0');
+            return;
+        }
         if (!formData.issue || !formData.issue.trim()) {
             setSubmitError('Vui lòng mô tả tình trạng bạn đang gặp phải');
             return;
@@ -153,10 +158,10 @@ export default function CustomerService() {
 
         try {
             // Combine issue and notes into content
-            const orderInfo = isOrderIdOther 
+            const orderInfo = isOrderIdOther
                 ? `Khiếu nại khác: ${formData.orderIdOther.trim()}`
                 : `Mã đơn hàng: ${formData.orderId.trim()}`;
-            
+
             const content = `${orderInfo}\n\nVấn đề: ${formData.issue}` + (formData.notes ? `\n\nGhi chú thêm: ${formData.notes}` : '');
 
             const response = await fetch(`${API_BASE_URL}/api/tickets`, {
@@ -249,7 +254,7 @@ export default function CustomerService() {
                         <div className={cxSupport('header-bar')}></div>
                         <h2 className={cxSupport('section-title')}>Câu hỏi thường gặp</h2>
                     </div>
-                    
+
                     <div className={cxSupport('faq-list')}>
                         {faqItems.map((item, index) => {
                             const handleClick = (e) => {
@@ -263,9 +268,9 @@ export default function CustomerService() {
                             };
 
                             return (
-                                <Link 
-                                    key={index} 
-                                    to={item.link} 
+                                <Link
+                                    key={index}
+                                    to={item.link}
                                     className={cxSupport('faq-item')}
                                     onClick={handleClick}
                                 >

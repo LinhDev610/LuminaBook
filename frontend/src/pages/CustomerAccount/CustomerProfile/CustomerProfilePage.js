@@ -8,6 +8,7 @@ import AddressListModal from '../../../components/Common/AddressModal/AddressLis
 import NewAddressModal from '../../../components/Common/AddressModal/NewAddressModal';
 import AddressDetailModal from '../../../components/Common/AddressModal/AddressDetailModal';
 import { formatFullAddress, normalizeAddressPayload } from '../../../components/Common/AddressModal/useGhnLocations';
+import { isValidVietnamPhoneNumber } from '../../../utils/phoneNumberValidation';
 
 const cx = classNames.bind(styles);
 
@@ -28,10 +29,6 @@ function CustomerProfilePage() {
     const [showAddressDetailModal, setShowAddressDetailModal] = useState(false);
     const [selectedAddress, setSelectedAddress] = useState(null);
     const [addressRefreshKey, setAddressRefreshKey] = useState(0);
-
-    const isValidPhone = (phone) => {
-        return /^0\d{9}$/.test((phone || '').trim());
-    };
 
     const persistDefaultAddress = async (address) => {
         if (!address || !isLoggedIn) return;
@@ -178,7 +175,7 @@ function CustomerProfilePage() {
                                     onChange={(e) => setUser((prev) => ({ ...(prev || {}), phoneNumber: e.target.value }))}
                                     disabled={!isLoggedIn}
                                 />
-                                {!isValidPhone(user?.phoneNumber ?? '') && (user?.phoneNumber ?? '').trim() !== '' && (
+                                {!isValidVietnamPhoneNumber(user?.phoneNumber ?? '') && (user?.phoneNumber ?? '').trim() !== '' && (
                                     <span className={cx('error-msg')}>Số điện thoại phải gồm 10 số và bắt đầu bằng 0</span>
                                 )}
                             </div>
@@ -218,7 +215,7 @@ function CustomerProfilePage() {
                                     setProfileMsg('');
                                     const trimmedPhone = (user.phoneNumber ?? '').trim();
                                     // Cho phép để trống số điện thoại, chỉ validate khi có nhập
-                                    if (trimmedPhone && !isValidPhone(trimmedPhone)) {
+                                    if (trimmedPhone && !isValidVietnamPhoneNumber(trimmedPhone)) {
                                         setProfileMsg('Số điện thoại phải gồm 10 số và bắt đầu bằng 0');
                                         return;
                                     }

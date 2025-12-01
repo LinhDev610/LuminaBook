@@ -39,7 +39,11 @@ function BestSeller({ timeMode = 'day', customDateRange = null }) {
 
                 // ApiResponse không có field success, chỉ có code (1000 = success), message, và result
                 if (data.result && Array.isArray(data.result)) {
-                    setTopProducts(data.result);
+                    // Sắp xếp theo doanh thu (total) giảm dần và giới hạn tối đa 10 sản phẩm
+                    const sortedTop10 = [...data.result]
+                        .sort((a, b) => (b.total || 0) - (a.total || 0))
+                        .slice(0, 10);
+                    setTopProducts(sortedTop10);
                 } else {
                     console.warn('BestSeller - No valid data in response. Code:', data.code, 'Result:', data.result);
                     setTopProducts([]);

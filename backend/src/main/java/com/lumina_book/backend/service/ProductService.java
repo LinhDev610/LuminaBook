@@ -35,6 +35,7 @@ import com.lumina_book.backend.repository.PromotionRepository;
 import com.lumina_book.backend.repository.VoucherRepository;
 import com.lumina_book.backend.repository.UserRepository;
 import com.lumina_book.backend.repository.BannerRepository;
+import com.lumina_book.backend.repository.FinancialRecordRepository;
 import com.lumina_book.backend.util.SecurityUtil;
 
 import lombok.AccessLevel;
@@ -55,6 +56,7 @@ public class ProductService {
     PromotionRepository promotionRepository;
     VoucherRepository voucherRepository;
     BannerRepository bannerRepository;
+    FinancialRecordRepository financialRecordRepository;
     ProductMapper productMapper;
     PromotionService promotionService;
 
@@ -216,8 +218,11 @@ public class ProductService {
                 for (ProductMedia oldMedia : product.getMediaList()) {
                     deletePhysicalFileByUrl(oldMedia.getMediaUrl());
                 }
+                // Clear collection trước khi xóa để tránh lỗi Hibernate orphan removal
+                List<ProductMedia> oldMediaList = new ArrayList<>(product.getMediaList());
+                product.getMediaList().clear();
                 // Xóa media khỏi database
-                productMediaRepository.deleteAll(product.getMediaList());
+                productMediaRepository.deleteAll(oldMediaList);
             }
             // Gắn media mới từ request
             attachMediaFromUpdateRequest(product, request);
@@ -316,10 +321,25 @@ public class ProductService {
             productRepository.save(product);
         }
 
-        // 5. Xóa file media vật lý trong thư mục product_media (nếu có)
+        // 5. Xóa hoặc set null product trong FinancialRecord (tránh foreign key constraint)
+        List<FinancialRecord> financialRecords = financialRecordRepository.findByProductId(productId);
+        if (!financialRecords.isEmpty()) {
+            for (FinancialRecord record : financialRecords) {
+                record.setProduct(null);
+            }
+            financialRecordRepository.saveAll(financialRecords);
+            log.info("Set product to null for {} financial records before deleting product {}", 
+                    financialRecords.size(), productId);
+        }
+
+        // 6. Xóa file media vật lý trong thư mục product_media (nếu có)
         deleteMediaFilesIfExists(product);
 
-        // 6. Xóa product
+        // 7. Xóa tất cả ProductMedia records (tránh foreign key constraint)
+        productMediaRepository.deleteByProductId(productId);
+        log.info("Deleted all ProductMedia records for product {}", productId);
+
+        // 8. Xóa product
         productRepository.delete(product);
         log.info("Product deleted: {} by user: {}", productId, user.getEmail());
     }
@@ -590,7 +610,14 @@ public class ProductService {
 
         // Gắn media vào product
         if (!mediaEntities.isEmpty()) {
-            product.setMediaList(mediaEntities);
+            // Clear collection hiện có trước (nếu có) để tránh lỗi Hibernate
+            if (product.getMediaList() == null) {
+                product.setMediaList(new ArrayList<>());
+            } else {
+                product.getMediaList().clear();
+            }
+            // Add tất cả media mới vào collection hiện có
+            product.getMediaList().addAll(mediaEntities);
             // Nếu không có media nào được đánh dấu là default, chọn media đầu tiên
             if (defaultMedia == null) {
                 defaultMedia = mediaEntities.get(0);
@@ -639,7 +666,14 @@ public class ProductService {
 
         // Gắn media vào product
         if (!mediaEntities.isEmpty()) {
-            product.setMediaList(mediaEntities);
+            // Clear collection hiện có trước (nếu có) để tránh lỗi Hibernate
+            if (product.getMediaList() == null) {
+                product.setMediaList(new ArrayList<>());
+            } else {
+                product.getMediaList().clear();
+            }
+            // Add tất cả media mới vào collection hiện có
+            product.getMediaList().addAll(mediaEntities);
             // Nếu không có media nào được đánh dấu là default, chọn media đầu tiên
             if (defaultMedia == null) {
                 defaultMedia = mediaEntities.get(0);

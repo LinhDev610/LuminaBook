@@ -39,6 +39,7 @@ import ManageCategoriesPage from '../pages/Admin/ManageCategories/ManageCategori
 import AddCategoryPage from '../pages/Admin/ManageCategories/AddCategory/AddCategoryPage';
 import ManageProductsPage from '../pages/Admin/ManageProduct';
 import AdminProductDetailPage from '../pages/Admin/ManageProduct/ProductDetail/ProductDetailPage';
+import UpdateProductPage from '../pages/Admin/ManageProduct/UpdateProduct';
 import CategoryDetailPage from '../pages/Admin/ManageCategories/CategoryDetail';
 import UpdateCategoryPage from '../pages/Admin/ManageCategories/UpdateCategory';
 import ManageVouchersPromotionsPage from '../pages/Admin/ManageVouchersPromotions';
@@ -139,6 +140,11 @@ const privateRoutes = [
     {
         path: '/admin/products/:id',
         component: AdminProductDetailPage,
+        layout: AdminLayout,
+    },
+    {
+        path: '/admin/products/:id/update',
+        component: UpdateProductPage,
         layout: AdminLayout,
     },
     { path: '/admin/categories', component: ManageCategoriesPage, layout: AdminLayout },

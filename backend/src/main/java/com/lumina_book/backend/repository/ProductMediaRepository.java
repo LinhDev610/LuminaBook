@@ -25,4 +25,9 @@ public interface ProductMediaRepository extends JpaRepository<ProductMedia, Stri
 
     // Đếm số media của product
     long countByProductId(String productId);
+
+    // Xóa tất cả media của product
+    @Modifying
+    @Query("DELETE FROM ProductMedia pm WHERE pm.product.id = :productId")
+    void deleteByProductId(@Param("productId") String productId);
 }

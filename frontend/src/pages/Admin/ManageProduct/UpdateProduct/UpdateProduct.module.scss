@@ -1,0 +1,191 @@
+.wrap {
+    padding: 12px 8px 24px;
+    background: #F5F1E6;
+    min-height: calc(100vh - 60px);
+}
+
+.topbar { 
+    display: flex; 
+    align-items: center; 
+    justify-content: flex-start; 
+    margin-bottom: 12px; 
+}
+.backBtn { 
+    background: transparent; 
+    border: none; 
+    padding: 6px; 
+    cursor: pointer; 
+    border-radius: 8px; 
+}
+.backBtn:hover { 
+    background: rgba(0,0,0,0.05); 
+}
+.backIcon { 
+    width: 20px; 
+    height: 20px; 
+    object-fit: contain; 
+}
+
+.title {
+    font-size: 24px;
+    font-weight: 800;
+}
+
+.btn {
+    border: none;
+    border-radius: 8px;
+    padding: 10px 14px;
+    cursor: pointer;
+}
+.btn.ghost { 
+    background: #e5e7eb; 
+}
+.btn.primary { 
+    background: #173a55; 
+    color: #fff; 
+}
+.btn.muted { 
+    background: #c7ccd1; 
+}
+
+.card {
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 2px 0 rgba(0,0,0,.08), 0 1px 3px rgba(0,0,0,.08);
+    padding: 16px;
+}
+
+.form { 
+    display: block; 
+}
+.row { 
+    display: flex; 
+    flex-direction: column; 
+    gap: 6px; 
+    margin-bottom: 10px; 
+}
+.row > label { 
+    font-weight: 600; 
+}
+.form input,
+.form textarea,
+.form select {
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 14px;
+    line-height: 1.2;
+}
+.form input,
+.form select { 
+    height: 40px; 
+}
+
+.grid2 { 
+    display: grid; 
+    grid-template-columns: 1fr 1fr; 
+    gap: 12px; 
+}
+.grid4 { 
+    display: grid; 
+    grid-template-columns: 1fr 1fr 1fr 1fr; 
+    gap: 8px; 
+}
+
+.actions { 
+    display: flex; 
+    gap: 8px; 
+    justify-content: flex-end; 
+    margin-top: 8px; 
+}
+
+.hint { 
+    color: #6b7b85; 
+    font-size: 12px; 
+    margin-top: 4px; 
+}
+
+.dimension > label { 
+    font-weight: 600; 
+}
+.grid4 input { 
+    font-size: 14px; 
+}
+.example { 
+    margin-top: 10px; 
+    color: #374151; 
+}
+
+.errorText {
+    color: #dc2626;
+    font-size: 12px;
+    margin-top: 2px;
+}
+
+.loading {
+    text-align: center;
+    padding: 40px;
+    font-size: 16px;
+    color: #6b7280;
+}
+
+.existingMedia {
+    margin-top: 12px;
+}
+
+.existingMediaLabel {
+    font-size: 13px;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 8px;
+}
+
+.mediaList {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 12px;
+    margin-top: 10px;
+}
+
+.mediaItem {
+    position: relative;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #f9fafb;
+}
+
+.mediaPreview {
+    width: 100%;
+    height: 120px;
+    object-fit: cover;
+    display: block;
+}
+
+.defaultToggle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #374151;
+    padding: 6px;
+    background: rgba(255, 255, 255, 0.9);
+    margin-top: 4px;
+}
+
+.removeBtn {
+    margin-top: 4px;
+    padding: 4px 8px;
+    background: #dc2626;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+    width: 100%;
+}
+
+.removeBtn:hover {
+    background: #b91c1c;
+}
+

@@ -65,6 +65,12 @@ public interface ProductMapper {
     @Mapping(target = "inventory", ignore = true)
     @Mapping(target = "banners", ignore = true)
     @Mapping(target = "quantitySold", ignore = true)
+    @Mapping(target = "price", ignore = true)
+    @Mapping(target = "unitPrice", ignore = true)
+    @Mapping(target = "tax", ignore = true)
+    @Mapping(target = "discountValue", ignore = true)
+    @Mapping(target = "purchasePrice", ignore = true)
+    @Mapping(target = "status", ignore = true)
     void updateProduct(@MappingTarget Product product, ProductUpdateRequest request);
 
     @Named("mapMediaUrls")

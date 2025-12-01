@@ -212,11 +212,24 @@ public class ProductService {
 
         // Cập nhật media nếu có
         if (request.getImageUrls() != null || request.getVideoUrls() != null) {
-            // Xóa media cũ và file vật lý
+            // Thu thập tất cả URLs từ request (cả image và video)
+            java.util.Set<String> newMediaUrls = new java.util.HashSet<>();
+            if (request.getImageUrls() != null) {
+                newMediaUrls.addAll(request.getImageUrls());
+            }
+            if (request.getVideoUrls() != null) {
+                newMediaUrls.addAll(request.getVideoUrls());
+            }
+            
+            // Xóa media cũ và file vật lý (chỉ xóa những media KHÔNG có trong request mới)
             if (product.getMediaList() != null && !product.getMediaList().isEmpty()) {
-                // Xóa file vật lý
+                // Chỉ xóa file vật lý của những media không có trong request mới
                 for (ProductMedia oldMedia : product.getMediaList()) {
-                    deletePhysicalFileByUrl(oldMedia.getMediaUrl());
+                    String oldUrl = oldMedia.getMediaUrl();
+                    // Chỉ xóa file nếu URL không có trong request mới
+                    if (oldUrl != null && !newMediaUrls.contains(oldUrl)) {
+                        deletePhysicalFileByUrl(oldUrl);
+                    }
                 }
                 // Clear collection trước khi xóa để tránh lỗi Hibernate orphan removal
                 List<ProductMedia> oldMediaList = new ArrayList<>(product.getMediaList());
@@ -224,8 +237,13 @@ public class ProductService {
                 // Xóa media khỏi database
                 productMediaRepository.deleteAll(oldMediaList);
             }
-            // Gắn media mới từ request
+            // Gắn media mới từ request (bao gồm cả media cũ và mới)
             attachMediaFromUpdateRequest(product, request);
+        }
+
+        // Cập nhật status nếu có trong request
+        if (request.getStatus() != null) {
+            product.setStatus(request.getStatus());
         }
 
         Product savedProduct = productRepository.save(product);
@@ -283,8 +301,9 @@ public class ProductService {
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
 
+        // Load product với tất cả relations để đảm bảo có thể xóa đúng cách
         Product product = productRepository
-                .findById(productId)
+                .findByIdWithRelations(productId)
                 .orElseThrow(() -> new AppException(ErrorCode.PRODUCT_NOT_EXISTED));
 
         // 1. Xóa product khỏi tất cả Promotion.productApply (bảng promotion_products)
@@ -332,14 +351,36 @@ public class ProductService {
                     financialRecords.size(), productId);
         }
 
-        // 6. Xóa file media vật lý trong thư mục product_media (nếu có)
+        // 6. Set default_media_id = null trước khi xóa ProductMedia (tránh foreign key constraint)
+        if (product.getDefaultMedia() != null) {
+            product.setDefaultMedia(null);
+            productRepository.saveAndFlush(product); // Flush ngay để đảm bảo thay đổi được ghi vào DB
+            log.info("Set default_media_id to null for product {} before deleting media", productId);
+        }
+
+        // 7. Xóa file media vật lý trong thư mục product_media (nếu có)
         deleteMediaFilesIfExists(product);
 
-        // 7. Xóa tất cả ProductMedia records (tránh foreign key constraint)
-        productMediaRepository.deleteByProductId(productId);
-        log.info("Deleted all ProductMedia records for product {}", productId);
+        // 8. Xóa tất cả ProductMedia records (tránh foreign key constraint)
+        // Load mediaList để đảm bảo được fetch
+        if (product.getMediaList() != null) {
+            product.getMediaList().size(); // Trigger lazy loading nếu cần
+        }
+        
+        // Xóa từng ProductMedia record thủ công thay vì dùng query để tránh foreign key constraint
+        List<ProductMedia> mediaList = productMediaRepository.findByProductIdOrderByDisplayOrderAsc(productId);
+        if (!mediaList.isEmpty()) {
+            // Clear collection trước khi xóa để tránh lỗi Hibernate orphan removal
+            if (product.getMediaList() != null) {
+                product.getMediaList().clear();
+            }
+            // Xóa media khỏi database
+            productMediaRepository.deleteAll(mediaList);
+            productMediaRepository.flush(); // Flush để đảm bảo xóa được thực hiện ngay
+            log.info("Deleted {} ProductMedia records for product {}", mediaList.size(), productId);
+        }
 
-        // 8. Xóa product
+        // 9. Xóa product
         productRepository.delete(product);
         log.info("Product deleted: {} by user: {}", productId, user.getEmail());
     }

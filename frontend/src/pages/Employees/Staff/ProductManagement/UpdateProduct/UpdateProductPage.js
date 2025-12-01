@@ -3,6 +3,7 @@ import {
     getStoredToken as getStoredTokenUtil,
 } from '../../../../../services/utils';
 import { normalizeMediaUrl } from '../../../../../services/productUtils';
+import { uploadProductMedia } from '../../../../../services';
 import { useMemo, useRef, useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import classNames from 'classnames/bind';
@@ -293,41 +294,170 @@ function UpdateProductPage() {
                 return;
             }
 
-            // Note: ProductUpdateRequest không hỗ trợ các URL media, vì vậy chỉ cập nhật các trường của sản phẩm
-            // Media sẽ được giữ nguyên. Nếu cần thêm media mới, sẽ cần thay đổi ở backend.
+            // Upload new media files if any
+            let imageUrls = [];
+            let videoUrls = [];
+            let finalDefaultMediaUrl = defaultMediaUrl;
+
+            if (mediaFiles.length > 0) {
+                const filesToUpload = mediaFiles.filter((m) => m.file && !m.uploadedUrl);
+                if (filesToUpload.length > 0) {
+                    const fileArray = filesToUpload.map((m) => m.file);
+                    let uploadResult = await uploadProductMedia(fileArray, token);
+
+                    // Retry with refreshed token if 401
+                    if (!uploadResult.ok && uploadResult.status === 401) {
+                        const newToken = await refreshTokenIfNeeded();
+                        if (newToken) {
+                            token = newToken;
+                            uploadResult = await uploadProductMedia(fileArray, token);
+                        }
+                    }
+
+                    if (!uploadResult.ok || !uploadResult.urls || uploadResult.urls.length === 0) {
+                        setIsLoading(false);
+                        setNotifyType('error');
+                        setNotifyMsg(uploadResult.message || 'Upload media thất bại. Vui lòng thử lại.');
+                        setNotifyOpen(true);
+                        return;
+                    }
+
+                    // Map uploaded URLs and add to arrays immediately
+                    let urlIndex = 0;
+                    const updatedMediaFiles = mediaFiles.map((m) => {
+                        if (m.file && !m.uploadedUrl) {
+                            const uploadedUrl = uploadResult.urls[urlIndex++];
+                            if (m.type === 'IMAGE') {
+                                imageUrls.push(uploadedUrl);
+                            } else {
+                                videoUrls.push(uploadedUrl);
+                            }
+                            return { ...m, uploadedUrl };
+                        }
+                        // If already has uploadedUrl, add to arrays
+                        if (m.uploadedUrl) {
+                            if (m.type === 'IMAGE') {
+                                imageUrls.push(m.uploadedUrl);
+                            } else {
+                                videoUrls.push(m.uploadedUrl);
+                            }
+                        }
+                        return m;
+                    });
+                    setMediaFiles(updatedMediaFiles);
+                } else {
+                    // No new files to upload, but add existing uploaded URLs from mediaFiles
+                    mediaFiles.forEach((m) => {
+                        if (m.uploadedUrl) {
+                            if (m.type === 'IMAGE') {
+                                imageUrls.push(m.uploadedUrl);
+                            } else {
+                                videoUrls.push(m.uploadedUrl);
+                            }
+                        }
+                    });
+                }
+
+                // Add existing media URLs from product (always keep old media)
+                existingMediaUrls.forEach((url) => {
+                    const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(url);
+                    if (isImage) {
+                        imageUrls.push(url);
+                    } else {
+                        videoUrls.push(url);
+                    }
+                });
+
+                // Set default media URL - prioritize new default, then existing default, then first available
+                const defaultMedia = mediaFiles.find((m) => m.isDefault);
+                if (defaultMedia && defaultMedia.uploadedUrl) {
+                    // New media file marked as default and already uploaded
+                    finalDefaultMediaUrl = defaultMedia.uploadedUrl;
+                } else if (defaultMediaUrl && existingMediaUrls.includes(defaultMediaUrl)) {
+                    // Keep existing default if it's still in the list
+                    finalDefaultMediaUrl = defaultMediaUrl;
+                } else if (imageUrls.length > 0) {
+                    // Use first image as default
+                    finalDefaultMediaUrl = imageUrls[0];
+                } else if (videoUrls.length > 0) {
+                    // Use first video as default
+                    finalDefaultMediaUrl = videoUrls[0];
+                }
+            } else {
+                // Keep existing media
+                existingMediaUrls.forEach((url) => {
+                    const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(url);
+                    if (isImage) {
+                        imageUrls.push(url);
+                    } else {
+                        videoUrls.push(url);
+                    }
+                });
+                // Keep existing default if no new media
+                if (defaultMediaUrl && existingMediaUrls.includes(defaultMediaUrl)) {
+                    finalDefaultMediaUrl = defaultMediaUrl;
+                } else if (imageUrls.length > 0) {
+                    finalDefaultMediaUrl = imageUrls[0];
+                } else if (videoUrls.length > 0) {
+                    finalDefaultMediaUrl = videoUrls[0];
+                }
+            }
+
             // Khi gửi lại để duyệt, luôn đặt status về PENDING
             const payload = {
                 name: (name || '').trim(),
                 description: (description || '').trim() || null,
                 author: (author || '').trim(),
                 publisher: (publisher || '').trim(),
-                weight: weight && Number(weight) > 0 ? Number(weight) : null,
-                length: length && Number(length) >= 1 ? Number(length) : null,
-                width: width && Number(width) >= 1 ? Number(width) : null,
-                height: height && Number(height) >= 1 ? Number(height) : null,
-                price: Number.isFinite(finalPrice) ? finalPrice : 0,
                 unitPrice: Number(price) || 0,
-                purchasePrice:
-                    purchasePrice !== undefined &&
-                        purchasePrice !== null &&
-                        purchasePrice !== ''
-                        ? Number(purchasePrice)
-                        : null,
+                price: Number.isFinite(finalPrice) ? finalPrice : 0,
                 tax: taxDecimal || 0,
-                discountValue:
-                    discountValue && Number(discountValue) > 0
-                        ? Number(discountValue)
-                        : null,
                 categoryId: (categoryId || '').trim(),
                 publicationDate: publicationDate || null,
                 status: 'PENDING', // Luôn đặt về PENDING khi gửi lại để duyệt
-                stockQuantity:
-                    stockQuantity !== undefined &&
-                        stockQuantity !== null &&
-                        stockQuantity !== ''
-                        ? Number(stockQuantity)
-                        : undefined,
             };
+
+            // Chỉ thêm các field optional nếu có giá trị hợp lệ
+            if (weight && Number(weight) > 0) {
+                payload.weight = Number(weight);
+            }
+            if (length && Number(length) >= 1) {
+                payload.length = Number(length);
+            }
+            if (width && Number(width) >= 1) {
+                payload.width = Number(width);
+            }
+            if (height && Number(height) >= 1) {
+                payload.height = Number(height);
+            }
+            if (
+                purchasePrice !== undefined &&
+                purchasePrice !== null &&
+                purchasePrice !== ''
+            ) {
+                const purchaseNum = Number(purchasePrice);
+                if (!isNaN(purchaseNum) && purchaseNum >= 0) {
+                    payload.purchasePrice = purchaseNum;
+                }
+            }
+            if (discountValue && Number(discountValue) > 0) {
+                payload.discountValue = Number(discountValue);
+            }
+            if (
+                stockQuantity !== undefined &&
+                stockQuantity !== null &&
+                stockQuantity !== ''
+            ) {
+                const quantityNum = Number(stockQuantity);
+                if (!isNaN(quantityNum) && quantityNum >= 0) {
+                    payload.stockQuantity = quantityNum;
+                }
+            }
+
+            // Only include media if we have URLs
+            if (imageUrls.length > 0) payload.imageUrls = imageUrls;
+            if (videoUrls.length > 0) payload.videoUrls = videoUrls;
+            if (finalDefaultMediaUrl) payload.defaultMediaUrl = finalDefaultMediaUrl;
 
             console.log('Update request data:', JSON.stringify(payload, null, 2));
 
@@ -342,12 +472,15 @@ function UpdateProductPage() {
 
             let data = {};
             try {
-                data = await response.json();
-                // console.log('Response data:', JSON.stringify(data, null, 2));
+                const responseText = await response.text();
+                if (responseText) {
+                    data = JSON.parse(responseText);
+                    console.log('Response data:', JSON.stringify(data, null, 2));
+                }
             } catch (err) {
                 console.error('Error parsing response:', err);
-                // const text = await response.text();
-                // console.log('Response text:', text);
+                const text = await response.text().catch(() => '');
+                console.log('Response text:', text);
             }
 
             // Nếu hết hạn -> thử refresh và gọi lại 1 lần
@@ -364,11 +497,15 @@ function UpdateProductPage() {
                         body: JSON.stringify(payload),
                     });
                     try {
-                        data = await response.json();
+                        const responseText = await response.text();
+                        if (responseText) {
+                            data = JSON.parse(responseText);
+                            console.log('Retry response data:', JSON.stringify(data, null, 2));
+                        }
                     } catch (err) {
                         console.error('Error parsing retry response:', err);
-                        // const text = await response.text().catch(() => '');
-                        // console.log('Retry response text:', text);
+                        const text = await response.text().catch(() => '');
+                        console.log('Retry response text:', text);
                     }
                 } else {
                     setIsLoading(false);
@@ -381,6 +518,7 @@ function UpdateProductPage() {
 
             // Kiểm tra response sau khi retry
             if (response.ok) {
+                const result = data?.result || data;
                 setNotifyType('success');
                 setNotifyMsg(
                     'Cập nhật sản phẩm thành công. Sản phẩm đã được gửi lại để duyệt.',
@@ -393,6 +531,12 @@ function UpdateProductPage() {
             } else {
                 // Extract error message from response
                 const serverMsg = data?.message || data?.error || data?.result || '';
+                console.error('Update failed:', {
+                    status: response.status,
+                    statusText: response.statusText,
+                    data: data,
+                    serverMsg: serverMsg
+                });
 
                 let errorMessage =
                     serverMsg || 'Cập nhật sản phẩm thất bại. Vui lòng thử lại.';

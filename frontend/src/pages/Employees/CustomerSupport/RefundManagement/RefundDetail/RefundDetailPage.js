@@ -6,6 +6,7 @@ import { getApiBaseUrl, getStoredToken, formatCurrency } from '../../../../../se
 import { normalizeMediaUrl } from '../../../../../services/productUtils';
 import { useNotification } from '../../../../../components/Common/Notification';
 import ConfirmDialog from '../../../../../components/Common/ConfirmDialog/DeleteAccountDialog';
+import RejectOrderRefundDialog from '../../../../../components/Common/ConfirmDialog/RejectOrderRefundDialog';
 
 const cx = classNames.bind(styles);
 
@@ -39,11 +40,11 @@ const parseRefundInfo = (order) => {
         }
 
         return {
-            reason: order.refundReasonType === 'store' 
+            reason: order.refundReasonType === 'store'
                 ? 'Sản phẩm gặp sự cố từ cửa hàng'
                 : order.refundReasonType === 'customer'
-                ? 'Thay đổi nhu cầu / Mua nhầm'
-                : '',
+                    ? 'Thay đổi nhu cầu / Mua nhầm'
+                    : '',
             reasonType: order.refundReasonType || null,
             description: order.refundDescription || '',
             email: order.refundEmail || order.customerEmail || '',
@@ -187,10 +188,10 @@ const buildRefundSummary = (order, refundInfo, selectedItems = []) => {
         0,
         Math.round(
             order.refundSecondShippingFee ??
-                order.refundReturnFee ??
-                order.estimatedReturnShippingFee ??
-                order.shippingFee ??
-                0,
+            order.refundReturnFee ??
+            order.estimatedReturnShippingFee ??
+            order.shippingFee ??
+            0,
         ),
     );
 
@@ -242,6 +243,7 @@ export default function RefundDetailPage() {
         message: '',
         onConfirm: null,
     });
+    const [rejectDialog, setRejectDialog] = useState(false);
 
     useEffect(() => {
         const fetchOrderDetail = async () => {
@@ -254,7 +256,7 @@ export default function RefundDetailPage() {
                     setLoading(false);
                     return;
                 }
-                
+
                 const apiBaseUrl = getApiBaseUrl();
                 console.log('🔍 Fetching order detail for id:', id);
 
@@ -270,7 +272,7 @@ export default function RefundDetailPage() {
                 if (!response.ok) {
                     const errorData = await response.json().catch(() => ({}));
                     console.error('🔍 Order detail error:', errorData);
-                    
+
                     let errorMessage = 'Không thể tải thông tin đơn hàng';
                     if (response.status === 403 || response.status === 401) {
                         errorMessage = 'Bạn không có quyền truy cập đơn hàng này';
@@ -279,18 +281,18 @@ export default function RefundDetailPage() {
                     } else if (errorData?.message) {
                         errorMessage = errorData.message;
                     }
-                    
+
                     throw new Error(errorMessage);
                 }
 
                 const data = await response.json();
                 console.log('🔍 Order detail data:', data);
                 const orderData = data?.result || data;
-                
+
                 if (!orderData || !orderData.id) {
                     throw new Error('Dữ liệu đơn hàng không hợp lệ');
                 }
-                
+
                 setOrder(orderData);
             } catch (err) {
                 console.error('Error fetching order detail:', err);
@@ -343,7 +345,7 @@ export default function RefundDetailPage() {
         typeof order.refundConfirmedAmount === 'number' &&
         order.refundConfirmedAmount > 0;
 
-    const handleReject = async () => {
+    const handleReject = () => {
         if (!canProcess) {
             notifyError('Đơn này đã được chuyển sang bộ phận tiếp theo, không thể từ chối.');
             return;
@@ -353,9 +355,11 @@ export default function RefundDetailPage() {
             return;
         }
 
-        if (!window.confirm('Bạn có chắc chắn muốn từ chối yêu cầu hoàn tiền này?')) {
-            return;
-        }
+        setRejectDialog(true);
+    };
+
+    const handleConfirmReject = async () => {
+        setRejectDialog(false);
 
         try {
             setProcessing(true);
@@ -459,7 +463,7 @@ export default function RefundDetailPage() {
 
     const refundInfo = parseRefundInfo(order);
     const shippingInfo = parseShippingInfo(order.shippingAddress);
-    
+
     // Get selected products for refund
     const selectedItems = order.items?.filter(item => refundInfo.selectedProducts.includes(item.id)) || [];
     const summary = buildRefundSummary(order, refundInfo, selectedItems);
@@ -467,13 +471,13 @@ export default function RefundDetailPage() {
     // Normalize media URLs
     const apiBaseUrl = getApiBaseUrl();
     const baseUrlForStatic = apiBaseUrl.replace('/api', '');
-    const normalizedMediaUrls = (refundInfo.mediaUrls || []).map(url => 
+    const normalizedMediaUrls = (refundInfo.mediaUrls || []).map(url =>
         normalizeMediaUrl(url, baseUrlForStatic)
     );
 
     // Parse rejection reason nếu đơn đã bị từ chối
     const isRejected = orderStatus && (
-        orderStatus.toUpperCase() === 'RETURN_REJECTED' || 
+        orderStatus.toUpperCase() === 'RETURN_REJECTED' ||
         orderStatus === 'RETURN_REJECTED' ||
         orderStatus === 'return_rejected' ||
         orderStatus.includes('REJECTED')
@@ -528,29 +532,29 @@ export default function RefundDetailPage() {
                     <div className={cx('info-grid')}>
                         <div className={cx('info-item')}>
                             <label className={cx('info-label')}>Họ tên</label>
-                            <input 
-                                type="text" 
-                                className={cx('info-input')} 
-                                value={shippingInfo?.name || order.receiverName || order.customerName || ''} 
-                                readOnly 
+                            <input
+                                type="text"
+                                className={cx('info-input')}
+                                value={shippingInfo?.name || order.receiverName || order.customerName || ''}
+                                readOnly
                             />
                         </div>
                         <div className={cx('info-item')}>
                             <label className={cx('info-label')}>SĐT</label>
-                            <input 
-                                type="text" 
-                                className={cx('info-input')} 
-                                value={shippingInfo?.phone || order.receiverPhone || ''} 
-                                readOnly 
+                            <input
+                                type="text"
+                                className={cx('info-input')}
+                                value={shippingInfo?.phone || order.receiverPhone || ''}
+                                readOnly
                             />
                         </div>
                         <div className={cx('info-item', 'full-width')}>
                             <label className={cx('info-label')}>Địa chỉ</label>
-                            <input 
-                                type="text" 
-                                className={cx('info-input')} 
-                                value={shippingInfo?.address || order.shippingAddress || ''} 
-                                readOnly 
+                            <input
+                                type="text"
+                                className={cx('info-input')}
+                                value={shippingInfo?.address || order.shippingAddress || ''}
+                                readOnly
                             />
                         </div>
                     </div>
@@ -581,7 +585,7 @@ export default function RefundDetailPage() {
                 {/* Customer Submitted Request */}
                 <div className={cx('section')}>
                     <h2 className={cx('section-title')}>Thông tin & ảnh khách gửi</h2>
-                    
+
                     {/* Product Details */}
                     {selectedItems.length > 0 && (
                         <div className={cx('product-details')}>
@@ -648,8 +652,8 @@ export default function RefundDetailPage() {
                                     return (
                                         <div key={index} className={cx('media-box')}>
                                             {isVideo ? (
-                                                <video 
-                                                    src={url} 
+                                                <video
+                                                    src={url}
                                                     controls
                                                     className={cx('media-content')}
                                                     preload="metadata"
@@ -664,8 +668,8 @@ export default function RefundDetailPage() {
                                                     }}
                                                 />
                                             ) : (
-                                                <img 
-                                                    src={url} 
+                                                <img
+                                                    src={url}
                                                     alt={`Ảnh ${index + 1}`}
                                                     className={cx('media-content')}
                                                     loading="lazy"
@@ -709,22 +713,22 @@ export default function RefundDetailPage() {
 
                 {/* Action Buttons */}
                 <div className={cx('action-buttons')}>
-                    <button 
-                        className={cx('btn', 'btn-cancel')} 
+                    <button
+                        className={cx('btn', 'btn-cancel')}
                         onClick={handleCancel}
                         disabled={processing}
                     >
                         Hủy
                     </button>
-                    <button 
-                        className={cx('btn', 'btn-reject')} 
+                    <button
+                        className={cx('btn', 'btn-reject')}
                         onClick={handleReject}
                         disabled={processing || !canProcess}
                     >
                         {processing ? 'Đang xử lý...' : 'Từ chối'}
                     </button>
-                    <button 
-                        className={cx('btn', 'btn-confirm')} 
+                    <button
+                        className={cx('btn', 'btn-confirm')}
                         onClick={handleConfirm}
                         disabled={processing || !canProcess}
                     >
@@ -754,8 +758,8 @@ export default function RefundDetailPage() {
                             const currentUrl = normalizedMediaUrls[lightboxIndex];
                             const isVideo = /\.(mp4|webm|ogg|mov|avi|mkv|flv|wmv)$/i.test(currentUrl);
                             return isVideo ? (
-                                <video 
-                                    src={currentUrl} 
+                                <video
+                                    src={currentUrl}
                                     controls
                                     autoPlay
                                     className={cx('lightbox-media')}
@@ -763,8 +767,8 @@ export default function RefundDetailPage() {
                                     Trình duyệt của bạn không hỗ trợ video.
                                 </video>
                             ) : (
-                                <img 
-                                    src={currentUrl} 
+                                <img
+                                    src={currentUrl}
                                     alt={`Ảnh ${lightboxIndex + 1}`}
                                     className={cx('lightbox-media')}
                                 />
@@ -788,6 +792,12 @@ export default function RefundDetailPage() {
                 }
                 confirmText="Xác nhận"
                 cancelText="Hủy"
+            />
+            <RejectOrderRefundDialog
+                open={rejectDialog}
+                onConfirm={handleConfirmReject}
+                onCancel={() => setRejectDialog(false)}
+                loading={processing}
             />
         </div>
     );

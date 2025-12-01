@@ -11,6 +11,7 @@ import {
     notifyStaffOnApproval,
     notifyStaffOnRejection,
     notifyStaffOnDelete,
+    getUserRole,
 } from '../../../../services';
 import { useNotification } from '../../../../components/Common/Notification';
 
@@ -31,6 +32,26 @@ function ProductDetailPage() {
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [rejectReason, setRejectReason] = useState('');
     const [processing, setProcessing] = useState(false);
+    const [isAdmin, setIsAdmin] = useState(false);
+
+    // Check admin role
+    useEffect(() => {
+        const checkAdminRole = async () => {
+            try {
+                const token = getStoredToken('token');
+                if (!token) {
+                    setIsAdmin(false);
+                    return;
+                }
+                const role = await getUserRole(API_BASE_URL, token);
+                setIsAdmin(role === 'ADMIN');
+            } catch (err) {
+                console.error('Error checking admin role:', err);
+                setIsAdmin(false);
+            }
+        };
+        checkAdminRole();
+    }, [API_BASE_URL]);
 
     useEffect(() => {
         if (!id) {
@@ -108,7 +129,7 @@ function ProductDetailPage() {
             setProduct(data?.result || data);
             setShowApproveModal(false);
             success('Sản phẩm đã được duyệt thành công!');
-            
+
             // Gửi thông báo cho nhân viên
             const productName = data?.result?.name || data?.name || 'Sản phẩm';
             await notifyStaffOnApproval('product', productName, token);
@@ -152,7 +173,7 @@ function ProductDetailPage() {
             const reason = rejectReason;
             setRejectReason('');
             success('Sản phẩm đã bị từ chối!');
-            
+
             // Gửi thông báo cho nhân viên
             const productName = data?.result?.name || data?.name || 'Sản phẩm';
             await notifyStaffOnRejection('product', productName, reason, token);
@@ -182,11 +203,11 @@ function ProductDetailPage() {
 
             setShowDeleteModal(false);
             success('Sản phẩm đã được xóa thành công!');
-            
+
             // Gửi thông báo cho nhân viên
             const productName = product?.name || 'Sản phẩm';
             await notifyStaffOnDelete('product', productName, token);
-            
+
             navigate('/admin/products');
         } catch (e) {
             notifyError('Lỗi: ' + (e?.message || 'Không thể xóa sản phẩm'));
@@ -195,44 +216,6 @@ function ProductDetailPage() {
         }
     };
 
-    const handleToggleVisibility = async () => {
-        try {
-            setProcessing(true);
-            const token = getStoredToken('token');
-            const action = product.status === 'Đã duyệt' ? 'DISABLE' : 'ENABLE';
-
-            const resp = await fetch(`${API_BASE_URL}/products/approve`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-                },
-                body: JSON.stringify({
-                    productId: id,
-                    action: action,
-                }),
-            });
-
-            if (!resp.ok) {
-                const text = await resp.text().catch(() => '');
-                throw new Error(text || `HTTP ${resp.status}`);
-            }
-
-            const data = await resp.json().catch(() => ({}));
-            const updatedProduct = data?.result || data;
-            setProduct(updatedProduct);
-
-            if (action === 'DISABLE') {
-                success('Sản phẩm đã được ẩn thành công!');
-            } else {
-                success('Sản phẩm đã được hiển thị lại thành công!');
-            }
-        } catch (e) {
-            notifyError('Lỗi: ' + (e?.message || 'Không thể thay đổi trạng thái sản phẩm'));
-        } finally {
-            setProcessing(false);
-        }
-    };
 
     const handleBack = () => {
         navigate('/admin/products');
@@ -667,16 +650,15 @@ function ProductDetailPage() {
                                     </button>
                                 </>
                             )}
-                            {((product.status === 'Đã duyệt' || product.status === 'Vô hiệu hóa') &&
-                                product.approvedAt) && (
-                                    <button
-                                        className={cx('btn', product.status === 'Đã duyệt' ? 'btn-hide' : 'btn-show')}
-                                        onClick={handleToggleVisibility}
-                                        disabled={processing}
-                                    >
-                                        {product.status === 'Đã duyệt' ? 'Ẩn sản phẩm' : 'Hiện sản phẩm'}
-                                    </button>
-                                )}
+                            {isAdmin && (
+                                <button
+                                    className={cx('btn', 'btn-edit')}
+                                    onClick={() => navigate(`/admin/products/${id}/update`)}
+                                    disabled={processing}
+                                >
+                                    Chỉnh sửa sản phẩm
+                                </button>
+                            )}
                             <button
                                 className={cx('btn', 'btn-delete')}
                                 onClick={() => setShowDeleteModal(true)}

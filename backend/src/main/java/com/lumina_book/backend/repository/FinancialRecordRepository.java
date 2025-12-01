@@ -99,4 +99,7 @@ public interface FinancialRecordRepository extends JpaRepository<FinancialRecord
     
     // Lấy tất cả FinancialRecord của một order theo recordType
     List<FinancialRecord> findByOrderIdAndRecordType(String orderId, FinancialRecordType recordType);
+    
+    // Lấy tất cả FinancialRecord của một product
+    List<FinancialRecord> findByProductId(String productId);
 }

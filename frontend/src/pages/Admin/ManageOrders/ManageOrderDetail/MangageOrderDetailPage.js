@@ -376,11 +376,6 @@ export default function MangageOrderDetailPage() {
         }));
     };
 
-    const handleSaveDraft = () => {
-        console.log('Draft return/refund payload', { orderId: id, formData });
-        alert('Đã lưu ghi nhận xử lý tạm thời');
-    };
-
     const executeConfirmRefund = async () => {
         try {
             setConfirming(true);
@@ -779,14 +774,6 @@ export default function MangageOrderDetailPage() {
                             disabled={isRefunded || confirming}
                         >
                             Hủy
-                        </button>
-                        <button 
-                            type="button" 
-                            className={cx('btn', 'secondary')} 
-                            onClick={handleSaveDraft}
-                            disabled={isRefunded || confirming}
-                        >
-                            Lưu
                         </button>
                         <button
                             type="button"

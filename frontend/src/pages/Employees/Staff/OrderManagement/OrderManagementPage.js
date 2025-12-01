@@ -157,6 +157,7 @@ export default function OrderManagementPage() {
 
     // Filters cho phần Quản lý đơn hàng
     const [keyword, setKeyword] = useState('');
+    const [debouncedKeyword, setDebouncedKeyword] = useState('');
     const [dateFilter, setDateFilter] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
     const apiBaseUrl = useMemo(() => getApiBaseUrl(), []);
@@ -165,11 +166,27 @@ export default function OrderManagementPage() {
 
     // Filters cho phần Quản lý đơn hoàn về
     const [refundKeyword, setRefundKeyword] = useState('');
+    const [debouncedRefundKeyword, setDebouncedRefundKeyword] = useState('');
     const [refundDateFilter, setRefundDateFilter] = useState('');
     const [refundStatusFilter, setRefundStatusFilter] = useState('all');
     const [refundCurrentPage, setRefundCurrentPage] = useState(1);
     const refundItemsPerPage = 8;
     const [activeTab, setActiveTab] = useState('orders');
+
+    // Debounce keyword để tránh filter + sort với list lớn trên mỗi lần gõ phím
+    useEffect(() => {
+        const id = setTimeout(() => {
+            setDebouncedKeyword(keyword.trim());
+        }, 300);
+        return () => clearTimeout(id);
+    }, [keyword]);
+
+    useEffect(() => {
+        const id = setTimeout(() => {
+            setDebouncedRefundKeyword(refundKeyword.trim());
+        }, 300);
+        return () => clearTimeout(id);
+    }, [refundKeyword]);
 
     // Fetch danh sách đơn hàng (ưu tiên gọi API thật, nếu lỗi dùng mock)
     useEffect(() => {
@@ -242,10 +259,15 @@ export default function OrderManagementPage() {
 
     // Lọc đơn hàng thông thường theo ô tìm kiếm, ngày và trạng thái
     const filteredOrders = useMemo(() => {
+        // Khi đang ở tab "Đơn hoàn về" thì không cần tính toán filter phức tạp cho tab "Đơn hàng"
+        if (activeTab !== 'orders') {
+            return normalOrders;
+        }
+
         let result = normalOrders;
 
-        if (keyword.trim()) {
-            const kw = keyword.trim().toLowerCase();
+        if (debouncedKeyword) {
+            const kw = debouncedKeyword.toLowerCase();
             result = result.filter((o) => {
                 return (
                     o.code?.toLowerCase().includes(kw) ||
@@ -284,7 +306,7 @@ export default function OrderManagementPage() {
             const db = b.orderDate ? new Date(b.orderDate) : 0;
             return db - da;
         });
-    }, [normalOrders, keyword, dateFilter, statusFilter]);
+    }, [normalOrders, debouncedKeyword, dateFilter, statusFilter, activeTab]);
 
     // Tính toán pagination cho đơn hàng thông thường
     const totalPages = Math.ceil(filteredOrders.length / itemsPerPage);
@@ -292,17 +314,24 @@ export default function OrderManagementPage() {
     const endIndex = startIndex + itemsPerPage;
     const paginatedOrders = filteredOrders.slice(startIndex, endIndex);
 
-    // Reset về trang 1 khi filter thay đổi
+    // Reset về trang 1 khi filter thay đổi (chỉ khi đang ở tab "Đơn hàng")
     useEffect(() => {
-        setCurrentPage(1);
-    }, [keyword, dateFilter, statusFilter]);
+        if (activeTab === 'orders') {
+            setCurrentPage(1);
+        }
+    }, [debouncedKeyword, dateFilter, statusFilter, activeTab]);
 
     // Lọc đơn hoàn về theo ô tìm kiếm, ngày và trạng thái
     const filteredRefundOrders = useMemo(() => {
+        // Khi đang ở tab "Đơn hàng" thì không cần tính toán filter phức tạp cho tab "Đơn hoàn về"
+        if (activeTab !== 'refunds') {
+            return refundOrders;
+        }
+
         let result = refundOrders;
 
-        if (refundKeyword.trim()) {
-            const kw = refundKeyword.trim().toLowerCase();
+        if (debouncedRefundKeyword) {
+            const kw = debouncedRefundKeyword.toLowerCase();
             result = result.filter((o) => {
                 return (
                     o.code?.toLowerCase().includes(kw) ||
@@ -348,7 +377,7 @@ export default function OrderManagementPage() {
             const db = b.orderDate ? new Date(b.orderDate) : 0;
             return db - da;
         });
-    }, [refundOrders, refundKeyword, refundDateFilter, refundStatusFilter]);
+    }, [refundOrders, debouncedRefundKeyword, refundDateFilter, refundStatusFilter, activeTab]);
 
     // Tính toán pagination cho đơn hoàn về
     const refundTotalPages = Math.ceil(filteredRefundOrders.length / refundItemsPerPage);
@@ -356,10 +385,12 @@ export default function OrderManagementPage() {
     const refundEndIndex = refundStartIndex + refundItemsPerPage;
     const paginatedRefundOrders = filteredRefundOrders.slice(refundStartIndex, refundEndIndex);
 
-    // Reset về trang 1 khi filter thay đổi
+    // Reset về trang 1 khi filter thay đổi (chỉ khi đang ở tab "Đơn hoàn về")
     useEffect(() => {
-        setRefundCurrentPage(1);
-    }, [refundKeyword, refundDateFilter, refundStatusFilter]);
+        if (activeTab === 'refunds') {
+            setRefundCurrentPage(1);
+        }
+    }, [debouncedRefundKeyword, refundDateFilter, refundStatusFilter, activeTab]);
 
     const renderPaginationControls = (page, total, handlePrev, handleNext) => {
         if (total <= 1) return null;

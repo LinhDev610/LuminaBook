@@ -824,25 +824,37 @@ function OrderDetailPage() {
                     )}
                     {(order.status === 'RETURN_REJECTED' ||
                         order.rawStatus === 'RETURN_REJECTED') && (
-                        <button
-                            className={cx('contact-btn', 'resubmit-btn')}
-                            onClick={() =>
-                                navigate(
-                                    `/customer-account/orders/${
-                                        order.id || order.code
-                                    }/refund`,
-                                    {
-                                        state: {
-                                            orderCode: order.code,
-                                            orderId: order.id,
-                                            isResubmit: true,
+                        <>
+
+                            <button
+                                className={cx('contact-btn', 'cancel-btn')}
+                                disabled={cancelling}
+                                onClick={handleCancelOrder}
+                            >
+                                {cancelling ? 'Đang hủy...' : 'Hủy đơn hàng'}
+                            </button>
+                            
+                            <button
+                                className={cx('contact-btn', 'resubmit-btn')}
+                                onClick={() =>
+                                    navigate(
+                                        `/customer-account/orders/${
+                                            order.id || order.code
+                                        }/refund`,
+                                        {
+                                            state: {
+                                                orderCode: order.code,
+                                                orderId: order.id,
+                                                isResubmit: true,
+                                            },
                                         },
-                                    },
-                                )
-                            }
-                        >
-                            Sửa lại và gửi lại yêu cầu
-                        </button>
+                                    )
+                                }
+                            >
+                                Sửa lại và gửi lại yêu cầu
+                            </button>
+                            
+                        </>
                     )}
                 </div>
                 <CancelOrderDialog

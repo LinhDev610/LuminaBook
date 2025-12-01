@@ -3,6 +3,7 @@ import classNames from 'classnames/bind';
 import { useNavigate } from 'react-router-dom';
 import styles from './CustomerSupportNotificationPage.module.scss';
 import { useNotification } from '../../../../components/Common/Notification';
+import ConfirmDialog from '../../../../components/Common/ConfirmDialog/DeleteAccountDialog';
 import {
     getStoredToken,
     getMyNotifications,
@@ -43,12 +44,18 @@ const formatRelativeTime = (dateString) => {
     }
 };
 
-export default function StaffNotificationPage() {
+export default function CustomerSupportNotificationPage() {
     const navigate = useNavigate();
     const { success, error: notifyError } = useNotification();
     const [notifications, setNotifications] = useState([]);
     const [loading, setLoading] = useState(true);
     const [processingIds, setProcessingIds] = useState(new Set());
+    const [confirmDialog, setConfirmDialog] = useState({
+        open: false,
+        title: '',
+        message: '',
+        onConfirm: null,
+    });
 
     // Fetch notifications
     const fetchNotifications = useCallback(async () => {
@@ -166,53 +173,71 @@ export default function StaffNotificationPage() {
 
     // Đánh dấu tất cả là đã đọc
     const handleMarkAllAsRead = async () => {
-        try {
-            const token = getStoredToken('token');
-            const result = await markAllNotificationsAsRead(token);
+        if (!notifications.length) return;
 
-            if (result.ok) {
-                setNotifications((prev) =>
-                    prev.map((notif) => ({ ...notif, isRead: true, readAt: new Date().toISOString() })),
-                );
-                success('Đã đánh dấu tất cả thông báo là đã đọc');
-            } else {
-                notifyError('Không thể đánh dấu tất cả đã đọc');
-            }
-        } catch (err) {
-            console.error('Error marking all as read:', err);
-            notifyError('Có lỗi xảy ra');
-        }
+        setConfirmDialog({
+            open: true,
+            title: 'Xác nhận đánh dấu đã đọc',
+            message: 'Bạn có chắc chắn muốn đánh dấu TẤT CẢ thông báo là đã đọc không?',
+            onConfirm: async () => {
+                setConfirmDialog({ open: false, title: '', message: '', onConfirm: null });
+                try {
+                    const token = getStoredToken('token');
+                    const result = await markAllNotificationsAsRead(token);
+
+                    if (result.ok) {
+                        setNotifications((prev) =>
+                            prev.map((notif) => ({
+                                ...notif,
+                                isRead: true,
+                                readAt: new Date().toISOString(),
+                            })),
+                        );
+                        success('Đã đánh dấu tất cả thông báo là đã đọc');
+                    } else {
+                        notifyError('Không thể đánh dấu tất cả đã đọc');
+                    }
+                } catch (err) {
+                    console.error('Error marking all as read:', err);
+                    notifyError('Có lỗi xảy ra');
+                }
+            },
+        });
     };
 
     // Xóa một thông báo
     const handleDelete = async (notificationId) => {
         if (processingIds.has(notificationId)) return;
 
-        if (!window.confirm('Bạn có chắc chắn muốn xóa thông báo này?')) {
-            return;
-        }
+        setConfirmDialog({
+            open: true,
+            title: 'Xác nhận xóa thông báo',
+            message: 'Bạn có chắc chắn muốn xóa thông báo này không?',
+            onConfirm: async () => {
+                setConfirmDialog({ open: false, title: '', message: '', onConfirm: null });
+                try {
+                    setProcessingIds((prev) => new Set(prev).add(notificationId));
+                    const token = getStoredToken('token');
+                    const result = await deleteNotification(notificationId, token);
 
-        try {
-            setProcessingIds((prev) => new Set(prev).add(notificationId));
-            const token = getStoredToken('token');
-            const result = await deleteNotification(notificationId, token);
-
-            if (result.ok) {
-                setNotifications((prev) => prev.filter((notif) => notif.id !== notificationId));
-                success('Đã xóa thông báo');
-            } else {
-                notifyError('Không thể xóa thông báo');
-            }
-        } catch (err) {
-            console.error('Error deleting notification:', err);
-            notifyError('Có lỗi xảy ra khi xóa thông báo');
-        } finally {
-            setProcessingIds((prev) => {
-                const newSet = new Set(prev);
-                newSet.delete(notificationId);
-                return newSet;
-            });
-        }
+                    if (result.ok) {
+                        setNotifications((prev) => prev.filter((notif) => notif.id !== notificationId));
+                        success('Đã xóa thông báo');
+                    } else {
+                        notifyError('Không thể xóa thông báo');
+                    }
+                } catch (err) {
+                    console.error('Error deleting notification:', err);
+                    notifyError('Có lỗi xảy ra khi xóa thông báo');
+                } finally {
+                    setProcessingIds((prev) => {
+                        const newSet = new Set(prev);
+                        newSet.delete(notificationId);
+                        return newSet;
+                    });
+                }
+            },
+        });
     };
 
     // Xóa tất cả thông báo đã đọc
@@ -223,24 +248,28 @@ export default function StaffNotificationPage() {
             return;
         }
 
-        if (!window.confirm(`Bạn có chắc chắn muốn xóa ${readCount} thông báo đã đọc?`)) {
-            return;
-        }
+        setConfirmDialog({
+            open: true,
+            title: 'Xác nhận xóa thông báo đã đọc',
+            message: `Bạn có chắc chắn muốn xóa ${readCount} thông báo đã đọc không?`,
+            onConfirm: async () => {
+                setConfirmDialog({ open: false, title: '', message: '', onConfirm: null });
+                try {
+                    const token = getStoredToken('token');
+                    const result = await deleteAllReadNotifications(token);
 
-        try {
-            const token = getStoredToken('token');
-            const result = await deleteAllReadNotifications(token);
-
-            if (result.ok) {
-                setNotifications((prev) => prev.filter((notif) => !notif.isRead && !notif.readAt));
-                success(`Đã xóa ${readCount} thông báo đã đọc`);
-            } else {
-                notifyError('Không thể xóa thông báo đã đọc');
-            }
-        } catch (err) {
-            console.error('Error deleting all read notifications:', err);
-            notifyError('Có lỗi xảy ra');
-        }
+                    if (result.ok) {
+                        setNotifications((prev) => prev.filter((notif) => !notif.isRead && !notif.readAt));
+                        success(`Đã xóa ${readCount} thông báo đã đọc`);
+                    } else {
+                        notifyError('Không thể xóa thông báo đã đọc');
+                    }
+                } catch (err) {
+                    console.error('Error deleting all read notifications:', err);
+                    notifyError('Có lỗi xảy ra');
+                }
+            },
+        });
     };
 
     const unreadCount = notifications.filter((n) => !n.isRead && !n.readAt).length;
@@ -265,6 +294,12 @@ export default function StaffNotificationPage() {
                     )}
                 </h1>
                 <div className={cx('actions')}>
+                    <button
+                        className={cx('btn', 'btn-secondary')}
+                        onClick={() => navigate('/customer-support')}
+                    >
+                        ← Quay lại Dashboard
+                    </button>
                     <button
                         className={cx('btn', 'btn-primary')}
                         onClick={handleMarkAllAsRead}
@@ -350,6 +385,17 @@ export default function StaffNotificationPage() {
                     })}
                 </div>
             )}
+            <ConfirmDialog
+                open={confirmDialog.open}
+                title={confirmDialog.title}
+                message={confirmDialog.message}
+                onConfirm={confirmDialog.onConfirm}
+                onCancel={() =>
+                    setConfirmDialog({ open: false, title: '', message: '', onConfirm: null })
+                }
+                confirmText="Xác nhận"
+                cancelText="Hủy"
+            />
         </div>
     );
 }

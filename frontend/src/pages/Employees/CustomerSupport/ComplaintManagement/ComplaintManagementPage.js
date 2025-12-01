@@ -591,19 +591,25 @@ export default function ComplaintManagementPage() {
                                     </div>
 
                                     <div className={cx('action-buttons')}>
-                                        <button
-                                            className={cx('action-btn', 'btn-resolved')}
-                                            onClick={handleResolved}
-                                            disabled={actionLoading || selectedComplaint.statusRaw === 'RESOLVED'}
-                                        >
-                                            {actionLoading ? 'Đang xử lý...' : 'Đã giải quyết'}
-                                        </button>
+                                        {selectedComplaint.handlerId &&
+                                            selectedComplaint.handlerId === currentUserId && (
+                                                <button
+                                                    className={cx('action-btn', 'btn-resolved')}
+                                                    onClick={handleResolved}
+                                                    disabled={actionLoading || selectedComplaint.statusRaw === 'RESOLVED'}
+                                                >
+                                                    {actionLoading ? 'Đang xử lý...' : 'Đã giải quyết'}
+                                                </button>
+                                            )}
                                         <button
                                             className={cx('action-btn', 'btn-save-note')}
                                             onClick={handleAcceptComplaint}
-                                            disabled={actionLoading ||
+                                            disabled={
+                                                actionLoading ||
                                                 selectedComplaint.statusRaw === 'RESOLVED' ||
-                                                (selectedComplaint.handlerId && selectedComplaint.handlerId !== '' && selectedComplaint.handlerId !== currentUserId)}
+                                                // Đã có người xử lý (kể cả là chính bạn) thì không cho bấm nữa
+                                                (selectedComplaint.handlerId && selectedComplaint.handlerId !== '')
+                                            }
                                         >
                                             {actionLoading
                                                 ? 'Đang tiếp nhận...'

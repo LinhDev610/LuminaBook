@@ -19,7 +19,7 @@ import bannerImage2 from '../../assets/images/img_qc.png';
 import bannerImage3 from '../../assets/images/img_qc.png';
 import Banner2 from '../../components/Common/Banner/Banner2';
 import imgsach_test from '../../assets/images/img_sach.png';
-import bgTetOngTrang from '../../assets/images/img_tetongtrang.png';
+import bgChristmas from '../../assets/images/img_christmas.png';
 // service icons
 import iconGiaoHang from '../../assets/icons/icon_giaohangtannoi.png';
 import iconDoiTra from '../../assets/icons/icon_doitrahang.png';
@@ -321,7 +321,7 @@ function Home() {
                     {/* Mid-Autumn Promo Section (new) */}
                     <section
                         className={cx('mid-autumn-section')}
-                        style={{ backgroundImage: `url(${bgTetOngTrang})` }}
+                        style={{ backgroundImage: `url(${bgChristmas})` }}
                     >
                         <div className={cx('mid-autumn-overlay')} />
                         <div className={cx('mid-autumn-products')}>

@@ -475,11 +475,11 @@ Bạn cần hỗ trợ thêm về vấn đề nào? Hãy chat với nhân viên 
             isSystemMessage: true
         };
         
-        setMessages((prev) => {
-            const newMessages = [...prev, faqMessage];
-            messagesRef.current = newMessages;
-            return newMessages;
-        });
+        // setMessages((prev) => {
+        //     const newMessages = [...prev, faqMessage];
+        //     messagesRef.current = newMessages;
+        //     return newMessages;
+        // });
         setTimeout(() => {
             scrollToBottom(true);
         }, 100);
@@ -679,7 +679,7 @@ Bạn cần hỗ trợ thêm về vấn đề nào? Hãy chat với nhân viên 
                                 </div>
                             </button>
                             
-                            <button 
+                            {/* <button 
                                 className={cx('option-button')}
                                 onClick={handleSelectPolicies}
                             >
@@ -699,7 +699,7 @@ Bạn cần hỗ trợ thêm về vấn đề nào? Hãy chat với nhân viên 
                                     <h4>Câu hỏi thường gặp</h4>
                                     <p>Tìm câu trả lời cho các câu hỏi phổ biến</p>
                                 </div>
-                            </button>
+                            </button> */}
 
                             <button 
                                 className={cx('option-button')}
